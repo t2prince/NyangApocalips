@@ -298,28 +298,49 @@ class GamePlayScreen(
         val sh = gameView.screenHeight.toFloat()
         val tileSize = Constants.TILE_SIZE
 
-        val startX = (camera.x / tileSize).toInt()
-        val startY = (camera.y / tileSize).toInt()
-        val endX = ((camera.x + sw) / tileSize).toInt() + 1
-        val endY = ((camera.y + sh) / tileSize).toInt() + 1
+        // Perspective projection: tiles at top are narrower (vanishing point effect)
+        val vanishX = sw / 2f  // Vanishing point X (center)
+        val horizon = -sh * 0.3f  // Horizon line (above screen)
+        val rows = 20
 
-        for (ty in startY..endY) {
-            for (tx in startX..endX) {
-                val screenX = tx * tileSize - camera.x
-                val screenY = ty * tileSize - camera.y
-                val paint = if ((tx + ty) % 2 == 0) tilePaint1 else tilePaint2
-                canvas.drawRect(screenX, screenY, screenX + tileSize, screenY + tileSize, paint)
+        for (row in 0 until rows) {
+            val t0 = row.toFloat() / rows
+            val t1 = (row + 1).toFloat() / rows
+            // Y positions on screen (perspective mapped)
+            val y0 = horizon + (sh - horizon) * t0 * t0
+            val y1 = horizon + (sh - horizon) * t1 * t1
+            // Width narrows toward top (perspective)
+            val halfW0 = sw * 0.5f + (sw * 1.5f - sw * 0.5f) * t0
+            val halfW1 = sw * 0.5f + (sw * 1.5f - sw * 0.5f) * t1
+            val left0 = vanishX - halfW0
+            val right0 = vanishX + halfW0
+            val left1 = vanishX - halfW1
+            val right1 = vanishX + halfW1
+
+            val cols = 12
+            for (col in 0 until cols) {
+                val cx0 = col.toFloat() / cols
+                val cx1 = (col + 1).toFloat() / cols
+                val paint = if ((row + col) % 2 == 0) tilePaint1 else tilePaint2
+
+                // Trapezoid for each tile
+                val path = Path().apply {
+                    moveTo(left0 + (right0 - left0) * cx0, y0)
+                    lineTo(left0 + (right0 - left0) * cx1, y0)
+                    lineTo(left1 + (right1 - left1) * cx1, y1)
+                    lineTo(left1 + (right1 - left1) * cx0, y1)
+                    close()
+                }
+                canvas.drawPath(path, paint)
+                // Grid line on right edge
+                canvas.drawLine(
+                    left0 + (right0 - left0) * cx1, y0,
+                    left1 + (right1 - left1) * cx1, y1,
+                    tileLinePaint
+                )
             }
-        }
-
-        // Grid lines
-        for (ty in startY..endY) {
-            val screenY = ty * tileSize - camera.y
-            canvas.drawLine(0f, screenY, sw, screenY, tileLinePaint)
-        }
-        for (tx in startX..endX) {
-            val screenX = tx * tileSize - camera.x
-            canvas.drawLine(screenX, 0f, screenX, sh, tileLinePaint)
+            // Horizontal grid line
+            canvas.drawLine(left1, y1, right1, y1, tileLinePaint)
         }
     }
 

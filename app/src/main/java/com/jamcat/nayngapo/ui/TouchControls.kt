@@ -7,14 +7,14 @@ import com.jamcat.nayngapo.engine.InputState
 class TouchControls {
     val inputState = InputState()
 
-    // D-pad config
-    private val dpadRadius = 90f
-    private val dpadInnerRadius = 30f
+    // D-pad config (larger for easier touch)
+    private val dpadRadius = 130f
+    private val dpadInnerRadius = 35f
     private var dpadCenterX = 0f
     private var dpadCenterY = 0f
 
-    // Action buttons config
-    private val btnRadius = 45f
+    // Action buttons config (larger)
+    private val btnRadius = 60f
     private var jumpBtnX = 0f
     private var jumpBtnY = 0f
     private var attackBtnX = 0f
@@ -22,43 +22,37 @@ class TouchControls {
     private var specialBtnX = 0f
     private var specialBtnY = 0f
 
-    // Track active pointers
     private val pointerButtons = mutableMapOf<Int, String>()
 
     private val dpadBgPaint = Paint().apply {
-        color = Color.argb(60, 255, 255, 255); isAntiAlias = true
+        color = Color.argb(50, 255, 255, 255); isAntiAlias = true
     }
     private val dpadArrowPaint = Paint().apply {
         color = Color.argb(120, 255, 255, 255); isAntiAlias = true; style = Paint.Style.FILL
     }
-    private val btnPaint = Paint().apply {
-        color = Color.argb(70, 255, 255, 255); isAntiAlias = true
-    }
     private val btnActivePaint = Paint().apply {
-        color = Color.argb(130, 255, 200, 50); isAntiAlias = true
+        color = Color.argb(140, 255, 200, 50); isAntiAlias = true
     }
     private val btnTextPaint = Paint().apply {
-        color = Color.WHITE; textSize = 22f; textAlign = Paint.Align.CENTER
+        color = Color.WHITE; textSize = 26f; textAlign = Paint.Align.CENTER
         typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
     }
     private val dpadCrossPaint = Paint().apply {
-        color = Color.argb(40, 255, 255, 255); isAntiAlias = true
+        color = Color.argb(35, 255, 255, 255); isAntiAlias = true
     }
 
     fun updateLayout(screenWidth: Int, screenHeight: Int) {
-        val padX = 160f
-        val padY = screenHeight - 160f
-        dpadCenterX = padX
-        dpadCenterY = padY
+        dpadCenterX = 190f
+        dpadCenterY = screenHeight - 180f
 
-        val rightBase = screenWidth - 140f
-        val bottomBase = screenHeight - 130f
+        val rightBase = screenWidth - 160f
+        val bottomBase = screenHeight - 150f
         attackBtnX = rightBase
         attackBtnY = bottomBase
-        jumpBtnX = rightBase - 110f
-        jumpBtnY = bottomBase - 80f
-        specialBtnX = rightBase - 10f
-        specialBtnY = bottomBase - 160f
+        jumpBtnX = rightBase - 140f
+        jumpBtnY = bottomBase - 50f
+        specialBtnX = rightBase - 30f
+        specialBtnY = bottomBase - 150f
     }
 
     fun onTouchEvent(event: MotionEvent, screenWidth: Int, screenHeight: Int): Boolean {
@@ -67,27 +61,18 @@ class TouchControls {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 val idx = event.actionIndex
-                val px = event.getX(idx)
-                val py = event.getY(idx)
-                val id = event.getPointerId(idx)
-                handlePress(id, px, py)
+                handlePress(event.getPointerId(idx), event.getX(idx), event.getY(idx))
             }
             MotionEvent.ACTION_MOVE -> {
                 for (i in 0 until event.pointerCount) {
-                    val id = event.getPointerId(i)
-                    val px = event.getX(i)
-                    val py = event.getY(i)
-                    handlePress(id, px, py)
+                    handlePress(event.getPointerId(i), event.getX(i), event.getY(i))
                 }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
-                val idx = event.actionIndex
-                val id = event.getPointerId(idx)
-                handleRelease(id)
+                handleRelease(event.getPointerId(event.actionIndex))
             }
             MotionEvent.ACTION_CANCEL -> {
-                pointerButtons.clear()
-                resetInput()
+                pointerButtons.clear(); resetInput()
             }
         }
         return true
@@ -96,23 +81,17 @@ class TouchControls {
     private fun handlePress(pointerId: Int, px: Float, py: Float) {
         val prevButton = pointerButtons[pointerId]
 
-        // Check D-pad
         val dx = px - dpadCenterX
         val dy = py - dpadCenterY
         val dist = kotlin.math.hypot(dx.toDouble(), dy.toDouble()).toFloat()
 
-        if (dist < dpadRadius + 20f) {
-            // Inside D-pad area
+        if (dist < dpadRadius + 30f) {
             pointerButtons[pointerId] = "dpad"
-            // Reset dpad state first
-            inputState.moveLeft = false
-            inputState.moveRight = false
-            inputState.moveUp = false
-            inputState.moveDown = false
+            inputState.moveLeft = false; inputState.moveRight = false
+            inputState.moveUp = false; inputState.moveDown = false
 
             if (dist > dpadInnerRadius) {
                 val angle = Math.toDegrees(kotlin.math.atan2(dy.toDouble(), dx.toDouble())).toFloat()
-                // Right: -45 to 45, Down: 45 to 135, Left: 135 to 180 or -180 to -135, Up: -135 to -45
                 if (angle > -60f && angle < 60f) inputState.moveRight = true
                 if (angle > 120f || angle < -120f) inputState.moveLeft = true
                 if (angle > 30f && angle < 150f) inputState.moveDown = true
@@ -121,46 +100,27 @@ class TouchControls {
             return
         }
 
-        // Check action buttons
-        if (kotlin.math.hypot((px - attackBtnX).toDouble(), (py - attackBtnY).toDouble()) < btnRadius + 10f) {
-            pointerButtons[pointerId] = "attack"
-            inputState.attack = true
-            return
+        val hitRadius = btnRadius + 15f
+        if (kotlin.math.hypot((px - attackBtnX).toDouble(), (py - attackBtnY).toDouble()) < hitRadius) {
+            pointerButtons[pointerId] = "attack"; inputState.attack = true; return
         }
-        if (kotlin.math.hypot((px - jumpBtnX).toDouble(), (py - jumpBtnY).toDouble()) < btnRadius + 10f) {
-            pointerButtons[pointerId] = "jump"
-            inputState.jump = true
-            return
+        if (kotlin.math.hypot((px - jumpBtnX).toDouble(), (py - jumpBtnY).toDouble()) < hitRadius) {
+            pointerButtons[pointerId] = "jump"; inputState.jump = true; return
         }
-        if (kotlin.math.hypot((px - specialBtnX).toDouble(), (py - specialBtnY).toDouble()) < btnRadius + 10f) {
-            pointerButtons[pointerId] = "special"
-            inputState.special = true
-            return
+        if (kotlin.math.hypot((px - specialBtnX).toDouble(), (py - specialBtnY).toDouble()) < hitRadius) {
+            pointerButtons[pointerId] = "special"; inputState.special = true; return
         }
 
-        // Not in any button - if previously was on a button, release it
-        if (prevButton != null) {
-            releaseButton(prevButton)
-            pointerButtons.remove(pointerId)
-        }
+        if (prevButton != null) { releaseButton(prevButton); pointerButtons.remove(pointerId) }
     }
 
     private fun handleRelease(pointerId: Int) {
-        val button = pointerButtons[pointerId]
-        if (button != null) {
-            releaseButton(button)
-            pointerButtons.remove(pointerId)
-        }
+        pointerButtons[pointerId]?.let { releaseButton(it); pointerButtons.remove(pointerId) }
     }
 
     private fun releaseButton(button: String) {
         when (button) {
-            "dpad" -> {
-                inputState.moveLeft = false
-                inputState.moveRight = false
-                inputState.moveUp = false
-                inputState.moveDown = false
-            }
+            "dpad" -> { inputState.moveLeft = false; inputState.moveRight = false; inputState.moveUp = false; inputState.moveDown = false }
             "attack" -> inputState.attack = false
             "jump" -> inputState.jump = false
             "special" -> inputState.special = false
@@ -168,36 +128,28 @@ class TouchControls {
     }
 
     private fun resetInput() {
-        inputState.moveLeft = false
-        inputState.moveRight = false
-        inputState.moveUp = false
-        inputState.moveDown = false
-        inputState.jump = false
-        inputState.attack = false
-        inputState.special = false
+        inputState.moveLeft = false; inputState.moveRight = false
+        inputState.moveUp = false; inputState.moveDown = false
+        inputState.jump = false; inputState.attack = false; inputState.special = false
     }
 
     fun draw(canvas: Canvas, screenWidth: Int, screenHeight: Int) {
         if (dpadCenterX == 0f) updateLayout(screenWidth, screenHeight)
 
         // === D-pad ===
-        // Background circle
         canvas.drawCircle(dpadCenterX, dpadCenterY, dpadRadius, dpadBgPaint)
-        // Cross shape
-        canvas.drawRect(
-            dpadCenterX - 25f, dpadCenterY - dpadRadius + 10f,
-            dpadCenterX + 25f, dpadCenterY + dpadRadius - 10f, dpadCrossPaint
-        )
-        canvas.drawRect(
-            dpadCenterX - dpadRadius + 10f, dpadCenterY - 25f,
-            dpadCenterX + dpadRadius - 10f, dpadCenterY + 25f, dpadCrossPaint
-        )
+        // Cross
+        val crossW = 35f
+        canvas.drawRect(dpadCenterX - crossW, dpadCenterY - dpadRadius + 15f,
+            dpadCenterX + crossW, dpadCenterY + dpadRadius - 15f, dpadCrossPaint)
+        canvas.drawRect(dpadCenterX - dpadRadius + 15f, dpadCenterY - crossW,
+            dpadCenterX + dpadRadius - 15f, dpadCenterY + crossW, dpadCrossPaint)
 
-        // Arrows
-        drawArrow(canvas, dpadCenterX, dpadCenterY - 55f, 0f, inputState.moveUp)   // Up
-        drawArrow(canvas, dpadCenterX, dpadCenterY + 55f, 180f, inputState.moveDown)  // Down
-        drawArrow(canvas, dpadCenterX - 55f, dpadCenterY, 270f, inputState.moveLeft)  // Left
-        drawArrow(canvas, dpadCenterX + 55f, dpadCenterY, 90f, inputState.moveRight)  // Right
+        // Arrows (bigger)
+        drawArrow(canvas, dpadCenterX, dpadCenterY - 75f, 0f, inputState.moveUp)
+        drawArrow(canvas, dpadCenterX, dpadCenterY + 75f, 180f, inputState.moveDown)
+        drawArrow(canvas, dpadCenterX - 75f, dpadCenterY, 270f, inputState.moveLeft)
+        drawArrow(canvas, dpadCenterX + 75f, dpadCenterY, 90f, inputState.moveRight)
 
         // === Action Buttons ===
         drawButton(canvas, attackBtnX, attackBtnY, "ATK", inputState.attack, Color.argb(80, 255, 80, 80))
@@ -210,9 +162,9 @@ class TouchControls {
         canvas.save()
         canvas.rotate(rotation, cx, cy)
         val path = Path().apply {
-            moveTo(cx, cy - 14f)
-            lineTo(cx - 12f, cy + 6f)
-            lineTo(cx + 12f, cy + 6f)
+            moveTo(cx, cy - 20f)
+            lineTo(cx - 16f, cy + 8f)
+            lineTo(cx + 16f, cy + 8f)
             close()
         }
         canvas.drawPath(path, paint)
@@ -220,16 +172,13 @@ class TouchControls {
     }
 
     private fun drawButton(canvas: Canvas, cx: Float, cy: Float, label: String, active: Boolean, color: Int) {
-        val paint = if (active) btnActivePaint else Paint().apply {
-            this.color = color; isAntiAlias = true
-        }
+        val paint = if (active) btnActivePaint else Paint().apply { this.color = color; isAntiAlias = true }
         canvas.drawCircle(cx, cy, btnRadius, paint)
-        // Border
         val borderPaint = Paint().apply {
             this.color = Color.argb(100, 255, 255, 255)
-            style = Paint.Style.STROKE; strokeWidth = 2f; isAntiAlias = true
+            style = Paint.Style.STROKE; strokeWidth = 3f; isAntiAlias = true
         }
         canvas.drawCircle(cx, cy, btnRadius, borderPaint)
-        canvas.drawText(label, cx, cy + 8f, btnTextPaint)
+        canvas.drawText(label, cx, cy + 9f, btnTextPaint)
     }
 }

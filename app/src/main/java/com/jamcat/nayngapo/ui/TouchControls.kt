@@ -8,13 +8,13 @@ class TouchControls {
     val inputState = InputState()
 
     // D-pad config (larger for easier touch)
-    private val dpadRadius = 130f
-    private val dpadInnerRadius = 35f
+    private val dpadRadius = 195f
+    private val dpadInnerRadius = 50f
     private var dpadCenterX = 0f
     private var dpadCenterY = 0f
 
     // Action buttons config (larger)
-    private val btnRadius = 60f
+    private val btnRadius = 90f
     private var jumpBtnX = 0f
     private var jumpBtnY = 0f
     private var attackBtnX = 0f
@@ -34,7 +34,7 @@ class TouchControls {
         color = Color.argb(140, 255, 200, 50); isAntiAlias = true
     }
     private val btnTextPaint = Paint().apply {
-        color = Color.WHITE; textSize = 26f; textAlign = Paint.Align.CENTER
+        color = Color.WHITE; textSize = 34f; textAlign = Paint.Align.CENTER
         typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
     }
     private val dpadCrossPaint = Paint().apply {
@@ -42,17 +42,17 @@ class TouchControls {
     }
 
     fun updateLayout(screenWidth: Int, screenHeight: Int) {
-        dpadCenterX = 190f
-        dpadCenterY = screenHeight - 180f
+        dpadCenterX = 250f
+        dpadCenterY = screenHeight - 240f
 
-        val rightBase = screenWidth - 160f
-        val bottomBase = screenHeight - 150f
+        val rightBase = screenWidth - 200f
+        val bottomBase = screenHeight - 180f
         attackBtnX = rightBase
         attackBtnY = bottomBase
-        jumpBtnX = rightBase - 140f
-        jumpBtnY = bottomBase - 50f
-        specialBtnX = rightBase - 30f
-        specialBtnY = bottomBase - 150f
+        jumpBtnX = rightBase - 190f
+        jumpBtnY = bottomBase - 70f
+        specialBtnX = rightBase - 40f
+        specialBtnY = bottomBase - 200f
     }
 
     fun onTouchEvent(event: MotionEvent, screenWidth: Int, screenHeight: Int): Boolean {
@@ -146,10 +146,10 @@ class TouchControls {
             dpadCenterX + dpadRadius - 15f, dpadCenterY + crossW, dpadCrossPaint)
 
         // Arrows (bigger)
-        drawArrow(canvas, dpadCenterX, dpadCenterY - 75f, 0f, inputState.moveUp)
-        drawArrow(canvas, dpadCenterX, dpadCenterY + 75f, 180f, inputState.moveDown)
-        drawArrow(canvas, dpadCenterX - 75f, dpadCenterY, 270f, inputState.moveLeft)
-        drawArrow(canvas, dpadCenterX + 75f, dpadCenterY, 90f, inputState.moveRight)
+        drawArrow(canvas, dpadCenterX, dpadCenterY - 110f, 0f, inputState.moveUp)
+        drawArrow(canvas, dpadCenterX, dpadCenterY + 110f, 180f, inputState.moveDown)
+        drawArrow(canvas, dpadCenterX - 110f, dpadCenterY, 270f, inputState.moveLeft)
+        drawArrow(canvas, dpadCenterX + 110f, dpadCenterY, 90f, inputState.moveRight)
 
         // === Action Buttons ===
         drawButton(canvas, attackBtnX, attackBtnY, "ATK", inputState.attack, Color.argb(80, 255, 80, 80))
@@ -162,9 +162,9 @@ class TouchControls {
         canvas.save()
         canvas.rotate(rotation, cx, cy)
         val path = Path().apply {
-            moveTo(cx, cy - 20f)
-            lineTo(cx - 16f, cy + 8f)
-            lineTo(cx + 16f, cy + 8f)
+            moveTo(cx, cy - 28f)
+            lineTo(cx - 22f, cy + 12f)
+            lineTo(cx + 22f, cy + 12f)
             close()
         }
         canvas.drawPath(path, paint)

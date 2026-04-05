@@ -9,6 +9,7 @@ object SpriteManager {
     lateinit var playerIdle: Bitmap
     lateinit var playerPunch: Bitmap
     lateinit var playerKick: Bitmap
+    lateinit var playerJumpAttack: Bitmap
     lateinit var normalCat: Bitmap
     lateinit var thiefCat: Bitmap
     lateinit var laserCat: Bitmap
@@ -30,6 +31,7 @@ object SpriteManager {
         playerIdle = load(res, R.drawable.sprite_player, 80, 128)
         playerPunch = load(res, R.drawable.sprite_player_punch, 100, 128)
         playerKick = load(res, R.drawable.sprite_player_kick, 100, 128)
+        playerJumpAttack = load(res, R.drawable.sprite_player_jumpattack, 110, 128)
         normalCat = load(res, R.drawable.sprite_normal_cat, 70, 70)
         thiefCat = load(res, R.drawable.sprite_thief_cat, 75, 75)
         laserCat = load(res, R.drawable.sprite_laser_cat, 85, 85)

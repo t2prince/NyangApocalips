@@ -27,6 +27,7 @@ class Player(var x: Float, var y: Float) {
     var isAttacking = false
     var attackTimer = 0f
     private var useSpecial = false
+    var isJumpAttacking = false
 
     var isInvincible = false
     var invincibilityTimer = 0f
@@ -80,7 +81,7 @@ class Player(var x: Float, var y: Float) {
 
         if (isAttacking) {
             attackTimer -= deltaTime
-            if (attackTimer <= 0f) { isAttacking = false; useSpecial = false }
+            if (attackTimer <= 0f) { isAttacking = false; useSpecial = false; isJumpAttacking = false }
         }
 
         if (isInvincible) {
@@ -101,6 +102,7 @@ class Player(var x: Float, var y: Float) {
 
         // Select sprite based on state
         val sprite = when {
+            isJumpAttacking -> SpriteManager.playerJumpAttack
             isAttacking && useSpecial -> SpriteManager.playerKick
             isAttacking -> SpriteManager.playerPunch
             else -> SpriteManager.playerIdle
@@ -139,7 +141,12 @@ class Player(var x: Float, var y: Float) {
     }
 
     fun performAttack() {
-        if (!isAttacking) { isAttacking = true; attackTimer = Constants.ATTACK_DURATION; useSpecial = false }
+        if (!isAttacking) {
+            isAttacking = true
+            attackTimer = Constants.ATTACK_DURATION
+            useSpecial = false
+            isJumpAttacking = isJumping
+        }
     }
 
     fun performSpecial() {
@@ -150,11 +157,19 @@ class Player(var x: Float, var y: Float) {
     }
 
     fun isUsingSpecial(): Boolean = useSpecial
-    fun getCurrentAttackPower(): Int = if (useSpecial) specialPower else attackPower
+    fun getCurrentAttackPower(): Int = when {
+        isJumpAttacking -> (attackPower * 1.5f).toInt()
+        useSpecial -> specialPower
+        else -> attackPower
+    }
 
     fun getAttackHitBox(): RectF? {
         if (!isAttacking) return null
-        val range = if (useSpecial) 90f else Constants.ATTACK_RANGE
+        val range = when {
+            isJumpAttacking -> 80f
+            useSpecial -> 90f
+            else -> Constants.ATTACK_RANGE
+        }
         val atkHeight = 40f
         return if (facingRight) {
             RectF(x + width, y - atkHeight / 2, x + width + range, y + atkHeight / 2)

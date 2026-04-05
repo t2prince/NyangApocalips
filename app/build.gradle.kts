@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.jamcat.nayngapo"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.jamcat.nayngapo"

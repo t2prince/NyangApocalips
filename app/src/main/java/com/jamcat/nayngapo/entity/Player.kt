@@ -2,6 +2,7 @@ package com.jamcat.nayngapo.entity
 
 import android.graphics.*
 import com.jamcat.nayngapo.engine.Constants
+import com.jamcat.nayngapo.engine.SpriteManager
 
 class Player(var x: Float, var y: Float) {
     val width = Constants.PLAYER_WIDTH
@@ -98,105 +99,31 @@ class Player(var x: Float, var y: Float) {
         // Shadow
         canvas.drawOval(RectF(cx - 15f, y - 3f, cx + 15f, y + 5f), shadowPaint)
 
-        canvas.save()
-        if (!facingRight) {
-            canvas.scale(-1f, 1f, cx, drawY - height / 2f)
+        // Select sprite based on state
+        val sprite = when {
+            isAttacking && useSpecial -> SpriteManager.playerKick
+            isAttacking -> SpriteManager.playerPunch
+            else -> SpriteManager.playerIdle
         }
 
-        val headY = drawY - height + 10f
-        val shoulderY = headY + 14f
-        val hipY = drawY - height / 2f + 12f
-        val footY = drawY
+        val drawSprite = if (!facingRight) SpriteManager.getFlipped(sprite) else sprite
+        val sx = cx - drawSprite.width / 2f
+        val sy = drawY - drawSprite.height + 10f
+        canvas.drawBitmap(drawSprite, sx, sy, null)
 
-        // Head
-        canvas.drawCircle(cx, headY, 9f, headPaint)
-
-        // Body
-        canvas.drawLine(cx, shoulderY, cx, hipY, bodyPaint)
-
-        if (isAttacking && useSpecial) {
-            // === KICK (special attack) ===
-            // Back arm relaxed
-            canvas.drawLine(cx, shoulderY + 2f, cx - 12f, hipY - 5f, bodyPaint)
-            // Front arm guard
-            canvas.drawLine(cx, shoulderY + 2f, cx + 18f, shoulderY + 8f, bodyPaint)
-
-            // Standing leg
-            canvas.drawLine(cx, hipY, cx - 8f, footY, bodyPaint)
-            // Kicking leg - extended forward and up
-            val kickProgress = (attackTimer / (Constants.ATTACK_DURATION * 2f)).coerceIn(0f, 1f)
-            val kickExtend = if (kickProgress > 0.5f) (1f - kickProgress) * 2f else kickProgress * 2f
-            val kickX = cx + 15f + kickExtend * 30f
-            val kickY = hipY - 5f + kickExtend * 5f
-            canvas.drawLine(cx, hipY, kickX, kickY, kickPaint)
-            // Foot
-            canvas.drawCircle(kickX, kickY, 4f, headPaint)
-
-            // Glow effect on kick
-            canvas.drawLine(cx + 10f, hipY, kickX + 5f, kickY, specialGlowPaint)
-            // Impact star
-            if (kickExtend > 0.7f) {
-                drawImpactStar(canvas, kickX + 8f, kickY, 12f)
-            }
-        } else if (isAttacking) {
-            // === PUNCH (normal attack) ===
-            val punchProgress = (attackTimer / Constants.ATTACK_DURATION).coerceIn(0f, 1f)
-            val punchExtend = if (punchProgress > 0.5f) (1f - punchProgress) * 2f else punchProgress * 2f
-
-            // Punching arm - extends forward
-            val fistX = cx + 12f + punchExtend * 28f
-            val fistY = shoulderY + 5f
-            canvas.drawLine(cx, shoulderY + 2f, fistX, fistY, punchPaint)
-            // Fist
-            canvas.drawCircle(fistX, fistY, 4f, headPaint)
-
-            // Back arm guard position
-            canvas.drawLine(cx, shoulderY + 2f, cx - 10f, shoulderY + 15f, bodyPaint)
-
-            // Impact effect
-            if (punchExtend > 0.7f) {
-                drawImpactStar(canvas, fistX + 8f, fistY, 10f)
-            }
-
-            // Legs (fighting stance)
-            canvas.drawLine(cx, hipY, cx + 12f, footY, bodyPaint)
-            canvas.drawLine(cx, hipY, cx - 10f, footY, bodyPaint)
-        } else {
-            // === IDLE ===
-            // Arms
-            canvas.drawLine(cx, shoulderY + 2f, cx + 15f, hipY, bodyPaint)
-            canvas.drawLine(cx, shoulderY + 2f, cx - 15f, hipY, bodyPaint)
-
-            // Legs
-            canvas.drawLine(cx, hipY, cx + 10f, footY, bodyPaint)
-            canvas.drawLine(cx, hipY, cx - 10f, footY, bodyPaint)
+        // Hit effect overlay when attacking
+        if (isAttacking) {
+            val hitSprite = SpriteManager.hitEffect
+            val hx = if (facingRight) cx + 30f else cx - 30f - hitSprite.width
+            canvas.drawBitmap(hitSprite, hx, drawY - height / 2f - 10f, null)
         }
-
-        canvas.restore()
 
         // HP label
         val hpPaint = Paint().apply {
             color = Color.BLACK; textSize = 16f; textAlign = Paint.Align.CENTER
             isAntiAlias = true; typeface = Typeface.DEFAULT_BOLD
         }
-        canvas.drawText("$hp/$maxHp", cx + 30f, drawY - height + 5f, hpPaint)
-    }
-
-    private fun drawImpactStar(canvas: Canvas, cx: Float, cy: Float, size: Float) {
-        // Small impact burst
-        val path = Path()
-        for (i in 0 until 6) {
-            val angle = Math.toRadians((i * 60.0))
-            val outerX = cx + (kotlin.math.cos(angle) * size).toFloat()
-            val outerY = cy + (kotlin.math.sin(angle) * size).toFloat()
-            val innerAngle = Math.toRadians((i * 60.0 + 30.0))
-            val innerX = cx + (kotlin.math.cos(innerAngle) * size * 0.4f).toFloat()
-            val innerY = cy + (kotlin.math.sin(innerAngle) * size * 0.4f).toFloat()
-            if (i == 0) path.moveTo(outerX, outerY) else path.lineTo(outerX, outerY)
-            path.lineTo(innerX, innerY)
-        }
-        path.close()
-        canvas.drawPath(path, impactPaint)
+        canvas.drawText("$hp/$maxHp", cx + 30f, drawY - drawSprite.height + 5f, hpPaint)
     }
 
     fun moveLeft() { velocityX = -Constants.PLAYER_SPEED; facingRight = false }

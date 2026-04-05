@@ -21,6 +21,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     init {
         holder.addCallback(this)
         isFocusable = true
+        SpriteManager.init(context)
     }
 
     fun setScreen(screen: Screen) {

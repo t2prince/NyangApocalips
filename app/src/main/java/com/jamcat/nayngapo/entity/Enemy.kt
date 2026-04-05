@@ -2,6 +2,7 @@ package com.jamcat.nayngapo.entity
 
 import android.graphics.*
 import com.jamcat.nayngapo.engine.Constants
+import com.jamcat.nayngapo.engine.SpriteManager
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.sin
@@ -34,88 +35,28 @@ abstract class Enemy(var x: Float, var y: Float, val maxHp: Int, val attackPower
 
     open fun getProjectiles(): List<Projectile> = emptyList()
 
-    protected fun drawCatBody(canvas: Canvas, bodyColor: Int, earColor: Int, scale: Float = 1f) {
+    protected fun drawSprite(canvas: Canvas, sprite: Bitmap) {
         val cx = x + width / 2f
         val drawY = y + jumpZ
-        val cy = drawY - height / 2f
-        val s = scale
 
         // Shadow
         val shadowPaint = Paint().apply { color = Color.argb(50, 0, 0, 0); isAntiAlias = true }
-        canvas.drawOval(RectF(cx - 18f * s, y - 4f, cx + 18f * s, y + 6f), shadowPaint)
+        canvas.drawOval(RectF(cx - 20f, y - 4f, cx + 20f, y + 6f), shadowPaint)
 
-        canvas.save()
-        if (facingRight) {
-            canvas.scale(-1f, 1f, cx, cy)
-        }
+        val drawBmp = if (facingRight) SpriteManager.getFlipped(sprite) else sprite
+        val sx = cx - drawBmp.width / 2f
+        val sy = drawY - drawBmp.height + 8f
+        canvas.drawBitmap(drawBmp, sx, sy, null)
+    }
 
-        val bodyPaint = Paint().apply { color = bodyColor; isAntiAlias = true }
-        val earPaint = Paint().apply { color = earColor; isAntiAlias = true }
-        val whitePaint = Paint().apply { color = Color.WHITE; isAntiAlias = true }
-        val blackPaint = Paint().apply { color = Color.BLACK; isAntiAlias = true }
-        val nosePaint = Paint().apply { color = Color.rgb(255, 150, 150); isAntiAlias = true }
-        val whiskerPaint = Paint().apply {
-            color = Color.DKGRAY; strokeWidth = 1.5f; isAntiAlias = true
-        }
-        val tailPaint = Paint().apply {
-            color = bodyColor; strokeWidth = 4f * s; style = Paint.Style.STROKE
-            strokeCap = Paint.Cap.ROUND; isAntiAlias = true
-        }
-
-        // Tail
-        val tailPath = Path().apply {
-            moveTo(cx + 18f * s, cy + 8f * s)
-            quadTo(cx + 32f * s, cy - 10f * s, cx + 26f * s, cy - 22f * s)
-        }
-        canvas.drawPath(tailPath, tailPaint)
-
-        // Body (oval)
-        canvas.drawOval(RectF(cx - 18f * s, cy - 6f * s, cx + 18f * s, cy + 16f * s), bodyPaint)
-
-        // Feet
-        canvas.drawOval(RectF(cx - 14f * s, cy + 12f * s, cx - 4f * s, cy + 20f * s), bodyPaint)
-        canvas.drawOval(RectF(cx + 4f * s, cy + 12f * s, cx + 14f * s, cy + 20f * s), bodyPaint)
-
-        // Head
-        canvas.drawCircle(cx, cy - 12f * s, 14f * s, bodyPaint)
-
-        // Ears
-        val leftEar = Path().apply {
-            moveTo(cx - 12f * s, cy - 22f * s)
-            lineTo(cx - 7f * s, cy - 36f * s)
-            lineTo(cx - 1f * s, cy - 22f * s); close()
-        }
-        val rightEar = Path().apply {
-            moveTo(cx + 1f * s, cy - 22f * s)
-            lineTo(cx + 7f * s, cy - 36f * s)
-            lineTo(cx + 12f * s, cy - 22f * s); close()
-        }
-        canvas.drawPath(leftEar, earPaint)
-        canvas.drawPath(rightEar, earPaint)
-
-        // Eyes
-        canvas.drawCircle(cx - 6f * s, cy - 14f * s, 4f * s, whitePaint)
-        canvas.drawCircle(cx + 6f * s, cy - 14f * s, 4f * s, whitePaint)
-        canvas.drawCircle(cx - 5f * s, cy - 14f * s, 2.5f * s, blackPaint)
-        canvas.drawCircle(cx + 5f * s, cy - 14f * s, 2.5f * s, blackPaint)
-
-        // Nose
-        canvas.drawCircle(cx, cy - 8f * s, 2f * s, nosePaint)
-
-        // Whiskers
-        canvas.drawLine(cx - 4f * s, cy - 7f * s, cx - 20f * s, cy - 11f * s, whiskerPaint)
-        canvas.drawLine(cx - 4f * s, cy - 5f * s, cx - 20f * s, cy - 5f * s, whiskerPaint)
-        canvas.drawLine(cx + 4f * s, cy - 7f * s, cx + 20f * s, cy - 11f * s, whiskerPaint)
-        canvas.drawLine(cx + 4f * s, cy - 5f * s, cx + 20f * s, cy - 5f * s, whiskerPaint)
-
-        // Label "cat"
-        val labelPaint = Paint().apply {
-            color = Color.rgb(100, 60, 30); textSize = 10f * s; textAlign = Paint.Align.CENTER
-            isAntiAlias = true; typeface = Typeface.DEFAULT_BOLD
-        }
-        canvas.drawText("cat", cx, cy + 10f * s, labelPaint)
-
-        canvas.restore()
+    protected fun drawHpBar(canvas: Canvas) {
+        val cx = x + width / 2f
+        val barY = y + jumpZ - height - 12f
+        val barW = 50f
+        val barBg = Paint().apply { color = Color.DKGRAY }
+        val barFg = Paint().apply { color = Color.RED }
+        canvas.drawRect(cx - barW / 2, barY, cx + barW / 2, barY + 5f, barBg)
+        canvas.drawRect(cx - barW / 2, barY, cx - barW / 2 + barW * hp / maxHp.toFloat(), barY + 5f, barFg)
     }
 }
 
@@ -159,7 +100,7 @@ class NormalCat(x: Float, y: Float) : Enemy(x, y, 2, 8) {
     }
 
     override fun draw(canvas: Canvas) {
-        drawCatBody(canvas, Color.rgb(210, 170, 110), Color.rgb(230, 190, 130))
+        drawSprite(canvas, SpriteManager.normalCat)
     }
 }
 
@@ -204,12 +145,7 @@ class ThiefCat(x: Float, y: Float) : Enemy(x, y, 50, 15) {
     }
 
     override fun draw(canvas: Canvas) {
-        drawCatBody(canvas, Color.rgb(50, 50, 50), Color.rgb(30, 30, 30))
-        // Bandana
-        val cx = x + width / 2f
-        val cy = y + jumpZ - height / 2f
-        val maskPaint = Paint().apply { color = Color.rgb(150, 0, 0); isAntiAlias = true }
-        canvas.drawRect(cx - 10f, cy - 18f, cx + 10f, cy - 12f, maskPaint)
+        drawSprite(canvas, SpriteManager.thiefCat)
     }
 
     override fun getProjectiles(): List<Projectile> = pendingProjectiles.toList()
@@ -249,37 +185,17 @@ class LaserCat(x: Float, y: Float) : Enemy(x, y, 70, 100) {
     }
 
     override fun draw(canvas: Canvas) {
-        val cx = x + width / 2f
-        val cy = y - height / 2f
-        val shadowP = Paint().apply { color = Color.argb(50, 0, 0, 0); isAntiAlias = true }
-        canvas.drawOval(RectF(cx - 22f, y - 5f, cx + 22f, y + 7f), shadowP)
-
-        val tankPaint = Paint().apply { color = Color.rgb(80, 80, 100); isAntiAlias = true }
-        val barrelPaint = Paint().apply {
-            color = Color.rgb(100, 100, 120); strokeWidth = 8f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true
-        }
-        canvas.drawRoundRect(RectF(x, cy, x + width, y), 8f, 8f, tankPaint)
-        canvas.drawCircle(cx, cy - 6f, 15f, tankPaint)
-        val barrelDir = if (facingRight) 1f else -1f
-        canvas.drawLine(cx, cy - 6f, cx + 35f * barrelDir, cy - 6f, barrelPaint)
-
+        drawSprite(canvas, SpriteManager.laserCat)
         if (isCharging) {
+            val cx = x + width / 2f
+            val barrelDir = if (facingRight) 1f else -1f
             val chargePaint = Paint().apply {
                 color = Color.RED
                 alpha = (150 + (sin(chargeTimer.toDouble() * 20) * 100).toInt()).coerceIn(0, 255)
                 isAntiAlias = true
             }
-            canvas.drawCircle(cx + 35f * barrelDir, cy - 6f, 8f, chargePaint)
+            canvas.drawCircle(cx + 40f * barrelDir, y - height / 2f, 8f, chargePaint)
         }
-
-        val eyePaint = Paint().apply { color = Color.RED; isAntiAlias = true }
-        canvas.drawCircle(cx - 5f, cy - 10f, 3f, eyePaint)
-        canvas.drawCircle(cx + 5f, cy - 10f, 3f, eyePaint)
-
-        val earPaint = Paint().apply { color = Color.rgb(80, 80, 100); isAntiAlias = true }
-        val ear1 = Path().apply { moveTo(cx - 12f, cy - 18f); lineTo(cx - 6f, cy - 30f); lineTo(cx, cy - 18f); close() }
-        val ear2 = Path().apply { moveTo(cx, cy - 18f); lineTo(cx + 6f, cy - 30f); lineTo(cx + 12f, cy - 18f); close() }
-        canvas.drawPath(ear1, earPaint); canvas.drawPath(ear2, earPaint)
     }
 
     override fun getProjectiles(): List<Projectile> = pendingProjectiles.toList()
@@ -321,18 +237,11 @@ class HumanCatBoss(x: Float, y: Float) : Enemy(x, y, 3, 5) {
     }
 
     override fun draw(canvas: Canvas) {
-        drawCatBody(canvas, Color.rgb(255, 180, 100), Color.rgb(255, 140, 60), 1.3f)
+        drawSprite(canvas, SpriteManager.bossHumanCat)
         val cx = x + width / 2f
-        // Shirt
-        val shirtPaint = Paint().apply { color = Color.rgb(200, 50, 50); isAntiAlias = true }
-        canvas.drawRect(cx - 16f, y - height / 2f + 8f, cx + 16f, y - height / 2f + 22f, shirtPaint)
-        // Phase & HP bar
         val textPaint = Paint().apply { color = Color.WHITE; textSize = 14f; textAlign = Paint.Align.CENTER; isAntiAlias = true }
         canvas.drawText("P$phase/$maxPhases", cx, y - height - 5f, textPaint)
-        val barBg = Paint().apply { color = Color.DKGRAY }
-        val barFg = Paint().apply { color = Color.RED }
-        canvas.drawRect(cx - 25f, y - height, cx + 25f, y - height + 5f, barBg)
-        canvas.drawRect(cx - 25f, y - height, cx - 25f + 50f * hp / 3f, y - height + 5f, barFg)
+        drawHpBar(canvas)
     }
 }
 
@@ -367,12 +276,8 @@ class EvilCatBoss(x: Float, y: Float) : Enemy(x, y, 30, 20) {
     }
 
     override fun draw(canvas: Canvas) {
-        drawCatBody(canvas, Color.rgb(50, 20, 50), Color.rgb(80, 0, 0), 1.7f)
-        val cx = x + width / 2f
-        val barBg = Paint().apply { color = Color.DKGRAY }
-        val barFg = Paint().apply { color = Color.rgb(200, 0, 0) }
-        canvas.drawRect(cx - 35f, y - height - 5f, cx + 35f, y - height, barBg)
-        canvas.drawRect(cx - 35f, y - height - 5f, cx - 35f + 70f * hp / maxHp.toFloat(), y - height, barFg)
+        drawSprite(canvas, SpriteManager.bossEvilCat)
+        drawHpBar(canvas)
     }
 }
 
@@ -414,29 +319,16 @@ class WizardCatBoss(x: Float, y: Float) : Enemy(x, y, 50, 250) {
 
     override fun draw(canvas: Canvas) {
         val cx = x + width / 2f
-        val cy = y + jumpZ - height / 2f
+        drawSprite(canvas, SpriteManager.bossWizardCat)
 
-        drawCatBody(canvas, Color.rgb(100, 50, 150), Color.rgb(130, 60, 180), 1.5f)
-
-        val hatPaint = Paint().apply { color = Color.rgb(50, 0, 100); isAntiAlias = true }
-        val starPaint = Paint().apply { color = Color.YELLOW; textSize = 16f; textAlign = Paint.Align.CENTER; isAntiAlias = true }
-        val hatPath = Path().apply {
-            moveTo(cx - 18f, cy - 30f); lineTo(cx, cy - 60f); lineTo(cx + 18f, cy - 30f); close()
-        }
-        canvas.drawPath(hatPath, hatPaint)
-        canvas.drawText("★", cx, cy - 38f, starPaint)
-
+        // Aura effect
         val auraPaint = Paint().apply {
             color = Color.rgb(180, 100, 255)
             alpha = (80 + (sin(floatTimer.toDouble() * 4) * 40).toInt()).coerceIn(0, 255)
             style = Paint.Style.STROKE; strokeWidth = 3f; isAntiAlias = true
         }
-        canvas.drawCircle(cx, cy, 50f, auraPaint)
-
-        val barBg = Paint().apply { color = Color.DKGRAY }
-        val barFg = Paint().apply { color = Color.rgb(180, 0, 255) }
-        canvas.drawRect(cx - 40f, y - height - 10f, cx + 40f, y - height - 3f, barBg)
-        canvas.drawRect(cx - 40f, y - height - 10f, cx - 40f + 80f * hp / maxHp.toFloat(), y - height - 3f, barFg)
+        canvas.drawCircle(cx, y + jumpZ - height / 2f, 50f, auraPaint)
+        drawHpBar(canvas)
     }
 
     override fun getProjectiles(): List<Projectile> = pendingProjectiles.toList()

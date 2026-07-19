@@ -9,3 +9,6 @@
 .cxx
 local.properties
 app/build/
+.kotlin/
+__pycache__/
+Cats/

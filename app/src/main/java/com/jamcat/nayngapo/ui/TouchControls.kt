@@ -8,13 +8,13 @@ class TouchControls {
     val inputState = InputState()
 
     // D-pad config (larger for easier touch)
-    private val dpadRadius = 195f
-    private val dpadInnerRadius = 50f
+    private val dpadRadius = 240f
+    private val dpadInnerRadius = 55f
     private var dpadCenterX = 0f
     private var dpadCenterY = 0f
 
     // Action buttons config (larger)
-    private val btnRadius = 90f
+    private val btnRadius = 125f
     private var jumpBtnX = 0f
     private var jumpBtnY = 0f
     private var attackBtnX = 0f
@@ -34,7 +34,7 @@ class TouchControls {
         color = Color.argb(140, 255, 200, 50); isAntiAlias = true
     }
     private val btnTextPaint = Paint().apply {
-        color = Color.WHITE; textSize = 34f; textAlign = Paint.Align.CENTER
+        color = Color.WHITE; textSize = 46f; textAlign = Paint.Align.CENTER
         typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
     }
     private val dpadCrossPaint = Paint().apply {
@@ -42,17 +42,17 @@ class TouchControls {
     }
 
     fun updateLayout(screenWidth: Int, screenHeight: Int) {
-        dpadCenterX = 250f
-        dpadCenterY = screenHeight - 240f
+        dpadCenterX = 300f
+        dpadCenterY = screenHeight - 290f
 
-        val rightBase = screenWidth - 200f
-        val bottomBase = screenHeight - 180f
+        val rightBase = screenWidth - 250f
+        val bottomBase = screenHeight - 230f
         attackBtnX = rightBase
         attackBtnY = bottomBase
-        jumpBtnX = rightBase - 190f
-        jumpBtnY = bottomBase - 70f
-        specialBtnX = rightBase - 40f
-        specialBtnY = bottomBase - 200f
+        jumpBtnX = rightBase - 255f
+        jumpBtnY = bottomBase - 90f
+        specialBtnX = rightBase - 50f
+        specialBtnY = bottomBase - 270f
     }
 
     fun onTouchEvent(event: MotionEvent, screenWidth: Int, screenHeight: Int): Boolean {
@@ -88,14 +88,11 @@ class TouchControls {
         if (dist < dpadRadius + 30f) {
             pointerButtons[pointerId] = "dpad"
             inputState.moveLeft = false; inputState.moveRight = false
-            inputState.moveUp = false; inputState.moveDown = false
+            inputState.moveUp = false
 
             if (dist > dpadInnerRadius) {
-                val angle = Math.toDegrees(kotlin.math.atan2(dy.toDouble(), dx.toDouble())).toFloat()
-                if (angle > -60f && angle < 60f) inputState.moveRight = true
-                if (angle > 120f || angle < -120f) inputState.moveLeft = true
-                if (angle > 30f && angle < 150f) inputState.moveDown = true
-                if (angle > -150f && angle < -30f) inputState.moveUp = true
+                // 횡뷰 플랫포머: 좌/우만 판정 (세로 성분은 무시)
+                if (dx < 0f) inputState.moveLeft = true else inputState.moveRight = true
             }
             return
         }
@@ -120,7 +117,7 @@ class TouchControls {
 
     private fun releaseButton(button: String) {
         when (button) {
-            "dpad" -> { inputState.moveLeft = false; inputState.moveRight = false; inputState.moveUp = false; inputState.moveDown = false }
+            "dpad" -> { inputState.moveLeft = false; inputState.moveRight = false; inputState.moveUp = false }
             "attack" -> inputState.attack = false
             "jump" -> inputState.jump = false
             "special" -> inputState.special = false
@@ -128,28 +125,23 @@ class TouchControls {
     }
 
     private fun resetInput() {
-        inputState.moveLeft = false; inputState.moveRight = false
-        inputState.moveUp = false; inputState.moveDown = false
+        inputState.moveLeft = false; inputState.moveRight = false; inputState.moveUp = false
         inputState.jump = false; inputState.attack = false; inputState.special = false
     }
 
     fun draw(canvas: Canvas, screenWidth: Int, screenHeight: Int) {
         if (dpadCenterX == 0f) updateLayout(screenWidth, screenHeight)
 
-        // === D-pad ===
+        // === D-pad (횡뷰: 좌/우 전용) ===
         canvas.drawCircle(dpadCenterX, dpadCenterY, dpadRadius, dpadBgPaint)
-        // Cross
-        val crossW = 35f
-        canvas.drawRect(dpadCenterX - crossW, dpadCenterY - dpadRadius + 15f,
-            dpadCenterX + crossW, dpadCenterY + dpadRadius - 15f, dpadCrossPaint)
+        // 가로 바
+        val crossW = 45f
         canvas.drawRect(dpadCenterX - dpadRadius + 15f, dpadCenterY - crossW,
             dpadCenterX + dpadRadius - 15f, dpadCenterY + crossW, dpadCrossPaint)
 
-        // Arrows (bigger)
-        drawArrow(canvas, dpadCenterX, dpadCenterY - 110f, 0f, inputState.moveUp)
-        drawArrow(canvas, dpadCenterX, dpadCenterY + 110f, 180f, inputState.moveDown)
-        drawArrow(canvas, dpadCenterX - 110f, dpadCenterY, 270f, inputState.moveLeft)
-        drawArrow(canvas, dpadCenterX + 110f, dpadCenterY, 90f, inputState.moveRight)
+        // 좌/우 화살표
+        drawArrow(canvas, dpadCenterX - 145f, dpadCenterY, 270f, inputState.moveLeft)
+        drawArrow(canvas, dpadCenterX + 145f, dpadCenterY, 90f, inputState.moveRight)
 
         // === Action Buttons ===
         drawButton(canvas, attackBtnX, attackBtnY, "ATK", inputState.attack, Color.argb(80, 255, 80, 80))
@@ -162,9 +154,9 @@ class TouchControls {
         canvas.save()
         canvas.rotate(rotation, cx, cy)
         val path = Path().apply {
-            moveTo(cx, cy - 28f)
-            lineTo(cx - 22f, cy + 12f)
-            lineTo(cx + 22f, cy + 12f)
+            moveTo(cx, cy - 38f)
+            lineTo(cx - 30f, cy + 16f)
+            lineTo(cx + 30f, cy + 16f)
             close()
         }
         canvas.drawPath(path, paint)

@@ -6,8 +6,8 @@ import android.graphics.Paint
 import android.graphics.RectF
 
 class Prison(val x: Float, val y: Float) {
-    val width = 60f
-    val height = 80f
+    val width = 100f
+    val height = 140f
     var isOpen = false
     var rescueCount = 3
 

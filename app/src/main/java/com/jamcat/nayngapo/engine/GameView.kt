@@ -22,6 +22,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         holder.addCallback(this)
         isFocusable = true
         SpriteManager.init(context)
+        SoundManager.init(context)
+        GameProgress.init(context)
     }
 
     fun setScreen(screen: Screen) {
@@ -44,8 +46,13 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         currentScreen = GameOverScreen(this, score)
     }
 
-    fun showStageClear(stageNumber: Int, score: Int, rescueCount: Int) {
-        currentScreen = StageClearScreen(this, stageNumber, score, rescueCount)
+    fun showStageClear(
+        stageNumber: Int, score: Int, rescueCount: Int,
+        defeatedEnemies: Int, totalEnemies: Int, playerLevel: Int
+    ) {
+        currentScreen = StageClearScreen(
+            this, stageNumber, score, rescueCount, defeatedEnemies, totalEnemies, playerLevel
+        )
     }
 
     fun updateGame(deltaTime: Float) {

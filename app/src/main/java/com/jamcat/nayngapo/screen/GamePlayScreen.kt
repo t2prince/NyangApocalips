@@ -4,8 +4,12 @@ import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.Camera
 import com.jamcat.nayngapo.engine.Constants
+import com.jamcat.nayngapo.engine.GameProgress
 import com.jamcat.nayngapo.entity.Player
 import com.jamcat.nayngapo.engine.GameView
+import com.jamcat.nayngapo.engine.SoundManager
+import com.jamcat.nayngapo.engine.SpriteManager
+import com.jamcat.nayngapo.engine.Terrain
 import com.jamcat.nayngapo.level.Level
 import com.jamcat.nayngapo.ui.HUD
 import com.jamcat.nayngapo.ui.TouchControls
@@ -16,21 +20,14 @@ class GamePlayScreen(
 ) : Screen {
 
     private val level = Level(stageNumber)
-    private val player = Player(level.playerStartX, level.playerStartY)
+    private val player = Player(level.playerStartX, Constants.GROUND_Y)
     private val camera = Camera()
     private val touchControls = TouchControls()
     private val hud = HUD()
 
     private var respawnTimer = 0f
     private var waveTextTimer = 0f
-    private var waveTextMessage = "Wave 1"
-
-    // Floor tile paints
-    private val tilePaint1 = Paint().apply { color = Color.rgb(210, 195, 170) }
-    private val tilePaint2 = Paint().apply { color = Color.rgb(200, 185, 160) }
-    private val tileLinePaint = Paint().apply {
-        color = Color.rgb(180, 165, 140); strokeWidth = 1f
-    }
+    private var waveTextMessage = ""
 
     // Wave text paint
     private val waveTextPaint = Paint().apply {
@@ -44,8 +41,11 @@ class GamePlayScreen(
     private val hitEffects = mutableListOf<HitEffect>()
 
     init {
-        showWaveText("Wave 1 - START!")
+        camera.forwardOnly = true   // 플랫포머식: 카메라가 뒤로 돌아가지 않는다
+        showWaveText("STAGE $stageNumber - START!")
     }
+
+    private var elapsed = 0f   // GO → 표시 깜빡임용
 
     private fun showWaveText(msg: String) {
         waveTextMessage = msg
@@ -60,7 +60,8 @@ class GamePlayScreen(
         if (player.needsRespawn()) {
             respawnTimer += deltaTime
             if (respawnTimer > 1.5f) {
-                player.respawn(level.playerStartX, level.playerStartY)
+                // 진행 지점(현재 화면 왼쪽)에서 부활: 한 방향 카메라라 시작점으로 돌아갈 수 없다
+                player.respawn(camera.x + 150f, Constants.GROUND_Y)
                 respawnTimer = 0f
             }
             return
@@ -75,7 +76,6 @@ class GamePlayScreen(
         player.update(deltaTime)
 
         // Update enemies
-        val deadBefore = level.enemies.count { it.isDead }
         for (enemy in level.enemies) {
             if (!enemy.isDead) {
                 enemy.update(deltaTime, player.x, player.y)
@@ -99,6 +99,7 @@ class GamePlayScreen(
                 if (!enemy.isDead && RectF.intersects(attackBox, enemy.hitBox)) {
                     val dmg = player.getCurrentAttackPower()
                     enemy.takeDamage(dmg)
+                    player.triggerHitSpark()
                     player.specialGauge = (player.specialGauge + Constants.SPECIAL_GAIN_PER_HIT)
                         .coerceAtMost(Constants.SPECIAL_MAX)
                     hitEffects.add(HitEffect(enemy.x + enemy.width / 2f, enemy.y - enemy.height, 0.5f, "$dmg"))
@@ -122,10 +123,11 @@ class GamePlayScreen(
             }
         }
 
-        // Enemy -> Player collision
+        // Enemy -> Player collision (플레이어 히트박스는 프레임당 1회만 계산)
+        val playerBox = player.hitBox
         if (!player.isInvincible && !player.isJumping) {
             for (enemy in level.enemies) {
-                if (!enemy.isDead && RectF.intersects(player.hitBox, enemy.hitBox)) {
+                if (!enemy.isDead && RectF.intersects(playerBox, enemy.hitBox)) {
                     player.takeDamage(enemy.attackPower)
                     hitEffects.add(HitEffect(player.x, player.y - player.height, 0.5f, "HIT!"))
                     break
@@ -136,7 +138,7 @@ class GamePlayScreen(
         // Projectile -> Player
         if (!player.isInvincible && !player.isJumping) {
             for (proj in level.projectiles) {
-                if (!proj.isPlayerOwned && proj.isAlive && RectF.intersects(player.hitBox, proj.hitBox)) {
+                if (!proj.isPlayerOwned && proj.isAlive && RectF.intersects(playerBox, proj.hitBox)) {
                     player.takeDamage(proj.damage)
                     proj.isAlive = false
                     hitEffects.add(HitEffect(player.x, player.y - player.height, 0.5f, "${proj.damage}!"))
@@ -156,25 +158,29 @@ class GamePlayScreen(
             }
         }
 
-        // Check wave completion
-        val deadAfter = level.enemies.count { it.isDead }
-        if (deadAfter > deadBefore || level.enemies.isEmpty()) {
-            if (level.enemies.all { it.isDead }) {
-                if (level.stageCleared) {
-                    gameView.showStageClear(stageNumber, player.score, player.rescueCount)
-                    return
-                } else {
-                    showWaveText("Wave ${level.currentWave + 1}")
-                }
-            }
+        // 클리어 판정: 필드의 냥이를 전부 무찌르면 스테이지 클리어
+        if (level.stageCleared) {
+            GameProgress.onStageCleared(stageNumber)
+            gameView.showStageClear(
+                stageNumber, player.score, player.rescueCount,
+                level.defeatedEnemies, level.totalEnemies, player.level
+            )
+            return
         }
 
-        // Update camera
+        // Update camera (횡뷰: 세로 스크롤 없음 — levelHeight를 화면 높이로 넘겨 y=0 고정)
         camera.update(
-            player.x + player.width / 2f, player.y,
-            level.areaWidth, level.areaHeight,
+            player.x + player.width / 2f, gameView.screenHeight / 2f,
+            level.areaWidth, gameView.screenHeight.toFloat(),
             gameView.screenWidth.toFloat(), gameView.screenHeight.toFloat()
         )
+
+        // 한 방향 진행: 화면 왼쪽 밖(지나온 구간)으로는 되돌아갈 수 없다
+        if (player.x < camera.x + 20f) {
+            player.x = camera.x + 20f
+        }
+
+        elapsed += deltaTime
 
         // Update hit effects
         hitEffects.forEach { it.timer -= deltaTime; it.y -= 30f * deltaTime }
@@ -187,38 +193,22 @@ class GamePlayScreen(
     private fun processInput() {
         val input = touchControls.inputState
 
-        // Horizontal
-        if (input.moveLeft && input.moveRight) {
-            player.stopHorizontal()
-        } else if (input.moveLeft) {
-            player.moveLeft()
-        } else if (input.moveRight) {
-            player.moveRight()
-        } else {
-            player.stopHorizontal()
-        }
+        // 횡뷰 플랫포머: 좌우 이동만, 위 방향 입력은 점프로 사용
+        var dirX = 0f
+        if (input.moveLeft) dirX -= 1f
+        if (input.moveRight) dirX += 1f
+        player.setMovement(dirX, 0f)
 
-        // Vertical
-        if (input.moveUp && input.moveDown) {
-            player.stopVertical()
-        } else if (input.moveUp) {
-            player.moveUp()
-        } else if (input.moveDown) {
-            player.moveDown()
-        } else {
-            player.stopVertical()
-        }
-
-        if (input.jump) {
+        if (input.jump || input.moveUp) {
             player.jump()
             input.jump = false
         }
         if (input.attack) {
-            player.performAttack()
+            if (player.performAttack()) SoundManager.playAttack()
             input.attack = false
         }
         if (input.special) {
-            player.performSpecial()
+            if (player.performSpecial()) SoundManager.playSpecial()
             input.special = false
         }
     }
@@ -227,7 +217,8 @@ class GamePlayScreen(
         val sw = gameView.screenWidth
         val sh = gameView.screenHeight
 
-        // Draw floor tiles
+        // 배경(하늘) → 바닥 순서로 그린다: 잔디가 하늘 위에 겹치도록
+        drawSky(canvas)
         drawFloor(canvas)
 
         // Apply camera transform for game objects
@@ -264,17 +255,12 @@ class GamePlayScreen(
             if (proj.isAlive) proj.draw(canvas)
         }
 
-        // Hit effects
+        // Hit effects (재사용 페인트에 색/크기/알파만 갱신)
         for (effect in hitEffects) {
-            val effectPaint = Paint().apply {
-                color = if (effect.text.contains("LEVEL") || effect.text.contains("RESCUED"))
-                    Color.rgb(255, 220, 50) else Color.WHITE
-                textSize = if (effect.text.length > 3) 22f else 26f
-                textAlign = Paint.Align.CENTER
-                typeface = Typeface.DEFAULT_BOLD
-                isAntiAlias = true
-                alpha = (effect.timer / 0.5f * 255).toInt().coerceIn(0, 255)
-            }
+            effectPaint.color = if (effect.text.contains("LEVEL") || effect.text.contains("RESCUED"))
+                Color.rgb(255, 220, 50) else Color.WHITE
+            effectPaint.textSize = if (effect.text.length > 3) 22f else 26f
+            effectPaint.alpha = (effect.timer / 0.5f * 255).toInt().coerceIn(0, 255)
             canvas.drawText(effect.text, effect.x, effect.y, effectPaint)
         }
 
@@ -291,56 +277,74 @@ class GamePlayScreen(
             waveTextPaint.alpha = ((waveTextTimer / 2f).coerceIn(0f, 1f) * 255).toInt()
             canvas.drawText(waveTextMessage, sw / 2f, sh / 2f - 50f, waveTextPaint)
         }
+
+        // 진행 유도: 화면 안에 살아있는 냥이가 없고 앞쪽에 남아있으면 GO → 표시
+        val viewRight = camera.x + sw
+        val aliveOnScreen = level.enemies.any { !it.isDead && it.x + it.width > camera.x && it.x < viewRight }
+        val aliveAhead = level.enemies.any { !it.isDead && it.x >= viewRight }
+        if (!aliveOnScreen && aliveAhead) {
+            val blink = (kotlin.math.sin(elapsed * 6.0) * 0.5 + 0.5).toFloat()
+            goPaint.alpha = (110 + 145 * blink).toInt()
+            canvas.drawText("GO →", sw - 40f, sh / 2f, goPaint)
+        }
     }
 
+    // 매 프레임 재사용하는 페인트들
+    private val effectPaint = Paint().apply {
+        textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
+    }
+    private val goPaint = Paint().apply {
+        color = Color.rgb(255, 220, 50); textSize = 52f; textAlign = Paint.Align.RIGHT
+        typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
+        setShadowLayer(4f, 2f, 2f, Color.BLACK)
+    }
+    private val floorSrcRect = Rect()
+    private val floorDstRect = RectF()
+
+    private var skyShader: Paint? = null
+
+    /** 만화풍 맑은 하늘: 구름 없는 세로 그라데이션 */
+    private fun drawSky(canvas: Canvas) {
+        val sw = gameView.screenWidth.toFloat()
+        val sh = gameView.screenHeight.toFloat()
+        if (skyShader == null) {
+            skyShader = Paint().apply {
+                shader = LinearGradient(
+                    0f, 0f, 0f, sh,
+                    Color.rgb(64, 165, 235),    // 위: 진한 하늘색
+                    Color.rgb(188, 230, 252),   // 지평선: 옅은 하늘색
+                    Shader.TileMode.CLAMP
+                )
+            }
+        }
+        canvas.drawRect(0f, 0f, sw, sh, skyShader!!)
+    }
+
+    /** 만화풍 잔디+흙 스트립을 세로 슬라이스로 잘라 울퉁불퉁한 지형 표면을 따라 깐다 */
     private fun drawFloor(canvas: Canvas) {
         val sw = gameView.screenWidth.toFloat()
         val sh = gameView.screenHeight.toFloat()
-        val tileSize = Constants.TILE_SIZE
+        val grassOverlap = 42f                 // 잔디 이파리가 지면 표면 위로 솟는 높이
+        val bmp = SpriteManager.groundTile
+        // 화면이 지면 기준선보다 낮은 기기에서도 루프가 무한 반복하지 않도록 최소 높이를 보장
+        val baseStripH = (sh - (Constants.GROUND_Y - grassOverlap)).coerceAtLeast(80f)
+        val tileW = baseStripH * bmp.width / bmp.height   // 가로 반복 주기 (기준 비율)
 
-        // Perspective projection: tiles at top are narrower (vanishing point effect)
-        val vanishX = sw / 2f  // Vanishing point X (center)
-        val horizon = -sh * 0.3f  // Horizon line (above screen)
-        val rows = 20
+        // 비트맵을 세로 32조각으로 나눠, 각 조각을 해당 위치의 지형 높이에 맞춰 그린다
+        val slices = 32
+        val srcSliceW = bmp.width / slices
+        val dstSliceW = tileW / slices
 
-        for (row in 0 until rows) {
-            val t0 = row.toFloat() / rows
-            val t1 = (row + 1).toFloat() / rows
-            // Y positions on screen (perspective mapped)
-            val y0 = horizon + (sh - horizon) * t0 * t0
-            val y1 = horizon + (sh - horizon) * t1 * t1
-            // Width narrows toward top (perspective)
-            val halfW0 = sw * 0.5f + (sw * 1.5f - sw * 0.5f) * t0
-            val halfW1 = sw * 0.5f + (sw * 1.5f - sw * 0.5f) * t1
-            val left0 = vanishX - halfW0
-            val right0 = vanishX + halfW0
-            val left1 = vanishX - halfW1
-            val right1 = vanishX + halfW1
-
-            val cols = 12
-            for (col in 0 until cols) {
-                val cx0 = col.toFloat() / cols
-                val cx1 = (col + 1).toFloat() / cols
-                val paint = if ((row + col) % 2 == 0) tilePaint1 else tilePaint2
-
-                // Trapezoid for each tile
-                val path = Path().apply {
-                    moveTo(left0 + (right0 - left0) * cx0, y0)
-                    lineTo(left0 + (right0 - left0) * cx1, y0)
-                    lineTo(left1 + (right1 - left1) * cx1, y1)
-                    lineTo(left1 + (right1 - left1) * cx0, y1)
-                    close()
-                }
-                canvas.drawPath(path, paint)
-                // Grid line on right edge
-                canvas.drawLine(
-                    left0 + (right0 - left0) * cx1, y0,
-                    left1 + (right1 - left1) * cx1, y1,
-                    tileLinePaint
-                )
-            }
-            // Horizontal grid line
-            canvas.drawLine(left1, y1, right1, y1, tileLinePaint)
+        var worldX = kotlin.math.floor(camera.x / dstSliceW) * dstSliceW
+        val end = camera.x + sw + dstSliceW
+        while (worldX < end) {
+            val gy = Terrain.groundY(worldX + dstSliceW / 2f)
+            val tileIndex = kotlin.math.floor(worldX / dstSliceW).toLong()
+            val srcIdx = (((tileIndex % slices) + slices) % slices).toInt()
+            floorSrcRect.set(srcIdx * srcSliceW, 0, (srcIdx + 1) * srcSliceW, bmp.height)
+            floorDstRect.set(worldX - camera.x, gy - grassOverlap, worldX - camera.x + dstSliceW + 1f, sh)
+            canvas.drawBitmap(bmp, floorSrcRect, floorDstRect, null)
+            worldX += dstSliceW
         }
     }
 

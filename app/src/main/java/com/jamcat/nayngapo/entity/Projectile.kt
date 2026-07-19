@@ -27,7 +27,7 @@ class Projectile(
         x += velocityX * deltaTime
         y += velocityY * deltaTime
 
-        if (x < -500f || x > 20000f || y < -500f || y > 2000f) {
+        if (x < -500f || x > 25000f || y < -500f || y > 2000f) {
             isAlive = false
         }
     }

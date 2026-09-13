@@ -9,12 +9,15 @@ class Player(var x: Float, var y: Float) {
     val width = Constants.PLAYER_WIDTH
     val height = Constants.PLAYER_HEIGHT
 
+    /** 로비에서 고른 인간 — 선 색·머리 장식·능력치가 여기서 온다 */
+    val hero = com.jamcat.nayngapo.engine.Heroes.selected()
+
     var hp = 5
     var maxHp = 5
-    var lives = 5
+    var lives = Constants.MAX_LIVES
     var attackPower = 10
     var specialPower = 20
-    var specialGauge = 0f
+    var specialCooldown = 0f   // 0 이하면 필살기 사용 가능
     var level = 1
     var killCount = 0
 
@@ -27,8 +30,15 @@ class Player(var x: Float, var y: Float) {
     var isAttacking = false
     var attackTimer = 0f
     private var attackTotal = Constants.ATTACK_DURATION
-    private var useSpecial = false
     var isJumpAttacking = false
+
+    /** 필살기 '내려찍기' 단계: 도약 → 체공 → 급강하 → 착지 임팩트 */
+    enum class StompPhase { NONE, RISE, HANG, DROP, IMPACT }
+    var stompPhase = StompPhase.NONE
+        private set
+    private var stompTimer = 0f
+    /** 착지 순간 1회만 소비되는 충격파 이벤트 플래그 */
+    private var shockwavePending = false
 
     // 콤보: 0=원(잽), 1=투(크로스), 2=킥(마무리). COMBO_WINDOW 안에 다시 치면 다음 단계로.
     var comboStep = 0
@@ -36,11 +46,39 @@ class Player(var x: Float, var y: Float) {
     private var comboResetTimer = 0f
 
     // 애니메이션 위상
+    /** 콤보 마무리에서 던질 폭죽이 대기 중인가 (화면이 집어서 날린다) */
+    var pendingFirework = false
+    /** 닌자 인간이 이번 공격에 표창을 던졌다 — 화면이 한 번 받아 탄을 만든다 */
+    var pendingShuriken = false
+
+    /** 지금 공격이 '파이어 펀치'인가 — 공격이 끝나면 저절로 풀린다 */
+    private var firePunch = false
+    val isFirePunching: Boolean get() = firePunch && isAttacking
+
+    /** 흐른 시간 — 바람개비 모자가 도는 데 쓴다 */
+    private var animTime = 0f
     private var idlePhase = 0f    // 대기 숨쉬기
     private var walkPhase = 0f    // 걷기 사이클
 
     // 피격 이펙트: 실제로 적을 맞췄을 때만 짧게 표시
     private var hitSparkTimer = 0f
+
+    // 착지 스쿼시 타이머 (짧게 웅크렸다 펴는 게임적 과장)
+    private var landTimer = 0f
+
+    /** 깊은 눈에 빠진 상태 — 느릿느릿해지고 점프할 수 없다 */
+    var inDeepSnow = false
+    /** 늪에 빠져 있는지 — 5배 느려지지만 점프로 빠져나올 수 있다 */
+    var inSwamp = false
+    /** 눈에 잠긴 깊이 (0 = 평지, 최대치면 몸이 완전히 파묻힌다) */
+    private var snowSink = 0f
+
+    /** 덩굴에 매달려 있는가 — 매달린 동안에는 중력·좌우 이동이 멈춘다 */
+    var ridingVine = false
+    /** 매달린 덩굴의 기울기(도) — 그릴 때 몸을 같이 기울인다 */
+    var rideAngleDeg = 0f
+    /** 덩굴에서 튕겨 나간 뒤 조작을 잠깐 막는 시간 (관성을 살리려고) */
+    var flingTimer = 0f
 
     var isInvincible = false
     var invincibilityTimer = 0f
@@ -49,35 +87,33 @@ class Player(var x: Float, var y: Float) {
     var score = 0
     var rescueCount = 0
 
+    init {
+        // 고른 인간만큼 체력·공격력·발이 달라진다 (레벨업은 여기에 계속 얹힌다)
+        maxHp += hero.hpBonus
+        hp = maxHp
+        attackPower = Math.round(attackPower * hero.atkMul)
+        specialPower = Math.round(specialPower * hero.atkMul)
+    }
+
+    /** 이 인간의 달리기 속도 */
+    private val moveSpeed = Constants.PLAYER_SPEED * hero.speedMul
+
     // 횡뷰: 발끝(y)부터 머리까지 전신 히트박스 (투사체가 몸통 높이로 날아온다)
     val hitBox: RectF get() = RectF(x, y - 150f, x + width, y + 10f)
 
-    // Stick figure paints
-    private val bodyPaint = Paint().apply {
-        color = Color.BLACK; strokeWidth = 4f; strokeCap = Paint.Cap.ROUND
-        isAntiAlias = true; style = Paint.Style.STROKE
+    // 졸라맨 스프라이트 (GPT가 그린 20포즈 시트에서 잘라 온 프레임들)
+    private val spritePaint = Paint().apply { isFilterBitmap = true; isAntiAlias = true }
+    private val heroDst = RectF()
+
+    /** 그림이 놓일 자리 — 키가 작은 인간은 발을 땅에 붙인 채로 줄어든다 */
+    private fun setHeroDst(bmp: Bitmap, cx: Float, drawY: Float) {
+        val sw = bmp.width * hero.scale
+        val sh = bmp.height * hero.scale
+        heroDst.set(cx - sw / 2f, drawY - sh + FOOT_PAD, cx + sw / 2f, drawY + FOOT_PAD)
     }
-    // 주먹/발 끝 강조용 검은 점
-    private val headPaint = Paint().apply {
-        color = Color.BLACK; isAntiAlias = true; style = Paint.Style.FILL
-    }
-    // 머리: 흰색으로 비우고 검은 테두리
-    private val headFillPaint = Paint().apply {
-        color = Color.WHITE; isAntiAlias = true; style = Paint.Style.FILL
-    }
-    private val headStrokePaint = Paint().apply {
-        color = Color.BLACK; strokeWidth = 4f; isAntiAlias = true; style = Paint.Style.STROKE
-    }
-    private val punchPaint = Paint().apply {
-        color = Color.BLACK; strokeWidth = 5f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true
-    }
-    private val kickPaint = Paint().apply {
-        color = Color.BLACK; strokeWidth = 5f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true
-    }
-    private val specialGlowPaint = Paint().apply {
-        color = Color.rgb(255, 200, 50); strokeWidth = 10f; strokeCap = Paint.Cap.ROUND
-        isAntiAlias = true; alpha = 200
-    }
+    // 착지 충격파: 매 프레임 알파/크기만 갱신해 재사용
+    private val shockwavePaint = Paint().apply { isAntiAlias = true; isFilterBitmap = true }
+    private val shockwaveDst = RectF()
     private val impactPaint = Paint().apply {
         color = Color.rgb(255, 255, 200); isAntiAlias = true; style = Paint.Style.FILL
     }
@@ -88,34 +124,50 @@ class Player(var x: Float, var y: Float) {
     fun update(deltaTime: Float) {
         if (isDead) return
 
-        // 횡뷰 플랫포머: 좌우로만 이동하고 발은 항상 지형 표면 위 (수직은 jumpZ가 담당)
-        x += velocityX * deltaTime
-        x = x.coerceIn(Constants.PLAY_AREA_LEFT + 10f, Constants.PLAY_AREA_RIGHT - width - 10f)
-        y = Terrain.groundY(x + width / 2f)
+        // 덩굴에 매달린 동안은 위치를 덩굴이 정한다 (화면 쪽에서 매 프레임 넣어 준다)
+        if (!ridingVine) {
+            // 횡뷰 플랫포머: 좌우로만 이동하고 발은 항상 지형 표면 위 (수직은 jumpZ가 담당)
+            x += velocityX * deltaTime
+            x = x.coerceIn(Constants.PLAY_AREA_LEFT + 10f, Constants.PLAY_AREA_RIGHT - width - 10f)
+            y = Terrain.groundY(x + width / 2f)
 
-        if (isJumping) {
-            jumpVelocity += Constants.JUMP_GRAVITY * deltaTime
-            jumpZ += jumpVelocity * deltaTime
-            if (jumpZ >= 0f) {
-                jumpZ = 0f; jumpVelocity = 0f; isJumping = false
+            if (stompPhase != StompPhase.NONE) {
+                updateStomp(deltaTime)
+            } else if (isJumping) {
+                jumpVelocity += Constants.JUMP_GRAVITY * deltaTime
+                jumpZ += jumpVelocity * deltaTime
+                if (jumpZ >= 0f) {
+                    jumpZ = 0f; jumpVelocity = 0f; isJumping = false
+                    landTimer = 0.12f   // 착지 스쿼시 연출
+                }
             }
         }
 
+        if (flingTimer > 0f) flingTimer -= deltaTime
+
+        if (landTimer > 0f) landTimer -= deltaTime
+
         if (isAttacking) {
             attackTimer -= deltaTime
-            if (attackTimer <= 0f) { isAttacking = false; useSpecial = false; isJumpAttacking = false }
+            if (attackTimer <= 0f) { isAttacking = false; isJumpAttacking = false }
         }
 
         // 애니메이션 위상 갱신
+        animTime += deltaTime
         idlePhase += deltaTime * 3f
         val moving = velocityX != 0f
         if (moving && !isJumping) {
-            walkPhase += deltaTime * 11f          // 걷기 다리/팔 스윙 속도
+            walkPhase += deltaTime * 13f          // 걷기 다리/팔 스윙 속도
         } else {
             walkPhase = 0f
         }
 
+        // 눈에 빠지면 몸이 서서히 잠기고, 빠져나오면 다시 올라온다
+        val sinkTarget = if (inDeepSnow) SNOW_SINK_MAX else 0f
+        snowSink += (sinkTarget - snowSink).coerceIn(-420f * deltaTime, 420f * deltaTime)
+
         if (hitSparkTimer > 0f) hitSparkTimer -= deltaTime
+        if (specialCooldown > 0f) specialCooldown -= deltaTime
 
         // 콤보 창: 만료되면 다음 공격은 다시 '원(잽)'부터 시작
         if (comboResetTimer > 0f) {
@@ -129,13 +181,68 @@ class Player(var x: Float, var y: Float) {
         }
     }
 
+    /** 내려찍기 진행: 도약(중력) → 정점 체공 → 등속 급강하 → 착지 임팩트 */
+    private fun updateStomp(deltaTime: Float) {
+        when (stompPhase) {
+            StompPhase.RISE -> {
+                jumpVelocity += Constants.JUMP_GRAVITY * deltaTime
+                jumpZ += jumpVelocity * deltaTime
+                if (jumpVelocity >= 0f) {   // 정점 도달
+                    jumpVelocity = 0f
+                    stompPhase = StompPhase.HANG
+                    stompTimer = Constants.STOMP_HANG_TIME
+                }
+            }
+            StompPhase.HANG -> {
+                stompTimer -= deltaTime
+                if (stompTimer <= 0f) stompPhase = StompPhase.DROP
+            }
+            StompPhase.DROP -> {
+                jumpZ += Constants.STOMP_DROP_SPEED * deltaTime
+                if (jumpZ >= 0f) {
+                    jumpZ = 0f; jumpVelocity = 0f; isJumping = false
+                    stompPhase = StompPhase.IMPACT
+                    stompTimer = Constants.STOMP_IMPACT_DURATION
+                    shockwavePending = true   // 착지 프레임에 1회만 충격파 발생
+                }
+            }
+            StompPhase.IMPACT -> {
+                stompTimer -= deltaTime
+                if (stompTimer <= 0f) {
+                    stompPhase = StompPhase.NONE
+                    landTimer = 0.12f
+                }
+            }
+            StompPhase.NONE -> {}
+        }
+    }
+
+    /**
+     * 착지 충격파가 이번 프레임에 터졌는지 1회만 알려준다 (호출 즉시 소비).
+     * GamePlayScreen이 이걸 받아 광역 피해·화면 흔들림을 적용한다.
+     */
+    fun consumeShockwave(): Boolean {
+        if (!shockwavePending) return false
+        shockwavePending = false
+        return true
+    }
+
     fun draw(canvas: Canvas) {
         if (isDead) return
         if (isInvincible && ((invincibilityTimer * 8).toInt() % 2 == 0)) return
 
-        val drawY = y + jumpZ
+        val drawY = y + jumpZ + snowSink       // 눈에 잠긴 만큼 아래로 내려간다
         val cx = x + width / 2f
         val dir = if (facingRight) 1f else -1f   // 바라보는 방향(+1 오른쪽, -1 왼쪽)
+
+        // 덩굴에 매달렸을 때는 덩굴 기울기만큼 몸을 기울여 그린다 (그림자는 생략)
+        if (ridingVine) {
+            canvas.save()
+            canvas.rotate(rideAngleDeg, cx, drawY - height * 0.9f)
+            drawSprite(canvas, cx, drawY, dir)
+            canvas.restore()
+            return
+        }
 
         // Shadow: 점프 높이에 따라 그림자를 축소·감쇄해 공중 높이감을 준다.
         val heightFrac = (-jumpZ / Constants.JUMP_MAX_HEIGHT).coerceIn(0f, 1f)
@@ -144,142 +251,103 @@ class Player(var x: Float, var y: Float) {
         shadowPaint.alpha = (60 * (1f - heightFrac * 0.5f)).toInt()
         canvas.drawOval(RectF(cx - sw, y - 3f * shadowScale, cx + sw, y + 5f * shadowScale), shadowPaint)
 
-        // 캐릭터 크기 스케일(전투화면 목업 비율). drawY = 발바닥 기준선.
-        val s = 2.2f
-        val headR = 8.5f * s
-        val armLen = 22f * s     // 어깨→손 (모든 상태 동일 길이)
-        val legLen = 28f * s     // 엉덩이→발 (모든 상태 동일 길이)
+        // ===== 필살기 내려찍기: 전용 스프라이트로 대체 =====
+        if (stompPhase != StompPhase.NONE) {
+            drawStomp(canvas, cx, drawY)
+            return
+        }
 
-        // 관절 기준점(기본 대기 자세)
-        var shX = cx;  var shY = drawY - 54f * s   // 어깨/목
-        var hipX = cx; var hipY = drawY - 26f * s  // 엉덩이
+        // ===== 평소 동작: GPT가 그린 졸라맨 스프라이트로 그린다 =====
+        drawSprite(canvas, cx, drawY, dir)
+    }
 
-        // 팔·다리는 '각도'로만 자세를 표현한다 → 길이는 항상 일정.
-        // 각도 단위: 도(°), 화면 좌표계(0°=정면, 90°=아래, 음수=위). 정면은 dir로 좌우 반전.
-        var frontArmDeg = 82f; var backArmDeg = 98f
-        var frontLegDeg = 80f; var backLegDeg = 100f
+    /** 상태에 맞는 졸라맨 프레임을 골라 발끝(drawY)에 맞춰 그린다 */
+    private fun drawSprite(canvas: Canvas, cx: Float, drawY: Float, dir: Float) {
+        // 공격 진행 0→1 을 7프레임 연속 동작에 그대로 태운다
+        val prog = 1f - (attackTimer / attackTotal).coerceIn(0f, 1f)
+        fun attackFrame(frames: List<Bitmap>) =
+            frames[(prog * frames.size).toInt().coerceIn(0, frames.size - 1)]
 
-        var frontArmThick = false; var backArmThick = false; var frontLegThick = false
-        var strike = 0        // 0=없음, 1=앞손, 2=뒷손, 3=앞발  (피격 이펙트 위치용)
-        val prog = 1f - (attackTimer / attackTotal).coerceIn(0f, 1f)  // 공격 진행 0→1
-        val ext = kotlin.math.sin(prog * Math.PI.toFloat())          // 뻗었다 접힘 0→1→0
+        // 타격 프레임(동작의 한가운데)에서만 피격 이펙트를 띄운다
+        var strikeHigh = false
+        var striking = false
 
-        fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
-
-        when {
-            // ===== 점프 공중 공격: 드롭킥 =====
-            isAttacking && isJumpAttacking -> {
-                frontLegThick = true
-                frontLegDeg = lerp(70f, 40f, ext)   // 앞다리 아래·앞으로 뻗기
-                backLegDeg = 125f
-                frontArmDeg = 65f; backArmDeg = 90f   // 팔은 앞쪽 가드 유지
-                strike = 3
-            }
-            // ===== 특수 공격: 강력한 회전 킥 =====
-            isAttacking && useSpecial -> {
-                frontLegThick = true
-                frontLegDeg = lerp(78f, 2f, ext)    // 다리 완전 수평까지
-                backLegDeg = 96f
-                frontArmDeg = 62f; backArmDeg = 86f   // 팔은 앞쪽 가드 유지 (뒤로 젖혀지지 않게)
-                shX = cx - dir * ext * 3f * s
-                strike = 3
-            }
-            // ===== 콤보 2단계: 킥 마무리 =====
-            isAttacking && comboStep == 2 -> {
-                frontLegThick = true
-                frontLegDeg = lerp(78f, 12f, ext)   // 앞으로 차올림(발이 엉덩이 높이까지)
-                backLegDeg = 96f
-                frontArmDeg = 66f; backArmDeg = 88f   // 팔은 앞쪽 가드 유지 (뒤로 젖혀지지 않게)
-                shX = cx - dir * ext * 2f * s        // 반동으로 상체 살짝 뒤로
-                strike = 3
-            }
-            // ===== 콤보 1단계: 투(크로스 펀치, 뒷손) =====
-            isAttacking && comboStep == 1 -> {
-                backArmThick = true
-                backArmDeg = lerp(100f, 4f, ext)    // 뒷손이 앞으로 크로스
-                frontArmDeg = 60f                    // 앞손은 가드
-                shX = cx + dir * ext * 5f * s; hipX = cx + dir * ext * 2f * s   // 허리 회전
-                frontLegDeg = 78f; backLegDeg = 104f
-                strike = 2
-            }
-            // ===== 콤보 0단계: 원(잽, 앞손) =====
-            isAttacking -> {
-                frontArmThick = true
-                frontArmDeg = lerp(58f, 5f, ext)    // 앞손 잽
-                backArmDeg = 98f
-                shX = cx + dir * ext * 3f * s
-                strike = 1
-            }
-            // ===== 점프(비공격) =====
+        val frame: Bitmap = when {
+            isAttacking && isJumpAttacking -> { striking = true; attackFrame(SpriteManager.playerJumpKick) }
+            isAttacking && comboStep == 2 -> { striking = true; strikeHigh = true; attackFrame(SpriteManager.playerKick) }
+            isAttacking && comboStep == 1 -> { striking = true; attackFrame(SpriteManager.playerCross) }
+            isAttacking -> { striking = true; attackFrame(SpriteManager.playerPunch) }
             isJumping -> {
-                val f = heightFrac
-                frontArmDeg = 82f - f * 52f; backArmDeg = 98f - f * 22f   // 팔 살짝 올림
-                frontLegDeg = 80f - f * 30f; backLegDeg = 100f + f * 30f  // 다리 접기(발이 위로)
+                // 점프 7프레임: 웅크림 → 도약 → 상승 → 정점 → 하강 → 착지 직전 → 착지
+                val jump = SpriteManager.playerJump
+                val up = jumpVelocity < 0f
+                val f = (-jumpZ / Constants.JUMP_MAX_HEIGHT).coerceIn(0f, 1f)  // 0=지면, 1=최고점
+                if (up) jump[(1 + (f * 2.4f).toInt()).coerceIn(1, 3)]
+                else jump[(5 - (f * 2.4f).toInt()).coerceIn(3, 5)]
             }
-            // ===== 이동(걷기 사이클) — 발을 높이 들어올리는 활기찬 걸음 =====
+            landTimer > 0f -> SpriteManager.playerJump[6]          // 착지 스쿼시
             velocityX != 0f -> {
-                val ph = walkPhase
-                val swing = kotlin.math.sin(ph)
-                val bob = kotlin.math.abs(swing) * 3f * s
-                shY = drawY - 54f * s - bob; hipY = drawY - 26f * s - bob
-                frontLegDeg = 90f - swing * 46f   // 스윙 폭을 키워 발이 높이 올라온다
-                backLegDeg  = 90f + swing * 46f
-                frontArmDeg = 90f + swing * 32f   // 팔은 다리와 반대로 스윙
-                backArmDeg  = 90f - swing * 32f
+                val walk = SpriteManager.playerWalk
+                walk[((walkPhase / 0.9f).toInt().coerceAtLeast(0)) % walk.size]
             }
-            // ===== 대기(숨쉬기) =====
             else -> {
-                val breath = kotlin.math.sin(idlePhase)
-                shY = drawY - 54f * s + breath * 1.2f * s
-                frontArmDeg = 82f + breath * 2f; backArmDeg = 98f - breath * 2f
+                val idle = SpriteManager.playerIdle
+                idle[((idlePhase / 0.8f).toInt().coerceAtLeast(0)) % idle.size]
             }
         }
 
-        // 각도+고정 길이로 끝점 계산 (dir로 좌우 반전)
-        fun endX(ox: Float, len: Float, deg: Float) = ox + dir * len * kotlin.math.cos(Math.toRadians(deg.toDouble())).toFloat()
-        fun endY(oy: Float, len: Float, deg: Float) = oy + len * kotlin.math.sin(Math.toRadians(deg.toDouble())).toFloat()
+        // 시트는 오른쪽을 보고 있다 → 왼쪽을 볼 때만 뒤집는다
+        val bmp = if (facingRight) frame else SpriteManager.getFlipped(frame)
+        setHeroDst(bmp, cx, drawY)
+        com.jamcat.nayngapo.ui.drawHero(canvas, bmp, heroDst, hero, facingRight, animTime)
 
-        val shoulderY = shY + 2f * s
-        val frontHandX = endX(shX, armLen, frontArmDeg); val frontHandY = endY(shoulderY, armLen, frontArmDeg)
-        val backHandX  = endX(shX, armLen, backArmDeg);  val backHandY  = endY(shoulderY, armLen, backArmDeg)
-        val frontFootX = endX(hipX, legLen, frontLegDeg); val frontFootY = endY(hipY, legLen, frontLegDeg)
-        val backFootX  = endX(hipX, legLen, backLegDeg);  val backFootY  = endY(hipY, legLen, backLegDeg)
-
-        // ----- 그리기 (뒤쪽 팔·다리 먼저) -----
-        canvas.drawLine(shX, shY, hipX, hipY, bodyPaint)                                    // 척추
-        canvas.drawLine(hipX, hipY, backFootX, backFootY, bodyPaint)                        // 뒷다리
-        canvas.drawLine(hipX, hipY, frontFootX, frontFootY, if (frontLegThick) kickPaint else bodyPaint)
-
-        canvas.drawLine(shX, shoulderY, backHandX, backHandY, if (backArmThick) punchPaint else bodyPaint)
-        canvas.drawLine(shX, shoulderY, frontHandX, frontHandY, if (frontArmThick) punchPaint else bodyPaint)
-
-        // 특수 공격 글로우
-        if (isAttacking && useSpecial) canvas.drawLine(shX, shY, frontFootX, frontFootY, specialGlowPaint)
-
-        // 머리(흰색으로 비우고 검은 테두리)
-        val headCX = shX + dir * 1f
-        val headCY = shY - headR - 3f * s
-        canvas.drawCircle(headCX, headCY, headR, headFillPaint)
-        canvas.drawCircle(headCX, headCY, headR, headStrokePaint)
-
-        // 피격 이펙트: 실제로 맞췄을 때만, 타격 부위에 표시
-        if (hitSparkTimer > 0f && strike != 0) {
-            val (px, py) = when (strike) {
-                1 -> frontHandX to frontHandY
-                2 -> backHandX to backHandY
-                else -> frontFootX to frontFootY
-            }
-            drawImpactStar(canvas, px + dir * 4f, py, 15f * s)
+        // 피격 이펙트: 실제로 맞췄고 타격 프레임일 때만 뻗은 팔·다리 끝에
+        if (hitSparkTimer > 0f && striking && prog in 0.45f..0.80f) {
+            val px = cx + dir * bmp.width * 0.42f
+            val py = drawY - bmp.height * (if (strikeHigh) 0.72f else 0.60f)
+            drawImpactStar(canvas, px, py, 40f)
         }
+    }
 
-        // HP 하트 (머리 위) — 목업(전투화면)처럼 하트 아이콘으로 표시
-        val heart = SpriteManager.heart
-        val gap = 2f
-        val step = heart.width + gap
-        val startX = cx - (hp * step - gap) / 2f
-        val heartY = headCY - headR - heart.height - 6f
-        for (i in 0 until hp) {
-            canvas.drawBitmap(heart, startX + i * step, heartY, null)
+
+    private companion object {
+        /** 눈에 완전히 파묻히는 깊이 (몸 전체가 잠긴다) */
+        const val SNOW_SINK_MAX = 155f
+
+        /** 스프라이트 아래쪽 여백만큼 살짝 내려 그려 발이 지면에 붙어 보이게 한다 */
+        const val FOOT_PAD = 6f
+
+        /** 파이어 펀치 동작 길이 — 평소 주먹(0.25초)보다 길게 해서 불꽃이 보이게 */
+        const val FIRE_PUNCH_DURATION = 0.4f
+    }
+
+    /** 내려찍기 전용 스프라이트 + 착지 충격파 렌더링 (drawY = 발바닥 기준선) */
+    private fun drawStomp(canvas: Canvas, cx: Float, drawY: Float) {
+        // 내려찍기 7프레임: 웅크림 → 솟아오름 → 정점 → 급강하 → 직전 → 임팩트 → 일어남
+        val stomp = SpriteManager.playerStomp
+        val base = when (stompPhase) {
+            StompPhase.RISE -> if (jumpVelocity < -500f) stomp[1] else stomp[2]
+            StompPhase.HANG -> stomp[2]
+            StompPhase.DROP -> if (jumpZ < -120f) stomp[3] else stomp[4]
+            StompPhase.IMPACT ->
+                if (stompTimer > Constants.STOMP_IMPACT_DURATION * 0.45f) stomp[5] else stomp[6]
+            StompPhase.NONE -> stomp[0]
+        }
+        val bmp = if (facingRight) base else SpriteManager.getFlipped(base)
+        // 내려찍기 프레임도 다른 동작과 같은 시트에서 나와 바닥선이 프레임 아래쪽에 맞춰져 있다
+        setHeroDst(bmp, cx, drawY)
+        com.jamcat.nayngapo.ui.drawHero(canvas, bmp, heroDst, hero, facingRight, animTime)
+
+        if (stompPhase == StompPhase.IMPACT) {
+            // 충격파: 시간이 지날수록 넓게 퍼지며 옅어진다
+            val t = 1f - (stompTimer / Constants.STOMP_IMPACT_DURATION).coerceIn(0f, 1f)   // 0→1
+            val sw = SpriteManager.shockwave
+            val halfW = Constants.STOMP_SHOCKWAVE_RADIUS * (0.4f + 0.6f * t)
+            val dstH = halfW * 2f * sw.height / sw.width
+            // 스프라이트의 링 중심(세로 78%)이 발바닥 위치에 오도록 배치
+            shockwaveDst.set(cx - halfW, drawY - dstH * 0.78f, cx + halfW, drawY + dstH * 0.22f)
+            shockwavePaint.alpha = ((1f - t * t) * 255f).toInt().coerceIn(0, 255)
+            canvas.drawBitmap(sw, null, shockwaveDst, shockwavePaint)
         }
     }
 
@@ -304,10 +372,17 @@ class Player(var x: Float, var y: Float) {
 
     /** 횡뷰 플랫포머: 좌우 이동만 처리한다 (dirY는 무시). */
     fun setMovement(dirX: Float, dirY: Float) {
+        // 덩굴에 매달려 있으면 좌우 조작이 듣지 않는다 (덩굴이 몸을 끌고 간다)
+        if (ridingVine) { velocityX = 0f; return }
+        // 덩굴에서 튕겨 나간 직후에는 날아가던 힘을 그대로 살린다
+        if (flingTimer > 0f) return
+        // 내려찍기 중에는 조작 불가 — 제자리에서 수직으로만 움직인다
+        if (stompPhase != StompPhase.NONE) { velocityX = 0f; return }
+
         if (isJumping) {
             // 공중: 이륙 관성을 유지하고, 입력이 있을 때만 약하게 조향한다.
             if (dirX != 0f) {
-                val tx = kotlin.math.sign(dirX) * Constants.PLAYER_SPEED
+                val tx = kotlin.math.sign(dirX) * moveSpeed
                 velocityX += (tx - velocityX) * Constants.AIR_CONTROL
                 facingRight = dirX > 0f
             }
@@ -319,20 +394,106 @@ class Player(var x: Float, var y: Float) {
             velocityX = 0f
             return
         }
-        velocityX = kotlin.math.sign(dirX) * Constants.PLAYER_SPEED
+        // 깊은 눈·늪에 빠지면 허우적거리며 아주 느리게 움직인다 (늪은 기획대로 5배 감속)
+        val speed = when {
+            inDeepSnow -> moveSpeed * 0.3f
+            inSwamp -> moveSpeed * 0.2f
+            else -> moveSpeed
+        }
+        velocityX = kotlin.math.sign(dirX) * speed
         facingRight = dirX > 0f
     }
 
+    /** 덩굴을 잡는다 — 중력과 조작을 멈추고 덩굴에 몸을 맡긴다 */
+    fun grabVine() {
+        ridingVine = true
+        isJumping = false
+        jumpVelocity = 0f
+        velocityX = 0f
+        flingTimer = 0f
+        isAttacking = false
+        isJumpAttacking = false
+        stompPhase = StompPhase.NONE
+    }
+
+    /**
+     * 덩굴을 놓는다 — 흔들리던 방향으로 튕겨 나가며 위로도 한 번 솟는다.
+     * @param swingVelocityX 놓는 순간 덩굴 끝이 가로로 움직이던 속도
+     */
+    fun releaseVine(swingVelocityX: Float) {
+        ridingVine = false
+        rideAngleDeg = 0f
+        velocityX = swingVelocityX.coerceIn(-820f, 820f)
+        if (velocityX != 0f) facingRight = velocityX > 0f
+        isJumping = true
+        jumpVelocity = Constants.JUMP_VELOCITY * 0.72f   // 덩굴에서 앞으로 날아가는 도약
+        flingTimer = 0.45f
+    }
+
     fun jump() {
-        if (!isJumping) { isJumping = true; jumpVelocity = Constants.JUMP_VELOCITY }
+        if (ridingVine) return          // 매달린 동안의 점프는 '놓기'라서 화면 쪽에서 처리한다
+        if (inDeepSnow) return          // 눈에 발이 묶여 뛸 수 없다
+        if (!isJumping && stompPhase == StompPhase.NONE) {
+            isJumping = true; jumpVelocity = Constants.JUMP_VELOCITY * hero.jumpMul
+        }
     }
 
     /** 공격 발동 시 true, 이미 공격 중이라 무시되면 false 반환 */
+    /** 지금 공격 동작이 얼마나 진행됐는가 (0 → 1) */
+    fun attackProgress(): Float = 1f - (attackTimer / attackTotal).coerceIn(0f, 1f)
+
+    /**
+     * 인간 기술 '파이어 펀치' — 평소의 원(잽) 동작을 조금 길게 내지른다.
+     * 폭죽·표창 같은 캐릭터 부가 효과나 콤보 진행은 없다.
+     * 내려찍기 중이거나 덩굴에 매달려 있으면 쓸 수 없다.
+     */
+    fun startFirePunch(): Boolean {
+        if (isDead || ridingVine || stompPhase != StompPhase.NONE) return false
+        // 이미 불주먹을 내지르는 중이면 새로 시작하지 않는다 — 끝나는 즉시 다시 쓸 수 있다
+        if (isFirePunching) return false
+        isAttacking = true
+        isJumpAttacking = false
+        comboStep = 0
+        comboResetTimer = 0f
+        attackTimer = FIRE_PUNCH_DURATION
+        attackTotal = attackTimer
+        firePunch = true
+        return true
+    }
+
+    /**
+     * 파이어 펀치 불꽃이 따라갈 앞 주먹의 월드 좌표.
+     * 그릴 때와 같은 계산(발끝 기준·몸집 배율)으로 HandTable의 손 위치를 옮긴다.
+     * 앞 주먹 = 오른쪽을 볼 때 x가 더 큰 손. 펀치 중이 아니면 false.
+     */
+    fun frontFist(out: android.graphics.PointF): Boolean {
+        if (!isFirePunching) return false
+        val frames = SpriteManager.playerPunch
+        val table = com.jamcat.nayngapo.ui.HandTable.PUNCH
+        val idx = (attackProgress() * frames.size).toInt().coerceIn(0, minOf(frames.size, table.size) - 1)
+        val bmp = frames[idx]
+        val row = table[idx]
+        val front = if (row[0] >= row[2]) 0 else 2
+        val fx = if (facingRight) row[front] else 1f - row[front]
+        val fy = row[front + 1]
+        val drawY = y + jumpZ + snowSink
+        val sw = bmp.width * hero.scale
+        val sh = bmp.height * hero.scale
+        val left = x + width / 2f - sw / 2f
+        val top = drawY - sh + FOOT_PAD
+        out.set(left + sw * fx, top + sh * fy)
+        return true
+    }
+
     fun performAttack(): Boolean {
-        if (!isAttacking) {
+        if (!isAttacking && stompPhase == StompPhase.NONE) {
             isAttacking = true
-            useSpecial = false
             isJumpAttacking = isJumping
+            firePunch = false
+            // 파란 인간은 공격할 때마다 폭죽을 던진다 (지상·점프 모두)
+            if (hero.carriesFirework) pendingFirework = true
+            // 닌자 인간은 공격할 때마다 표창을 던진다
+            if (hero.throwsShuriken) pendingShuriken = true
             if (isJumpAttacking) {
                 // 점프 공격은 콤보와 무관
                 comboStep = 0
@@ -349,30 +510,44 @@ class Player(var x: Float, var y: Float) {
         return false
     }
 
-    /** 특수 공격 발동 시 true, 게이지 부족/공격 중이면 false 반환 */
+    /**
+     * 필살기 '내려찍기' 발동 시 true, 쿨다운 중이거나 이미 동작 중이면 false 반환.
+     * 발동하면 높이 솟아올랐다가 두 발로 지면을 내려찍는다 (쿨다운 15초).
+     */
     fun performSpecial(): Boolean {
-        if (specialGauge >= Constants.SPECIAL_MAX && !isAttacking) {
-            isAttacking = true; attackTimer = Constants.ATTACK_DURATION * 2f
-            attackTotal = attackTimer
-            specialGauge = 0f; useSpecial = true; comboStep = 0
-            return true
-        }
-        return false
+        if (specialCooldown > 0f || isAttacking || stompPhase != StompPhase.NONE) return false
+        if (inDeepSnow) return false      // 눈에 파묻혀 있으면 솟구칠 수 없다
+
+        stompPhase = StompPhase.RISE
+        isJumping = true
+        jumpVelocity = Constants.STOMP_RISE_VELOCITY
+        velocityX = 0f          // 발동 후엔 제자리에서 수직으로만 움직인다
+        comboStep = 0; comboResetTimer = 0f
+        specialCooldown = Constants.SPECIAL_COOLDOWN   // 사용 후 15초 대기
+        return true
     }
 
-    fun isUsingSpecial(): Boolean = useSpecial
+    fun isUsingSpecial(): Boolean = stompPhase != StompPhase.NONE
+
     fun getCurrentAttackPower(): Int = when {
+        stompPhase != StompPhase.NONE -> specialPower
         isJumpAttacking -> (attackPower * 1.5f).toInt()
-        useSpecial -> specialPower
         comboStep == 2 -> (attackPower * 1.4f).toInt()   // 킥 마무리
         else -> attackPower
     }
 
     fun getAttackHitBox(): RectF? {
+        // 내려찍기 낙하 중: 몸 주변(발밑 포함)에 닿는 적을 그대로 밟는다
+        if (stompPhase == StompPhase.DROP) {
+            val r = Constants.STOMP_DROP_RANGE
+            val drawY = y + jumpZ
+            return RectF(x - r, drawY - 120f, x + width + r, drawY + 30f)
+        }
         if (!isAttacking) return null
+        // 파이어 펀치는 화면 쪽에서 따로 때린다 (평소 주먹 판정까지 겹쳐 두 번 맞지 않게)
+        if (isFirePunching) return null
         val range = when {
             isJumpAttacking -> 125f
-            useSpecial -> 140f
             comboStep == 2 -> Constants.KICK_RANGE       // 킥 마무리 사거리
             else -> Constants.ATTACK_RANGE
         }
@@ -386,13 +561,23 @@ class Player(var x: Float, var y: Float) {
     }
 
     fun takeDamage(amount: Int) {
-        if (isInvincible || isDead || isJumping) return
-        hp -= 1
+        // 내려찍기 중에는 슈퍼아머: 착지 임팩트까지 방해받지 않는다
+        if (isInvincible || isDead || isJumping || stompPhase != StompPhase.NONE) return
+        hp -= amount            // 잡몹은 1, 보스는 3 (기획: 보스에 맞으면 데미지 3)
+        com.jamcat.nayngapo.engine.SoundManager.playPlayerHurt()   // 맞는 순간 신음
         isInvincible = true
         invincibilityTimer = Constants.INVINCIBILITY_DURATION
         velocityX = (if (facingRight) -1f else 1f) * 200f
 
         if (hp <= 0) { lives--; if (lives <= 0) isDead = true }
+    }
+
+    /** 구덩이에 빠지면 남은 목숨과 상관없이 그대로 게임 오버 */
+    fun fallIntoPit() {
+        hp = 0
+        lives = 0
+        isDead = true
+        velocityX = 0f
     }
 
     fun needsRespawn(): Boolean = hp <= 0 && lives > 0
@@ -401,13 +586,14 @@ class Player(var x: Float, var y: Float) {
         x = startX; y = startY; hp = maxHp
         velocityX = 0f; jumpZ = 0f; jumpVelocity = 0f
         isJumping = false; isAttacking = false
+        stompPhase = StompPhase.NONE; stompTimer = 0f; shockwavePending = false
         comboStep = 0; comboResetTimer = 0f; walkPhase = 0f
         isInvincible = true; invincibilityTimer = Constants.INVINCIBILITY_DURATION * 2f
     }
 
     fun reset(startX: Float, startY: Float) {
         respawn(startX, startY)
-        lives = 5; score = 0; rescueCount = 0; specialGauge = 0f
+        lives = Constants.MAX_LIVES; score = 0; rescueCount = 0; specialCooldown = 0f
         isDead = false; isInvincible = false; level = 1; killCount = 0
     }
 }

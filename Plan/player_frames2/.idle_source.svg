@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024" viewBox="0 0 1536 1024">
+  <rect width="1536" height="1024" fill="#ffffff"/>
+  <g fill="none" stroke="#000000" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Frame 1: neutral -->
+    <g transform="translate(192 0)">
+      <circle cx="0" cy="180" r="42"/><path d="M10 221L0 362M0 362L-4 470M0 362L4 470M5 229L-5 284L-8 338M13 229L16 284L19 338"/>
+    </g>
+    <!-- Frame 2: inhale begins -->
+    <g transform="translate(576 0)">
+      <circle cx="0" cy="180" r="42"/><path d="M10 221L0 362M0 362L-4 470M0 362L4 470M5 229L-9 283L-13 337M13 229L20 283L24 337"/>
+    </g>
+    <!-- Frame 3: further inhale -->
+    <g transform="translate(960 0)">
+      <circle cx="0" cy="180" r="42"/><path d="M10 221L0 362M0 362L-4 470M0 362L4 470M5 229L-16 281L-25 333M13 229L27 281L36 333"/>
+    </g>
+    <!-- Frame 4: end of inhale -->
+    <g transform="translate(1344 0)">
+      <circle cx="0" cy="180" r="42"/><path d="M10 221L0 362M0 362L-4 470M0 362L4 470M5 229L-21 278L-32 330M13 229L32 278L43 330"/>
+    </g>
+    <!-- Frame 5: exhale begins -->
+    <g transform="translate(192 512)">
+      <circle cx="0" cy="180" r="42"/><path d="M10 221L0 362M0 362L-4 470M0 362L4 470M5 229L-17 281L-26 334M13 229L28 281L37 334"/>
+    </g>
+    <!-- Frame 6: further exhale -->
+    <g transform="translate(576 512)">
+      <circle cx="0" cy="180" r="42"/><path d="M10 221L0 362M0 362L-4 470M0 362L4 470M5 229L-11 284L-15 338M13 229L22 284L26 338"/>
+    </g>
+    <!-- Frame 7: end of exhale -->
+    <g transform="translate(960 512)">
+      <circle cx="0" cy="180" r="42"/><path d="M10 221L0 362M0 362L-4 470M0 362L4 470M5 229L-6 286L-9 342M13 229L17 286L20 342"/>
+    </g>
+    <!-- Frame 8: returning to neutral -->
+    <g transform="translate(1344 512)">
+      <circle cx="0" cy="180" r="42"/><path d="M10 221L0 362M0 362L-4 470M0 362L4 470M5 229L-4 285L-7 340M13 229L15 285L18 340"/>
+    </g>
+  </g>
+</svg>

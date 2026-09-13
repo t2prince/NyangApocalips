@@ -1,0 +1,58 @@
+package com.jamcat.nayngapo.engine
+
+import android.graphics.Bitmap
+import com.jamcat.nayngapo.entity.*
+
+/**
+ * 고양이 도감 목록 (기획1: 고양이를 찾으면 그 고양이가 도감에 생긴다).
+ * id는 저장 키이므로 바꾸면 기존 발견 기록이 초기화된다 — 바꾸지 말 것.
+ */
+object CatDex {
+
+    class Entry(
+        val id: String,
+        val name: String,
+        val hint: String,               // 미발견 카드 밑에 살짝 보여줄 힌트
+        val sprite: () -> Bitmap,
+        /** 연속 동작 시트가 있는 냥이는 도감에서 그 동작으로 춤춘다 (없으면 몸을 흔든다) */
+        val frames: (() -> List<Bitmap>)? = null,
+    )
+
+    val entries: List<Entry> = listOf(
+        Entry("normal", "치즈냥이", "어디에나 있다", { SpriteManager.normalCat },
+            frames = { SpriteManager.catIdle }),
+        Entry("blue", "물냥이", "물을 뱉는다", { SpriteManager.blueCatEvil },
+            frames = { SpriteManager.catIdleBlue }),
+        Entry("green", "그린냥이", "슬라임을 뱉는다", { SpriteManager.greenCatEvil },
+            frames = { SpriteManager.catIdleGreen }),
+        Entry("poop", "똥냥이", "냄새가 지독하다", { SpriteManager.poopCat }),
+        Entry("flying", "날아냥이", "하늘을 난다", { SpriteManager.flyingCat }),
+        Entry("fluffy", "털뭉냥이", "털이 수북하다", { SpriteManager.fluffyCat }),
+        Entry("anvil", "모루냥이", "쇳덩이처럼 단단하다", { SpriteManager.anvilCat }),
+        Entry("laser", "레이저냥이", "고글에서 광선이!", { SpriteManager.laserCat },
+            frames = { SpriteManager.laserIdle }),
+        Entry("thief", "도둑냥이", "잽싸게 훔쳐간다", { SpriteManager.thiefCat },
+            frames = { SpriteManager.catIdle }),
+        Entry("vine", "덩굴냥이", "덩굴을 타고 난다", { SpriteManager.vineCat }),
+        Entry("teleport", "순간냥이", "순간이동하는 초원의 보스", { SpriteManager.teleportCat }),
+        Entry("giant", "왕왕냥이", "하늘의 왕", { SpriteManager.bossEvilCat }),
+    )
+
+    fun entry(id: String): Entry? = entries.firstOrNull { it.id == id }
+
+    /** 적 개체 → 도감 id (도감에 없는 개체는 null) */
+    fun idOf(enemy: Enemy): String? = when (enemy) {
+        is NormalCat -> "normal"
+        is BlueCat -> "blue"
+        is GreenCat -> "green"
+        is PoopCat -> "poop"
+        is FlyingCat -> "flying"
+        is FluffyCat -> "fluffy"
+        is AnvilCat -> "anvil"
+        is LaserCat -> "laser"
+        is ThiefCat -> "thief"
+        is VineCat -> "vine"
+        is TeleportCatBoss -> "teleport"
+        else -> null
+    }
+}

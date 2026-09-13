@@ -45,8 +45,13 @@ class GameOverScreen(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.actionMasked == MotionEvent.ACTION_DOWN && timer > 1f) {
-            gameView.showTitle()
+            gameView.showLobby()   // 스테이지 클리어와 같이 로비로 돌아간다
         }
+        return true
+    }
+
+    override fun onBack(): Boolean {
+        gameView.showLobby()
         return true
     }
 }

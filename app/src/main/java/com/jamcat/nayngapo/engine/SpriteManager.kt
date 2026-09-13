@@ -17,6 +17,71 @@ object SpriteManager {
     lateinit var tile: Bitmap
     lateinit var tileDark: Bitmap
     lateinit var groundTile: Bitmap  // 만화풍 잔디+흙 지면 스트립 (가로 반복)
+    lateinit var snowGround: Bitmap  // 설원(3~4스테이지) 지면 스트립: 흙 위에 눈
+    lateinit var sandGround: Bitmap  // 사막(5~6스테이지) 지면 스트립
+    lateinit var ashGround: Bitmap   // 화산(7~8스테이지) 지면 스트립: 용암 균열
+
+    // cats/ 디자인 시트의 적 냥이들
+    lateinit var fluffyCat: Bitmap   // 털뭉냥이 HP50
+    lateinit var greenCat: Bitmap    // 그린냥이 HP20
+    lateinit var flyingCat: Bitmap   // 날아냥이 HP25
+    lateinit var flyingCatAlly: Bitmap  // 아군 날아냥이 (꼬리가 얇다 — 타고 다니는 그 냥이)
+    lateinit var anvilCat: Bitmap    // 모루냥이 HP75
+    lateinit var blueCat: Bitmap     // 파랑냥이 HP20
+    lateinit var poopCat: Bitmap     // 똥냥이 HP30
+    // 같은 종이라도 나쁜 편은 꼬리에 털이 수북하다
+    lateinit var greenCatEvil: Bitmap
+    lateinit var blueCatEvil: Bitmap
+    lateinit var greenCatAlly: Bitmap   // 아군용 얇은 꼬리 변형
+    lateinit var blueCatAlly: Bitmap
+    lateinit var vineCat: Bitmap        // 나뭇잎 모자를 쓴 덩굴냥이 (정글)
+    lateinit var teleportCat: Bitmap    // 순간냥이 = 그린냥이 + 가운데 분홍 줄 (초원 보스)
+    lateinit var allyCat: Bitmap     // 인간 편의 평범한 냥이
+
+    // 애니메이션 프레임 (cat4·cat5 시트: 대기/이동/점프/공격)
+    lateinit var catIdle: List<Bitmap>
+    /** 같은 대기 동작을 초록·파랑으로 물들인 시트 (도감에서 그린냥이·파랑냥이가 춤춘다) */
+    lateinit var catIdleGreen: List<Bitmap>
+    lateinit var catIdleBlue: List<Bitmap>
+    lateinit var catWalk: List<Bitmap>
+    lateinit var catJump: List<Bitmap>
+    lateinit var catAttack: List<Bitmap>
+    lateinit var laserIdle: List<Bitmap>
+    lateinit var laserWalk: List<Bitmap>
+    lateinit var laserJump: List<Bitmap>
+    lateinit var laserAttack: List<Bitmap>
+
+    // 필살기 내려찍기: 낙하 포즈 / 착지 임팩트 포즈 / 지면 충격파
+    lateinit var shockwave: Bitmap
+
+    /** 로비 화면 칸 그림 (LobbyScreen의 슬롯 id → 그림). drawable-nodpi라 원본 크기 그대로 들어온다. */
+    lateinit var lobbyIcons: Map<String, Bitmap>
+
+    /** 고양이 상점 물건 그림 (ShopCatalog의 물건 id → 그림) */
+    lateinit var shopIcons: Map<String, Bitmap>
+
+    /** 쓰러진 팀 냥이 자리에 세우는 무덤 */
+    lateinit var grave: Bitmap
+
+    /** 고양이 기술 그림 (CatSkills의 기술 id → 그림) */
+    lateinit var skillIcons: Map<String, Bitmap>
+
+    /** 인간 기술 그림 (HumanSkills의 기술 id → 그림) */
+    lateinit var humanSkillIcons: Map<String, Bitmap>
+
+    // 플레이어(졸라맨) 애니메이션 — 한 장의 20포즈 시트에서 잘라낸 스트립들이라 체격이 일정하다.
+    // 모든 프레임이 같은 크기·같은 바닥선을 쓰므로 그릴 때 아래쪽만 발끝에 맞추면 된다.
+    lateinit var playerIdle: List<Bitmap>
+    lateinit var playerWalk: List<Bitmap>
+    lateinit var playerJump: List<Bitmap>      // 상승 / 정점 / 하강
+    lateinit var playerPunch: List<Bitmap>     // 잽
+    lateinit var playerCross: List<Bitmap>     // 크로스
+    lateinit var playerKick: List<Bitmap>      // 하이킥
+    lateinit var playerJumpKick: List<Bitmap>  // 드롭킥
+    lateinit var playerStomp: List<Bitmap>     // 필살기 내려찍기(도약→급강하→착지)
+
+    /** 동작 시트 한 장에 들어 있는 프레임 수 */
+    const val PLAYER_FRAMES = 7
 
     private var initialized = false
 
@@ -24,17 +89,104 @@ object SpriteManager {
         if (initialized) return
         val res = context.resources
 
-        normalCat = load(res, R.drawable.sprite_normal_cat, 120, 120)
-        thiefCat = load(res, R.drawable.sprite_thief_cat, 130, 130)
-        laserCat = load(res, R.drawable.sprite_laser_cat, 145, 145)
-        bossHumanCat = load(res, R.drawable.sprite_boss_human_cat, 160, 160)
-        bossEvilCat = load(res, R.drawable.sprite_boss_evil_cat, 200, 200)
-        bossWizardCat = load(res, R.drawable.sprite_boss_wizard_cat, 210, 210)
+        // 냥이들은 Cats/ 디자인 시트를 보고 다시 그린 그림 (drawable-nodpi, 이미 게임 크기)
+        normalCat = BitmapFactory.decodeResource(res, R.drawable.cat_normal)
+        thiefCat = normalCat            // 물건을 던지며 총총 뛰는 냥이도 같은 생김새
+        laserCat = BitmapFactory.decodeResource(res, R.drawable.cat_laser)
+        bossHumanCat = BitmapFactory.decodeResource(res, R.drawable.cat_boss_human)
+        bossEvilCat = BitmapFactory.decodeResource(res, R.drawable.cat_boss_evil)
+        bossWizardCat = BitmapFactory.decodeResource(res, R.drawable.cat_boss_wizard)
         prison = load(res, R.drawable.sprite_prison, 90, 120)
         heart = load(res, R.drawable.sprite_heart, 30, 30)
         tile = load(res, R.drawable.sprite_tile, 80, 80)
         tileDark = load(res, R.drawable.sprite_tile_dark, 80, 80)
         groundTile = BitmapFactory.decodeResource(res, R.drawable.grass_ground)   // 원본 크기, draw 시 스케일
+
+        // 테마별 지면 스트립 (원본 크기, draw 시 지형을 따라 스케일)
+        snowGround = BitmapFactory.decodeResource(res, R.drawable.snow_ground)
+        sandGround = BitmapFactory.decodeResource(res, R.drawable.sand_ground)
+        ashGround = BitmapFactory.decodeResource(res, R.drawable.ash_ground)
+
+        fluffyCat = BitmapFactory.decodeResource(res, R.drawable.cat_fluffy)
+        greenCat = BitmapFactory.decodeResource(res, R.drawable.cat_green)
+        flyingCat = BitmapFactory.decodeResource(res, R.drawable.cat_flying)
+        flyingCatAlly = BitmapFactory.decodeResource(res, R.drawable.cat_flying_ally)
+        anvilCat = BitmapFactory.decodeResource(res, R.drawable.cat_anvil)
+        blueCat = BitmapFactory.decodeResource(res, R.drawable.cat_blue)
+        poopCat = BitmapFactory.decodeResource(res, R.drawable.cat_poop)
+        allyCat = BitmapFactory.decodeResource(res, R.drawable.cat_ally)
+        // 나쁜 편은 같은 종이라도 조금 더 크게 보이도록 (시트: 꼬리에 털이 수북한 개체)
+        greenCatEvil = scaled(greenCat, 1.06f)
+        blueCatEvil = scaled(blueCat, 1.06f)
+        // 아군은 꼬리가 얇다 (기획: 같은편 꼬리 얇음, 다른편 두꺼움)
+        greenCatAlly = BitmapFactory.decodeResource(res, R.drawable.cat_green_ally)
+        blueCatAlly = BitmapFactory.decodeResource(res, R.drawable.cat_blue_ally)
+        // 덩굴냥이: 냥이에 나뭇잎 모자를 씌운 합성본 (정글 12~20)
+        vineCat = makeVineCat(normalCat)
+        teleportCat = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_teleport), 1.25f)   // 보스라 조금 크게
+
+        // 냥이도 동작마다 7프레임짜리 연속 동작 스트립
+        catIdle = splitStrip(res, R.drawable.anim_cat_idle, PLAYER_FRAMES)
+        catIdleGreen = splitStrip(res, R.drawable.anim_cat_idle_green, PLAYER_FRAMES)
+        catIdleBlue = splitStrip(res, R.drawable.anim_cat_idle_blue, PLAYER_FRAMES)
+        catWalk = splitStrip(res, R.drawable.anim_cat_walk, PLAYER_FRAMES)
+        catJump = splitStrip(res, R.drawable.anim_cat_jump, PLAYER_FRAMES)
+        catAttack = splitStrip(res, R.drawable.anim_cat_attack, PLAYER_FRAMES)
+        laserIdle = splitStrip(res, R.drawable.anim_laser_idle, PLAYER_FRAMES)
+        laserWalk = splitStrip(res, R.drawable.anim_laser_walk, PLAYER_FRAMES)
+        laserJump = splitStrip(res, R.drawable.anim_laser_jump, PLAYER_FRAMES)
+        laserAttack = splitStrip(res, R.drawable.anim_laser_attack, PLAYER_FRAMES)
+
+        shockwave = BitmapFactory.decodeResource(res, R.drawable.sprite_shockwave)  // 충격파는 매 프레임 확대
+
+        // 동작마다 7프레임짜리 연속 동작 스트립
+        playerIdle = splitStrip(res, R.drawable.player_idle, PLAYER_FRAMES)
+        playerWalk = splitStrip(res, R.drawable.player_walk, PLAYER_FRAMES)
+        playerJump = splitStrip(res, R.drawable.player_jump, PLAYER_FRAMES)
+        playerPunch = splitStrip(res, R.drawable.player_punch, PLAYER_FRAMES)
+        playerCross = splitStrip(res, R.drawable.player_cross, PLAYER_FRAMES)
+        playerKick = splitStrip(res, R.drawable.player_kick, PLAYER_FRAMES)
+        playerJumpKick = splitStrip(res, R.drawable.player_jumpkick, PLAYER_FRAMES)
+        playerStomp = splitStrip(res, R.drawable.player_stomp, PLAYER_FRAMES)
+
+        lobbyIcons = mapOf(
+            "character" to BitmapFactory.decodeResource(res, R.drawable.lobby_character),
+            "cat_skill" to BitmapFactory.decodeResource(res, R.drawable.lobby_cat_skill),
+            "cat_shop" to BitmapFactory.decodeResource(res, R.drawable.lobby_cat_shop),
+            "worldmap" to BitmapFactory.decodeResource(res, R.drawable.lobby_map),
+            "battle" to BitmapFactory.decodeResource(res, R.drawable.lobby_battle),
+            "cat_manage" to BitmapFactory.decodeResource(res, R.drawable.lobby_cat_manage),
+            "shop" to BitmapFactory.decodeResource(res, R.drawable.lobby_shop),
+            "internet" to BitmapFactory.decodeResource(res, R.drawable.lobby_internet),
+            "settings" to BitmapFactory.decodeResource(res, R.drawable.lobby_settings),
+            "ruby_shop" to BitmapFactory.decodeResource(res, R.drawable.lobby_ruby_shop),
+            "skill" to BitmapFactory.decodeResource(res, R.drawable.lobby_skill),
+            "mission" to BitmapFactory.decodeResource(res, R.drawable.lobby_mission),
+        )
+
+        // 상점 물건 그림은 목록을 그대로 훑어 불러온다 — 물건을 늘리면 그림도 따라온다
+        // (파일 이름 규칙: drawable-nodpi/shop_<물건 id>.png)
+        shopIcons = ShopCatalog.items.mapNotNull { item ->
+            val resId = res.getIdentifier("shop_${item.id}", "drawable", context.packageName)
+            if (resId == 0) null
+            else BitmapFactory.decodeResource(res, resId)?.let { item.id to it }
+        }.toMap()
+
+        grave = BitmapFactory.decodeResource(res, R.drawable.shop_grave)
+
+        // 기술 그림도 목록을 훑어 불러온다 (drawable-nodpi/skill_<id>.png)
+        skillIcons = CatSkills.all.mapNotNull { skill ->
+            val resId = res.getIdentifier(skill.iconName, "drawable", context.packageName)
+            if (resId == 0) null
+            else BitmapFactory.decodeResource(res, resId)?.let { skill.id to it }
+        }.toMap()
+
+        // 인간 기술 그림 (drawable-nodpi/hskill_<id>.png)
+        humanSkillIcons = HumanSkills.all.mapNotNull { skill ->
+            val resId = res.getIdentifier(HumanSkills.iconName(skill.id), "drawable", context.packageName)
+            if (resId == 0) null
+            else BitmapFactory.decodeResource(res, resId)?.let { skill.id to it }
+        }.toMap()
 
         initialized = true
     }
@@ -42,6 +194,46 @@ object SpriteManager {
     private fun load(res: android.content.res.Resources, resId: Int, w: Int, h: Int): Bitmap {
         val raw = BitmapFactory.decodeResource(res, resId)
         return Bitmap.createScaledBitmap(raw, w, h, true)
+    }
+
+    /** 냥이 머리에 나뭇잎 모자를 그려 넣은 덩굴냥이 합성본 (얼굴 구조는 원안 그대로) */
+    private fun makeVineCat(base: Bitmap): Bitmap {
+        val bmp = base.copy(Bitmap.Config.ARGB_8888, true)
+        val c = android.graphics.Canvas(bmp)
+        val leaf = android.graphics.Paint().apply {
+            color = android.graphics.Color.rgb(74, 148, 62); isAntiAlias = true
+        }
+        val leafDark = android.graphics.Paint().apply {
+            color = android.graphics.Color.rgb(52, 116, 46); isAntiAlias = true
+        }
+        val w = bmp.width.toFloat()
+        // 얼굴은 오른쪽 40% — 그 위에 잎사귀 세 장을 겹쳐 얹는다
+        val hx = w * 0.72f
+        val hy = bmp.height * 0.10f
+        fun leafAt(cx: Float, cy: Float, angle: Float, len: Float, wid: Float, p: android.graphics.Paint) {
+            c.save(); c.rotate(angle, cx, cy)
+            c.drawOval(cx - len, cy - wid, cx + len, cy + wid, p)
+            c.restore()
+        }
+        leafAt(hx - w * 0.09f, hy + 2f, 24f, w * 0.10f, w * 0.042f, leafDark)
+        leafAt(hx + w * 0.07f, hy + 1f, -26f, w * 0.11f, w * 0.045f, leaf)
+        leafAt(hx - w * 0.01f, hy - 2f, -4f, w * 0.09f, w * 0.040f, leaf)
+        return bmp
+    }
+
+    /** 같은 그림을 비율만 키워 다른 개체처럼 보이게 한다 */
+    private fun scaled(src: Bitmap, factor: Float): Bitmap =
+        Bitmap.createScaledBitmap(
+            src, (src.width * factor).toInt(), (src.height * factor).toInt(), true
+        )
+
+    /** 스트립을 프레임 수만큼 균등 분할한다 (크기 조정 없음 — 이미 게임 크기로 만들어진 시트용) */
+    private fun splitStrip(
+        res: android.content.res.Resources, resId: Int, frames: Int
+    ): List<Bitmap> {
+        val raw = BitmapFactory.decodeResource(res, resId)
+        val fw = raw.width / frames
+        return (0 until frames).map { i -> Bitmap.createBitmap(raw, i * fw, 0, fw, raw.height) }
     }
 
     // 좌우반전 비트맵 캐시: 매 프레임 createBitmap 호출로 인한 GC 압박을 막는다

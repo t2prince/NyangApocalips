@@ -2,21 +2,162 @@ package com.jamcat.nayngapo.engine
 
 import android.content.Context
 
-/** 스테이지 잠금 해제 진행도. SharedPreferences에 저장되어 앱 재시작 후에도 유지된다. */
+/** 스테이지 잠금 해제 진행도와 고양이 도감. SharedPreferences에 저장되어 앱 재시작 후에도 유지된다. */
 object GameProgress {
-    const val TOTAL_STAGES = 8
+    /** 지도 그림에 놓인 돌(스테이지) 수 */
+    const val TOTAL_STAGES = 37
+
+    /** 실제 스테이지 데이터가 만들어진 곳까지 — 그 뒤는 '준비 중' (1~10 초원, 11 하늘, 12~20 정글) */
+    const val PLAYABLE_STAGES = 20
+
+    /** 해당 스테이지를 실제로 플레이할 수 있는가 */
+    fun hasData(stageNumber: Int) = stageNumber in 1..PLAYABLE_STAGES
+
+    /** 하늘 지역(날개냥이를 타고 나는 스테이지)인가 — 11 하나뿐이다 */
+    fun isSkyStage(stageNumber: Int) = stageNumber == 11
 
     private const val PREFS = "nyang_progress"
     private const val KEY_UNLOCKED = "unlocked_stage"
+    private const val KEY_DEX = "dex_found"
+    private const val KEY_DEX_SEEN = "dex_seen"
+    private const val KEY_RUBIES = "rubies"
+    private const val KEY_BANK_SCORE = "bank_score"
+    private const val KEY_ITEM_PREFIX = "item_"
+    private const val KEY_HERO = "hero"
+
+    /** 루비 한 개로 바꾸는 데 필요한 점수 */
+    const val SCORE_PER_RUBY = 500
 
     var unlockedStage = 1
         private set
+
+    /** 지금 고른 인간의 id (로비 '캐릭터 변경'에서 바꾼다) */
+    var selectedHero = Heroes.DEFAULT_ID
+        private set
+
+    /** 인간을 바꾼다 */
+    fun selectHero(id: String) {
+        if (id == selectedHero) return
+        selectedHero = id
+        prefs?.edit()?.putString(KEY_HERO, id)?.apply()
+    }
+
+    /** 보유 루비 — 고양이 상점에서 물건을 사는 데 쓴다 */
+    var rubies = 0
+        private set
+
+    /** 그동안 쌓아온(아직 루비로 환전하지 않은) 점수 */
+    var bankScore = 0
+        private set
+
+    /** 구매한 물건 개수 (물건 id → 개수) */
+    private val inventory = mutableMapOf<String, Int>()
+
+    // ===== 고양이 도감 (기획1: 고양이를 찾으면 도감에 생긴다) =====
+    private val discovered = mutableSetOf<String>()
+    /** 도감 화면에서 이미 확인한 냥이들 — 아직 못 봤으면 NEW 배지가 붙는다 */
+    private val seenInDex = mutableSetOf<String>()
 
     private var prefs: android.content.SharedPreferences? = null
 
     fun init(context: Context) {
         prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         unlockedStage = prefs?.getInt(KEY_UNLOCKED, 1) ?: 1
+        discovered.clear()
+        discovered.addAll(prefs?.getStringSet(KEY_DEX, emptySet()) ?: emptySet())
+        seenInDex.clear()
+        seenInDex.addAll(prefs?.getStringSet(KEY_DEX_SEEN, emptySet()) ?: emptySet())
+
+        selectedHero = prefs?.getString(KEY_HERO, Heroes.DEFAULT_ID) ?: Heroes.DEFAULT_ID
+        rubies = prefs?.getInt(KEY_RUBIES, 0) ?: 0
+        bankScore = prefs?.getInt(KEY_BANK_SCORE, 0) ?: 0
+        inventory.clear()
+        for (item in ShopCatalog.items) {
+            val count = prefs?.getInt(KEY_ITEM_PREFIX + item.id, 0) ?: 0
+            if (count > 0) inventory[item.id] = count
+        }
+
+        // 팀 냥이 명단·고양이 기술도 같은 저장소를 쓴다
+        prefs?.let {
+            CatTeam.init(it)
+            CatSkills.init(it)
+            HumanSkills.init(it)
+        }
+    }
+
+    // ===== 점수 저금통 · 루비 · 고양이 상점 =====
+
+    /** 한 판이 끝나면 얻은 점수를 저금통에 쌓는다 (루비 상점에서 환전) */
+    fun addScore(score: Int) {
+        if (score <= 0) return
+        bankScore += score
+        prefs?.edit()?.putInt(KEY_BANK_SCORE, bankScore)?.apply()
+    }
+
+    /** 루비를 그대로 얻는다 (적을 쓰러뜨렸을 때의 드롭) */
+    fun addRubies(n: Int) {
+        if (n <= 0) return
+        rubies += n
+        prefs?.edit()?.putInt(KEY_RUBIES, rubies)?.apply()
+    }
+
+    /** 루비를 쓴다 (기술 배우기) — 모자라면 false */
+    fun spendRubies(n: Int): Boolean {
+        if (n < 0 || rubies < n) return false
+        rubies -= n
+        prefs?.edit()?.putInt(KEY_RUBIES, rubies)?.apply()
+        return true
+    }
+
+    /** 지금 점수로 바꿀 수 있는 루비 개수 */
+    fun maxExchangeable() = bankScore / SCORE_PER_RUBY
+
+    /** 점수를 루비로 환전 — 점수가 모자라면 false */
+    fun exchangeRubies(count: Int): Boolean {
+        if (count <= 0) return false
+        val cost = count * SCORE_PER_RUBY
+        if (bankScore < cost) return false
+        bankScore -= cost
+        rubies += count
+        prefs?.edit()
+            ?.putInt(KEY_BANK_SCORE, bankScore)
+            ?.putInt(KEY_RUBIES, rubies)
+            ?.apply()
+        return true
+    }
+
+    /** 가지고 있는 물건 개수 */
+    fun itemCount(id: String) = inventory[id] ?: 0
+
+    /** 물건을 되돌려 받는다 (갑옷을 벗기면 다시 가방으로) */
+    fun addItem(id: String, count: Int = 1) {
+        if (count <= 0) return
+        val next = itemCount(id) + count
+        inventory[id] = next
+        prefs?.edit()?.putInt(KEY_ITEM_PREFIX + id, next)?.apply()
+    }
+
+    /** 물건 하나를 써 없앤다 (간식 먹이기) — 남은 게 없으면 false */
+    fun consumeItem(id: String): Boolean {
+        val count = itemCount(id)
+        if (count <= 0) return false
+        val next = count - 1
+        if (next == 0) inventory.remove(id) else inventory[id] = next
+        prefs?.edit()?.putInt(KEY_ITEM_PREFIX + id, next)?.apply()
+        return true
+    }
+
+    /** 루비로 물건 구매 — 루비가 모자라면 false */
+    fun buyItem(id: String, price: Int): Boolean {
+        if (price < 0 || rubies < price) return false
+        rubies -= price
+        val next = itemCount(id) + 1
+        inventory[id] = next
+        prefs?.edit()
+            ?.putInt(KEY_RUBIES, rubies)
+            ?.putInt(KEY_ITEM_PREFIX + id, next)
+            ?.apply()
+        return true
     }
 
     /** 스테이지 클리어 → 다음 스테이지 잠금 해제 */
@@ -26,5 +167,27 @@ object GameProgress {
             unlockedStage = next
             prefs?.edit()?.putInt(KEY_UNLOCKED, unlockedStage)?.apply()
         }
+    }
+
+    /** 냥이 발견 — 처음 만난 냥이면 true (도감에 새로 등록됨) */
+    fun discover(dexId: String): Boolean {
+        if (dexId in discovered) return false
+        discovered.add(dexId)
+        prefs?.edit()?.putStringSet(KEY_DEX, discovered.toSet())?.apply()
+        return true
+    }
+
+    fun isDiscovered(dexId: String) = dexId in discovered
+
+    /** 도감에서 아직 확인하지 않은 새 냥이인가 (NEW 배지) */
+    fun isNewInDex(dexId: String) = dexId in discovered && dexId !in seenInDex
+
+    /** 도감에 새로 등록된 냥이가 하나라도 있는가 (로비 알림 점) */
+    fun hasNewDexEntry() = discovered.any { it !in seenInDex }
+
+    /** 도감 화면을 닫을 때 호출 — 지금까지 발견한 냥이를 전부 '확인함'으로 */
+    fun markDexSeen() {
+        seenInDex.addAll(discovered)
+        prefs?.edit()?.putStringSet(KEY_DEX_SEEN, seenInDex.toSet())?.apply()
     }
 }

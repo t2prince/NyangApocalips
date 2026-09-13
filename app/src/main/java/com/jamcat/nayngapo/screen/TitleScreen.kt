@@ -3,24 +3,26 @@ package com.jamcat.nayngapo.screen
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.GameView
+import com.jamcat.nayngapo.engine.SpriteManager
 import kotlin.math.sin
 
 class TitleScreen(private val gameView: GameView) : Screen {
     private var timer = 0f
 
-    private val bgPaint = Paint().apply { color = Color.rgb(30, 20, 40) }
+    // 시작 화면은 하얀 바탕
+    private val bgPaint = Paint().apply { color = Color.WHITE }
     private val titlePaint = Paint().apply {
-        color = Color.rgb(255, 200, 50); textSize = 80f; textAlign = Paint.Align.CENTER
+        color = Color.rgb(240, 160, 30); textSize = 80f; textAlign = Paint.Align.CENTER
         typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
-        setShadowLayer(6f, 3f, 3f, Color.BLACK)
+        setShadowLayer(5f, 2f, 2f, Color.argb(90, 90, 60, 20))
     }
     private val subtitlePaint = Paint().apply {
-        color = Color.rgb(200, 200, 200); textSize = 32f; textAlign = Paint.Align.CENTER
+        color = Color.rgb(120, 110, 105); textSize = 32f; textAlign = Paint.Align.CENTER
         isAntiAlias = true
     }
     private val tapPaint = Paint().apply {
-        color = Color.WHITE; textSize = 28f; textAlign = Paint.Align.CENTER
-        isAntiAlias = true
+        color = Color.rgb(60, 54, 50); textSize = 28f; textAlign = Paint.Align.CENTER
+        typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
     }
     private val catBodyPaint = Paint().apply {
         color = Color.rgb(210, 170, 110); isAntiAlias = true
@@ -30,8 +32,8 @@ class TitleScreen(private val gameView: GameView) : Screen {
     }
     private val eyePaint = Paint().apply { color = Color.RED; isAntiAlias = true }
     private val outlinePaint = Paint().apply {
-        color = Color.rgb(255, 200, 50); style = Paint.Style.STROKE
-        strokeWidth = 3f; isAntiAlias = true
+        color = Color.rgb(240, 180, 60); style = Paint.Style.STROKE
+        strokeWidth = 4f; isAntiAlias = true
     }
 
     override fun update(deltaTime: Float) {
@@ -46,7 +48,7 @@ class TitleScreen(private val gameView: GameView) : Screen {
         canvas.drawRect(0f, 0f, w, h, bgPaint)
 
         // Subtle background cats silhouettes
-        val silhouettePaint = Paint().apply { color = Color.argb(30, 255, 200, 100); isAntiAlias = true }
+        val silhouettePaint = Paint().apply { color = Color.argb(38, 200, 160, 90); isAntiAlias = true }
         for (i in 0..5) {
             val cx = w * (i + 0.5f) / 6f
             val cy = h * 0.7f + sin((timer + i).toDouble() * 1.5).toFloat() * 15f
@@ -54,37 +56,13 @@ class TitleScreen(private val gameView: GameView) : Screen {
             canvas.drawCircle(cx, cy - 30f, 22f, silhouettePaint)
         }
 
-        // Big cat in center
-        val catCx = w / 2f
-        val catCy = h * 0.42f
-        val catScale = 2.5f
-        // Body
-        canvas.drawOval(
-            RectF(catCx - 40f * catScale, catCy - 10f * catScale,
-                  catCx + 40f * catScale, catCy + 35f * catScale), catBodyPaint
-        )
-        // Head
-        canvas.drawCircle(catCx, catCy - 25f * catScale, 30f * catScale, catBodyPaint)
-        // Ears
-        val ear1 = Path().apply {
-            moveTo(catCx - 25f * catScale, catCy - 45f * catScale)
-            lineTo(catCx - 14f * catScale, catCy - 70f * catScale)
-            lineTo(catCx - 3f * catScale, catCy - 45f * catScale); close()
-        }
-        val ear2 = Path().apply {
-            moveTo(catCx + 3f * catScale, catCy - 45f * catScale)
-            lineTo(catCx + 14f * catScale, catCy - 70f * catScale)
-            lineTo(catCx + 25f * catScale, catCy - 45f * catScale); close()
-        }
-        canvas.drawPath(ear1, catEarPaint)
-        canvas.drawPath(ear2, catEarPaint)
-        // Evil eyes
-        canvas.drawCircle(catCx - 12f * catScale, catCy - 30f * catScale, 6f * catScale, eyePaint)
-        canvas.drawCircle(catCx + 12f * catScale, catCy - 30f * catScale, 6f * catScale, eyePaint)
-
         // Title
         canvas.drawText("냥이 아포칼립스", w / 2f, h * 0.15f, titlePaint)
         canvas.drawText("Cat Apocalypse", w / 2f, h * 0.15f + 45f, subtitlePaint)
+
+        // 양 끝에서 춤추는 냥이 두 마리 (몸을 좌우로 흔들며 폴짝폴짝)
+        drawDancingCat(canvas, w * 0.13f, h * 0.66f, timer * 7f)
+        drawDancingCat(canvas, w * 0.87f, h * 0.66f, timer * 7f + Math.PI.toFloat())
 
         // Tap to start (blinking)
         val alpha = ((sin(timer.toDouble() * 3.0) * 0.5 + 0.5) * 255).toInt()
@@ -95,9 +73,29 @@ class TitleScreen(private val gameView: GameView) : Screen {
         canvas.drawRect(10f, 10f, w - 10f, h - 10f, outlinePaint)
     }
 
+    private val danceMatrix = Matrix()
+    private val dancePaint = Paint().apply { isFilterBitmap = true; isAntiAlias = true }
+
+    /** 제자리에서 몸을 좌우로 흔들며 폴짝이는 냥이 */
+    private fun drawDancingCat(canvas: Canvas, cx: Float, cy: Float, phase: Float) {
+        val frames = SpriteManager.catWalk
+        val bmp = frames[((phase / 1.2f).toInt()) % frames.size]
+
+        val hop = -kotlin.math.abs(sin(phase.toDouble())).toFloat() * 34f   // 폴짝
+        val tilt = sin(phase.toDouble() * 0.5).toFloat() * 16f              // 좌우로 갸웃
+        val scale = 2.0f
+
+        danceMatrix.reset()
+        danceMatrix.postTranslate(-bmp.width / 2f, -bmp.height / 2f)
+        danceMatrix.postScale(scale, scale)
+        danceMatrix.postRotate(tilt)
+        danceMatrix.postTranslate(cx, cy + hop)
+        canvas.drawBitmap(bmp, danceMatrix, dancePaint)
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-            gameView.showWorldMap()
+            gameView.showLobby()
         }
         return true
     }

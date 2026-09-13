@@ -12,3 +12,7 @@ app/build/
 .kotlin/
 __pycache__/
 Cats/
+
+# 기획 폴더의 검토·디버그용 임시 이미지
+Plan/_*
+Plan/_debug/

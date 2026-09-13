@@ -11,8 +11,9 @@ object Terrain {
 
     /** 월드 x 좌표에서의 지면 표면 y (기준선 GROUND_Y에서 위로 솟는다) */
     fun groundY(x: Float): Float {
-        val amp = 18f + stage * 13f      // 큰 언덕 높이 (스테이지 1: ~31, 스테이지 8: ~122)
-        val rough = stage * 4f           // 잔굴곡 높이
+        // 살짝만 굴곡지게: 큰 언덕도 완만하고 잔굴곡은 아주 얕다
+        val amp = 10f + stage * 3.5f     // 스테이지 1: ~14, 스테이지 8: ~38
+        val rough = stage * 1.2f         // 잔굴곡 높이
 
         val hills = (sin(x * 0.004f) * 0.55f + sin(x * 0.0013f + 1.3f) * 0.45f) * 0.5f + 0.5f
         val bumps = sin(x * 0.011f + 0.7f) * 0.5f + 0.5f

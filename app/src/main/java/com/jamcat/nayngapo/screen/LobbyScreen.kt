@@ -266,8 +266,8 @@ class LobbyScreen(private val gameView: GameView) : Screen {
         // 전투 칸에는 지금 출격할 스테이지 번호를 적어 준다
         if (slot.id == "battle") {
             hintPaint.textSize = h * 0.028f
-            val stage = GameProgress.unlockedStage
-            val text = if (GameProgress.hasData(stage)) "스테이지 $stage 출격!" else "준비 중입니다"
+            val next = GameProgress.nextBattleStage()
+            val text = if (next != null) "스테이지 $next 출격!" else "모두 깼다냥!"
             canvas.drawText(text, rect.centerX(), rect.bottom - h * 0.014f, hintPaint)
         }
 
@@ -422,8 +422,12 @@ class LobbyScreen(private val gameView: GameView) : Screen {
 
     private fun onSlotSelected(slot: Slot) {
         when (slot.id) {
-            // 전투 버튼은 지금 서 있는 스테이지로 곧장 출격
-            "battle" -> enterStage(GameProgress.unlockedStage)
+            // 전투 버튼은 다음에 깰 스테이지로 곧장 출격 (전부 깼으면 안내만)
+            "battle" -> {
+                val next = GameProgress.nextBattleStage()
+                if (next != null) enterStage(next)
+                else showNotice("모든 스테이지를 깼다냥! 다음 지역은 준비 중")
+            }
             // 고양이 기술: 루비로 배우고 켜고 끄는 기술들
             "cat_skill" -> gameView.showCatSkills()
             // 기술: 인간이 직접 쓰는 기술

@@ -153,7 +153,12 @@ class Projectile(
             return
         }
 
-        canvas.drawCircle(cx, cy, width / 2f, paint)
+        // 둥근 탄(그린냥이 슬라임 등): 배경에 묻히지 않게 진한 외곽선 + 작은 윤기
+        val r = width / 2f
+        canvas.drawCircle(cx, cy, r, paint)
+        canvas.drawCircle(cx - r * 0.35f, cy - r * 0.35f, r * 0.28f, shineDotPaint)
+        outlinePaint.strokeWidth = (r * 0.28f).coerceIn(2f, 4f)
+        canvas.drawCircle(cx, cy, r, outlinePaint)
     }
 
     /**
@@ -335,6 +340,10 @@ class Projectile(
 
     private companion object {
         const val TRAIL_LEN = 8
+        val outlinePaint = Paint().apply {
+            color = Color.rgb(28, 40, 24); style = Paint.Style.STROKE; isAntiAlias = true
+        }
+        val shineDotPaint = Paint().apply { color = Color.argb(150, 255, 255, 255); isAntiAlias = true }
         val starPath = android.graphics.Path()
 
         /** 미사일 전체 길이 (머리 끝~꼬리) */

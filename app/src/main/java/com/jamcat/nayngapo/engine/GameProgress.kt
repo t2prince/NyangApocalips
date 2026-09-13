@@ -24,12 +24,37 @@ object GameProgress {
     private const val KEY_BANK_SCORE = "bank_score"
     private const val KEY_ITEM_PREFIX = "item_"
     private const val KEY_HERO = "hero"
+    private const val KEY_CLEARED = "cleared_stages"
+    private const val KEY_LAST_CLEARED = "last_cleared_stage"
 
     /** 루비 한 개로 바꾸는 데 필요한 점수 */
     const val SCORE_PER_RUBY = 500
 
     var unlockedStage = 1
         private set
+
+    /** 실제로 깬 스테이지 번호들 (이 기록이 생기기 전의 세이브는 비어 있다) */
+    private val clearedStages = mutableSetOf<Int>()
+
+    /** 가장 최근에 깬 스테이지 (0 = 기록 없음) */
+    var lastClearedStage = 0
+        private set
+
+    fun isCleared(stageNumber: Int) = stageNumber in clearedStages
+
+    /**
+     * 로비 '전투' 버튼이 들어갈 스테이지 = 다음에 깰 스테이지.
+     * 1) 방금 깬 스테이지의 바로 다음 스테이지가 아직 안 깼으면 거기
+     * 2) 아니면 플레이할 수 있는 스테이지 중 아직 안 깬 가장 앞 번호
+     * 3) 전부 깼으면 null (다음 지역 준비 중)
+     */
+    fun nextBattleStage(): Int? {
+        val afterLast = lastClearedStage + 1
+        if (lastClearedStage > 0 && hasData(afterLast) && afterLast <= unlockedStage && afterLast !in clearedStages) {
+            return afterLast
+        }
+        return (1..PLAYABLE_STAGES).firstOrNull { it <= unlockedStage && it !in clearedStages }
+    }
 
     /** 지금 고른 인간의 id (로비 '캐릭터 변경'에서 바꾼다) */
     var selectedHero = Heroes.DEFAULT_ID
@@ -63,6 +88,9 @@ object GameProgress {
     fun init(context: Context) {
         prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         unlockedStage = prefs?.getInt(KEY_UNLOCKED, 1) ?: 1
+        clearedStages.clear()
+        prefs?.getStringSet(KEY_CLEARED, emptySet())?.forEach { it.toIntOrNull()?.let(clearedStages::add) }
+        lastClearedStage = prefs?.getInt(KEY_LAST_CLEARED, 0) ?: 0
         discovered.clear()
         discovered.addAll(prefs?.getStringSet(KEY_DEX, emptySet()) ?: emptySet())
         seenInDex.clear()
@@ -162,11 +190,15 @@ object GameProgress {
 
     /** 스테이지 클리어 → 다음 스테이지 잠금 해제 */
     fun onStageCleared(stageNumber: Int) {
+        clearedStages.add(stageNumber)
+        lastClearedStage = stageNumber
         val next = (stageNumber + 1).coerceAtMost(TOTAL_STAGES)
-        if (next > unlockedStage) {
-            unlockedStage = next
-            prefs?.edit()?.putInt(KEY_UNLOCKED, unlockedStage)?.apply()
-        }
+        if (next > unlockedStage) unlockedStage = next
+        prefs?.edit()
+            ?.putInt(KEY_UNLOCKED, unlockedStage)
+            ?.putStringSet(KEY_CLEARED, clearedStages.map { it.toString() }.toSet())
+            ?.putInt(KEY_LAST_CLEARED, lastClearedStage)
+            ?.apply()
     }
 
     /** 냥이 발견 — 처음 만난 냥이면 true (도감에 새로 등록됨) */

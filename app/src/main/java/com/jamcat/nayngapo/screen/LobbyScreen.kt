@@ -440,6 +440,8 @@ class LobbyScreen(private val gameView: GameView) : Screen {
             "cat_shop" -> gameView.showCatShop()
             // 쌓아온 점수를 루비로 바꾸는 곳
             "ruby_shop" -> gameView.showRubyShop()
+            // 설정: 데이터 리셋
+            "settings" -> gameView.showSettings()
             else -> showNotice("${slot.label}은(는) 준비 중이다냥!")
         }
     }

@@ -153,6 +153,16 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         fadeTo { RubyShopScreen(this) }
     }
 
+    /** 설정: 데이터 리셋 등 */
+    fun showSettings() {
+        fadeTo { SettingsScreen(this) }
+    }
+
+    /** 저장 데이터를 전부 지우고 처음 상태로 (설정 화면의 '데이터 리셋') */
+    fun resetAllData() {
+        GameProgress.resetAll(context)
+    }
+
     fun showGameOver(score: Int) {
         GameProgress.addScore(score)   // 이번 판에서 번 점수를 저금통에 넣는다
         currentScreen = GameOverScreen(this, score)

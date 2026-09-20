@@ -346,10 +346,27 @@ class SkyStageScreen(
         }
     }
 
-    // ===== 아군 냥이 — 뒤에서 구름을 타고 날아온다 (대표님 2026-09-20). 싸우지는 않는다(지시 없음) =====
+    // ===== 아군 냥이 — 뒤에서 구름을 타고 날아오며 지시 없이 알아서 쏜다 (대표님 2026-09-20) =====
     private inner class CloudAlly(val cat: com.jamcat.nayngapo.engine.CatTeam.TeamCat, val order: Int) {
         var x = 0f; var y = 0f; var facingRight = true
         private var bobPhase = order * 1.3f
+        /** 땅에서와 같은 공격력 (5 + 레벨 보너스 + Lv업 보너스) */
+        private val shotDamage = 5 + com.jamcat.nayngapo.engine.CatTeam.damageBonusFor(cat.level) + cat.attackBonus
+        private var shotTimer = 0.6f + 0.25f * order   // 서로 박자를 어긋나게
+        /** 사거리 안 적을 보면 알아서 쏜다 (1.1초마다) */
+        fun tryShoot(deltaTime: Float) {
+            if (cloudGone) return
+            shotTimer -= deltaTime
+            if (shotTimer > 0f) return
+            val target = enemies.filter { !it.isDead && abs(it.x - x) < ALLY_SHOT_RANGE && abs(it.y - y) < 260f }
+                .minByOrNull { abs(it.x - x) } ?: return
+            shotTimer = 1.1f
+            val dir = if (target.x > x) 1f else -1f
+            facingRight = dir > 0f
+            val vy = ((target.y - y) / (abs(target.x - x).coerceAtLeast(1f))) * 820f
+            projectiles.add(Projectile(x + dir * 40f, y - 10f, dir * 820f, vy.coerceIn(-500f, 500f),
+                shotDamage, true, tint = Color.rgb(255, 214, 90), radius = 5f))
+        }
         fun update(deltaTime: Float, leaderX: Float, leaderY: Float, leaderRight: Boolean) {
             bobPhase += deltaTime * 2.6f
             val dir = if (leaderRight) 1f else -1f
@@ -429,6 +446,8 @@ class SkyStageScreen(
     private var fallSpin = 0f
 
     private val courseLength = 11000f + (stageNumber - 11) * 700f
+    /** 구름 탄 아군이 적을 노리는 가로 사거리 */
+    private val ALLY_SHOT_RANGE = 760f
     private var flyMinY = 130f
     private var flyMaxY = 800f
     private var skyMidY = 450f
@@ -569,7 +588,7 @@ class SkyStageScreen(
         player.y = if (player.y == 0f) skyMidY else player.y
 
         player.update(deltaTime)
-        for (a in cloudAllies) a.update(deltaTime, player.x, player.y, player.facingRight)
+        for (a in cloudAllies) { a.update(deltaTime, player.x, player.y, player.facingRight); a.tryShoot(deltaTime) }
 
         // 카메라: 플레이어를 화면 1/3 지점에 둔다
         camera = (player.x - gameView.screenWidth * 0.35f).coerceIn(0f, courseLength - gameView.screenWidth)

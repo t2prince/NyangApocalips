@@ -115,9 +115,13 @@ class Level(val stageNumber: Int) {
         // 늪(기획3): 2스테이지부터 하나, 7스테이지부터 둘 (함정은 과하지 않게)
         val swampCount = if (stageNumber < 2) 0 else (1 + (stageNumber - 2) / 5).coerceAtMost(2)
 
+        // 해머냥이는 모루냥이가 나오는 스테이지에만, 1~3마리 무작위로 섞인다 (대표님 2026-09-20)
+        val mobs = plan.mobs.toMutableMap()
+        if (Kind.ANVIL in mobs) mobs[Kind.HAMMER] = Kind.HAMMER_MIN + (Math.random() * (Kind.HAMMER_MAX - Kind.HAMMER_MIN + 1)).toInt()
+
         // 잡몹을 섞은 뒤 일정한 간격의 구간 그룹(3마리)으로 배치
         val factories = mutableListOf<(Float, Float) -> Enemy>()
-        for ((kind, count) in plan.mobs) {
+        for ((kind, count) in mobs) {
             repeat(count) { factories.add(kind.factory) }
         }
         factories.shuffle()
@@ -209,8 +213,7 @@ class Level(val stageNumber: Int) {
 
     /** 잡몹 종류와 생성 방법 (cats/ 시트의 냥이들) */
     private enum class Kind(val factory: (Float, Float) -> Enemy) {
-        // 치즈냥이 자리마다 15% 확률로 해머냥이가 대신 나온다 (기획7 「스테이지에서는 무작위로 나와」 — 비율은 Claude 판단)
-        NORMAL({ x, y -> if (Math.random() < HAMMER_CHANCE) HammerCat(x, y) else NormalCat(x, y) }),     // 냥이 HP15
+        NORMAL({ x, y -> NormalCat(x, y) }),     // 냥이 HP15
         BLUE({ x, y -> BlueCat(x, y) }),         // 물냥이(파랑냥이) HP20
         GREEN({ x, y -> GreenCat(x, y) }),       // 그린냥이 HP20 (슬라임)
         POOP({ x, y -> PoopCat(x, y) }),         // 똥냥이 HP30 (이후 지역)
@@ -219,11 +222,13 @@ class Level(val stageNumber: Int) {
         ANVIL({ x, y -> AnvilCat(x, y) }),       // 모루냥이 HP75 (이후 지역)
         LASER({ x, y -> LaserCat(x, y) }),       // 레이저냥이 HP15 (이후 지역)
         THIEF({ x, y -> ThiefCat(x, y) }),       // 도둑냥이 (이후 지역)
-        VINE({ x, y -> VineCat(x, y) });        // 덩굴냥이 HP15 (정글 — 덩굴 그네)
+        VINE({ x, y -> VineCat(x, y) }),         // 덩굴냥이 HP15 (정글 — 덩굴 그네)
+        HAMMER({ x, y -> HammerCat(x, y) });     // 해머냥이 HP10 공격3 (기획7 — 모루냥이가 나오는 스테이지에만, 마릿수 무작위)
 
         companion object {
-            /** 치즈냥이 자리 하나가 해머냥이로 바뀔 확률 */
-            const val HAMMER_CHANCE = 0.15
+            /** 모루냥이 스테이지에 섞이는 해머냥이 마릿수 범위 (무작위) */
+            const val HAMMER_MIN = 1
+            const val HAMMER_MAX = 3
         }
     }
 

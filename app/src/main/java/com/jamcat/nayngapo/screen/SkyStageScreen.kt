@@ -195,7 +195,7 @@ class SkyStageScreen(
             hp -= taken
             invincible = 1.5f
             SoundManager.playPlayerHurt()
-            shake = 0.3f
+            if (GameProgress.shakeEnabled) shake = 0.3f
             effects.add(Effect(x, y - 80f, 0.6f, "HIT!"))
         }
 
@@ -566,7 +566,7 @@ class SkyStageScreen(
     private fun onSkyPrisonOpened(prison: SkyPrison) {
         score += 500
         SoundManager.playCatHit()
-        shake = 0.2f
+        if (GameProgress.shakeEnabled) shake = 0.2f
         if (prison.kind == com.jamcat.nayngapo.entity.Prison.Kind.HUMAN) {
             rescued += 3
             effects.add(Effect(prison.x, prison.y - 70f, 1.2f, "인간 3명 구출!"))
@@ -668,7 +668,7 @@ class SkyStageScreen(
             if (hit != null) {
                 rocket.alive = false
                 blasts.add(Effect(rocket.x, rocket.y, 0.4f, ""))
-                shake = 0.25f
+                if (GameProgress.shakeEnabled) shake = 0.25f
                 for (enemy in enemies) {
                     if (!enemy.isDead && hypot((enemy.x - rocket.x).toDouble(), (enemy.y - rocket.y).toDouble()) < 300.0) {
                         enemy.takeDamage(15)

@@ -30,6 +30,9 @@ object GameProgress {
     private const val KEY_KILLS = "stat_kills"
     private const val KEY_THIEF_KILLS = "stat_thief_kills"
     private const val KEY_MISSIONS_CLAIMED = "missions_claimed"
+    private const val KEY_BGM = "setting_bgm"
+    private const val KEY_SFX = "setting_sfx"
+    private const val KEY_SHAKE = "setting_shake"
 
     /** 루비 한 개로 바꾸는 데 필요한 점수 */
     const val SCORE_PER_RUBY = 500
@@ -81,6 +84,17 @@ object GameProgress {
         private set
     var thiefKills = 0
         private set
+    // ===== 설정 (설정 화면, 2026-09-20) =====
+    var bgmEnabled = true
+        private set
+    var sfxEnabled = true
+        private set
+    var shakeEnabled = true
+        private set
+    fun setBgm(on: Boolean) { bgmEnabled = on; prefs?.edit()?.putBoolean(KEY_BGM, on)?.apply(); SoundManager.applyBgmSetting() }
+    fun setSfx(on: Boolean) { sfxEnabled = on; prefs?.edit()?.putBoolean(KEY_SFX, on)?.apply() }
+    fun setShake(on: Boolean) { shakeEnabled = on; prefs?.edit()?.putBoolean(KEY_SHAKE, on)?.apply() }
+
     /** 보상을 받은 미션 id */
     val claimedMissions = mutableSetOf<String>()
 
@@ -114,6 +128,9 @@ object GameProgress {
         rubyDebt = prefs?.getInt(KEY_RUBY_DEBT, 0) ?: 0
         totalKills = prefs?.getInt(KEY_KILLS, 0) ?: 0
         thiefKills = prefs?.getInt(KEY_THIEF_KILLS, 0) ?: 0
+        bgmEnabled = prefs?.getBoolean(KEY_BGM, true) ?: true
+        sfxEnabled = prefs?.getBoolean(KEY_SFX, true) ?: true
+        shakeEnabled = prefs?.getBoolean(KEY_SHAKE, true) ?: true
         claimedMissions.clear()
         claimedMissions.addAll(prefs?.getStringSet(KEY_MISSIONS_CLAIMED, emptySet()) ?: emptySet())
         bankScore = prefs?.getInt(KEY_BANK_SCORE, 0) ?: 0

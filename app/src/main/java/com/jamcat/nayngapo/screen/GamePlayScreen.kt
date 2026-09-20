@@ -269,6 +269,7 @@ class GamePlayScreen(
     private var shakeAmp = 0f
 
     private fun shake(duration: Float, amp: Float) {
+        if (!GameProgress.shakeEnabled) return       // 설정: 화면 흔들림 끔
         if (amp >= shakeAmp || shakeTimer <= 0f) { shakeTimer = duration; shakeAmp = amp }
     }
 

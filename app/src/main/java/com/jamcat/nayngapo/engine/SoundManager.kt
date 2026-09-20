@@ -69,7 +69,7 @@ object SoundManager {
         bgm = MediaPlayer.create(context, R.raw.bgm_stage)?.apply {
             isLooping = true
             setVolume(BGM_VOLUME, BGM_VOLUME)
-            start()
+            if (GameProgress.bgmEnabled) start()
         }
     }
 
@@ -78,7 +78,14 @@ object SoundManager {
     }
 
     fun resumeBgm() {
+        if (!GameProgress.bgmEnabled) return          // 설정에서 끈 배경음은 다시 켜지 않는다
         bgm?.let { if (!it.isPlaying) it.start() }
+    }
+
+    /** 설정 화면에서 배경음을 켜고 끌 때 — 바로 멈추거나 다시 튼다 */
+    fun applyBgmSetting() {
+        if (GameProgress.bgmEnabled) bgm?.let { if (!it.isPlaying) it.start() }
+        else bgm?.let { if (it.isPlaying) it.pause() }
     }
 
     fun releaseBgm() {
@@ -87,6 +94,7 @@ object SoundManager {
     }
 
     private fun play(soundId: Int, volume: Float) {
+        if (!GameProgress.sfxEnabled) return           // 효과음 끔
         if (soundId !in loadedIds) return
         soundPool?.play(soundId, volume, volume, 1, 0, 1.0f)
     }

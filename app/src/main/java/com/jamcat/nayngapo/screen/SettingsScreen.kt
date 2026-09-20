@@ -9,13 +9,25 @@ import com.jamcat.nayngapo.engine.SoundManager
 import kotlin.math.min
 
 /**
- * 설정 화면. 지금은 '데이터 리셋' 하나 — 루비·점수·물건·깬 스테이지·도감·팀 냥이·배운 기술을
+ * 설정 화면 (2026-09-20 확장): 배경음·효과음·화면 흔들림 켜고 끄기 + '데이터 리셋' — 루비·점수·물건·깬 스테이지·도감·팀 냥이·배운 기술을
  * 전부 지우고 처음 상태로 되돌린다 (밸런스 테스트용).
  * 실수로 눌러 날리지 않도록, 3초 안에 한 번 더 눌러야 실제로 지운다 (팀 화면의 '보내주기'와 같은 방식).
  */
 class SettingsScreen(private val gameView: GameView) : Screen {
 
     private val infoPanel = RectF()
+    /** 설정 토글 (배경음·효과음·화면 흔들림) */
+    private class Toggle(val label: String, val get: () -> Boolean, val set: (Boolean) -> Unit) { val rect = RectF() }
+    private val toggles = listOf(
+        Toggle("배경음", { GameProgress.bgmEnabled }, { GameProgress.setBgm(it) }),
+        Toggle("효과음", { GameProgress.sfxEnabled }, { GameProgress.setSfx(it) }),
+        Toggle("화면 흔들림", { GameProgress.shakeEnabled }, { GameProgress.setShake(it) }),
+    )
+    private val onPaint = Paint().apply { color = Color.rgb(120, 200, 110); isAntiAlias = true }
+    private val offPaint = Paint().apply { color = Color.rgb(214, 210, 200); isAntiAlias = true }
+    private val leftLabelPaint = Paint().apply {
+        color = Color.rgb(35, 32, 30); typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
+    }
     private val resetRect = RectF()
     private val backRect = RectF()
 
@@ -84,31 +96,48 @@ class SettingsScreen(private val gameView: GameView) : Screen {
         titlePaint.textSize = h * 0.075f
         canvas.drawText("설정", w / 2f, h * 0.095f, titlePaint)
 
-        // 지금 저장된 것들을 한눈에 — 리셋하면 무엇이 사라지는지 보여 준다
-        infoPanel.set(w * 0.10f, h * 0.16f, w * 0.90f, h * 0.50f)
+        // 왼쪽: 소리·화면 설정 토글
+        infoPanel.set(w * 0.06f, h * 0.16f, w * 0.48f, h * 0.60f)
         canvas.drawRoundRect(infoPanel, 18f, 18f, panelPaint)
         canvas.drawRoundRect(infoPanel, 18f, 18f, edgePaint)
         panelLabelPaint.textSize = h * 0.038f
-        canvas.drawText("지금 저장된 데이터", infoPanel.centerX(), infoPanel.top + h * 0.065f, panelLabelPaint)
+        canvas.drawText("소리 · 화면", infoPanel.centerX(), infoPanel.top + h * 0.065f, panelLabelPaint)
+        leftLabelPaint.textSize = h * 0.040f
+        btnTextPaint.textSize = h * 0.034f
+        val rowH = h * 0.105f
+        for ((i, t) in toggles.withIndex()) {
+            val cy = infoPanel.top + h * 0.13f + i * rowH + rowH / 2f
+            canvas.drawText(t.label, infoPanel.left + w * 0.03f, cy + h * 0.014f, leftLabelPaint)
+            val on = t.get()
+            t.rect.set(infoPanel.right - w * 0.15f, cy - rowH * 0.34f, infoPanel.right - w * 0.03f, cy + rowH * 0.34f)
+            canvas.drawRoundRect(t.rect, 18f, 18f, if (on) onPaint else offPaint)
+            canvas.drawRoundRect(t.rect, 18f, 18f, edgePaint)
+            canvas.drawText(if (on) "켜짐" else "꺼짐", t.rect.centerX(), t.rect.centerY() + h * 0.012f, btnTextPaint)
+        }
 
-        linePaint.textSize = h * 0.040f
+        // 오른쪽: 지금 저장된 것들 + 데이터 리셋
+        val dataPanel = RectF(w * 0.52f, h * 0.16f, w * 0.94f, h * 0.60f)
+        canvas.drawRoundRect(dataPanel, 18f, 18f, panelPaint)
+        canvas.drawRoundRect(dataPanel, 18f, 18f, edgePaint)
+        canvas.drawText("지금 저장된 데이터", dataPanel.centerX(), dataPanel.top + h * 0.065f, panelLabelPaint)
+        linePaint.textSize = h * 0.032f
         val cleared = (1..GameProgress.PLAYABLE_STAGES).count { GameProgress.isCleared(it) }
         val lines = listOf(
             "루비 ${GameProgress.rubies}  ·  점수 ${String.format("%,d", GameProgress.bankScore)}",
             "깬 스테이지 ${cleared}개  ·  열린 스테이지 ${GameProgress.unlockedStage}",
             "팀 냥이 ${CatTeam.living.size}마리 (무덤·떠난 냥이 포함 ${CatTeam.cats.size})",
         )
-        var y = infoPanel.top + h * 0.135f
+        var y = dataPanel.top + h * 0.125f
         for (line in lines) {
-            canvas.drawText(line, infoPanel.centerX(), y, linePaint)
-            y += h * 0.062f
+            canvas.drawText(line, dataPanel.centerX(), y, linePaint)
+            y += h * 0.052f
         }
 
         // 데이터 리셋 버튼 — 확인 대기 중이면 빨갛게 '정말 지우기?'
         val armed = confirmUntil > timer
-        val bw = w * 0.40f
-        val bh = h * 0.13f
-        resetRect.set(w / 2f - bw / 2f, h * 0.56f, w / 2f + bw / 2f, h * 0.56f + bh)
+        val bw = w * 0.30f
+        val bh = h * 0.10f
+        resetRect.set(dataPanel.centerX() - bw / 2f, dataPanel.bottom - bh - h * 0.03f, dataPanel.centerX() + bw / 2f, dataPanel.bottom - h * 0.03f)
         val fill = when {
             armed -> resetArmedPaint
             resetPressed -> resetPressPaint
@@ -123,10 +152,10 @@ class SettingsScreen(private val gameView: GameView) : Screen {
             resetRect.centerX(), resetRect.centerY() + bh * 0.13f, textPaint
         )
 
-        warnPaint.textSize = h * 0.032f
+        warnPaint.textSize = h * 0.030f
         canvas.drawText(
-            "재화 · 진행한 스테이지 · 획득한 냥이 · 배운 기술이 전부 지워집니다 (되돌릴 수 없음)",
-            w / 2f, resetRect.bottom + h * 0.055f, warnPaint
+            "데이터 리셋: 재화 · 진행한 스테이지 · 획득한 냥이 · 배운 기술이 전부 지워집니다 (되돌릴 수 없음)",
+            w / 2f, h * 0.68f, warnPaint
         )
 
         // 돌아가기 버튼
@@ -170,6 +199,11 @@ class SettingsScreen(private val gameView: GameView) : Screen {
                     return true
                 }
                 if (resetPressed && resetRect.contains(event.x, event.y)) doReset()
+                else toggles.firstOrNull { it.rect.contains(event.x, event.y) }?.let { t ->
+                    t.set(!t.get())
+                    SoundManager.playCatHit()
+                    showNotice("${t.label} ${if (t.get()) "켜짐" else "꺼짐"}")
+                }
                 resetPressed = false
             }
             MotionEvent.ACTION_CANCEL -> resetPressed = false

@@ -139,6 +139,13 @@ object GameProgress {
     }
 
     /** 루비를 쓴다 (기술 배우기) — 모자라면 false */
+    /** 도둑냥이가 훔쳐 간다 — 가진 만큼만(최대 n) 빼고, 실제로 뺀 개수를 돌려준다 */
+    fun takeRubies(n: Int): Int {
+        val taken = n.coerceAtMost(rubies).coerceAtLeast(0)
+        if (taken > 0) { rubies -= taken; prefs?.edit()?.putInt(KEY_RUBIES, rubies)?.apply() }
+        return taken
+    }
+
     fun spendRubies(n: Int): Boolean {
         if (n < 0 || rubies < n) return false
         rubies -= n

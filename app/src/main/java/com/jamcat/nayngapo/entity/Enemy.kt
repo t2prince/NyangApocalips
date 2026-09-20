@@ -327,39 +327,44 @@ class HammerCat(x: Float, y: Float) : Enemy(x, y, 10, 3) {
 }
 
 // ============ Thief Cat ============
+/**
+ * 도둑냥이 (대표님 2026-09-20): 도둑처럼 생겼고(눈가리개·보따리), 레이저는 쏘지 않는다.
+ * 인간에게 닿으면 루비 2개를 훔쳐 달아나고, 잠시 뒤 다시 노린다. 잡으면 훔친 루비를 되찾는다.
+ * 스테이지마다 한 마리뿐이다.
+ */
 class ThiefCat(x: Float, y: Float) : Enemy(x, y, 50, 15) {
     override val width = 85f
     override val height = 100f
     private val moveSpeed = 180f
     private val detectRange = 300f
-    private var shootTimer = 2f
-    private val pendingProjectiles = mutableListOf<Projectile>()
     private var hopPhase = (Math.random() * Math.PI).toFloat()
-    val specialPower = 25
+    /** 훔쳐서 들고 있는 루비 — 쓰러지면 돌려준다 */
+    var stolen = 0
+        private set
+    /** 훔친 직후 달아나는 시간 */
+    private var fleeTimer = 0f
+    /** 훔칠 수 있을 때까지 남은 시간 (연속으로 털어가지 않게) */
+    private var stealCooldown = 0f
+
+    /** 도둑은 때리지 않고 훔친다 */
+    override val contactDamage = 0
 
     override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
-        pendingProjectiles.clear()
-        facingRight = playerX > x
-
         val dx = playerX - x
         val dist = abs(dx)
+        if (fleeTimer > 0f) fleeTimer -= deltaTime
+        if (stealCooldown > 0f) stealCooldown -= deltaTime
 
-        if (dist < detectRange && dist > 50f) {
-            velocityX = sign(dx) * moveSpeed
-        } else if (dist <= 50f) {
-            velocityX = 0f
+        if (fleeTimer > 0f) {
+            velocityX = -sign(dx) * moveSpeed * 1.3f         // 훔친 뒤엔 반대쪽으로 줄행랑
+            facingRight = velocityX > 0f
         } else {
-            velocityX = if (facingRight) moveSpeed * 0.3f else -moveSpeed * 0.3f
-        }
-
-        shootTimer -= deltaTime
-        if (shootTimer <= 0f && dist < 500f) {
-            shootTimer = 2f
-            // 횡뷰: 수평으로만 발사
-            val dir = if (facingRight) 1f else -1f
-            pendingProjectiles.add(
-                Projectile(x + width / 2f, y - height * 0.4f, dir * 450f, 0f, 15, false)
-            )
+            facingRight = playerX > x
+            velocityX = when {
+                dist < detectRange && dist > 30f -> sign(dx) * moveSpeed
+                dist <= 30f -> 0f
+                else -> if (facingRight) moveSpeed * 0.3f else -moveSpeed * 0.3f
+            }
         }
 
         // 빠르게 총총 뛰는 홉 연출
@@ -372,12 +377,25 @@ class ThiefCat(x: Float, y: Float) : Enemy(x, y, 50, 15) {
         super.update(deltaTime, playerX, playerY)
     }
 
+    /** 인간에게 닿았다 — 지금 훔칠 수 있으면 true 를 돌려주고 달아나기 시작한다 */
+    fun tryStealOnTouch(): Boolean {
+        if (stealCooldown > 0f || fleeTimer > 0f) return false
+        stealCooldown = 4f
+        fleeTimer = 2.5f
+        return true
+    }
+
+    fun addStolen(n: Int) { stolen += n }
+
     override fun draw(canvas: Canvas) {
         drawSprite(canvas, SpriteManager.thiefCat)
         drawHpBar(canvas)
     }
 
-    override fun getProjectiles(): List<Projectile> = pendingProjectiles.toList()
+    companion object {
+        /** 한 번에 훔쳐 가는 루비 */
+        const val STEAL_AMOUNT = 2
+    }
 }
 
 // ============ Laser Cat ============

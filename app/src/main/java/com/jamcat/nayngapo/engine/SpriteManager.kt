@@ -115,7 +115,7 @@ object SpriteManager {
 
         // 냥이들은 Cats/ 디자인 시트를 보고 다시 그린 그림 (drawable-nodpi, 이미 게임 크기)
         normalCat = BitmapFactory.decodeResource(res, R.drawable.cat_normal)
-        thiefCat = normalCat            // 물건을 던지며 총총 뛰는 냥이도 같은 생김새
+        thiefCat = BitmapFactory.decodeResource(res, R.drawable.cat_thief)   // 눈가리개 + 보따리 (scripts/make_thief_cat.py)
         laserCat = BitmapFactory.decodeResource(res, R.drawable.cat_laser)
         bossHumanCat = BitmapFactory.decodeResource(res, R.drawable.cat_boss_human)
         bossEvilCat = BitmapFactory.decodeResource(res, R.drawable.cat_boss_evil)

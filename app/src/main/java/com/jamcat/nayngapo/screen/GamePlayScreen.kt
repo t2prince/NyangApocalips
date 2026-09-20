@@ -718,6 +718,17 @@ class GamePlayScreen(
         if (!player.isInvincible && !player.isJumping) {
             for (enemy in level.enemies) {
                 if (!enemy.isDead && enemy.isTangible && RectF.intersects(playerBox, enemy.hitBox)) {
+                    if (enemy is com.jamcat.nayngapo.entity.ThiefCat) {
+                        // 도둑냥이는 때리지 않고 루비를 훔쳐 달아난다 (잡으면 되찾는다)
+                        if (enemy.tryStealOnTouch()) {
+                            val taken = GameProgress.takeRubies(com.jamcat.nayngapo.entity.ThiefCat.STEAL_AMOUNT)
+                            enemy.addStolen(taken)
+                            shake(0.12f, 7f)
+                            hitEffects.add(HitEffect(player.x, player.y - player.height, 0.9f,
+                                if (taken > 0) "루비 ${taken}개 도둑맞음!" else "훔칠 루비가 없다!"))
+                        }
+                        continue
+                    }
                     player.takeDamage(enemy.contactDamage)   // 잡몹 1, 보스 3 (기획4)
                     shake(0.18f, 11f)   // 피격: 크게 흔들림
                     hitEffects.add(HitEffect(player.x, player.y - player.height, 0.5f, "HIT!"))
@@ -1079,8 +1090,9 @@ class GamePlayScreen(
             player.killCount++
             level.onEnemyDefeated()
 
-            // 쓰러진 냥이가 루비를 떨어뜨린다 (일반 1개, 보스 5개)
-            val reward = com.jamcat.nayngapo.engine.Rewards.rubyRewardOf(enemy)
+            // 쓰러진 냥이가 루비를 떨어뜨린다 (일반 1개, 보스 5개). 도둑냥이는 훔친 루비도 돌려준다
+            val stolenBack = (enemy as? com.jamcat.nayngapo.entity.ThiefCat)?.stolen ?: 0
+            val reward = com.jamcat.nayngapo.engine.Rewards.rubyRewardOf(enemy) + stolenBack
             GameProgress.addRubies(reward)
             hitEffects.add(
                 HitEffect(

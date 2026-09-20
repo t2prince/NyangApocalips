@@ -92,17 +92,17 @@ class Level(val stageNumber: Int) {
                 Kind.VINE to 5, Kind.POOP to 2, Kind.FLUFFY to 2),
                 spikes = 1, dangerPits = 1, secrets = 2, cats = 2)
             17 -> StagePlan(mapOf(Kind.NORMAL to 4, Kind.BLUE to 3, Kind.GREEN to 3,
-                Kind.VINE to 5, Kind.FLYING to 3, Kind.FLUFFY to 2, Kind.THIEF to 2),
+                Kind.VINE to 5, Kind.FLYING to 3, Kind.FLUFFY to 2, Kind.THIEF to 1),
                 spikes = 2, dangerPits = 1, secrets = 2, humans = 2)
             18 -> StagePlan(mapOf(Kind.NORMAL to 4, Kind.BLUE to 3, Kind.GREEN to 3,
-                Kind.VINE to 6, Kind.POOP to 2, Kind.FLUFFY to 2, Kind.THIEF to 2, Kind.ANVIL to 2),
+                Kind.VINE to 6, Kind.POOP to 2, Kind.FLUFFY to 2, Kind.THIEF to 1, Kind.ANVIL to 2),
                 spikes = 1, dangerPits = 1, secrets = 2, humans = 1, cats = 2)
             19 -> StagePlan(mapOf(Kind.NORMAL to 3, Kind.GREEN to 3, Kind.VINE to 6,
-                Kind.FLYING to 3, Kind.FLUFFY to 3, Kind.THIEF to 3, Kind.ANVIL to 2, Kind.LASER to 3),
+                Kind.FLYING to 3, Kind.FLUFFY to 3, Kind.THIEF to 1, Kind.ANVIL to 2, Kind.LASER to 3),
                 spikes = 2, dangerPits = 2, secrets = 3, humans = 1, cats = 2)
             // 정글의 끝: 마법사 냥이 삼형제가 신전을 지킨다 (원안 마지막 보스 디자인)
             else -> StagePlan(mapOf(Kind.GREEN to 3, Kind.VINE to 6, Kind.FLUFFY to 3,
-                Kind.ANVIL to 3, Kind.LASER to 3, Kind.FLYING to 3, Kind.THIEF to 3),
+                Kind.ANVIL to 3, Kind.LASER to 3, Kind.FLYING to 3, Kind.THIEF to 1),
                 secrets = 3,
                 boss = { baseX ->
                     listOf(
@@ -221,7 +221,7 @@ class Level(val stageNumber: Int) {
         FLUFFY({ x, y -> FluffyCat(x, y) }),     // 털뭉냥이 HP50 (이후 지역)
         ANVIL({ x, y -> AnvilCat(x, y) }),       // 모루냥이 HP75 (이후 지역)
         LASER({ x, y -> LaserCat(x, y) }),       // 레이저냥이 HP15 (이후 지역)
-        THIEF({ x, y -> ThiefCat(x, y) }),       // 도둑냥이 (이후 지역)
+        THIEF({ x, y -> ThiefCat(x, y) }),       // 도둑냥이 — 스테이지마다 1마리, 루비 2개 훔침
         VINE({ x, y -> VineCat(x, y) }),         // 덩굴냥이 HP15 (정글 — 덩굴 그네)
         HAMMER({ x, y -> HammerCat(x, y) });     // 해머냥이 HP10 공격3 (기획7 — 모루냥이가 나오는 스테이지에만, 마릿수 무작위)
 

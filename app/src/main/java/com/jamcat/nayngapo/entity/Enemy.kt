@@ -173,7 +173,7 @@ abstract class Enemy(
 }
 
 // ============ Normal Cat ============
-class NormalCat(x: Float, y: Float, val coat: com.jamcat.nayngapo.engine.CatCoat = com.jamcat.nayngapo.engine.CatCoat.random())
+class NormalCat(x: Float, y: Float, val coat: com.jamcat.nayngapo.engine.CatCoat = com.jamcat.nayngapo.engine.CatCoat.randomForEnemy())
     : Enemy(x, y, 15, 3) {   // 시트: 냥이 HP15, 냥냥펀치 3 — 무늬(노랑이·하양이·삼색이·턱시도·고등어)만 다르다
     override val width = 80f
     override val height = 95f

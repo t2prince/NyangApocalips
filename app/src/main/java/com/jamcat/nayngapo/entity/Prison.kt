@@ -17,6 +17,9 @@ class Prison(
     /** 이 감옥에 갇힌 냥이의 종류를 못박는다 (null이면 구할 때 무작위) */
     val catKind: AllyCat.Kind? = null
 ) {
+    /** 치즈냥이가 갇혀 있을 때의 털 무늬 — 감옥마다 정해 두어 구출 뒤 팀에도 같은 무늬로 간다 */
+    val catCoat: com.jamcat.nayngapo.engine.CatCoat = com.jamcat.nayngapo.engine.CatCoat.random()
+
     enum class Kind { HUMAN, CAT }
 
     val width = 100f
@@ -76,7 +79,7 @@ class Prison(
                 AllyCat.Kind.FLYING -> SpriteManager.flyingCatAlly
                 AllyCat.Kind.GREEN -> SpriteManager.greenCatAlly
                 AllyCat.Kind.BLUE -> SpriteManager.blueCatAlly
-                else -> SpriteManager.allyCat
+                else -> catCoat.ally
             }
             val scale = (width - 24f) / bmp.width
             val bw = bmp.width * scale

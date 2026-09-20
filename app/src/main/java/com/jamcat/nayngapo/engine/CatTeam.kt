@@ -65,7 +65,9 @@ object CatTeam {
         /** 너무 배고파서 팀을 떠난 냥이 */
         var hasLeft: Boolean = false,
         /** 'Lv업' 아이템으로 영구히 올린 공격력 (되살아나도 남는다) */
-        var attackBonus: Int = 0
+        var attackBonus: Int = 0,
+        /** 치즈냥이의 털 무늬 (다른 종은 CHEESE 로 두고 무시) */
+        val coat: CatCoat = CatCoat.CHEESE
     ) {
         /** 더는 돌볼 수 없는 냥이 (무덤이거나 떠났다) */
         val gone: Boolean get() = isDead || hasLeft
@@ -161,7 +163,8 @@ object CatTeam {
                             isDead = o.optBoolean("isDead", false),
                             diedAtStage = o.optInt("diedAtStage", 0),
                             hasLeft = o.optBoolean("hasLeft", false),
-                            attackBonus = o.optInt("attackBonus", 0).coerceAtLeast(0)
+                            attackBonus = o.optInt("attackBonus", 0).coerceAtLeast(0),
+                            coat = CatCoat.of(o.optString("coat", "CHEESE"))
                         )
                     )
                 }
@@ -197,6 +200,7 @@ object CatTeam {
                 JSONObject()
                     .put("id", c.id)
                     .put("kind", c.kind.name)
+                    .put("coat", c.coat.name)
                     .put("name", c.name)
                     .put("level", c.level)
                     .put("exp", c.exp)
@@ -318,13 +322,14 @@ object CatTeam {
      * 구출한 냥이를 팀에 넣는다.
      * 바로 싸우지는 않는다 — 관리 화면에서 직접 출전을 켜 줘야 한다.
      */
-    fun recruit(kind: AllyCat.Kind): TeamCat {
+    fun recruit(kind: AllyCat.Kind, coat: CatCoat = CatCoat.CHEESE): TeamCat {
         val cat = TeamCat(
             id = nextId++,
             kind = kind,
-            name = autoName(kind),
+            name = autoName(kind, coat),
             inParty = false,
-            seen = false
+            seen = false,
+            coat = if (kind == AllyCat.Kind.NORMAL) coat else CatCoat.CHEESE
         )
         roster.add(cat)
         save()
@@ -335,10 +340,12 @@ object CatTeam {
      * "그린냥이 3호" 처럼 종류마다 번호를 붙인다.
      * 번호표는 따로 쌓이므로 무덤이나 보내준 냥이의 번호가 다시 나오지 않는다.
      */
-    private fun autoName(kind: AllyCat.Kind): String {
+    private fun autoName(kind: AllyCat.Kind, coat: CatCoat = CatCoat.CHEESE): String {
         val next = (nameCounts[kind] ?: 0) + 1
         nameCounts[kind] = next
-        return "${baseNameOf(kind)} ${next}호"
+        // 치즈냥이는 무늬 이름으로 부른다 (삼색이 2호 …). 노랑이는 그대로 치즈냥이
+        val base = if (kind == AllyCat.Kind.NORMAL && coat != CatCoat.CHEESE) coat.label else baseNameOf(kind)
+        return "$base ${next}호"
     }
 
     /** 냥이 이름을 새로 지어 준다 (최대 8자). 빈 이름은 거절 */

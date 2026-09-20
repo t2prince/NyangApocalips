@@ -397,7 +397,7 @@ class TeamScreen(private val gameView: GameView) : Screen {
 
     /** 캣타워가 없을 때: 지금까지처럼 냥이만 가운데에 크게 (방석이 있으면 깔아 준다) */
     private fun drawPlainStage(canvas: Canvas, w: Float, h: Float, cat: CatTeam.TeamCat, cx: Float) {
-        val bmp = if (cat.isDead) SpriteManager.grave else spriteFor(cat.kind)
+        val bmp = if (cat.isDead) SpriteManager.grave else spriteFor(cat)
         val availH = h * 0.45f
         val availW = w * 0.34f
         val scale = min(availW / bmp.width, availH / bmp.height)
@@ -448,7 +448,7 @@ class TeamScreen(private val gameView: GameView) : Screen {
 
         if (cat.gone) {
             // 무덤과 떠난 냥이는 춤추지 않는다 — 타워 밑에 가만히 있다
-            val bmp = if (cat.isDead) SpriteManager.grave else spriteFor(cat.kind)
+            val bmp = if (cat.isDead) SpriteManager.grave else spriteFor(cat)
             val bh = h * 0.20f
             val sc = bh / bmp.height
             val bw = bmp.width * sc
@@ -463,9 +463,10 @@ class TeamScreen(private val gameView: GameView) : Screen {
 
         // 춤: 냥이는 7프레임짜리 대기 동작이 그대로 춤이고, 나머지는 몸을 흔든다
         val dancing = cat.kind == AllyCat.Kind.NORMAL
+        val idle = cat.coat.idle
         val bmp =
-            if (dancing) SpriteManager.catIdle[((timer * 7f).toInt()) % SpriteManager.catIdle.size]
-            else spriteFor(cat.kind)
+            if (dancing) idle[((timer * 7f).toInt()) % idle.size]
+            else spriteFor(cat)
         val catH = h * 0.30f
         val sc = catH / bmp.height
         val bw = bmp.width * sc
@@ -767,7 +768,7 @@ class TeamScreen(private val gameView: GameView) : Screen {
         canvas.drawRoundRect(rect, 14f, 14f, if (cat.id == selectedId) selectEdgePaint else edgePaint)
 
         // 무덤은 비석, 떠난 냥이는 회색 그림자, 나머지는 본래 그림
-        val bmp = if (cat.isDead) SpriteManager.grave else spriteFor(cat.kind)
+        val bmp = if (cat.isDead) SpriteManager.grave else spriteFor(cat)
         val availW = rect.width() * 0.44f
         val availH = rect.height() * 0.38f
         val scale = min(availW / bmp.width, availH / bmp.height)
@@ -1040,10 +1041,10 @@ class TeamScreen(private val gameView: GameView) : Screen {
         else -> Color.rgb(230, 90, 80)
     }
 
-    private fun spriteFor(kind: AllyCat.Kind): Bitmap = when (kind) {
+    private fun spriteFor(cat: CatTeam.TeamCat): Bitmap = when (cat.kind) {
         AllyCat.Kind.GREEN -> SpriteManager.greenCatAlly
         AllyCat.Kind.BLUE -> SpriteManager.blueCatAlly
-        AllyCat.Kind.NORMAL -> SpriteManager.allyCat
+        AllyCat.Kind.NORMAL -> cat.coat.ally      // 치즈냥이는 무늬별 그림
         AllyCat.Kind.FLYING -> SpriteManager.flyingCatAlly
     }
 

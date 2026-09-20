@@ -46,6 +46,13 @@ object SpriteManager {
     lateinit var catWalk: List<Bitmap>
     lateinit var catJump: List<Bitmap>
     lateinit var catAttack: List<Bitmap>
+    /** 치즈냥이 무늬 변형(흰둥이·삼색이·턱시도·고등어) — 노랑이는 위의 기본 그림을 그대로 쓴다 */
+    val coatEnemy = mutableMapOf<CatCoat, Bitmap>()
+    val coatAlly = mutableMapOf<CatCoat, Bitmap>()
+    val coatIdle = mutableMapOf<CatCoat, List<Bitmap>>()
+    val coatWalk = mutableMapOf<CatCoat, List<Bitmap>>()
+    val coatJump = mutableMapOf<CatCoat, List<Bitmap>>()
+    val coatAttack = mutableMapOf<CatCoat, List<Bitmap>>()
     lateinit var laserIdle: List<Bitmap>
     lateinit var laserWalk: List<Bitmap>
     lateinit var laserJump: List<Bitmap>
@@ -84,6 +91,15 @@ object SpriteManager {
     const val PLAYER_FRAMES = 7
 
     private var initialized = false
+
+    private fun loadCoat(res: android.content.res.Resources, coat: CatCoat, enemy: Int, ally: Int, idle: Int, walk: Int, jump: Int, attack: Int) {
+        coatEnemy[coat] = BitmapFactory.decodeResource(res, enemy)
+        coatAlly[coat] = BitmapFactory.decodeResource(res, ally)
+        coatIdle[coat] = splitStrip(res, idle, PLAYER_FRAMES)
+        coatWalk[coat] = splitStrip(res, walk, PLAYER_FRAMES)
+        coatJump[coat] = splitStrip(res, jump, PLAYER_FRAMES)
+        coatAttack[coat] = splitStrip(res, attack, PLAYER_FRAMES)
+    }
 
     fun init(context: Context) {
         if (initialized) return
@@ -132,6 +148,18 @@ object SpriteManager {
         catWalk = splitStrip(res, R.drawable.anim_cat_walk, PLAYER_FRAMES)
         catJump = splitStrip(res, R.drawable.anim_cat_jump, PLAYER_FRAMES)
         catAttack = splitStrip(res, R.drawable.anim_cat_attack, PLAYER_FRAMES)
+        // 무늬 변형 — 노랑이(CHEESE)는 맵에 안 넣고 기본 그림으로 떨어진다
+        coatEnemy[CatCoat.CHEESE] = normalCat; coatAlly[CatCoat.CHEESE] = allyCat
+        coatIdle[CatCoat.CHEESE] = catIdle; coatWalk[CatCoat.CHEESE] = catWalk
+        coatJump[CatCoat.CHEESE] = catJump; coatAttack[CatCoat.CHEESE] = catAttack
+        loadCoat(res, CatCoat.WHITE, R.drawable.cat_white, R.drawable.cat_white_ally,
+            R.drawable.anim_cat_idle_white, R.drawable.anim_cat_walk_white, R.drawable.anim_cat_jump_white, R.drawable.anim_cat_attack_white)
+        loadCoat(res, CatCoat.CALICO, R.drawable.cat_calico, R.drawable.cat_calico_ally,
+            R.drawable.anim_cat_idle_calico, R.drawable.anim_cat_walk_calico, R.drawable.anim_cat_jump_calico, R.drawable.anim_cat_attack_calico)
+        loadCoat(res, CatCoat.TUXEDO, R.drawable.cat_tuxedo, R.drawable.cat_tuxedo_ally,
+            R.drawable.anim_cat_idle_tuxedo, R.drawable.anim_cat_walk_tuxedo, R.drawable.anim_cat_jump_tuxedo, R.drawable.anim_cat_attack_tuxedo)
+        loadCoat(res, CatCoat.MACKEREL, R.drawable.cat_mackerel, R.drawable.cat_mackerel_ally,
+            R.drawable.anim_cat_idle_mackerel, R.drawable.anim_cat_walk_mackerel, R.drawable.anim_cat_jump_mackerel, R.drawable.anim_cat_attack_mackerel)
         laserIdle = splitStrip(res, R.drawable.anim_laser_idle, PLAYER_FRAMES)
         laserWalk = splitStrip(res, R.drawable.anim_laser_walk, PLAYER_FRAMES)
         laserJump = splitStrip(res, R.drawable.anim_laser_jump, PLAYER_FRAMES)

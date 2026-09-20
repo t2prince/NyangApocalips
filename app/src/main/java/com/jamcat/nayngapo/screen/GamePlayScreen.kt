@@ -253,7 +253,8 @@ class GamePlayScreen(
                     // 잘 돌본 냥이는 더 튼튼하게 출전한다
                     hpMultiplier = com.jamcat.nayngapo.engine.CatTeam.careMultiplier(cat),
                     armored = cat.hasArmor,
-                    attackBonus = cat.attackBonus
+                    attackBonus = cat.attackBonus,
+                    coat = cat.coat
                 )
             )
         }
@@ -1675,7 +1676,7 @@ class GamePlayScreen(
             )
             val kind = prison.catKind ?: randomKinds[(Math.random() * randomKinds.size).toInt()]
             // 구한 냥이는 팀 명단에만 올라간다 — 바로 싸우지 않고, 관리 화면에서 출전을 켜 줘야 한다
-            val recruited = com.jamcat.nayngapo.engine.CatTeam.recruit(kind)
+            val recruited = com.jamcat.nayngapo.engine.CatTeam.recruit(kind, prison.catCoat)
             hitEffects.add(
                 HitEffect(
                     prison.x, prison.y - prison.height, 1.6f,

@@ -34,7 +34,9 @@ class AllyCat(
     /** 고양이 갑옷을 입고 나왔는가 — 받는 피해가 크게 줄어든다 */
     val armored: Boolean = false,
     /** 'Lv업' 아이템으로 영구히 올린 공격력 */
-    val attackBonus: Int = 0
+    val attackBonus: Int = 0,
+    /** 치즈냥이(NORMAL)의 털 무늬 — 다른 종은 무시 */
+    val coat: com.jamcat.nayngapo.engine.CatCoat = com.jamcat.nayngapo.engine.CatCoat.CHEESE
 ) : Crowdable {
 
     enum class Kind {
@@ -363,7 +365,7 @@ class AllyCat(
     private fun spriteFor(kind: Kind) = when (kind) {
         Kind.BLUE -> SpriteManager.blueCatAlly     // 아군은 꼬리가 얇다
         Kind.GREEN -> SpriteManager.greenCatAlly
-        Kind.NORMAL -> SpriteManager.allyCat
+        Kind.NORMAL -> coat.ally
         Kind.FLYING -> SpriteManager.flyingCatAlly   // 아군은 꼬리가 얇다
     }
 }

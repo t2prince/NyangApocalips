@@ -173,7 +173,8 @@ abstract class Enemy(
 }
 
 // ============ Normal Cat ============
-class NormalCat(x: Float, y: Float) : Enemy(x, y, 15, 3) {   // 시트: 냥이 HP15, 냥냥펀치 3
+class NormalCat(x: Float, y: Float, val coat: com.jamcat.nayngapo.engine.CatCoat = com.jamcat.nayngapo.engine.CatCoat.random())
+    : Enemy(x, y, 15, 3) {   // 시트: 냥이 HP15, 냥냥펀치 3 — 무늬(노랑이·흰둥이·삼색이·턱시도·고등어)만 다르다
     override val width = 80f
     override val height = 95f
     private val moveSpeed = 60f
@@ -222,10 +223,10 @@ class NormalCat(x: Float, y: Float) : Enemy(x, y, 15, 3) {   // 시트: 냥이 H
         // 이동 판정을 점프보다 먼저 본다 — 걸을 때의 총총 홉(jumpZ)까지 점프로 잡으면
         // 걷는 내내 걷기↔점프 프레임이 번갈아 튀어 애니메이션이 덜덜거린다.
         val frames = when {
-            attackAnim > 0f -> SpriteManager.catAttack
-            abs(velocityX) > 1f -> SpriteManager.catWalk
-            jumpZ < -4f -> SpriteManager.catJump
-            else -> SpriteManager.catIdle
+            attackAnim > 0f -> coat.attack
+            abs(velocityX) > 1f -> coat.walk
+            jumpZ < -4f -> coat.jump
+            else -> coat.idle
         }
         val fps = if (attackAnim > 0f) 8f else 7f
         drawSprite(canvas, frame(frames, fps))

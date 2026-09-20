@@ -200,10 +200,12 @@ class LobbyScreen(private val gameView: GameView) : Screen {
         }
 
         // 새 냥이·새 도감 항목이 있거나, 배고프고 지저분해 손이 필요한 냥이가 있으면 빨간 알림 점
-        if (slot.id == "cat_manage" &&
+        if ((slot.id == "cat_manage" &&
             (CatTeam.hasNewCat() || CatTeam.needsCare() || GameProgress.hasNewDexEntry() ||
                 // 되살릴 무덤이 있고 부활 약도 가지고 있으면 알려 준다
-                (CatTeam.hasGrave() && GameProgress.itemCount("revive_potion") > 0))
+                (CatTeam.hasGrave() && GameProgress.itemCount("revive_potion") > 0))) ||
+            // 받을 수 있는 미션 보상이 있으면 미션 칸에도 점
+            (slot.id == "mission" && com.jamcat.nayngapo.engine.Missions.hasClaimable())
         ) {
             val pulse = (sin(timer.toDouble() * 4.0) * 0.5 + 0.5).toFloat()
             noticeDotPaint.alpha = (170 + 85 * pulse).toInt()
@@ -442,6 +444,8 @@ class LobbyScreen(private val gameView: GameView) : Screen {
             "ruby_shop" -> gameView.showRubyShop()
             // 설정: 데이터 리셋
             "settings" -> gameView.showSettings()
+            // 미션: 해내면 루비
+            "mission" -> gameView.showMissions()
             else -> showNotice("${slot.label}은(는) 준비 중이다냥!")
         }
     }

@@ -27,6 +27,9 @@ object GameProgress {
     private const val KEY_HERO = "hero"
     private const val KEY_CLEARED = "cleared_stages"
     private const val KEY_LAST_CLEARED = "last_cleared_stage"
+    private const val KEY_KILLS = "stat_kills"
+    private const val KEY_THIEF_KILLS = "stat_thief_kills"
+    private const val KEY_MISSIONS_CLAIMED = "missions_claimed"
 
     /** 루비 한 개로 바꾸는 데 필요한 점수 */
     const val SCORE_PER_RUBY = 500
@@ -73,6 +76,13 @@ object GameProgress {
     /** 루비 빚 — 도둑냥이가 가진 것보다 많이 훔치면 루비는 0이 되고 나머지가 여기 쌓인다. 새로 얻는 루비로 먼저 갚는다 (대표님 2026-09-20) */
     var rubyDebt = 0
         private set
+    /** 누적 처치 수 (미션용, 2026-09-20) */
+    var totalKills = 0
+        private set
+    var thiefKills = 0
+        private set
+    /** 보상을 받은 미션 id */
+    val claimedMissions = mutableSetOf<String>()
 
     /** 그동안 쌓아온(아직 루비로 환전하지 않은) 점수 */
     var bankScore = 0
@@ -102,6 +112,10 @@ object GameProgress {
         selectedHero = prefs?.getString(KEY_HERO, Heroes.DEFAULT_ID) ?: Heroes.DEFAULT_ID
         rubies = prefs?.getInt(KEY_RUBIES, 0) ?: 0
         rubyDebt = prefs?.getInt(KEY_RUBY_DEBT, 0) ?: 0
+        totalKills = prefs?.getInt(KEY_KILLS, 0) ?: 0
+        thiefKills = prefs?.getInt(KEY_THIEF_KILLS, 0) ?: 0
+        claimedMissions.clear()
+        claimedMissions.addAll(prefs?.getStringSet(KEY_MISSIONS_CLAIMED, emptySet()) ?: emptySet())
         bankScore = prefs?.getInt(KEY_BANK_SCORE, 0) ?: 0
         inventory.clear()
         for (item in ShopCatalog.items) {
@@ -127,6 +141,19 @@ object GameProgress {
     }
 
     // ===== 점수 저금통 · 루비 · 고양이 상점 =====
+
+    /** 냥이 한 마리 처치 — 미션 통계 (몇 초에 한 번 꼴이라 바로 저장해도 부담 없다) */
+    fun addKill(isThief: Boolean = false) {
+        totalKills++
+        if (isThief) thiefKills++
+        prefs?.edit()?.putInt(KEY_KILLS, totalKills)?.putInt(KEY_THIEF_KILLS, thiefKills)?.apply()
+    }
+
+    /** 미션 보상 수령 기록 */
+    fun claimMission(id: String) {
+        claimedMissions.add(id)
+        prefs?.edit()?.putStringSet(KEY_MISSIONS_CLAIMED, claimedMissions.toSet())?.apply()
+    }
 
     /** 한 판이 끝나면 얻은 점수를 저금통에 쌓는다 (루비 상점에서 환전) */
     fun addScore(score: Int) {
@@ -233,6 +260,7 @@ object GameProgress {
     }
 
     fun isDiscovered(dexId: String) = dexId in discovered
+    fun discoveredCount() = discovered.count { id -> CatDex.entries.any { it.id == id } }
 
     /** 도감에서 아직 확인하지 않은 새 냥이인가 (NEW 배지) */
     fun isNewInDex(dexId: String) = dexId in discovered && dexId !in seenInDex

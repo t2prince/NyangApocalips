@@ -153,6 +153,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         fadeTo { RubyShopScreen(this) }
     }
 
+    /** 미션: 해내면 루비를 받는다 */
+    fun showMissions() {
+        fadeTo { com.jamcat.nayngapo.screen.MissionScreen(this) }
+    }
+
     /** 설정: 데이터 리셋 등 */
     fun showSettings() {
         fadeTo { SettingsScreen(this) }

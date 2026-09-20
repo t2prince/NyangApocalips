@@ -1090,6 +1090,7 @@ class GamePlayScreen(
             shake(0.15f, 9f)                     // 처치 시 더 크게
             player.score += 100
             player.killCount++
+            GameProgress.addKill(isThief = enemy is com.jamcat.nayngapo.entity.ThiefCat)   // 미션 통계
             level.onEnemyDefeated()
 
             // 쓰러진 냥이가 루비를 떨어뜨린다 (일반 1개, 보스 5개). 도둑냥이는 훔친 루비도 돌려준다

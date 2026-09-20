@@ -552,6 +552,11 @@ object CatTeam {
         return true
     }
 
+    /** 지금까지 구한(명단에 오른) 냥이 수 — 무덤·떠난 냥이도 센다 (미션용) */
+    fun rescuedCount(): Int = roster.size
+    /** 팀에서 가장 높은 레벨 */
+    fun maxLevel(): Int = roster.maxOfOrNull { it.level } ?: 0
+
     /** 무덤이 된 팀 냥이 수 */
     fun deadCount(): Int = roster.count { it.isDead }
 

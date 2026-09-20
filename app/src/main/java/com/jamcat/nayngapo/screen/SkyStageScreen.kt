@@ -112,6 +112,7 @@ class SkyStageScreen(
             if (hp <= 0) {
                 isDead = true
                 defeated++
+                GameProgress.addKill()   // 미션 통계
                 score += if (kind == SkyKind.GIANT) 2000 else 150
                 SoundManager.playCatDie()
                 effects.add(Effect(x, y, 0.7f, if (kind == SkyKind.GIANT) "왕왕냥이 격추!" else "격추!"))

@@ -31,6 +31,7 @@ python scripts/rebuild_anim.py Plan/cat_frames5   # 시트 → anim_cat_* 7프�
 python scripts/make_ally_from_normal.py      # cat_ally = 치즈냥이 그림 + 가는 선 꼬리
 python scripts/recolor_cats.py               # 그린/파랑(적·아군·대기 스트립) + 순간냥이(분홍 가로줄)
 python scripts/make_coat_variants.py         # 치즈냥이 무늬 4종(하양이·삼색이·턱시도·고등어): 정지·아군·대기/이동/점프/공격 스트립
+python scripts/make_armor_sprites.py         # 갑옷 입은 아군 그림(무늬 5종·그린·파랑·날아냥이) + 대기 스트립 — 원안 Cats/cat_armor.jpeg
 python scripts/make_flying_cat.py            # 날아냥이 = 치즈냥이 + 원본 날개 (적·아군)
 python scripts/smooth_cats.py                # 나머지 종(똥·모루·레이저·보스) 임시 평면화
 python scripts/gen_shop_icons.py             # 상점 아이콘 + 갑옷·무덤·부활 약·공격력 Lv업 (투명 배경)

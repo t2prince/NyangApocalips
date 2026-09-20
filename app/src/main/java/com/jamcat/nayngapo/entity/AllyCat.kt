@@ -280,14 +280,6 @@ class AllyCat(
         val bmp = if (facingRight) base else SpriteManager.getFlipped(base)
         canvas.drawBitmap(bmp, cx - bmp.width / 2f, drawY - bmp.height + 8f, null)
 
-        // 갑옷: 원안(Cats/cats4.jpeg)처럼 머리부터 몸통까지 덮는 통 갑옷 — 얼굴 창·창살·리벳은 CatArmorDraw
-        if (armored) {
-            val sl = cx - bmp.width / 2f
-            val st = drawY - bmp.height + 8f
-            scratch.set(sl, st, sl + bmp.width, st + bmp.height)
-            com.jamcat.nayngapo.ui.CatArmorDraw.draw(canvas, scratch, facingRight, wide = kind == Kind.FLYING)
-        }
-
         // 기술을 쓰는 동안 주위에 노란 반짝임 여섯 개
         if (castTimer > 0f) {
             val p = 1f - castTimer / CAST_TIME
@@ -347,10 +339,11 @@ class AllyCat(
         const val CAST_TIME = 0.3f
     }
 
+    /** 갑옷을 입으면 그림 자체가 갑옷 입은 모습(원안 Cats/cat_armor.jpeg)으로 바뀐다 */
     private fun spriteFor(kind: Kind) = when (kind) {
-        Kind.BLUE -> SpriteManager.blueCatAlly     // 아군은 꼬리가 얇다
-        Kind.GREEN -> SpriteManager.greenCatAlly
-        Kind.NORMAL -> coat.ally
-        Kind.FLYING -> SpriteManager.flyingCatAlly   // 아군은 꼬리가 얇다
+        Kind.BLUE -> if (armored) SpriteManager.blueCatAllyArmor else SpriteManager.blueCatAlly     // 아군은 꼬리가 얇다
+        Kind.GREEN -> if (armored) SpriteManager.greenCatAllyArmor else SpriteManager.greenCatAlly
+        Kind.NORMAL -> if (armored) coat.allyArmor else coat.ally
+        Kind.FLYING -> if (armored) SpriteManager.flyingCatAllyArmor else SpriteManager.flyingCatAlly   // 아군은 꼬리가 얇다
     }
 }

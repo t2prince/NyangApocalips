@@ -63,6 +63,18 @@ def body_bbox(a, ink, white):
     ys, xs = comps[0][1], comps[0][2]
     return xs.min(), ys.min(), xs.max(), ys.max()
 
+EYE_BLUE = (40, 110, 220)   # 하양이만 눈이 파랗다 (대표님 2026-09-20)
+
+def paint_eyes(out, a, ink, bbox, color):
+    """얼굴 위쪽(오른쪽 40%, 위 35%)의 작은 검은 점 = 눈. 그 점들만 색을 바꾼다."""
+    x0, y0, x1, y1 = bbox
+    H, W = a.shape
+    yy, xx = np.mgrid[0:H, 0:W]
+    region = ink & (xx > x0 + 0.55 * (x1 - x0)) & (yy < y0 + 0.38 * (y1 - y0)) & (yy > y0 + 0.05 * (y1 - y0))
+    for n, ys, xs in label_components(region):
+        if 3 <= n <= 60:                     # 눈 점 크기 (수염·외곽선은 훨씬 크거나 길다)
+            out[ys, xs, :3] = color
+
 def recoat(im, coat):
     spec = COATS[coat]
     arr = np.array(im.convert('RGBA'))
@@ -71,6 +83,8 @@ def recoat(im, coat):
         return Image.fromarray(arr)
     x0, y0, x1, y1 = body_bbox(a, ink, white)
     out = arr.copy()
+    if coat == 'white':
+        paint_eyes(out, a, ink, (x0, y0, x1, y1), EYE_BLUE)
     out[body, :3] = spec['body']
     out[stripe, :3] = spec['stripe']
     paintable = body | stripe

@@ -463,7 +463,7 @@ class TeamScreen(private val gameView: GameView) : Screen {
 
         // 춤: 냥이는 7프레임짜리 대기 동작이 그대로 춤이고, 나머지는 몸을 흔든다
         val dancing = cat.kind == AllyCat.Kind.NORMAL
-        val idle = cat.coat.idle
+        val idle = if (cat.hasArmor && !cat.gone) cat.coat.idleArmor else cat.coat.idle
         val bmp =
             if (dancing) idle[((timer * 7f).toInt()) % idle.size]
             else spriteFor(cat)
@@ -515,9 +515,8 @@ class TeamScreen(private val gameView: GameView) : Screen {
     private fun drawArmorPlate(
         canvas: Canvas, cat: CatTeam.TeamCat, dst: RectF, facingRight: Boolean = true
     ) {
+        // 갑옷은 이제 그림 자체가 바뀐다(spriteFor 가 갑옷 입은 스프라이트를 고른다) — 덧그릴 게 없다
         if (!cat.hasArmor || cat.gone) return
-        // 원안(Cats/cats4.jpeg)처럼 머리부터 몸통까지 덮는 통 갑옷
-        com.jamcat.nayngapo.ui.CatArmorDraw.draw(canvas, dst, facingRight, wide = cat.kind == AllyCat.Kind.FLYING)
     }
 
     /**
@@ -1027,11 +1026,15 @@ class TeamScreen(private val gameView: GameView) : Screen {
         else -> Color.rgb(230, 90, 80)
     }
 
-    private fun spriteFor(cat: CatTeam.TeamCat): Bitmap = when (cat.kind) {
-        AllyCat.Kind.GREEN -> SpriteManager.greenCatAlly
-        AllyCat.Kind.BLUE -> SpriteManager.blueCatAlly
-        AllyCat.Kind.NORMAL -> cat.coat.ally      // 치즈냥이는 무늬별 그림
-        AllyCat.Kind.FLYING -> SpriteManager.flyingCatAlly
+    /** 갑옷을 입은 냥이는 갑옷 입은 그림(원안 Cats/cat_armor.jpeg) */
+    private fun spriteFor(cat: CatTeam.TeamCat): Bitmap {
+        val armor = cat.hasArmor && !cat.gone
+        return when (cat.kind) {
+            AllyCat.Kind.GREEN -> if (armor) SpriteManager.greenCatAllyArmor else SpriteManager.greenCatAlly
+            AllyCat.Kind.BLUE -> if (armor) SpriteManager.blueCatAllyArmor else SpriteManager.blueCatAlly
+            AllyCat.Kind.NORMAL -> if (armor) cat.coat.allyArmor else cat.coat.ally      // 치즈냥이는 무늬별 그림
+            AllyCat.Kind.FLYING -> if (armor) SpriteManager.flyingCatAllyArmor else SpriteManager.flyingCatAlly
+        }
     }
 
     // ===================== 입력 =====================

@@ -25,6 +25,9 @@ enum class CatCoat(val label: String) {
     val walk: List<Bitmap> get() = SpriteManager.coatWalk[this] ?: SpriteManager.catWalk
     val jump: List<Bitmap> get() = SpriteManager.coatJump[this] ?: SpriteManager.catJump
     val attack: List<Bitmap> get() = SpriteManager.coatAttack[this] ?: SpriteManager.catAttack
+    /** 갑옷 입은 아군 정지 그림 / 대기(춤) 스트립 — scripts/make_armor_sprites.py */
+    val allyArmor: Bitmap get() = SpriteManager.coatAllyArmor[this] ?: ally
+    val idleArmor: List<Bitmap> get() = SpriteManager.coatIdleArmor[this] ?: idle
 
     companion object {
         /** 무작위 무늬 — 노랑이(기준 디자인)가 절반, 나머지 넷이 나머지를 나눠 갖는다 */

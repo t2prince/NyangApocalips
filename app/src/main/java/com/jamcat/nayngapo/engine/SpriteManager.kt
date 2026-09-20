@@ -53,6 +53,14 @@ object SpriteManager {
     val coatWalk = mutableMapOf<CatCoat, List<Bitmap>>()
     val coatJump = mutableMapOf<CatCoat, List<Bitmap>>()
     val coatAttack = mutableMapOf<CatCoat, List<Bitmap>>()
+    /** 갑옷 입은 모습 (원안 Cats/cat_armor.jpeg) — 아군 정지 그림·대기 스트립. 무늬 5종 + 그린·파랑·날아냥이 */
+    val coatAllyArmor = mutableMapOf<CatCoat, Bitmap>()
+    val coatIdleArmor = mutableMapOf<CatCoat, List<Bitmap>>()
+    lateinit var greenCatAllyArmor: Bitmap
+    lateinit var blueCatAllyArmor: Bitmap
+    lateinit var flyingCatAllyArmor: Bitmap
+    lateinit var catIdleGreenArmor: List<Bitmap>
+    lateinit var catIdleBlueArmor: List<Bitmap>
     lateinit var laserIdle: List<Bitmap>
     lateinit var laserWalk: List<Bitmap>
     lateinit var laserJump: List<Bitmap>
@@ -160,6 +168,22 @@ object SpriteManager {
             R.drawable.anim_cat_idle_tuxedo, R.drawable.anim_cat_walk_tuxedo, R.drawable.anim_cat_jump_tuxedo, R.drawable.anim_cat_attack_tuxedo)
         loadCoat(res, CatCoat.MACKEREL, R.drawable.cat_mackerel, R.drawable.cat_mackerel_ally,
             R.drawable.anim_cat_idle_mackerel, R.drawable.anim_cat_walk_mackerel, R.drawable.anim_cat_jump_mackerel, R.drawable.anim_cat_attack_mackerel)
+        // 갑옷 입은 그림 — 입히면 그림 자체가 바뀐다 (판·투구·볏이 그려진 별도 스프라이트)
+        coatAllyArmor[CatCoat.CHEESE] = BitmapFactory.decodeResource(res, R.drawable.cat_cheese_armor_ally)
+        coatAllyArmor[CatCoat.WHITE] = BitmapFactory.decodeResource(res, R.drawable.cat_white_armor_ally)
+        coatAllyArmor[CatCoat.CALICO] = BitmapFactory.decodeResource(res, R.drawable.cat_calico_armor_ally)
+        coatAllyArmor[CatCoat.TUXEDO] = BitmapFactory.decodeResource(res, R.drawable.cat_tuxedo_armor_ally)
+        coatAllyArmor[CatCoat.MACKEREL] = BitmapFactory.decodeResource(res, R.drawable.cat_mackerel_armor_ally)
+        coatIdleArmor[CatCoat.CHEESE] = splitStrip(res, R.drawable.anim_cat_idle_cheese_armor, PLAYER_FRAMES)
+        coatIdleArmor[CatCoat.WHITE] = splitStrip(res, R.drawable.anim_cat_idle_white_armor, PLAYER_FRAMES)
+        coatIdleArmor[CatCoat.CALICO] = splitStrip(res, R.drawable.anim_cat_idle_calico_armor, PLAYER_FRAMES)
+        coatIdleArmor[CatCoat.TUXEDO] = splitStrip(res, R.drawable.anim_cat_idle_tuxedo_armor, PLAYER_FRAMES)
+        coatIdleArmor[CatCoat.MACKEREL] = splitStrip(res, R.drawable.anim_cat_idle_mackerel_armor, PLAYER_FRAMES)
+        greenCatAllyArmor = BitmapFactory.decodeResource(res, R.drawable.cat_green_armor_ally)
+        blueCatAllyArmor = BitmapFactory.decodeResource(res, R.drawable.cat_blue_armor_ally)
+        flyingCatAllyArmor = BitmapFactory.decodeResource(res, R.drawable.cat_flying_armor_ally)
+        catIdleGreenArmor = splitStrip(res, R.drawable.anim_cat_idle_green_armor, PLAYER_FRAMES)
+        catIdleBlueArmor = splitStrip(res, R.drawable.anim_cat_idle_blue_armor, PLAYER_FRAMES)
         laserIdle = splitStrip(res, R.drawable.anim_laser_idle, PLAYER_FRAMES)
         laserWalk = splitStrip(res, R.drawable.anim_laser_walk, PLAYER_FRAMES)
         laserJump = splitStrip(res, R.drawable.anim_laser_jump, PLAYER_FRAMES)

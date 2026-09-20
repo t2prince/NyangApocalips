@@ -431,6 +431,14 @@ class Player(var x: Float, var y: Float) {
         facingRight = dirX > 0f
     }
 
+    /** 공중 발판 위에서 아래를 누르면 내려온다 (십자 패드 아래, 2026-09-20) */
+    fun dropFromPlatform(): Boolean {
+        if (onPlatform == null || isJumping) return false
+        onPlatform = null
+        isJumping = true; jumpVelocity = 0f
+        return true
+    }
+
     /** 덩굴을 잡는다 — 중력과 조작을 멈추고 덩굴에 몸을 맡긴다 */
     fun grabVine() {
         ridingVine = true

@@ -188,8 +188,13 @@ class TouchControls {
                         if (dy < 0f) inputState.moveUp = true else inputState.moveDown = true
                     }
                 } else {
-                    // 횡뷰 플랫포머: 좌/우만 판정 (세로 성분은 무시)
-                    if (dx < 0f) inputState.moveLeft = true else inputState.moveRight = true
+                    // 땅: 상하좌우 십자 (대표님 2026-09-20). 위 = 점프, 아래 = 발판에서 내려오기. 대각선이면 좌우+위 동시
+                    if (kotlin.math.abs(dx) > dpadInnerRadius * 0.55f || kotlin.math.abs(dx) >= kotlin.math.abs(dy)) {
+                        if (dx < 0f) inputState.moveLeft = true else inputState.moveRight = true
+                    }
+                    if (kotlin.math.abs(dy) > dpadInnerRadius * 0.55f && kotlin.math.abs(dy) > kotlin.math.abs(dx) * 0.6f) {
+                        if (dy < 0f) inputState.moveUp = true else inputState.moveDown = true
+                    }
                 }
             }
             return
@@ -309,25 +314,22 @@ class TouchControls {
             drawChevronV(canvas, dpadCenterX, dpadCenterY - 108f, -1f, inputState.moveUp)
             drawChevronV(canvas, dpadCenterX, dpadCenterY + 108f, 1f, inputState.moveDown)
 
-            drawButton(canvas, attackBtnX, attackBtnY, "ATK", inputState.attack, Color.rgb(255, 118, 106))
-            drawSpecialButton(canvas, "🚀")
+            drawButton(canvas, attackBtnX, attackBtnY, "attack", inputState.attack, Color.rgb(255, 118, 106))
+            drawSpecialButton(canvas, "rocket")
             return
         }
 
-        // === 좌우 이동 패드: 납작한 알약 모양 ===
-        padRect.set(
-            dpadCenterX - dpadRadius, dpadCenterY - 78f,
-            dpadCenterX + dpadRadius, dpadCenterY + 78f
-        )
-        canvas.drawRoundRect(padRect, 78f, 78f, padPaint)
-        canvas.drawRoundRect(padRect, 78f, 78f, padEdgePaint)
+        // === 땅: 둥근 상하좌우 십자 패드 (위 = 점프, 아래 = 발판에서 내려오기) ===
+        canvas.drawCircle(dpadCenterX, dpadCenterY, dpadRadius * 0.72f, padPaint)
+        canvas.drawCircle(dpadCenterX, dpadCenterY, dpadRadius * 0.72f, padEdgePaint)
+        drawChevron(canvas, dpadCenterX - 108f, dpadCenterY, -1f, inputState.moveLeft)
+        drawChevron(canvas, dpadCenterX + 108f, dpadCenterY, 1f, inputState.moveRight)
+        drawChevronV(canvas, dpadCenterX, dpadCenterY - 108f, -1f, inputState.moveUp)
+        drawChevronV(canvas, dpadCenterX, dpadCenterY + 108f, 1f, inputState.moveDown)
 
-        drawChevron(canvas, dpadCenterX - 118f, dpadCenterY, -1f, inputState.moveLeft)
-        drawChevron(canvas, dpadCenterX + 118f, dpadCenterY, 1f, inputState.moveRight)
-
-        // === 액션 버튼 ===
-        drawButton(canvas, attackBtnX, attackBtnY, "ATK", inputState.attack, Color.rgb(255, 118, 106))
-        drawButton(canvas, jumpBtnX, jumpBtnY, "JUMP", inputState.jump, Color.rgb(120, 190, 255))
+        // === 액션 버튼 (글자 대신 아이콘 — 대표님 2026-09-20) ===
+        drawButton(canvas, attackBtnX, attackBtnY, "attack", inputState.attack, Color.rgb(255, 118, 106))
+        drawButton(canvas, jumpBtnX, jumpBtnY, "jump", inputState.jump, Color.rgb(120, 190, 255))
         drawSpecialButton(canvas)
         if (showOrder) drawOrderButton(canvas)
         drawSkillButtons(canvas)
@@ -463,7 +465,7 @@ class TouchControls {
     }
 
     /** SP(필살기) 버튼: 쿨다운 중에는 어둡게 덮고 남은 초를 카운트다운으로 보여준다 */
-    private fun drawSpecialButton(canvas: Canvas, label: String = "SP") {
+    private fun drawSpecialButton(canvas: Canvas, label: String = "special") {
         drawCooldownButton(canvas, specialBtnX, specialBtnY, label, inputState.special,
             Color.argb(80, 255, 200, 50), specialCooldown, Constants.SPECIAL_COOLDOWN)
     }
@@ -506,7 +508,54 @@ class TouchControls {
             Color.argb(150, Color.red(color), Color.green(color), Color.blue(color))
         canvas.drawCircle(cx, cy, btnRadius, btnRingPaint)
 
-        if (label.isNotEmpty()) canvas.drawText(label, cx, cy + 14f, btnTextPaint)
+        if (label.isNotEmpty()) drawIcon(canvas, cx, cy, label, active)
+    }
+
+    private val iconPaint = Paint().apply {
+        color = Color.argb(235, 240, 244, 252); style = Paint.Style.STROKE
+        strokeWidth = 7f; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND; isAntiAlias = true
+    }
+    private val iconFillPaint = Paint().apply { color = Color.argb(235, 240, 244, 252); isAntiAlias = true }
+    private val iconPath = android.graphics.Path()
+
+    /** 버튼 아이콘: attack = 발톱 세 줄, jump = 위 화살표, special = 별, rocket = 로켓. 모르는 이름은 글자로. */
+    private fun drawIcon(canvas: Canvas, cx: Float, cy: Float, kind: String, active: Boolean) {
+        iconPaint.color = if (active) ACCENT else Color.argb(235, 240, 244, 252)
+        iconFillPaint.color = iconPaint.color
+        when (kind) {
+            "attack" -> {                                   // 발톱 자국 세 줄
+                for (i in -1..1) {
+                    val ox = i * 16f
+                    canvas.drawLine(cx + ox - 8f, cy - 22f, cx + ox + 8f, cy + 22f, iconPaint)
+                }
+            }
+            "jump" -> {                                     // 위 화살표
+                canvas.drawLine(cx, cy + 22f, cx, cy - 22f, iconPaint)
+                canvas.drawLine(cx - 18f, cy - 4f, cx, cy - 22f, iconPaint)
+                canvas.drawLine(cx + 18f, cy - 4f, cx, cy - 22f, iconPaint)
+            }
+            "special" -> {                                  // 별
+                iconPath.reset()
+                for (k in 0 until 10) {
+                    val r = if (k % 2 == 0) 26f else 11f
+                    val a = Math.toRadians((-90 + k * 36).toDouble())
+                    val px = cx + (r * Math.cos(a)).toFloat(); val py = cy + (r * Math.sin(a)).toFloat()
+                    if (k == 0) iconPath.moveTo(px, py) else iconPath.lineTo(px, py)
+                }
+                iconPath.close()
+                canvas.drawPath(iconPath, iconFillPaint)
+            }
+            "rocket" -> {                                   // 로켓 (위로)
+                iconPath.reset()
+                iconPath.moveTo(cx, cy - 26f); iconPath.lineTo(cx + 12f, cy - 4f); iconPath.lineTo(cx + 12f, cy + 14f)
+                iconPath.lineTo(cx - 12f, cy + 14f); iconPath.lineTo(cx - 12f, cy - 4f); iconPath.close()
+                canvas.drawPath(iconPath, iconFillPaint)
+                canvas.drawLine(cx - 12f, cy + 6f, cx - 22f, cy + 20f, iconPaint)
+                canvas.drawLine(cx + 12f, cy + 6f, cx + 22f, cy + 20f, iconPaint)
+                canvas.drawLine(cx - 6f, cy + 16f, cx, cy + 28f, iconPaint); canvas.drawLine(cx + 6f, cy + 16f, cx, cy + 28f, iconPaint)
+            }
+            else -> canvas.drawText(kind, cx, cy + 14f, btnTextPaint)
+        }
     }
 
     private val earPath = android.graphics.Path()

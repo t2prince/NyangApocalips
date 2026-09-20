@@ -1751,6 +1751,9 @@ class GamePlayScreen(
             }
         }
 
+        // 십자 패드 아래: 공중 발판 위에서는 내려온다
+        if (input.moveDown) player.dropFromPlatform()
+
         if (input.jump || input.moveUp) {
             // 정글의 덩굴: 아래에서 점프를 누르면 잡고, 매달린 채 누르면 놓는다
             val riding = ridingVine

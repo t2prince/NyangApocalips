@@ -100,17 +100,39 @@ def armor(im, wide=False, base=None):
     # 얼굴 창 테두리: 왼쪽 세로(볼 가리개) + 아래 가로(턱 가리개 위)
     d.line([(muzzle_left - lw, open_y), (muzzle_left - lw, muzzle_bot + 1)], fill=INK, width=lw)
     d.line([(muzzle_left - lw, muzzle_bot + 1), (ux(1.0), muzzle_bot + 1)], fill=INK, width=max(1, lw - 1))
-    # 투구: 이 그림은 눈이 머리 꼭대기 가까이 있어, 원안처럼 머리를 감싸는 둥근 캡을 눈 위로 솟게 그린다
-    dome_h = max(6, int(bh * 0.22))
+    # 투구 (원안 Cats/cat_armor_helmet.jpeg): 머리를 감싸는 큰 둥근 캡 + 뒤통수로 내려오는 볼 가리개,
+    # 눈 위 빗금 슬롯 챙, 캡 위를 뒤에서 앞으로 타고 넘는 아치형 볏(빗금), 귀는 캡 밖으로 삐죽.
+    dome_h = max(8, int(bh * 0.34))
     dome_bot = brim_y + lw
-    dome_box = [ux(0.44), dome_bot - dome_h, ux(1.03), dome_bot + dome_h]   # 타원 위 절반 = 챙 위에 얹힌 캡
-    d.chord(dome_box, 180, 360, fill=PLATE_LIGHT, outline=INK, width=lw)
-    d.line([(ux(0.50), dome_bot - dome_h * 0.55), (ux(0.98), dome_bot - dome_h * 0.55)], fill=SEAM, width=max(1, lw - 1))   # 캡 이음새
+    dl, dr = ux(0.40), ux(1.04)
+    # 볏: 캡과 같은 중심의 한 겹 큰 타원 윗부분을 먼저 칠하고 그 위에 캡을 얹으면 아치 띠만 남는다
+    band = max(5, int(dome_h * 0.40))
+    ecx, ecy = (dl + dr) / 2, dome_bot
+    rx_in, ry_in = (dr - dl) / 2, dome_h
+    rx_out, ry_out = rx_in + band, ry_in + band
+    d.chord([ecx - rx_out, ecy - ry_out, ecx + rx_out, ecy + ry_out], 180, 360, fill=PLATE_DARK, outline=INK, width=max(1, lw - 1))
+    # 캡
+    d.chord([dl, dome_bot - dome_h, dr, dome_bot + dome_h], 180, 360, fill=PLATE_LIGHT, outline=INK, width=lw)
+    # 볏의 빗금: 띠 안에서만, 중심에서 방사상으로
+    for k in range(11):
+        ang = np.deg2rad(196 + 14.8 * k)
+        d.line([(ecx + (rx_in + 1) * np.cos(ang), ecy + (ry_in + 1) * np.sin(ang)),
+                (ecx + (rx_out - 1) * np.cos(ang), ecy + (ry_out - 1) * np.sin(ang))], fill=INK, width=1)
+    # 볼 가리개: 캡 뒤쪽이 얼굴 창 옆으로 곧게 내려온다
+    d.rectangle([dl, dome_bot - 1, muzzle_left - lw, muzzle_bot + 1], fill=PLATE_LIGHT)
+    d.line([(dl, dome_bot - 1), (dl, muzzle_bot + 1)], fill=INK, width=lw)
+    d.line([(muzzle_left - lw, dome_bot - 1), (muzzle_left - lw, muzzle_bot + 1)], fill=INK, width=lw)
     # 챙: 눈 바로 위 굵은 띠(캡보다 앞으로 튀어나옴) + 빗금 슬롯
-    d.rectangle([ux(0.50), brim_y - lw // 2, ux(1.06), brim_y + lw // 2 + 1], fill=PLATE_DARK, outline=INK)
-    for i in range(7):
-        x = ux(0.54) + (ux(1.04) - ux(0.54)) * (i + 0.5) / 7
+    d.rectangle([ux(0.50), brim_y - lw // 2, ux(1.08), brim_y + lw // 2 + 1], fill=PLATE_DARK, outline=INK)
+    for i in range(8):
+        x = ux(0.53) + (ux(1.06) - ux(0.53)) * (i + 0.5) / 8
         d.line([(x, brim_y - lw // 2 + 1), (x, brim_y + lw // 2)], fill=INK, width=1)
+    # 귀: 원안처럼 캡 밖으로 삐죽 — 머리 색을 원본에서 찍어 작은 삼각형을 캡 왼쪽 위에 그린다
+    sx, sy = int(ux(0.66)), int(y0 + bh * 0.06)
+    col = tuple(int(v) for v in arr[min(max(sy, 0), H - 1), min(max(sx, 0), W - 1), :3]) if a_ref[min(max(sy, 0), H - 1), min(max(sx, 0), W - 1)] else PLATE
+    ex, ey = ux(0.58), dome_bot - dome_h * 0.55
+    es = bw * 0.10
+    d.polygon([(ex - es * 0.45, ey + es * 0.5), (ex + es * 0.1, ey - es * 0.9), (ex + es * 0.6, ey + es * 0.45)], fill=col, outline=INK)
 
     # 2) 등판 이음새(세로 둘·가로 하나) + 리벳 쌍
     for u in (0.20, 0.38):
@@ -126,21 +148,6 @@ def armor(im, wide=False, base=None):
         x, y = ux(u), (muzzle_bot + 1 + bottom_y) / 2
         if bottom_y - (muzzle_bot + 1) > 4: d.ellipse([x - r, y - r, x + r, y + r], fill=INK)
 
-    # 3) 볏 — 캡 꼭대기에서 위로 솟아 앞(얼굴 쪽)으로 크게 휘어 넘어오는 두툼한 깃 (빗금 무늬)
-    cap_top = dome_bot - dome_h
-    P = max(8, cap_top - 2)                          # 남은 위 여백을 볏에 쓴다
-    cx0 = ux(0.66)
-    crest = [(cx0, cap_top + 1), (cx0 - bw * 0.01, cap_top - P * 0.55), (cx0 + bw * 0.08, cap_top - P * 0.92),
-             (cx0 + bw * 0.24, cap_top - P * 0.98), (cx0 + bw * 0.40, cap_top - P * 0.80), (cx0 + bw * 0.46, cap_top - P * 0.50),
-             (cx0 + bw * 0.38, cap_top - P * 0.52), (cx0 + bw * 0.34, cap_top - P * 0.72), (cx0 + bw * 0.22, cap_top - P * 0.80),
-             (cx0 + bw * 0.12, cap_top - P * 0.70), (cx0 + bw * 0.10, cap_top - P * 0.30), (cx0 + bw * 0.16, cap_top + 1)]
-    d.polygon(crest, fill=PLATE_DARK, outline=INK)
-    d.line(crest + [crest[0]], fill=INK, width=max(1, lw - 1))
-    for i in range(1, 8):                            # 깃의 빗금
-        t = i / 8
-        xa = cx0 + bw * (0.00 + 0.30 * t); ya = cap_top - P * (0.50 + 0.45 * t)
-        xb = cx0 + bw * (0.10 + 0.28 * t); yb = cap_top - P * (0.30 + 0.45 * t)
-        d.line([(xa, ya), (xb, yb)], fill=INK, width=1)
     # 판 위 외곽선 (몸통 외곽을 따라) — 갑옷이 몸에 붙어 보이게
     edge = plate & ~np.roll(plate, 1, 0)
     e = np.array(img); e[edge & (yy < bottom_y - 2), :3] = INK

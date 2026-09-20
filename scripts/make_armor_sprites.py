@@ -17,7 +17,7 @@ from rebuild_anim import label_components
 
 DST = 'app/src/main/res/drawable-nodpi'
 FRAMES = 7
-PAD_TOP = 14            # 볏이 머리 위로 솟아 그림을 위로 늘린다
+PAD_TOP = 40            # 투구 캡 + 볏이 머리 위로 크게 솟아 그림을 위로 늘린다
 
 PLATE = (176, 182, 194)
 PLATE_DARK = (140, 146, 160)
@@ -45,7 +45,11 @@ def body_mask(arr):
 
 def armor(im, wide=False, base=None):
     """im: 오른쪽을 보는 아군 냥이 한 칸. 위로 PAD_TOP 만큼 늘린 새 그림을 돌려준다.
-    base: 몸통 영역을 잴 기준 그림 — 무늬 변형(흰 몸·검은 몸)은 색으로 몸통을 못 찾으니 같은 모양인 치즈냥이 그림을 준다."""
+    base: 몸통 영역을 잴 기준 그림 — 무늬 변형(흰 몸·검은 몸)은 색으로 몸통을 못 찾으니 같은 모양인 치즈냥이 그림을 준다.
+
+    원안(Cats/cat_armor.jpeg) 그대로: 등판(세로 이음새 둘·가로 하나·리벳, 아래 경계는 몸 중간의 곧은 선),
+    머리를 감싸는 둥근 투구(등판과 곡선 이음새로 구분), 눈 위 챙(빗금 슬롯), 투구 위에서 앞으로 크게 휘는 볏,
+    주둥이 옆·아래의 볼 가리개. 눈·주둥이·수염·배·다리·꼬리는 드러난다."""
     src = im.convert('RGBA')
     W, H = src.width, src.height + PAD_TOP
     canvas = Image.new('RGBA', (W, H), (0, 0, 0, 0)); canvas.paste(src, (0, PAD_TOP))
@@ -59,54 +63,88 @@ def armor(im, wide=False, base=None):
     vy = lambda v: y0 + v * bh
     yy, xx = np.mgrid[0:H, 0:W]
     U = (xx - x0) / max(bw, 1); V = (yy - y0) / max(bh, 1)
+    lw = lw_of(bh)
 
-    # 눈 위치를 기준 그림에서 찾는다 — 챙이 눈을 가리면 안 된다 (대표님 2026-09-20)
+    # 눈·주둥이 위치를 기준 그림에서 찾는다 — 챙이 눈을 가리면 안 된다
     a_ref = ref[..., 3] > 128
-    ink_ref = a_ref & (ref[..., :3].astype(int).max(axis=2) < 90)
+    rgb_ref = ref[..., :3].astype(int)
+    ink_ref = a_ref & (rgb_ref.max(axis=2) < 90)
     eye_region = ink_ref & (U > 0.55) & (V > 0.04) & (V < 0.42)
     eye_tops = [ys.min() for n, ys, xs in label_components(eye_region) if 3 <= n <= 60]
     eye_top = min(eye_tops) if eye_tops else int(vy(0.16))
-    open_y = eye_top - 2                              # 창은 눈보다 두 픽셀 위에서 시작
-    brim_y = open_y - max(1, lw_of(bh) // 2) - 1      # 챙(굵은 선)은 그 위
-    # 1) 판이 덮는 곳: 몸통 윗부분(배는 드러남). 아래 경계는 앞으로 갈수록 살짝 내려간다.
-    bottom = 0.56 + 0.06 * U
-    face_open = (U > 0.60) & (yy >= open_y)          # 눈·주둥이 창 — 얼굴은 드러난다
-    plate = grown & (V < bottom) & ~face_open
+    white_ref = a_ref & (rgb_ref.min(axis=2) > 200) & (U > 0.5)     # 주둥이 두 원
+    muzzle_bot = int(np.nonzero(white_ref)[0].max()) if white_ref.any() else int(vy(0.58))
+    muzzle_left = int(np.nonzero(white_ref)[1].min()) if white_ref.any() else int(ux(0.62))
+    open_y = eye_top - 2
+    brim_y = open_y - lw // 2 - 1
+
+    # 1) 판이 덮는 곳 — 몸통 위쪽 절반 남짓, 아래 경계는 곧은 가로선. 얼굴 창(눈~주둥이)만 뚫린다.
+    bottom_y = max(muzzle_bot + lw + 1, int(vy(0.60)))
+    face_open = (xx >= muzzle_left - lw) & (yy >= open_y) & (yy <= muzzle_bot + 1)
+    plate = grown & (yy < bottom_y) & ~face_open
+    # 투구: 머리 쪽을 둥글게 감싸는 부분 — 등판과 곡선 이음새로 나뉜다
+    seam_u = 0.52
+    helmet = plate & (U > seam_u + 0.10 * (V - 0.3))
     out = arr.copy()
     out[plate, :3] = PLATE
-    out[plate & (V < 0.12), :3] = PLATE_LIGHT        # 윗면 하이라이트
-    out[plate & (V > bottom - 0.12), :3] = PLATE_DARK  # 아랫단 그늘
+    out[helmet, :3] = PLATE_LIGHT
+    out[plate & (yy > bottom_y - max(3, bh * 0.08)), :3] = PLATE_DARK     # 아랫단 그늘
     img = Image.fromarray(out); d = ImageDraw.Draw(img)
-    lw = lw_of(bh)
 
-    # 판 아래 가장자리(배와의 경계) 굵은 선
-    pts = [(ux(u), vy(0.56 + 0.06 * u)) for u in np.linspace(0.0, 0.60, 8)]
-    d.line(pts, fill=INK, width=lw)
-    # 얼굴 창 왼쪽 세로 경계(볼 가리개) + 챙(눈 바로 위 가로 띠 — 눈은 절대 안 가린다)
-    d.line([(ux(0.60), brim_y), (ux(0.60), vy(0.56 + 0.06 * 0.60))], fill=INK, width=lw)
-    d.line([(ux(0.58), brim_y), (ux(1.02), brim_y)], fill=INK, width=lw)
-    d.line([(ux(0.58), brim_y - lw - 1), (ux(1.00), brim_y - lw - 1)], fill=SEAM, width=max(1, lw - 1))
-    # 2) 이음새 (세로 둘, 가로 하나) + 리벳
-    for u in (0.26, 0.48):
-        d.line([(ux(u), vy(0.02)), (ux(u), vy(0.56 + 0.06 * u))], fill=SEAM, width=max(1, lw - 1))
-    d.line([(ux(0.02), vy(0.32)), (ux(0.60), vy(0.32))], fill=SEAM, width=max(1, lw - 1))
-    r = max(1.5, bh * 0.02)
-    for u, v in ((0.13, 0.18), (0.13, 0.46), (0.37, 0.18), (0.37, 0.46), (0.54, 0.12), (0.54, 0.46), (0.72, 0.10), (0.88, 0.10)):
+    # 판 아래 경계(배와의 곧은 선) — 몸 전체 폭
+    xs_row = np.nonzero(grown[bottom_y - 1])[0] if grown[bottom_y - 1].any() else np.array([x0, x1])
+    d.line([(xs_row.min(), bottom_y), (xs_row.max(), bottom_y)], fill=INK, width=lw)
+    # 투구 ↔ 등판 곡선 이음새
+    seam_pts = [(ux(seam_u + 0.10 * (v - 0.3)), vy(v)) for v in np.linspace(0.02, 0.60, 8)]
+    d.line(seam_pts, fill=INK, width=lw)
+    # 얼굴 창 테두리: 왼쪽 세로(볼 가리개) + 아래 가로(턱 가리개 위)
+    d.line([(muzzle_left - lw, open_y), (muzzle_left - lw, muzzle_bot + 1)], fill=INK, width=lw)
+    d.line([(muzzle_left - lw, muzzle_bot + 1), (ux(1.0), muzzle_bot + 1)], fill=INK, width=max(1, lw - 1))
+    # 투구: 이 그림은 눈이 머리 꼭대기 가까이 있어, 원안처럼 머리를 감싸는 둥근 캡을 눈 위로 솟게 그린다
+    dome_h = max(6, int(bh * 0.22))
+    dome_bot = brim_y + lw
+    dome_box = [ux(0.44), dome_bot - dome_h, ux(1.03), dome_bot + dome_h]   # 타원 위 절반 = 챙 위에 얹힌 캡
+    d.chord(dome_box, 180, 360, fill=PLATE_LIGHT, outline=INK, width=lw)
+    d.line([(ux(0.50), dome_bot - dome_h * 0.55), (ux(0.98), dome_bot - dome_h * 0.55)], fill=SEAM, width=max(1, lw - 1))   # 캡 이음새
+    # 챙: 눈 바로 위 굵은 띠(캡보다 앞으로 튀어나옴) + 빗금 슬롯
+    d.rectangle([ux(0.50), brim_y - lw // 2, ux(1.06), brim_y + lw // 2 + 1], fill=PLATE_DARK, outline=INK)
+    for i in range(7):
+        x = ux(0.54) + (ux(1.04) - ux(0.54)) * (i + 0.5) / 7
+        d.line([(x, brim_y - lw // 2 + 1), (x, brim_y + lw // 2)], fill=INK, width=1)
+
+    # 2) 등판 이음새(세로 둘·가로 하나) + 리벳 쌍
+    for u in (0.20, 0.38):
+        d.line([(ux(u), vy(0.03)), (ux(u), bottom_y)], fill=SEAM, width=max(1, lw - 1))
+    d.line([(ux(0.03), vy(0.34)), (ux(seam_u), vy(0.34))], fill=SEAM, width=max(1, lw - 1))
+    r = max(1.5, bh * 0.018)
+    rivets = [(0.10, 0.20), (0.10, 0.48), (0.29, 0.14), (0.29, 0.48), (0.46, 0.16), (0.46, 0.48), (0.16, 0.30), (0.34, 0.30)]
+    for u, v in rivets:
         x, y = ux(u), vy(v)
-        d.ellipse([x - r, y - r, x + r, y + r], fill=INK)
-    # 3) 볏 — 투구 꼭대기에서 뒤로 휘는 지느러미 (빗금 무늬)
-    cx0, cy0 = ux(0.80), y0 + 1
-    crest = [(cx0 - bw * 0.04, cy0), (cx0 - bw * 0.02, cy0 - PAD_TOP * 0.9), (cx0 + bw * 0.12, cy0 - PAD_TOP * 0.75),
-             (cx0 + bw * 0.20, cy0 - PAD_TOP * 0.2), (cx0 + bw * 0.16, cy0)]
+        if y < bottom_y - 2: d.ellipse([x - r, y - r, x + r, y + r], fill=INK)
+    # 볼 가리개 리벳 (주둥이 아래)
+    for u in (0.70, 0.85):
+        x, y = ux(u), (muzzle_bot + 1 + bottom_y) / 2
+        if bottom_y - (muzzle_bot + 1) > 4: d.ellipse([x - r, y - r, x + r, y + r], fill=INK)
+
+    # 3) 볏 — 캡 꼭대기에서 위로 솟아 앞(얼굴 쪽)으로 크게 휘어 넘어오는 두툼한 깃 (빗금 무늬)
+    cap_top = dome_bot - dome_h
+    P = max(8, cap_top - 2)                          # 남은 위 여백을 볏에 쓴다
+    cx0 = ux(0.66)
+    crest = [(cx0, cap_top + 1), (cx0 - bw * 0.01, cap_top - P * 0.55), (cx0 + bw * 0.08, cap_top - P * 0.92),
+             (cx0 + bw * 0.24, cap_top - P * 0.98), (cx0 + bw * 0.40, cap_top - P * 0.80), (cx0 + bw * 0.46, cap_top - P * 0.50),
+             (cx0 + bw * 0.38, cap_top - P * 0.52), (cx0 + bw * 0.34, cap_top - P * 0.72), (cx0 + bw * 0.22, cap_top - P * 0.80),
+             (cx0 + bw * 0.12, cap_top - P * 0.70), (cx0 + bw * 0.10, cap_top - P * 0.30), (cx0 + bw * 0.16, cap_top + 1)]
     d.polygon(crest, fill=PLATE_DARK, outline=INK)
-    for i in range(1, 5):
-        t = i / 5
-        x = cx0 + bw * (-0.02 + 0.18 * t)
-        d.line([(x, cy0 - PAD_TOP * (0.85 - 0.5 * t)), (x, cy0 - 1)], fill=INK, width=1)
+    d.line(crest + [crest[0]], fill=INK, width=max(1, lw - 1))
+    for i in range(1, 8):                            # 깃의 빗금
+        t = i / 8
+        xa = cx0 + bw * (0.00 + 0.30 * t); ya = cap_top - P * (0.50 + 0.45 * t)
+        xb = cx0 + bw * (0.10 + 0.28 * t); yb = cap_top - P * (0.30 + 0.45 * t)
+        d.line([(xa, ya), (xb, yb)], fill=INK, width=1)
     # 판 위 외곽선 (몸통 외곽을 따라) — 갑옷이 몸에 붙어 보이게
     edge = plate & ~np.roll(plate, 1, 0)
-    e = np.array(img); e[edge & (V < 0.5), :3] = INK; img = Image.fromarray(e)
-    return img
+    e = np.array(img); e[edge & (yy < bottom_y - 2), :3] = INK
+    return Image.fromarray(e)
 
 def strip(im, base=None):
     w, h = im.size; cw = w // FRAMES

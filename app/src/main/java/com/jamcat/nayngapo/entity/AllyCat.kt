@@ -280,27 +280,12 @@ class AllyCat(
         val bmp = if (facingRight) base else SpriteManager.getFlipped(base)
         canvas.drawBitmap(bmp, cx - bmp.width / 2f, drawY - bmp.height + 8f, null)
 
-        // 갑옷: 몸통에 대어 둔 은색 가슴판 (비트맵 없이 사각형 하나로).
-        // 얼굴은 그림의 오른쪽 40%에 있으니 판은 왼쪽 몸통 쪽에 — 왼쪽을 보면 반대쪽에 놓는다.
+        // 갑옷: 원안(Cats/cats4.jpeg)처럼 머리부터 몸통까지 덮는 통 갑옷 — 얼굴 창·창살·리벳은 CatArmorDraw
         if (armored) {
             val sl = cx - bmp.width / 2f
             val st = drawY - bmp.height + 8f
-            // 날아냥이는 날개 때문에 그림이 넓다 — 몸통이 가운데라 판도 가운데 가까이 둔다
-            val fx = when {
-                kind == Kind.FLYING -> if (facingRight) 0.46f else 0.54f
-                facingRight -> 0.34f
-                else -> 0.66f
-            }
-            val pcx = sl + bmp.width * fx
-            val pcy = st + bmp.height * 0.62f
-            val pw = bmp.width * 0.30f
-            val ph = bmp.height * 0.24f
-            val r = ph * 0.20f
-            scratch.set(pcx - pw / 2f, pcy - ph / 2f, pcx + pw / 2f, pcy + ph / 2f)
-            armorPaint.alpha = 217           // 무늬가 살짝 비쳐 보이게
-            canvas.drawRoundRect(scratch, r, r, armorPaint)
-            armorPaint.alpha = 255
-            canvas.drawRoundRect(scratch, r, r, armorEdgePaint)
+            scratch.set(sl, st, sl + bmp.width, st + bmp.height)
+            com.jamcat.nayngapo.ui.CatArmorDraw.draw(canvas, scratch, facingRight, wide = kind == Kind.FLYING)
         }
 
         // 기술을 쓰는 동안 주위에 노란 반짝임 여섯 개

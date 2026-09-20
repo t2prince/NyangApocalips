@@ -516,22 +516,8 @@ class TeamScreen(private val gameView: GameView) : Screen {
         canvas: Canvas, cat: CatTeam.TeamCat, dst: RectF, facingRight: Boolean = true
     ) {
         if (!cat.hasArmor || cat.gone) return
-        // 날아냥이는 날개 때문에 그림이 넓다 — 몸통이 가운데라 판도 가운데 가까이 둔다
-        val fx = when {
-            cat.kind == AllyCat.Kind.FLYING -> if (facingRight) 0.46f else 0.54f
-            facingRight -> 0.34f
-            else -> 0.66f
-        }
-        val pcx = dst.left + dst.width() * fx
-        val pcy = dst.top + dst.height() * 0.62f
-        val pw = dst.width() * 0.30f
-        val ph = dst.height() * 0.24f
-        val r = ph * 0.20f
-        scratch.set(pcx - pw / 2f, pcy - ph / 2f, pcx + pw / 2f, pcy + ph / 2f)
-        shieldPaint.alpha = 217          // 무늬가 살짝 비쳐 보이게
-        canvas.drawRoundRect(scratch, r, r, shieldPaint)
-        shieldPaint.alpha = 255
-        canvas.drawRoundRect(scratch, r, r, shieldEdgePaint)
+        // 원안(Cats/cats4.jpeg)처럼 머리부터 몸통까지 덮는 통 갑옷
+        com.jamcat.nayngapo.ui.CatArmorDraw.draw(canvas, dst, facingRight, wide = cat.kind == AllyCat.Kind.FLYING)
     }
 
     /**

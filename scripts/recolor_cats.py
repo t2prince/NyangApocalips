@@ -16,6 +16,10 @@ DST = 'app/src/main/res/drawable-nodpi'
 YELLOW_H = colorsys.rgb_to_hsv(0xF2 / 255, 0xC1 / 255, 0x3C / 255)[0]
 GREEN_H = colorsys.rgb_to_hsv(0x5F / 255, 0xBF / 255, 0x4F / 255)[0]
 BLUE_H = colorsys.rgb_to_hsv(0x4F / 255, 0x86 / 255, 0xD6 / 255)[0]     # 파랑냥이 몸 #4F86D6
+# 빨강·주황·노랑냥이 (대표님 2026-09-20 「그린·파랑처럼 일반 냥이 색만 바꾼 것」)
+RED_H = colorsys.rgb_to_hsv(0xE0 / 255, 0x48 / 255, 0x48 / 255)[0]      # 빨강냥이 몸 #E04848
+ORANGE_H = colorsys.rgb_to_hsv(0xF2 / 255, 0x8C / 255, 0x28 / 255)[0]   # 주황냥이 몸 #F28C28
+LEMON_H = colorsys.rgb_to_hsv(0xF2 / 255, 0xE6 / 255, 0x3C / 255)[0]    # 노랑냥이 몸 #F2E63C (치즈냥이보다 샛노랑)
 
 def shift_hue(src, dst, h_shift, sat_min=0.25, h_lo=0.03, h_hi=0.19):
     im = Image.open(src).convert('RGBA')
@@ -68,7 +72,7 @@ def add_center_stripe(src, dst, color=PINK, width_frac=0.20):
     Image.fromarray(arr).save(dst); print(dst)
 
 def main():
-    for name, hue in (('green', GREEN_H), ('blue', BLUE_H)):
+    for name, hue in (('green', GREEN_H), ('blue', BLUE_H), ('red', RED_H), ('orange', ORANGE_H), ('yellow', LEMON_H)):
         shift = hue - YELLOW_H
         shift_hue(os.path.join(DST, 'cat_normal.png'), os.path.join(DST, f'cat_{name}.png'), shift)
         shift_hue(os.path.join(DST, 'cat_ally.png'), os.path.join(DST, f'cat_{name}_ally.png'), shift)

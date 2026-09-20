@@ -61,19 +61,19 @@ class Level(val stageNumber: Int) {
             1 -> StagePlan(mapOf(Kind.NORMAL to 8))
             2 -> StagePlan(mapOf(Kind.NORMAL to 10), spikes = 1)
             3 -> StagePlan(mapOf(Kind.NORMAL to 8, Kind.BLUE to 4), spikes = 1, humans = 1)
-            4 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 5),
+            4 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 5, Kind.RED to 2),
                 spikes = 1, secrets = 1, humans = 1, cats = 1)
-            5 -> StagePlan(mapOf(Kind.NORMAL to 10, Kind.BLUE to 6),
+            5 -> StagePlan(mapOf(Kind.NORMAL to 10, Kind.BLUE to 6, Kind.ORANGE to 2),
                 spikes = 1, secrets = 1, humans = 1, cats = 1)
-            6 -> StagePlan(mapOf(Kind.NORMAL to 11, Kind.BLUE to 7),
+            6 -> StagePlan(mapOf(Kind.NORMAL to 11, Kind.BLUE to 7, Kind.YELLOW to 2),
                 spikes = 2, secrets = 1, humans = 1, cats = 1)
-            7 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 6),
+            7 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 6, Kind.RED to 2, Kind.ORANGE to 2),
                 spikes = 2, secrets = 2, cats = 2)
-            8 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 6, Kind.GREEN to 3),
+            8 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 6, Kind.GREEN to 3, Kind.YELLOW to 2),
                 spikes = 1, dangerPits = 1, secrets = 2, humans = 2)
-            9 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 7, Kind.GREEN to 4),
+            9 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 7, Kind.GREEN to 4, Kind.RED to 2, Kind.ORANGE to 2, Kind.YELLOW to 2),
                 spikes = 1, dangerPits = 1, secrets = 2, humans = 1, cats = 2)
-            10 -> StagePlan(mapOf(Kind.NORMAL to 12, Kind.BLUE to 9, Kind.GREEN to 8),
+            10 -> StagePlan(mapOf(Kind.NORMAL to 12, Kind.BLUE to 9, Kind.GREEN to 8, Kind.RED to 2, Kind.ORANGE to 2, Kind.YELLOW to 2),
                 secrets = 3,
                 boss = { baseX -> listOf(TeleportCatBoss(baseX, Constants.GROUND_Y)) })
 
@@ -215,6 +215,9 @@ class Level(val stageNumber: Int) {
     private enum class Kind(val factory: (Float, Float) -> Enemy) {
         NORMAL({ x, y -> NormalCat(x, y) }),     // 냥이 HP15
         BLUE({ x, y -> BlueCat(x, y) }),         // 물냥이(파랑냥이) HP20
+        RED({ x, y -> RedCat(x, y) }),           // 빨강냥이 HP20 (색만 다른 일반 냥이, 2026-09-20)
+        ORANGE({ x, y -> OrangeCat(x, y) }),     // 주황냥이 HP20
+        YELLOW({ x, y -> YellowCat(x, y) }),     // 노랑냥이 HP20
         GREEN({ x, y -> GreenCat(x, y) }),       // 그린냥이 HP20 (슬라임)
         POOP({ x, y -> PoopCat(x, y) }),         // 똥냥이 HP30 (이후 지역)
         FLYING({ x, y -> FlyingCat(x, y) }),     // 날아냥이 HP25 — 하늘 스테이지(11)에만 나온다 (대표님 2026-09-20), 땅 표에는 안 넣는다

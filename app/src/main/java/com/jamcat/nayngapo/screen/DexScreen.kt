@@ -89,21 +89,21 @@ class DexScreen(private val gameView: GameView) : Screen {
         countPaint.textSize = h * 0.042f
         canvas.drawText("$found / ${CatDex.entries.size}", w - 30f, h * 0.09f, countPaint)
 
-        // 카드 격자: 10 x 2 (무늬 4종·해머냥이·마법사냥이·총냥이까지 19칸)
-        val cols = 10
-        val rows = 2
+        // 카드 격자: 8 x 3 (22종 — 빨강·주황·노랑냥이까지)
+        val cols = 8
+        val rows = 3
         val padX = w * 0.03f
         val gap = w * 0.018f
         val cw = (w - padX * 2f - gap * (cols - 1)) / cols
-        val ch = h * 0.325f
-        val top = h * 0.15f
+        val ch = h * 0.215f
+        val top = h * 0.14f
 
         for ((i, entry) in CatDex.entries.withIndex()) {
             val col = i % cols
             val row = i / cols
             if (row >= rows) break
             val l = padX + col * (cw + gap)
-            val t = top + row * (ch + h * 0.04f)
+            val t = top + row * (ch + h * 0.025f)
             cardRect.set(l, t, l + cw, t + ch)
             drawCard(canvas, entry, cardRect, h, i)
         }

@@ -31,6 +31,13 @@ object SpriteManager {
     lateinit var poopCat: Bitmap     // 똥냥이 HP30
     // 같은 종이라도 나쁜 편은 꼬리에 털이 수북하다
     lateinit var greenCatEvil: Bitmap
+    /** 빨강·주황·노랑냥이 — 일반 냥이 색만 바꾼 것 (2026-09-20). 적은 그린·파랑처럼 살짝 크게 */
+    lateinit var redCatEvil: Bitmap
+    lateinit var orangeCatEvil: Bitmap
+    lateinit var yellowCatEvil: Bitmap
+    lateinit var catIdleRed: List<Bitmap>
+    lateinit var catIdleOrange: List<Bitmap>
+    lateinit var catIdleYellow: List<Bitmap>
     lateinit var blueCatEvil: Bitmap
     lateinit var greenCatAlly: Bitmap   // 아군용 얇은 꼬리 변형
     lateinit var blueCatAlly: Bitmap
@@ -151,6 +158,9 @@ object SpriteManager {
         allyCat = BitmapFactory.decodeResource(res, R.drawable.cat_ally)
         // 나쁜 편은 같은 종이라도 조금 더 크게 보이도록 (시트: 꼬리에 털이 수북한 개체)
         greenCatEvil = scaled(greenCat, 1.06f)
+        redCatEvil = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_red), 1.06f)
+        orangeCatEvil = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_orange), 1.06f)
+        yellowCatEvil = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_yellow), 1.06f)
         blueCatEvil = scaled(blueCat, 1.06f)
         // 아군은 꼬리가 얇다 (기획: 같은편 꼬리 얇음, 다른편 두꺼움)
         greenCatAlly = BitmapFactory.decodeResource(res, R.drawable.cat_green_ally)
@@ -162,6 +172,9 @@ object SpriteManager {
         // 냥이도 동작마다 7프레임짜리 연속 동작 스트립
         catIdle = splitStrip(res, R.drawable.anim_cat_idle, PLAYER_FRAMES)
         catIdleGreen = splitStrip(res, R.drawable.anim_cat_idle_green, PLAYER_FRAMES)
+        catIdleRed = splitStrip(res, R.drawable.anim_cat_idle_red, PLAYER_FRAMES)
+        catIdleOrange = splitStrip(res, R.drawable.anim_cat_idle_orange, PLAYER_FRAMES)
+        catIdleYellow = splitStrip(res, R.drawable.anim_cat_idle_yellow, PLAYER_FRAMES)
         catIdleBlue = splitStrip(res, R.drawable.anim_cat_idle_blue, PLAYER_FRAMES)
         thiefIdle = splitStrip(res, R.drawable.anim_cat_idle_thief, PLAYER_FRAMES)
         catWalk = splitStrip(res, R.drawable.anim_cat_walk, PLAYER_FRAMES)

@@ -579,6 +579,31 @@ class BlueCat(x: Float, y: Float) : Enemy(x, y, 20, 5) {
     }
 }
 
+// ============ 빨강·주황·노랑냥이 (파랑냥이처럼 색만 다른 일반 냥이 — 대표님 2026-09-20) ============
+/** 공통 몸통: 파랑냥이와 같은 움직임(총총 뛰며 다가와 몸으로 부딪친다). HP 20, 공격 5 — 파랑냥이와 같게 (Claude 판단) */
+abstract class ColorCat(x: Float, y: Float, private val sprite: () -> Bitmap) : Enemy(x, y, 20, 5) {
+    override val width = 92f
+    override val height = 104f
+    private var hopPhase = (Math.random() * Math.PI).toFloat()
+
+    override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
+        facingRight = playerX > x
+        val dx = playerX - x
+        velocityX = if (abs(dx) < 500f) sign(dx) * 200f else sign(dx) * 90f
+        hopPhase += deltaTime * 13f
+        jumpZ = -abs(sin(hopPhase.toDouble())).toFloat() * 16f
+        super.update(deltaTime, playerX, playerY)
+    }
+
+    override fun draw(canvas: Canvas) {
+        drawSprite(canvas, sprite())
+        drawHpBar(canvas)
+    }
+}
+class RedCat(x: Float, y: Float) : ColorCat(x, y, { SpriteManager.redCatEvil })
+class OrangeCat(x: Float, y: Float) : ColorCat(x, y, { SpriteManager.orangeCatEvil })
+class YellowCat(x: Float, y: Float) : ColorCat(x, y, { SpriteManager.yellowCatEvil })
+
 // ============ 나쁜 그린냥이 (HP 20, 슬라임 대미지 10) ============
 /** 수북한 꼬리의 나쁜 편 그린냥이: 멈춰 서서 슬라임을 뱉는다 */
 class GreenCat(x: Float, y: Float) : Enemy(x, y, 20, 10) {

@@ -69,11 +69,11 @@ class Level(val stageNumber: Int) {
                 spikes = 2, secrets = 1, humans = 1, cats = 1)
             7 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 6),
                 spikes = 2, secrets = 2, cats = 2)
-            8 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 6, Kind.GREEN to 3),
+            8 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 6, Kind.GREEN to 3, Kind.GUN to 1),
                 spikes = 1, dangerPits = 1, secrets = 2, humans = 2)
-            9 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 7, Kind.GREEN to 4),
+            9 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 7, Kind.GREEN to 4, Kind.GUN to 2),
                 spikes = 1, dangerPits = 1, secrets = 2, humans = 1, cats = 2)
-            10 -> StagePlan(mapOf(Kind.NORMAL to 12, Kind.BLUE to 9, Kind.GREEN to 8),
+            10 -> StagePlan(mapOf(Kind.NORMAL to 12, Kind.BLUE to 9, Kind.GREEN to 8, Kind.GUN to 2),
                 secrets = 3,
                 boss = { baseX -> listOf(TeleportCatBoss(baseX, Constants.GROUND_Y)) })
 
@@ -223,7 +223,8 @@ class Level(val stageNumber: Int) {
         LASER({ x, y -> LaserCat(x, y) }),       // 레이저냥이 HP15 (이후 지역)
         THIEF({ x, y -> ThiefCat(x, y) }),       // 도둑냥이 — 스테이지마다 1마리, 루비 2개 훔침
         VINE({ x, y -> VineCat(x, y) }),         // 덩굴냥이 HP15 (정글 — 덩굴 그네)
-        HAMMER({ x, y -> HammerCat(x, y) });     // 해머냥이 HP10 공격3 (기획7 — 모루냥이가 나오는 스테이지에만, 마릿수 무작위)
+        HAMMER({ x, y -> HammerCat(x, y) }),     // 해머냥이 HP10 공격3 (기획7 — 모루냥이가 나오는 스테이지에만, 마릿수 무작위)
+        GUN({ x, y -> GunCat(x, y) });           // 총냥이 HP15 공격2 (기획8 — 배치는 임시, 대표님 확인 필요)
 
         companion object {
             /** 모루냥이 스테이지에 섞이는 해머냥이 마릿수 범위 (무작위) */

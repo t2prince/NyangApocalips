@@ -327,6 +327,102 @@ class HammerCat(x: Float, y: Float) : Enemy(x, y, 10, 3) {
     }
 }
 
+// ============ Gun Cat ============
+/**
+ * 총냥이 (기획8 `Plan/기획8_총냥이.jpeg`: 공격 2, 피 15). 일반(노란) 냥이 등에 총이 달려 있고 보라색 총알을 쏜다.
+ * 몸은 치즈냥이 그림, 등의 총은 코드로 그린다. 탄은 사거리 안에서 2초마다 수평으로.
+ */
+class GunCat(x: Float, y: Float) : Enemy(x, y, 15, 2) {
+    override val width = 80f
+    override val height = 95f
+    private val moveSpeed = 55f
+    private var wanderTimer = 0f
+    private var wanderDirX = 0f
+    private var hopPhase = (Math.random() * Math.PI).toFloat()
+    private var shootTimer = 1.5f
+    private var recoil = 0f
+    private val pendingProjectiles = mutableListOf<Projectile>()
+    private val coat = com.jamcat.nayngapo.engine.CatCoat.CHEESE
+
+    init { pickNewDirection() }
+
+    private fun pickNewDirection() {
+        wanderTimer = 1f + (Math.random() * 2f).toFloat()
+        wanderDirX = (if (Math.random() < 0.5) -1f else 1f) * moveSpeed
+    }
+
+    override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
+        pendingProjectiles.clear()
+        facingRight = playerX > x
+        wanderTimer -= deltaTime
+        val dx = playerX - x
+        val dist = abs(dx)
+        // 사거리 안이면 거리를 두고 서서 쏜다, 너무 가까우면 물러난다
+        velocityX = when {
+            dist < 180f -> -sign(dx) * moveSpeed
+            dist < FIRE_RANGE -> 0f
+            else -> { if (wanderTimer <= 0f) pickNewDirection(); wanderDirX }
+        }
+        shootTimer -= deltaTime
+        if (recoil > 0f) recoil -= deltaTime
+        if (shootTimer <= 0f && dist < FIRE_RANGE) {
+            shootTimer = 2f; recoil = 0.25f
+            val dir = if (facingRight) 1f else -1f
+            pendingProjectiles.add(
+                Projectile(x + width / 2f + dir * 34f, y - height * 0.92f, dir * 620f, 0f, attackPower, false,
+                    tint = Color.rgb(170, 70, 220), radius = 5f)   // 보라색 총알, 등 위 총열 끝에서
+            )
+        }
+        if (abs(velocityX) > 1f) { hopPhase += deltaTime * 9f; jumpZ = -abs(kotlin.math.sin(hopPhase)) * 5f }
+        else jumpZ = 0f
+        super.update(deltaTime, playerX, playerY)
+    }
+
+    override fun draw(canvas: Canvas) {
+        val frames = if (abs(velocityX) > 1f) coat.walk else coat.idle
+        val bmp = frame(frames, 7f)
+        drawSprite(canvas, bmp)
+        drawGun(canvas, bmp)
+        drawHpBar(canvas)
+    }
+
+    /** 등에 달린 총(대표님 2026-09-20 「일반 냥이의 등에 총이 달린 모습」): 등 위 받침 + 앞으로 뻗은 총열. 쏠 때 반동으로 살짝 들린다. */
+    private fun drawGun(canvas: Canvas, bmp: Bitmap) {
+        val cx = x + width / 2f
+        val dir = if (facingRight) 1f else -1f
+        val backX = cx - dir * bmp.width * 0.14f                   // 등(머리 반대쪽) 위
+        val backY = y + jumpZ + windLift - bmp.height * 0.88f
+        val kick = if (recoil > 0f) -12f * (recoil / 0.25f) else 0f
+        canvas.save()
+        canvas.translate(backX, backY)
+        canvas.scale(dir, 1f)
+        // 받침(등에 고정)
+        gunRect.set(-bmp.width * 0.08f, 0f, bmp.width * 0.08f, bmp.height * 0.09f)
+        canvas.drawRoundRect(gunRect, 2f, 2f, gunPaint); canvas.drawRoundRect(gunRect, 2f, 2f, gunEdgePaint)
+        canvas.rotate(kick)
+        val bh = bmp.height * 0.10f
+        gunRect.set(-bmp.width * 0.12f, -bh, bmp.width * 0.10f, 0f)            // 총 몸통
+        canvas.drawRoundRect(gunRect, 3f, 3f, gunPaint); canvas.drawRoundRect(gunRect, 3f, 3f, gunEdgePaint)
+        val bl = bmp.width * 0.42f
+        gunRect.set(bmp.width * 0.08f, -bh * 0.8f, bmp.width * 0.08f + bl, -bh * 0.2f)   // 총열(앞으로)
+        canvas.drawRoundRect(gunRect, 2f, 2f, gunPaint); canvas.drawRoundRect(gunRect, 2f, 2f, gunEdgePaint)
+        if (recoil > 0.15f) canvas.drawCircle(bmp.width * 0.08f + bl + 6f, -bh * 0.5f, 6f, flashPaint)   // 총구 불꽃
+        canvas.restore()
+    }
+
+    override fun getProjectiles(): List<Projectile> = pendingProjectiles.toList()
+
+    companion object {
+        private const val FIRE_RANGE = 520f
+        private val gunRect = RectF()
+        private val gunPaint = Paint().apply { color = Color.rgb(70, 72, 80); isAntiAlias = true }
+        private val gunEdgePaint = Paint().apply {
+            color = Color.rgb(30, 30, 36); isAntiAlias = true; style = Paint.Style.STROKE; strokeWidth = 2f
+        }
+        private val flashPaint = Paint().apply { color = Color.rgb(230, 120, 255); isAntiAlias = true }
+    }
+}
+
 // ============ Thief Cat ============
 /**
  * 도둑냥이 (대표님 2026-09-20): 도둑처럼 생겼고(눈가리개·보따리), 레이저는 쏘지 않는다.

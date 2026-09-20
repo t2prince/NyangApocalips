@@ -26,6 +26,10 @@ class RubyShopScreen(private val gameView: GameView) : Screen {
     private val buttonRects = buttons.map { RectF() }
 
     private val scorePanel = RectF()
+    private val debtPaint = Paint().apply {
+        color = Color.rgb(214, 70, 70); textAlign = Paint.Align.CENTER
+        typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
+    }
     private val rubyPanel = RectF()
     private val backRect = RectF()
 
@@ -140,6 +144,11 @@ class RubyShopScreen(private val gameView: GameView) : Screen {
         bigNumPaint.textAlign = Paint.Align.LEFT
         canvas.drawText(rubyText, blockLeft + gemR * 2f + h * 0.014f, numBase, bigNumPaint)
         bigNumPaint.textAlign = Paint.Align.CENTER
+        // 빚 칸: 도둑냥이한테 뺏긴 게 지갑보다 많으면 여기 쌓인다 (새 루비로 먼저 갚는다)
+        if (GameProgress.rubyDebt > 0) {
+            debtPaint.textSize = h * 0.034f
+            canvas.drawText("빚 ${GameProgress.rubyDebt} 루비", rubyPanel.centerX(), rubyPanel.bottom + h * 0.045f, debtPaint)
+        }
 
         ratePaint.textSize = h * 0.040f
         canvas.drawText("${GameProgress.SCORE_PER_RUBY}점 = 1루비", w / 2f, h * 0.505f, ratePaint)

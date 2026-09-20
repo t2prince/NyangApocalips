@@ -21,6 +21,7 @@ object GameProgress {
     private const val KEY_DEX = "dex_found"
     private const val KEY_DEX_SEEN = "dex_seen"
     private const val KEY_RUBIES = "rubies"
+    private const val KEY_RUBY_DEBT = "ruby_debt"
     private const val KEY_BANK_SCORE = "bank_score"
     private const val KEY_ITEM_PREFIX = "item_"
     private const val KEY_HERO = "hero"
@@ -69,6 +70,8 @@ object GameProgress {
 
     /** 보유 루비 — 고양이 상점에서 물건을 사는 데 쓴다 */
     var rubies = 0
+    /** 루비 빚 — 도둑냥이가 가진 것보다 많이 훔치면 루비는 0이 되고 나머지가 여기 쌓인다. 새로 얻는 루비로 먼저 갚는다 (대표님 2026-09-20) */
+    var rubyDebt = 0
         private set
 
     /** 그동안 쌓아온(아직 루비로 환전하지 않은) 점수 */
@@ -98,6 +101,7 @@ object GameProgress {
 
         selectedHero = prefs?.getString(KEY_HERO, Heroes.DEFAULT_ID) ?: Heroes.DEFAULT_ID
         rubies = prefs?.getInt(KEY_RUBIES, 0) ?: 0
+        rubyDebt = prefs?.getInt(KEY_RUBY_DEBT, 0) ?: 0
         bankScore = prefs?.getInt(KEY_BANK_SCORE, 0) ?: 0
         inventory.clear()
         for (item in ShopCatalog.items) {
@@ -134,16 +138,22 @@ object GameProgress {
     /** 루비를 그대로 얻는다 (적을 쓰러뜨렸을 때의 드롭) */
     fun addRubies(n: Int) {
         if (n <= 0) return
-        rubies += n
-        prefs?.edit()?.putInt(KEY_RUBIES, rubies)?.apply()
+        // 빚이 있으면 먼저 갚고 남는 만큼만 지갑에
+        val repay = n.coerceAtMost(rubyDebt)
+        rubyDebt -= repay
+        rubies += n - repay
+        prefs?.edit()?.putInt(KEY_RUBIES, rubies)?.putInt(KEY_RUBY_DEBT, rubyDebt)?.apply()
     }
 
     /** 루비를 쓴다 (기술 배우기) — 모자라면 false */
-    /** 도둑냥이가 훔쳐 간다 — 가진 만큼만(최대 n) 빼고, 실제로 뺀 개수를 돌려준다 */
+    /** 도둑냥이가 훔쳐 간다 — 지갑에서 빼고, 모자라는 만큼은 빚으로. 훔친 총량(n)을 돌려준다 */
     fun takeRubies(n: Int): Int {
-        val taken = n.coerceAtMost(rubies).coerceAtLeast(0)
-        if (taken > 0) { rubies -= taken; prefs?.edit()?.putInt(KEY_RUBIES, rubies)?.apply() }
-        return taken
+        if (n <= 0) return 0
+        val fromWallet = n.coerceAtMost(rubies)
+        rubies -= fromWallet
+        rubyDebt += n - fromWallet
+        prefs?.edit()?.putInt(KEY_RUBIES, rubies)?.putInt(KEY_RUBY_DEBT, rubyDebt)?.apply()
+        return n
     }
 
     fun spendRubies(n: Int): Boolean {
@@ -162,11 +172,8 @@ object GameProgress {
         val cost = count * SCORE_PER_RUBY
         if (bankScore < cost) return false
         bankScore -= cost
-        rubies += count
-        prefs?.edit()
-            ?.putInt(KEY_BANK_SCORE, bankScore)
-            ?.putInt(KEY_RUBIES, rubies)
-            ?.apply()
+        prefs?.edit()?.putInt(KEY_BANK_SCORE, bankScore)?.apply()
+        addRubies(count)   // 빚이 있으면 먼저 갚는다
         return true
     }
 

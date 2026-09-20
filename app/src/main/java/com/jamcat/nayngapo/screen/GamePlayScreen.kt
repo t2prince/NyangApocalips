@@ -723,17 +723,14 @@ class GamePlayScreen(
                     if (enemy is com.jamcat.nayngapo.entity.ThiefCat) {
                         // 도둑냥이는 때리지 않고 루비를 훔쳐 달아난다 (잡으면 되찾는다)
                         if (enemy.tryStealOnTouch()) {
+                            // 지갑에서 빼고 모자라면 빚으로 쌓인다 (루비는 0에서 멈추고 빚 칸이 는다 — 대표님 2026-09-20)
+                            val debtBefore = GameProgress.rubyDebt
                             val taken = GameProgress.takeRubies(com.jamcat.nayngapo.entity.ThiefCat.STEAL_AMOUNT)
                             enemy.addStolen(taken)
-                            if (taken > 0) {
-                                shake(0.12f, 7f)
-                                hitEffects.add(HitEffect(player.x, player.y - player.height, 0.9f, "루비 ${taken}개 도둑맞음!"))
-                            } else {
-                                // 루비가 하나도 없으면 마이너스 대신 하트를 하나 깎는다 (대표님 2026-09-20)
-                                player.takeDamage(1)
-                                shake(0.18f, 11f)
-                                hitEffects.add(HitEffect(player.x, player.y - player.height, 0.9f, "루비가 없어 하트를 뺏겼다!"))
-                            }
+                            val newDebt = GameProgress.rubyDebt - debtBefore
+                            shake(0.12f, 7f)
+                            hitEffects.add(HitEffect(player.x, player.y - player.height, 0.9f,
+                                if (newDebt > 0) "루비 ${taken}개 도둑맞음! (빚 +$newDebt)" else "루비 ${taken}개 도둑맞음!"))
                         }
                         continue
                     }

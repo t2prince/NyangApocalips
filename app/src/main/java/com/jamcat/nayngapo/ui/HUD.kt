@@ -52,6 +52,10 @@ class HUD {
     }
     /** 루비 모양 전용 (다른 페인트 설정을 건드리지 않게 따로 둔다) */
     private val gemPaint = Paint().apply { isAntiAlias = true }
+    private val debtPaint = Paint().apply {
+        color = Color.rgb(255, 110, 110); textSize = 20f
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD); isAntiAlias = true
+    }
 
     private val rect = RectF()
 
@@ -156,6 +160,7 @@ class HUD {
         val rubyCy = top + 116f
         drawRubyIcon(canvas, gaugeL + 11f, rubyCy, 11f, gemPaint)
         canvas.drawText("×${GameProgress.rubies}", gaugeL + 30f, rubyCy + 8f, smallValuePaint)
+        if (GameProgress.rubyDebt > 0) canvas.drawText("빚 ${GameProgress.rubyDebt}", gaugeL + 110f, rubyCy + 8f, debtPaint)
 
         // 팀 냥이에게 내린 지시
         allyOrderLabel?.let { label ->

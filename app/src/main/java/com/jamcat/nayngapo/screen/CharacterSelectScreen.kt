@@ -36,6 +36,16 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
         color = Color.rgb(30, 28, 26); style = Paint.Style.STROKE
         strokeWidth = 4.5f; isAntiAlias = true
     }
+    private val pricePaint = Paint().apply { color = Color.rgb(255, 214, 74); isAntiAlias = true }
+    private val lockPaint = Paint().apply { isAntiAlias = true }
+    private val rubyTextPaint = Paint().apply { color = Color.rgb(40, 36, 32); textAlign = Paint.Align.RIGHT; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
+    private val gemPaint = Paint().apply { isAntiAlias = true }
+    private val noticePaint = Paint().apply { color = Color.rgb(255, 250, 225); isAntiAlias = true }
+    private val noticeTextPaint = Paint().apply { color = Color.rgb(35, 32, 30); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
+    private val noticeRect = RectF()
+    private var noticeText = ""
+    private var noticeTimer = 0f
+    private fun showNotice(t: String) { noticeText = t; noticeTimer = 1.6f }
     private val selectEdgePaint = Paint().apply {
         color = Color.rgb(240, 170, 20); style = Paint.Style.STROKE
         strokeWidth = 8f; isAntiAlias = true
@@ -73,6 +83,7 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
     private val tagRect = RectF()
 
     override fun update(deltaTime: Float) {
+        if (noticeTimer > 0f) noticeTimer -= deltaTime
         timer += deltaTime
         if (hopT > 0f) hopT -= deltaTime
     }
@@ -84,6 +95,9 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
 
         titlePaint.textSize = h * 0.070f
         canvas.drawText("캐릭터 변경", w / 2f, h * 0.090f, titlePaint)
+        rubyTextPaint.textSize = h * 0.046f
+        com.jamcat.nayngapo.ui.drawRubyIcon(canvas, w - w * 0.03f - rubyTextPaint.measureText("${GameProgress.rubies}") - h * 0.04f, h * 0.072f, h * 0.024f, gemPaint)
+        canvas.drawText("${GameProgress.rubies}", w - w * 0.03f, h * 0.088f, rubyTextPaint)
 
         val groundY = h * 0.700f
         val selectedId = GameProgress.selectedHero
@@ -97,6 +111,7 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
             val l = padX + i * (cw + gap)
             cardRects[i].set(l, h * 0.135f, l + cw, h * 0.870f)
             val chosen = hero.id == selectedId
+            val owned = GameProgress.ownsHero(hero.id)
 
             if (chosen) {
                 canvas.drawRoundRect(cardRects[i], 20f, 20f, highlightPaint)
@@ -121,7 +136,14 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
                     -sin((1f - hopT / HOP_TIME).coerceIn(0f, 1f) * Math.PI.toFloat()) * h * 0.035f
                 else 0f
             heroDst.set(cx - bw / 2f, groundY - bh + hop, cx + bw / 2f, groundY + hop)
-            drawHero(canvas, bmp, heroDst, hero, true, timer)
+            if (!owned) lockPaint.alpha = 110 else lockPaint.alpha = 255
+            if (owned) drawHero(canvas, bmp, heroDst, hero, true, timer)
+            else {
+                // 아직 안 산 인간은 흐리게 (실루엣)
+                canvas.saveLayerAlpha(heroDst, 90)
+                drawHero(canvas, bmp, heroDst, hero, true, timer)
+                canvas.restore()
+            }
 
             // 이름 · 한 줄 설명
             namePaint.textSize = h * 0.040f
@@ -136,15 +158,15 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
             drawPips(canvas, cx, groundY + h * 0.138f, cw, h, "공격", hero.atkPips)
             drawPips(canvas, cx, groundY + h * 0.164f, cw, h, "속도", hero.speedPips)
 
-            if (chosen) {
-                val tw = cw * 0.40f
+            if (chosen || !owned) {
+                val tw = cw * (if (owned) 0.40f else 0.62f)
                 val th = h * 0.048f
                 tagRect.set(cx - tw / 2f, cardRects[i].top + h * 0.012f, cx + tw / 2f,
                     cardRects[i].top + h * 0.012f + th)
-                canvas.drawRoundRect(tagRect, th / 2f, th / 2f, tagPaint)
+                canvas.drawRoundRect(tagRect, th / 2f, th / 2f, if (owned) tagPaint else pricePaint)
                 canvas.drawRoundRect(tagRect, th / 2f, th / 2f, edgePaint)
                 tagTextPaint.textSize = th * 0.52f
-                canvas.drawText("선택됨", cx, tagRect.centerY() + th * 0.19f, tagTextPaint)
+                canvas.drawText(if (owned) "선택됨" else "${GameProgress.HERO_PRICE} 루비로 사기", cx, tagRect.centerY() + th * 0.19f, tagTextPaint)
             }
         }
 
@@ -156,6 +178,16 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
         canvas.drawRoundRect(backRect, 20f, 20f, edgePaint)
         backTextPaint.textSize = bh2 * 0.42f
         canvas.drawText("돌아가기", backRect.centerX(), backRect.centerY() + bh2 * 0.15f, backTextPaint)
+
+        if (noticeTimer > 0f) {
+            val alpha = (255f * (noticeTimer / 0.4f).coerceIn(0f, 1f)).toInt()
+            noticeRect.set(w * 0.3f, h * 0.42f, w * 0.7f, h * 0.55f)
+            noticePaint.alpha = alpha; edgePaint.alpha = alpha; noticeTextPaint.alpha = alpha
+            canvas.drawRoundRect(noticeRect, 18f, 18f, noticePaint); canvas.drawRoundRect(noticeRect, 18f, 18f, edgePaint)
+            noticeTextPaint.textSize = h * 0.042f
+            canvas.drawText(noticeText, noticeRect.centerX(), noticeRect.centerY() + h * 0.015f, noticeTextPaint)
+            edgePaint.alpha = 255; noticeTextPaint.alpha = 255; noticePaint.alpha = 255
+        }
     }
 
     /** "공격 ●●○" 처럼 이름 뒤에 점 세 개 */
@@ -182,6 +214,11 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
         }
         for ((i, hero) in Heroes.all.withIndex()) {
             if (!cardRects[i].contains(event.x, event.y)) continue
+            if (!GameProgress.ownsHero(hero.id)) {
+                // 안 산 인간: 3000루비로 산다 (사면 바로 선택)
+                if (GameProgress.buyHero(hero.id)) { showNotice("${hero.name} 구매!"); SoundManager.playCatHit() }
+                else { showNotice("루비가 부족하다냥! (${GameProgress.HERO_PRICE} 필요)"); break }
+            }
             if (hero.id != GameProgress.selectedHero) {
                 GameProgress.selectHero(hero.id)
                 SoundManager.playCatHit()

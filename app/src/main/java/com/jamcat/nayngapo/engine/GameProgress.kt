@@ -25,6 +25,9 @@ object GameProgress {
     private const val KEY_BANK_SCORE = "bank_score"
     private const val KEY_ITEM_PREFIX = "item_"
     private const val KEY_HERO = "hero"
+    private const val KEY_OWNED_HEROES = "owned_heroes"
+    /** 새 인간(검은 인간 말고) 값 — 대표님 2026-09-20 「새 캐릭터들은 루비 3천으로 사는 걸로」 */
+    const val HERO_PRICE = 3000
     private const val KEY_CLEARED = "cleared_stages"
     private const val KEY_LAST_CLEARED = "last_cleared_stage"
     private const val KEY_KILLS = "stat_kills"
@@ -66,6 +69,17 @@ object GameProgress {
     /** 지금 고른 인간의 id (로비 '캐릭터 변경'에서 바꾼다) */
     var selectedHero = Heroes.DEFAULT_ID
         private set
+    /** 산 인간들 (기본 인간은 항상 포함) */
+    val ownedHeroes = mutableSetOf(Heroes.DEFAULT_ID)
+    fun ownsHero(id: String) = id in ownedHeroes
+    /** 인간 구매 — 루비가 모자라면 false */
+    fun buyHero(id: String): Boolean {
+        if (ownsHero(id)) return true
+        if (!spendRubies(HERO_PRICE)) return false
+        ownedHeroes.add(id)
+        prefs?.edit()?.putStringSet(KEY_OWNED_HEROES, ownedHeroes.toSet())?.apply()
+        return true
+    }
 
     /** 인간을 바꾼다 */
     fun selectHero(id: String) {
@@ -124,6 +138,9 @@ object GameProgress {
         seenInDex.addAll(prefs?.getStringSet(KEY_DEX_SEEN, emptySet()) ?: emptySet())
 
         selectedHero = prefs?.getString(KEY_HERO, Heroes.DEFAULT_ID) ?: Heroes.DEFAULT_ID
+        ownedHeroes.clear(); ownedHeroes.add(Heroes.DEFAULT_ID)
+        ownedHeroes.addAll(prefs?.getStringSet(KEY_OWNED_HEROES, emptySet()) ?: emptySet())
+        ownedHeroes.add(selectedHero)   // 구매 도입 전에 고른 인간은 가진 것으로 (기존 세이브 보호)
         rubies = prefs?.getInt(KEY_RUBIES, 0) ?: 0
         rubyDebt = prefs?.getInt(KEY_RUBY_DEBT, 0) ?: 0
         totalKills = prefs?.getInt(KEY_KILLS, 0) ?: 0

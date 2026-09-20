@@ -25,6 +25,9 @@ class Player(var x: Float, var y: Float) {
     var jumpZ = 0f
     var jumpVelocity = 0f
     var isJumping = false
+    /** 이 스테이지의 공중 발판 (화면이 넣어 준다). 올라서 있으면 onPlatform 에 기억한다 */
+    var platforms: List<com.jamcat.nayngapo.entity.Platform> = emptyList()
+    var onPlatform: com.jamcat.nayngapo.entity.Platform? = null
     var facingRight = true
 
     var isAttacking = false
@@ -132,14 +135,37 @@ class Player(var x: Float, var y: Float) {
             x = x.coerceIn(Constants.PLAY_AREA_LEFT + 10f, Constants.PLAY_AREA_RIGHT - width - 10f)
             y = Terrain.groundY(x + width / 2f)
 
+            val feetBefore = y + jumpZ
             if (stompPhase != StompPhase.NONE) {
                 updateStomp(deltaTime)
             } else if (isJumping) {
                 jumpVelocity += Constants.JUMP_GRAVITY * deltaTime
                 jumpZ += jumpVelocity * deltaTime
-                if (jumpZ >= 0f) {
+                // 내려오는 중에 발이 발판 윗면을 지나면 그 위에 선다 (공중 발판, 2026-09-20)
+                if (jumpVelocity > 0f) {
+                    val cx = x + width / 2f
+                    val feetNow = y + jumpZ
+                    val landing = platforms.firstOrNull { p -> p.holds(cx) && feetBefore <= p.y + 2f && feetNow >= p.y }
+                    if (landing != null) {
+                        onPlatform = landing
+                        jumpZ = landing.y - y; jumpVelocity = 0f; isJumping = false
+                        landTimer = 0.12f
+                    }
+                }
+                if (isJumping && jumpZ >= 0f) {
                     jumpZ = 0f; jumpVelocity = 0f; isJumping = false
                     landTimer = 0.12f   // 착지 스쿼시 연출
+                }
+            } else {
+                val p = onPlatform
+                if (p != null) {
+                    val cx = x + width / 2f
+                    if (p.holds(cx)) {
+                        jumpZ = p.y - y                 // 발판 높이를 지형 대비 오프셋으로 유지
+                    } else {
+                        onPlatform = null                // 가장자리를 벗어나면 떨어진다
+                        isJumping = true; jumpVelocity = 0f
+                    }
                 }
             }
         }
@@ -435,6 +461,7 @@ class Player(var x: Float, var y: Float) {
         if (ridingVine) return          // 매달린 동안의 점프는 '놓기'라서 화면 쪽에서 처리한다
         if (inDeepSnow) return          // 눈에 발이 묶여 뛸 수 없다
         if (!isJumping && stompPhase == StompPhase.NONE) {
+            onPlatform = null                                // 발판 위에서도 그대로 뛴다 (jumpZ 오프셋에서 시작)
             isJumping = true; jumpVelocity = Constants.JUMP_VELOCITY * hero.jumpMul
         }
     }

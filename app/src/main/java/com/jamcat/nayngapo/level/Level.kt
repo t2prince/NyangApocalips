@@ -40,6 +40,8 @@ class Level(val stageNumber: Int) {
     val snowPits = mutableListOf<SnowPit>()
     /** 바닥이 통째로 없는 낭떠러지 — 이후 지역용 (초원 1~10에는 없다) */
     val chasms = mutableListOf<Chasm>()
+    /** 공중 발판 (슈퍼마리오식, 2026-09-20) */
+    val platforms = mutableListOf<Platform>()
     /** 10초마다 인간 앞에 솟아오르는 벽 (부수거나 뛰어넘어야 한다) */
     val walls = mutableListOf<Wall>()
     /** 정글의 덩굴 그네 — 인간도 점프로 잡고 타서 건널 수 있다 (12~20) */
@@ -182,6 +184,17 @@ class Level(val stageNumber: Int) {
             val probe = Chasm(cx, 0f, seed)
             chasms.add(Chasm(cx, Terrain.groundY(cx + probe.width / 2f), seed))
             hazardX.add(cx - 80f)                    // 비밀의 방·감옥이 위에 안 놓이게
+        }
+
+        // ===== 공중 발판: 2스테이지부터, 그룹 위·빈 구간 위에 띄운다 (점프 최고 200px 안: 지면 위 130~170) =====
+        val platformCount = if (stageNumber < 2) 0 else (1 + stageNumber / 5).coerceAtMost(5)
+        repeat(platformCount) { i ->
+            val gc = gapCenters[((i + 1) * gapCenters.size) / (platformCount + 1) % gapCenters.size]
+            val px = gc - 420f + (i % 2) * 160f
+            val pw = 220f + ((stageNumber * 7 + i * 13) % 100)
+            val lift = 130f + ((stageNumber * 11 + i * 17) % 40)
+            val gy = minOf(Terrain.groundY(px), Terrain.groundY(px + pw))   // 지형 중 더 높은 쪽 기준으로 띄운다
+            platforms.add(Platform(px, gy - lift, pw))
         }
 
         // ===== 비밀의 방: 함정이 없는 빈 구간에 숨긴다 =====

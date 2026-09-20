@@ -631,7 +631,7 @@ class GamePlayScreen(
 
         // 바닥이 없는 낭떠러지: 발이 허공에 닿는 순간 그대로 떨어져 즉사한다
         for (chasm in level.chasms) {
-            if (player.isJumping || player.ridingVine) continue
+            if (player.isJumping || player.ridingVine || player.onPlatform != null) continue
             if (!chasm.swallows(player.x + player.width / 2f)) continue
 
             shake(0.4f, 20f)
@@ -869,6 +869,9 @@ class GamePlayScreen(
             shakeTimer -= deltaTime
             if (shakeTimer <= 0f) shakeAmp = 0f
         }
+
+        // 공중 발판 목록을 인간에게 (스테이지마다 한 번이면 되지만 값싼 대입이라 매 프레임 둔다)
+        player.platforms = level.platforms
 
         // Update hit effects
         hitEffects.forEach { it.timer -= deltaTime; it.y -= 30f * deltaTime }
@@ -1869,6 +1872,10 @@ class GamePlayScreen(
         for (vine in level.vines) vine.draw(canvas)
 
         // Prisons
+        for (platform in level.platforms) {
+            if (platform.right < camera.x - 100f || platform.x > camera.x + sw + 100f) continue
+            drawables.add(Drawable(platform.y + platform.height) { platform.draw(canvas) })
+        }
         for (prison in level.prisons) {
             drawables.add(Drawable(prison.y) { prison.draw(canvas) })
         }

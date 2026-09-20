@@ -138,6 +138,7 @@ object CatTeam {
         saveDebt = 0f
         nameCounts.clear()
 
+        var migratedCoat = false
         val raw = prefs.getString(KEY_CATS, null)
         if (raw != null) {
             val arr = try { JSONArray(raw) } catch (_: Exception) { null }
@@ -164,7 +165,10 @@ object CatTeam {
                             diedAtStage = o.optInt("diedAtStage", 0),
                             hasLeft = o.optBoolean("hasLeft", false),
                             attackBonus = o.optInt("attackBonus", 0).coerceAtLeast(0),
-                            coat = CatCoat.of(o.optString("coat", "CHEESE"))
+                            // 무늬 도입(2026-09-20) 전에 저장된 치즈냥이는 무늬가 없다 → 한 번 무작위로 뽑아 준다 (대표님 지시)
+                            coat = if (o.has("coat")) CatCoat.of(o.optString("coat"))
+                                   else if (kind == AllyCat.Kind.NORMAL) { migratedCoat = true; CatCoat.random() }
+                                   else CatCoat.CHEESE
                         )
                     )
                 }
@@ -187,6 +191,7 @@ object CatTeam {
         for (kind in AllyCat.Kind.values()) {
             if (kind !in nameCounts) nameCounts[kind] = roster.count { it.kind == kind }
         }
+        if (migratedCoat) save()   // 새로 뽑은 무늬를 바로 적어 두어 다음 실행에 또 바뀌지 않게
         // 앱을 꺼 둔 시간은 흐르지 않는다 — 배고픔은 게임을 하는 동안에만 진행된다
     }
 

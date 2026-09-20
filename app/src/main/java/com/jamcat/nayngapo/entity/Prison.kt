@@ -27,7 +27,8 @@ class Prison(
     var isOpen = false
     var rescueCount = if (kind == Kind.HUMAN) 3 else 1
 
-    val hitBox: RectF get() = RectF(x, y - height, x + width, y)
+    private val hitBoxRect = RectF()
+    val hitBox: RectF get() = hitBoxRect.apply { set(x, y - height, x + width, y) }
 
     private val cagePaint = Paint().apply {
         color = Color.GRAY

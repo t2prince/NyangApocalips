@@ -746,11 +746,13 @@ class SkyStageScreen(
 
         drawHud(canvas, w, h)
         touchControls.draw(canvas, gameView.screenWidth, gameView.screenHeight)
+        com.jamcat.nayngapo.ui.MenuButtons.draw(canvas, paused)   // 땅과 같은 멈추기·나가기 버튼
 
         if (paused) {
             canvas.drawRect(0f, 0f, w, h, pauseVeilPaint)
             canvas.drawText("PAUSED", w / 2f, h / 2f - 6f, pauseTextPaint)
-            canvas.drawText("한 번 더 누르면 계속 · 뒤로가기를 또 누르면 나가기", w / 2f, h / 2f + 44f, pauseHintPaint)
+            canvas.drawText("멈추기 버튼을 다시 누르면 이어서 진행합니다", w / 2f, h / 2f + 44f, pauseHintPaint)
+            com.jamcat.nayngapo.ui.MenuButtons.draw(canvas, paused)   // 막 위에 한 번 더 — 멈춘 상태에서도 또렷하게
         }
     }
 
@@ -805,10 +807,17 @@ class SkyStageScreen(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (paused) {
-            if (event.actionMasked == MotionEvent.ACTION_DOWN) paused = false
-            return true
+        // 멈추기·나가기 버튼을 먼저 본다 (두 번째 손가락으로 눌러도 먹히게 POINTER_DOWN 까지)
+        val action = event.actionMasked
+        if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
+            val idx = event.actionIndex
+            when (com.jamcat.nayngapo.ui.MenuButtons.hitTest(event.getX(idx), event.getY(idx))) {
+                com.jamcat.nayngapo.ui.MenuButtons.Hit.PAUSE -> { paused = !paused; touchControls.releaseAll(); return true }
+                com.jamcat.nayngapo.ui.MenuButtons.Hit.EXIT -> { touchControls.releaseAll(); gameView.showLobby(); return true }
+                null -> {}
+            }
         }
+        if (paused) return true       // 멈춘 동안에는 조작이 먹지 않는다
         return touchControls.onTouchEvent(event, gameView.screenWidth, gameView.screenHeight)
     }
 

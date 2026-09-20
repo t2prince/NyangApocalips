@@ -17,7 +17,7 @@ enum class CatCoat(val label: String) {
     BICOLOR("얼룩이");
 
     /** 도감 id — 노랑이는 기존 치즈냥이 칸("normal"), 나머지는 무늬별 칸 */
-    val dexId: String get() = if (this == CHEESE) "normal" else name.lowercase()
+    val dexId: String = if (name == "CHEESE") "normal" else name.lowercase()   // 매 프레임 문자열을 새로 만들지 않게 미리 계산
 
     /** 적(두꺼운 꼬리) 정지 그림 */
     val enemy: Bitmap get() = SpriteManager.coatEnemy[this] ?: SpriteManager.normalCat

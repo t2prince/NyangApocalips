@@ -48,7 +48,9 @@ abstract class Enemy(
     open val isTangible: Boolean get() = true
 
     // 전신 히트박스 (부유 연출 jumpZ 포함): 경사 지형에서도 근접 공격이 빗나가지 않는다
-    val hitBox: RectF get() = RectF(x, y + jumpZ - height, x + width, y + 10f)
+    private val hitBoxRect = RectF()
+    /** 전신 히트박스 — 매 프레임 새로 만들지 않고 하나를 갱신해 돌려준다 (호출 직후에만 유효) */
+    val hitBox: RectF get() = hitBoxRect.apply { set(x, y + jumpZ - height, x + width, y + 10f) }
 
     /**
      * 피격 무적 시간. 공격 판정이 여러 프레임에 걸쳐 겹쳐도 한 번의 공격은 한 번만 적중시킨다
@@ -369,7 +371,7 @@ class GunCat(x: Float, y: Float) : Enemy(x, y, 15, 2) {
             shootTimer = 2f; recoil = 0.25f
             val dir = if (facingRight) 1f else -1f
             pendingProjectiles.add(
-                Projectile(x + width / 2f + dir * 34f, y - height * 0.92f, dir * 620f, 0f, attackPower, false,
+                Projectile(x + width / 2f + dir * 34f, y - height * 0.84f, dir * 620f, 0f, attackPower, false,
                     tint = Color.rgb(170, 70, 220), radius = 5f)   // 보라색 총알, 등 위 총열 끝에서
             )
         }
@@ -391,13 +393,14 @@ class GunCat(x: Float, y: Float) : Enemy(x, y, 15, 2) {
         val cx = x + width / 2f
         val dir = if (facingRight) 1f else -1f
         val backX = cx - dir * bmp.width * 0.14f                   // 등(머리 반대쪽) 위
-        val backY = y + jumpZ + windLift - bmp.height * 0.88f
+        // 등 윤곽에 딱 붙인다 — 받침이 몸 안으로 조금 들어가게 (대표님 2026-09-20 「몸과 총 사이가 붙어 있어야」)
+        val backY = y + jumpZ + windLift - bmp.height * 0.78f
         val kick = if (recoil > 0f) -12f * (recoil / 0.25f) else 0f
         canvas.save()
         canvas.translate(backX, backY)
         canvas.scale(dir, 1f)
         // 받침(등에 고정)
-        gunRect.set(-bmp.width * 0.08f, 0f, bmp.width * 0.08f, bmp.height * 0.09f)
+        gunRect.set(-bmp.width * 0.09f, -2f, bmp.width * 0.09f, bmp.height * 0.11f)   // 받침: 몸 안까지 내려 틈이 없게
         canvas.drawRoundRect(gunRect, 2f, 2f, gunPaint); canvas.drawRoundRect(gunRect, 2f, 2f, gunEdgePaint)
         canvas.rotate(kick)
         val bh = bmp.height * 0.10f

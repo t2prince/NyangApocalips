@@ -160,7 +160,8 @@ class AllyCat(
     private val hpFgPaint = Paint().apply { color = Color.rgb(110, 220, 130); isAntiAlias = true }
     private val scratch = RectF()
 
-    val hitBox: RectF get() = RectF(x, y + jumpZ - height, x + width, y + 10f)
+    private val hitBoxRect = RectF()
+    val hitBox: RectF get() = hitBoxRect.apply { set(x, y + jumpZ - height, x + width, y + 10f) }
 
     fun update(deltaTime: Float, playerX: Float, playerY: Float, enemies: List<Enemy>) {
         pendingMeleeTarget = null

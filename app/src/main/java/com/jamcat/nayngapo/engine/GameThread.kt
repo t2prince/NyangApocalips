@@ -22,7 +22,9 @@ class GameThread(
 
             var canvas: Canvas? = null
             try {
-                canvas = surfaceHolder.lockCanvas()
+                // GPU 캔버스 — 2400x1080 을 CPU 로 그리면 한 프레임에 70ms 가 넘어 게임이 느려진다 (2026-09-20 최적화).
+                // 하드웨어 캔버스를 못 얻는 경우만 예전처럼 소프트웨어로.
+                canvas = try { surfaceHolder.lockHardwareCanvas() } catch (_: Exception) { null } ?: surfaceHolder.lockCanvas()
                 if (canvas != null) {
                     synchronized(surfaceHolder) {
                         gameView.updateGame(deltaTime)

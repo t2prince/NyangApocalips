@@ -99,7 +99,8 @@ class Player(var x: Float, var y: Float) {
     private val moveSpeed = Constants.PLAYER_SPEED * hero.speedMul
 
     // 횡뷰: 발끝(y)부터 머리까지 전신 히트박스 (투사체가 몸통 높이로 날아온다)
-    val hitBox: RectF get() = RectF(x, y - 150f, x + width, y + 10f)
+    private val hitBoxRect = RectF()
+    val hitBox: RectF get() = hitBoxRect.apply { set(x, y - 150f, x + width, y + 10f) }
 
     // 졸라맨 스프라이트 (GPT가 그린 20포즈 시트에서 잘라 온 프레임들)
     private val spritePaint = Paint().apply { isFilterBitmap = true; isAntiAlias = true }

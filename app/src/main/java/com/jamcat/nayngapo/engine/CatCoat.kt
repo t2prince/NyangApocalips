@@ -30,12 +30,10 @@ enum class CatCoat(val label: String) {
     val idleArmor: List<Bitmap> get() = SpriteManager.coatIdleArmor[this] ?: idle
 
     companion object {
-        /** 무작위 무늬 — 노랑이(기준 디자인)가 절반, 나머지 넷이 나머지를 나눠 갖는다 */
+        /** 무작위 무늬 — 5종 똑같이 20%씩 (대표님 2026-09-20). 적 등장·감옥·기존 냥이 무늬 배정에 모두 쓴다 */
         fun random(): CatCoat {
-            val r = Math.random()
-            if (r < 0.5) return CHEESE
-            val others = values().filter { it != CHEESE }
-            return others[((r - 0.5) / 0.5 * others.size).toInt().coerceIn(0, others.size - 1)]
+            val all = values()
+            return all[(Math.random() * all.size).toInt().coerceIn(0, all.size - 1)]
         }
 
         fun of(name: String?): CatCoat = values().firstOrNull { it.name == name } ?: CHEESE

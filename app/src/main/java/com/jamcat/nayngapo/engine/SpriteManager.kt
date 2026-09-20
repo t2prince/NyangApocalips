@@ -43,6 +43,8 @@ object SpriteManager {
     /** 같은 대기 동작을 초록·파랑으로 물들인 시트 (도감에서 그린냥이·파랑냥이가 춤춘다) */
     lateinit var catIdleGreen: List<Bitmap>
     lateinit var catIdleBlue: List<Bitmap>
+    /** 도둑냥이 대기(춤) — 가면을 쓴 채 (도감용) */
+    lateinit var thiefIdle: List<Bitmap>
     lateinit var catWalk: List<Bitmap>
     lateinit var catJump: List<Bitmap>
     lateinit var catAttack: List<Bitmap>
@@ -153,6 +155,7 @@ object SpriteManager {
         catIdle = splitStrip(res, R.drawable.anim_cat_idle, PLAYER_FRAMES)
         catIdleGreen = splitStrip(res, R.drawable.anim_cat_idle_green, PLAYER_FRAMES)
         catIdleBlue = splitStrip(res, R.drawable.anim_cat_idle_blue, PLAYER_FRAMES)
+        thiefIdle = splitStrip(res, R.drawable.anim_cat_idle_thief, PLAYER_FRAMES)
         catWalk = splitStrip(res, R.drawable.anim_cat_walk, PLAYER_FRAMES)
         catJump = splitStrip(res, R.drawable.anim_cat_jump, PLAYER_FRAMES)
         catAttack = splitStrip(res, R.drawable.anim_cat_attack, PLAYER_FRAMES)

@@ -10,8 +10,9 @@ from rebuild_anim import label_components
 DST = 'app/src/main/res/drawable-nodpi'
 INK = (40, 40, 48)
 
-def main():
-    im = Image.open(os.path.join(DST, 'cat_normal.png')).convert('RGBA')
+def mask(im):
+    """오른쪽을 보는 냥이 한 칸에 도미노 가면을 씌워 돌려준다"""
+    im = im.convert('RGBA')
     arr = np.array(im)
     a = arr[..., 3] > 128
     rgb = arr[..., :3].astype(int)
@@ -54,7 +55,21 @@ def main():
     d.polygon([(kx + 2, ky - 2), (kx - bw * 0.10, ky - mh * 1.3), (kx - bw * 0.03, ky + 1)], fill=INK)
     d.polygon([(kx + 2, ky + 2), (kx - bw * 0.11, ky + mh * 0.9), (kx - bw * 0.03, ky - 1)], fill=INK)
     # 보따리는 없다 (대표님 2026-09-20)
-    im.save(os.path.join(DST, 'cat_thief.png')); print('cat_thief.png')
+    return im
+
+FRAMES = 7
+
+def main():
+    mask(Image.open(os.path.join(DST, 'cat_normal.png'))).save(os.path.join(DST, 'cat_thief.png')); print('cat_thief.png')
+    # 도감에서 춤추는 대기 스트립도 가면을 쓴 채로
+    strip = Image.open(os.path.join(DST, 'anim_cat_idle.png')).convert('RGBA')
+    w, h = strip.size; cw = w // FRAMES
+    out = Image.new('RGBA', strip.size, (0, 0, 0, 0))
+    for i in range(FRAMES):
+        x = i * cw
+        cell = strip.crop((x, 0, x + cw if i < FRAMES - 1 else w, h))
+        out.paste(mask(cell), (x, 0))
+    out.save(os.path.join(DST, 'anim_cat_idle_thief.png')); print('anim_cat_idle_thief.png')
 
 if __name__ == '__main__':
     main()

@@ -37,8 +37,8 @@ object CatDex {
         Entry("anvil", "모루냥이", "쇳덩이처럼 단단하다", { SpriteManager.anvilCat }),
         Entry("laser", "레이저냥이", "고글에서 광선이!", { SpriteManager.laserCat },
             frames = { SpriteManager.laserIdle }),
-        Entry("thief", "도둑냥이", "잽싸게 훔쳐간다", { SpriteManager.thiefCat },
-            frames = { SpriteManager.catIdle }),
+        Entry("thief", "도둑냥이", "루비를 훔쳐간다", { SpriteManager.thiefCat },
+            frames = { SpriteManager.thiefIdle }),   // 가면 쓴 채 춤춘다
         Entry("vine", "덩굴냥이", "덩굴을 타고 난다", { SpriteManager.vineCat }),
         Entry("teleport", "순간냥이", "순간이동하는 초원의 보스", { SpriteManager.teleportCat }),
         Entry("giant", "왕왕냥이", "하늘의 왕", { SpriteManager.bossEvilCat }),

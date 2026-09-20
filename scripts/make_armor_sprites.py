@@ -25,6 +25,9 @@ PLATE_LIGHT = (206, 210, 220)
 INK = (44, 44, 52)
 SEAM = (98, 102, 116)
 
+def lw_of(bh):
+    return max(2, int(bh * 0.035))
+
 def body_mask(arr):
     a = arr[..., 3] > 128
     rgb = arr[..., :3].astype(int)
@@ -57,24 +60,32 @@ def armor(im, wide=False, base=None):
     yy, xx = np.mgrid[0:H, 0:W]
     U = (xx - x0) / max(bw, 1); V = (yy - y0) / max(bh, 1)
 
+    # 눈 위치를 기준 그림에서 찾는다 — 챙이 눈을 가리면 안 된다 (대표님 2026-09-20)
+    a_ref = ref[..., 3] > 128
+    ink_ref = a_ref & (ref[..., :3].astype(int).max(axis=2) < 90)
+    eye_region = ink_ref & (U > 0.55) & (V > 0.04) & (V < 0.42)
+    eye_tops = [ys.min() for n, ys, xs in label_components(eye_region) if 3 <= n <= 60]
+    eye_top = min(eye_tops) if eye_tops else int(vy(0.16))
+    open_y = eye_top - 2                              # 창은 눈보다 두 픽셀 위에서 시작
+    brim_y = open_y - max(1, lw_of(bh) // 2) - 1      # 챙(굵은 선)은 그 위
     # 1) 판이 덮는 곳: 몸통 윗부분(배는 드러남). 아래 경계는 앞으로 갈수록 살짝 내려간다.
     bottom = 0.56 + 0.06 * U
-    face_open = (U > 0.60) & (V > 0.20)              # 눈·주둥이 창 — 얼굴은 드러난다
+    face_open = (U > 0.60) & (yy >= open_y)          # 눈·주둥이 창 — 얼굴은 드러난다
     plate = grown & (V < bottom) & ~face_open
     out = arr.copy()
     out[plate, :3] = PLATE
     out[plate & (V < 0.12), :3] = PLATE_LIGHT        # 윗면 하이라이트
     out[plate & (V > bottom - 0.12), :3] = PLATE_DARK  # 아랫단 그늘
     img = Image.fromarray(out); d = ImageDraw.Draw(img)
-    lw = max(2, int(bh * 0.035))
+    lw = lw_of(bh)
 
     # 판 아래 가장자리(배와의 경계) 굵은 선
     pts = [(ux(u), vy(0.56 + 0.06 * u)) for u in np.linspace(0.0, 0.60, 8)]
     d.line(pts, fill=INK, width=lw)
-    # 얼굴 창 왼쪽 세로 경계(볼 가리개) + 챙(눈 위 가로 띠)
-    d.line([(ux(0.60), vy(0.20)), (ux(0.60), vy(0.56 + 0.06 * 0.60))], fill=INK, width=lw)
-    d.line([(ux(0.58), vy(0.20)), (ux(1.02), vy(0.20))], fill=INK, width=lw + 1)
-    d.line([(ux(0.58), vy(0.15)), (ux(1.00), vy(0.15))], fill=SEAM, width=max(1, lw - 1))
+    # 얼굴 창 왼쪽 세로 경계(볼 가리개) + 챙(눈 바로 위 가로 띠 — 눈은 절대 안 가린다)
+    d.line([(ux(0.60), brim_y), (ux(0.60), vy(0.56 + 0.06 * 0.60))], fill=INK, width=lw)
+    d.line([(ux(0.58), brim_y), (ux(1.02), brim_y)], fill=INK, width=lw)
+    d.line([(ux(0.58), brim_y - lw - 1), (ux(1.00), brim_y - lw - 1)], fill=SEAM, width=max(1, lw - 1))
     # 2) 이음새 (세로 둘, 가로 하나) + 리벳
     for u in (0.26, 0.48):
         d.line([(ux(u), vy(0.02)), (ux(u), vy(0.56 + 0.06 * u))], fill=SEAM, width=max(1, lw - 1))

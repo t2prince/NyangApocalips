@@ -23,7 +23,10 @@ class TeamScreen(private val gameView: GameView) : Screen {
 
     private companion object {
         /** 아래 줄에 한 번에 보이는 냥이 칸 수 */
-        const val VISIBLE = 7
+        /** 아래 명단: 두 줄 × 8칸 = 한 페이지 16마리 (대표님 2026-09-20 「고양이도 컬럼 형태로」) */
+        const val COLS = 8
+        const val ROWS = 2
+        const val VISIBLE = COLS * ROWS
 
         /** 부활 연출 길이 */
         const val REVIVE_POP_TIME = 0.6f
@@ -441,7 +444,7 @@ class TeamScreen(private val gameView: GameView) : Screen {
         val towerH = h * 0.48f
         val towerScale = towerH / tower.height
         val towerW = tower.width * towerScale
-        val towerBottom = h * 0.790f
+        val towerBottom = h * 0.725f   // 아래 명단이 두 줄이 되어 조금 올린다
         val towerTop = towerBottom - towerH
         srcRect.set(0, 0, tower.width, tower.height)
         dstRect.set(cx - towerW / 2f, towerTop, cx + towerW / 2f, towerBottom)
@@ -717,7 +720,7 @@ class TeamScreen(private val gameView: GameView) : Screen {
         stripPage = stripPage.coerceIn(0, pages - 1)
         pageCats = cats.drop(stripPage * VISIBLE).take(VISIBLE)
 
-        val stripT = h * 0.800f
+        val stripT = h * 0.735f
         val stripB = h * 0.978f
         val aw = w * 0.040f
 
@@ -738,12 +741,16 @@ class TeamScreen(private val gameView: GameView) : Screen {
         val cardsL = w * 0.062f
         val cardsR = w - w * 0.062f
         val gap = w * 0.008f
-        val cw = (cardsR - cardsL - gap * (VISIBLE - 1)) / VISIBLE
+        val rowGap = h * 0.012f
+        val cw = (cardsR - cardsL - gap * (COLS - 1)) / COLS
+        val ch = (stripB - stripT - rowGap * (ROWS - 1)) / ROWS
 
         for (r in cardRects) r.setEmpty()
         for ((i, cat) in pageCats.withIndex()) {
-            val l = cardsL + i * (cw + gap)
-            cardRects[i].set(l, stripT, l + cw, stripB)
+            val col = i % COLS; val row = i / COLS
+            val l = cardsL + col * (cw + gap)
+            val t = stripT + row * (ch + rowGap)
+            cardRects[i].set(l, t, l + cw, t + ch)
             drawStripCard(canvas, cat, cardRects[i], h, i == pressedCard)
         }
     }
@@ -776,7 +783,8 @@ class TeamScreen(private val gameView: GameView) : Screen {
         canvas.drawBitmap(bmp, srcRect, dstRect, if (cat.hasLeft) silhouettePaint else bitmapPaint)
 
         // 이름 (칸 폭에 맞게 줄인다)
-        nameCenterPaint.textSize = h * 0.026f
+        val k = (rect.height() / (h * 0.178f)).coerceIn(0.6f, 1f)   // 예전 한 줄 카드 높이 대비 비율
+        nameCenterPaint.textSize = h * 0.026f * k
         while (nameCenterPaint.textSize > h * 0.016f &&
             nameCenterPaint.measureText(cat.name) > rect.width() - 12f
         ) {
@@ -786,7 +794,7 @@ class TeamScreen(private val gameView: GameView) : Screen {
 
         if (cat.gone) {
             // 무덤·떠난 냥이는 수치 대신 한 줄 설명
-            centerSmallPaint.textSize = h * 0.022f
+            centerSmallPaint.textSize = h * 0.022f * k
             val line = if (cat.isDead) "스테이지 ${cat.diedAtStage}에서 잠들다" else "배고파서 떠났다..."
             while (centerSmallPaint.textSize > h * 0.014f &&
                 centerSmallPaint.measureText(line) > rect.width() - 10f
@@ -798,10 +806,10 @@ class TeamScreen(private val gameView: GameView) : Screen {
         }
 
         // Lv 과 '포만감' 라벨을 한 줄에
-        leftBoldPaint.textSize = h * 0.023f
+        leftBoldPaint.textSize = h * 0.023f * k
         canvas.drawText("Lv ${cat.level}", rect.left + rect.width() * 0.07f,
             rect.bottom - rect.height() * 0.27f, leftBoldPaint)
-        rightSmallPaint.textSize = h * 0.021f
+        rightSmallPaint.textSize = h * 0.021f * k
         canvas.drawText("포만감", rect.right - rect.width() * 0.07f,
             rect.bottom - rect.height() * 0.27f, rightSmallPaint)
 

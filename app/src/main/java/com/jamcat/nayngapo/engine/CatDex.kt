@@ -42,6 +42,7 @@ object CatDex {
         Entry("vine", "덩굴냥이", "덩굴을 타고 난다", { SpriteManager.vineCat }),
         Entry("teleport", "순간냥이", "순간이동하는 초원의 보스", { SpriteManager.teleportCat }),
         Entry("giant", "왕왕냥이", "하늘의 왕", { SpriteManager.bossEvilCat }),
+        Entry("wizard", "마법사냥이", "정글의 보스", { SpriteManager.bossWizardCat }),   // 20스테이지 보스 (2026-09-20 「모두 도감에」)
     )
 
     fun entry(id: String): Entry? = entries.firstOrNull { it.id == id }
@@ -60,6 +61,7 @@ object CatDex {
         is ThiefCat -> "thief"
         is VineCat -> "vine"
         is TeleportCatBoss -> "teleport"
+        is WizardCatBoss -> "wizard"
         else -> null
     }
 }

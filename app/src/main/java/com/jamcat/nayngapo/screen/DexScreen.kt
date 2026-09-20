@@ -89,8 +89,8 @@ class DexScreen(private val gameView: GameView) : Screen {
         countPaint.textSize = h * 0.042f
         canvas.drawText("$found / ${CatDex.entries.size}", w - 30f, h * 0.09f, countPaint)
 
-        // 카드 격자: 8 x 2 (치즈냥이 무늬 4종이 들어와 16칸)
-        val cols = 8
+        // 카드 격자: 9 x 2 (무늬 4종·해머냥이·마법사냥이까지 18칸)
+        val cols = 9
         val rows = 2
         val padX = w * 0.03f
         val gap = w * 0.018f

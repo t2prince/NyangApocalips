@@ -80,6 +80,7 @@ class Prison(
                 AllyCat.Kind.FLYING -> SpriteManager.flyingCatAlly
                 AllyCat.Kind.GREEN -> SpriteManager.greenCatAlly
                 AllyCat.Kind.BLUE -> SpriteManager.blueCatAlly
+                AllyCat.Kind.GUN -> SpriteManager.gunCatAlly
                 else -> catCoat.ally
             }
             val scale = (width - 24f) / bmp.width

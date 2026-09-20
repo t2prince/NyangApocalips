@@ -27,7 +27,7 @@ object CatDex {
         Entry("tuxedo", "턱시도", "정장을 차려입었다", { CatCoat.TUXEDO.enemy }, frames = { CatCoat.TUXEDO.idle }),
         Entry("mackerel", "고등어", "회색 줄무늬", { CatCoat.MACKEREL.enemy }, frames = { CatCoat.MACKEREL.idle }),
         Entry("hammer", "해머냥이", "망치를 내려친다", { CatCoat.BICOLOR.enemy }, frames = { CatCoat.BICOLOR.idle }),
-        Entry("gun", "총냥이", "권총을 쏜다", { SpriteManager.normalCat }, frames = { SpriteManager.catIdle }),
+        Entry("gun", "총냥이", "등의 총으로 쏜다", { SpriteManager.gunCat }, frames = { SpriteManager.gunIdleEnemy }),   // 등에 총 붙은 그림
         Entry("blue", "물냥이", "물을 뱉는다", { SpriteManager.blueCatEvil },
             frames = { SpriteManager.catIdleBlue }),
         Entry("green", "그린냥이", "슬라임을 뱉는다", { SpriteManager.greenCatEvil },

@@ -42,7 +42,9 @@ class AllyCat(
     enum class Kind {
         GREEN, BLUE, NORMAL,
         /** 날아냥이 — 11스테이지(하늘)에서 타고 다니려면 먼저 구해야 한다 */
-        FLYING
+        FLYING,
+        /** 총냥이 — 등에 달린 총으로 보라색 총알을 쏜다 (대표님 2026-09-20 「총냥이도 자기 팀이 될 수 있어」) */
+        GUN
     }
 
     /** 날아냥이는 땅 위에서도 살짝 떠서 다닌다 */
@@ -117,12 +119,14 @@ class AllyCat(
     private var hopPhase = (Math.random() * Math.PI).toFloat()
 
     // 그린냥이만 슬라임을 뱉고, 파랑·일반 냥이는 달려들어 할퀸다
-    private val isSpitter = kind == Kind.GREEN
+    private val isGunner = kind == Kind.GUN
+    /** 원거리 (그린냥이 슬라임 / 총냥이 총알) */
+    private val isSpitter = kind == Kind.GREEN || isGunner
     private val moveSpeed = if (isSpitter) 250f else 300f
     private val attackRange = if (isSpitter) 520f else 110f
     /** 레벨만큼 세진다 (그린냥이는 뱉는 슬라임, 나머지는 할퀴기) */
     private val damageBonus = com.jamcat.nayngapo.engine.CatTeam.damageBonusFor(level)
-    private val attackDamage = (if (isSpitter) 10 else 5) + damageBonus + attackBonus
+    private val attackDamage = (if (isGunner) 5 else if (isSpitter) 10 else 5) + damageBonus + attackBonus
 
     /** 달려들어 할퀴는 피해량 — 화면 쪽에서 적에게 적용한다 */
     val meleeDamage = 5 + damageBonus + attackBonus
@@ -204,10 +208,17 @@ class AllyCat(
                     pendingMeleeTarget = target          // 달려들어 할퀸다
                 } else {
                     val dir = if (facingRight) 1f else -1f
-                    pendingProjectiles.add(              // 슬라임을 뱉는다 (아군 탄)
-                        Projectile(x + width / 2f, y - height * 0.45f, 520f * dir, 0f,
-                            attackDamage, true, tint = Color.rgb(140, 220, 110), radius = 13f)
-                    )
+                    if (isGunner) {
+                        pendingProjectiles.add(          // 등의 총에서 보라색 총알
+                            Projectile(x + width / 2f + dir * 34f, y - height * 0.84f, 620f * dir, 0f,
+                                attackDamage, true, tint = Color.rgb(170, 70, 220), radius = 5f)
+                        )
+                    } else {
+                        pendingProjectiles.add(          // 슬라임을 뱉는다 (아군 탄)
+                            Projectile(x + width / 2f, y - height * 0.45f, 520f * dir, 0f,
+                                attackDamage, true, tint = Color.rgb(140, 220, 110), radius = 13f)
+                        )
+                    }
                 }
             }
         } else if (order == AllyOrder.HOLD) {
@@ -346,5 +357,6 @@ class AllyCat(
         Kind.GREEN -> if (armored) SpriteManager.greenCatAllyArmor else SpriteManager.greenCatAlly
         Kind.NORMAL -> if (armored) coat.allyArmor else coat.ally
         Kind.FLYING -> if (armored) SpriteManager.flyingCatAllyArmor else SpriteManager.flyingCatAlly   // 아군은 꼬리가 얇다
+        Kind.GUN -> if (armored) SpriteManager.gunCatAllyArmor else SpriteManager.gunCatAlly
     }
 }

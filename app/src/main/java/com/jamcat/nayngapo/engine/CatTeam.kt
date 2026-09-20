@@ -409,6 +409,7 @@ object CatTeam {
         AllyCat.Kind.BLUE -> "파랑냥이"
         AllyCat.Kind.NORMAL -> "치즈냥이"
         AllyCat.Kind.FLYING -> "날아냥이"
+        AllyCat.Kind.GUN -> "총냥이"
     }
 
     fun cat(id: Int): TeamCat? = roster.firstOrNull { it.id == id }

@@ -166,7 +166,7 @@ def main():
     statics = {'cat_ally.png': 'cat_cheese_armor_ally.png'}
     for coat in ('white', 'calico', 'tuxedo', 'mackerel'):
         statics[f'cat_{coat}_ally.png'] = f'cat_{coat}_armor_ally.png'
-    for c in ('green', 'blue', 'flying'):
+    for c in ('green', 'blue', 'flying', 'gun'):
         statics[f'cat_{c}_ally.png'] = f'cat_{c}_armor_ally.png'
     base_static = Image.open(os.path.join(DST, 'cat_ally.png'))
     for src, dst in statics.items():
@@ -174,7 +174,7 @@ def main():
         base = None if 'flying' in src else base_static
         armor(Image.open(os.path.join(DST, src)), wide='flying' in src, base=base).save(os.path.join(DST, dst)); print(dst)
     strips = {'anim_cat_idle.png': 'anim_cat_idle_cheese_armor.png'}
-    for c in ('white', 'calico', 'tuxedo', 'mackerel', 'green', 'blue'):
+    for c in ('white', 'calico', 'tuxedo', 'mackerel', 'green', 'blue', 'gun'):
         strips[f'anim_cat_idle_{c}.png'] = f'anim_cat_idle_{c}_armor.png'
     base_strip = Image.open(os.path.join(DST, 'anim_cat_idle.png'))
     for src, dst in strips.items():

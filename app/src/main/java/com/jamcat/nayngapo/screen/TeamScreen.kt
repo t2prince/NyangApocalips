@@ -466,13 +466,17 @@ class TeamScreen(private val gameView: GameView) : Screen {
         }
 
         // 춤: 냥이는 7프레임짜리 대기 동작이 그대로 춤이고, 나머지는 몸을 흔든다
-        val dancing = cat.kind == AllyCat.Kind.NORMAL
-        val idle = if (cat.hasArmor && !cat.gone) cat.coat.idleArmor else cat.coat.idle
+        val dancing = cat.kind == AllyCat.Kind.NORMAL || cat.kind == AllyCat.Kind.GUN
+        val armorOn = cat.hasArmor && !cat.gone
+        val idle = when (cat.kind) {
+            AllyCat.Kind.GUN -> if (armorOn) SpriteManager.gunIdleArmor else SpriteManager.gunIdle
+            else -> if (armorOn) cat.coat.idleArmor else cat.coat.idle
+        }
         val bmp =
             if (dancing) idle[((timer * 7f).toInt()) % idle.size]
             else spriteFor(cat)
         val catH = h * 0.30f
-        val sc = catH / (if (dancing) cat.coat.idle[0].height.toFloat() else refHeight(cat, bmp))   // 갑옷을 입어도 몸집은 같게
+        val sc = catH / (if (dancing) (if (cat.kind == AllyCat.Kind.GUN) SpriteManager.gunIdle[0] else cat.coat.idle[0]).height.toFloat() else refHeight(cat, bmp))   // 갑옷을 입어도 몸집은 같게
         val bw = bmp.width * sc
         val bh = bmp.height * sc
         bigCx = cx
@@ -1041,6 +1045,7 @@ class TeamScreen(private val gameView: GameView) : Screen {
         AllyCat.Kind.BLUE -> SpriteManager.blueCatAlly
         AllyCat.Kind.NORMAL -> cat.coat.ally
         AllyCat.Kind.FLYING -> SpriteManager.flyingCatAlly
+        AllyCat.Kind.GUN -> SpriteManager.gunCatAlly
     }
 
     /** 갑옷을 입은 냥이는 갑옷 입은 그림(원안 Cats/cat_armor.jpeg) */
@@ -1051,6 +1056,7 @@ class TeamScreen(private val gameView: GameView) : Screen {
             AllyCat.Kind.BLUE -> if (armor) SpriteManager.blueCatAllyArmor else SpriteManager.blueCatAlly
             AllyCat.Kind.NORMAL -> if (armor) cat.coat.allyArmor else cat.coat.ally      // 치즈냥이는 무늬별 그림
             AllyCat.Kind.FLYING -> if (armor) SpriteManager.flyingCatAllyArmor else SpriteManager.flyingCatAlly
+            AllyCat.Kind.GUN -> if (armor) SpriteManager.gunCatAllyArmor else SpriteManager.gunCatAlly
         }
     }
 

@@ -371,7 +371,7 @@ class GunCat(x: Float, y: Float) : Enemy(x, y, 15, 2) {
             shootTimer = 2f; recoil = 0.25f
             val dir = if (facingRight) 1f else -1f
             pendingProjectiles.add(
-                Projectile(x + width / 2f + dir * 34f, y - height * 0.84f, dir * 620f, 0f, attackPower, false,
+                Projectile(x + width / 2f + dir * 34f, y - height * 0.92f, dir * 620f, 0f, attackPower, false,
                     tint = Color.rgb(170, 70, 220), radius = 5f)   // 보라색 총알, 등 위 총열 끝에서
             )
         }
@@ -402,7 +402,7 @@ class GunCat(x: Float, y: Float) : Enemy(x, y, 15, 2) {
         // 받침(등에 고정)
         gunRect.set(-bmp.width * 0.09f, -2f, bmp.width * 0.09f, bmp.height * 0.11f)   // 받침: 몸 안까지 내려 틈이 없게
         canvas.drawRoundRect(gunRect, 2f, 2f, gunPaint); canvas.drawRoundRect(gunRect, 2f, 2f, gunEdgePaint)
-        canvas.rotate(kick)
+        canvas.rotate(-GUN_ANGLE + kick)   // 총열은 머리를 안 가리게 위로 든다 (구운 아군 그림과 같은 각도)
         val bh = bmp.height * 0.10f
         gunRect.set(-bmp.width * 0.12f, -bh, bmp.width * 0.10f, 0f)            // 총 몸통
         canvas.drawRoundRect(gunRect, 3f, 3f, gunPaint); canvas.drawRoundRect(gunRect, 3f, 3f, gunEdgePaint)
@@ -417,6 +417,8 @@ class GunCat(x: Float, y: Float) : Enemy(x, y, 15, 2) {
 
     companion object {
         private const val FIRE_RANGE = 520f
+        /** 총열을 위로 드는 각도 — scripts/make_gun_cat.py 의 ANGLE 과 같게 */
+        private const val GUN_ANGLE = 25f
         private val gunRect = RectF()
         private val gunPaint = Paint().apply { color = Color.rgb(70, 72, 80); isAntiAlias = true }
         private val gunEdgePaint = Paint().apply {

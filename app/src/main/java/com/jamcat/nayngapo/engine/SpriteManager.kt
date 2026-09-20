@@ -62,6 +62,14 @@ object SpriteManager {
     lateinit var blueCatAllyArmor: Bitmap
     lateinit var flyingCatAllyArmor: Bitmap
     lateinit var catIdleGreenArmor: List<Bitmap>
+    /** 총냥이 아군 (등에 총) — scripts/make_gun_cat.py */
+    lateinit var gunCatAlly: Bitmap
+    lateinit var gunCatAllyArmor: Bitmap
+    lateinit var gunIdle: List<Bitmap>
+    lateinit var gunIdleArmor: List<Bitmap>
+    /** 도감용 적 총냥이 (두꺼운 꼬리) 정지·대기 */
+    lateinit var gunCat: Bitmap
+    lateinit var gunIdleEnemy: List<Bitmap>
     lateinit var catIdleBlueArmor: List<Bitmap>
     lateinit var laserIdle: List<Bitmap>
     lateinit var laserWalk: List<Bitmap>
@@ -188,6 +196,12 @@ object SpriteManager {
         blueCatAllyArmor = BitmapFactory.decodeResource(res, R.drawable.cat_blue_armor_ally)
         flyingCatAllyArmor = BitmapFactory.decodeResource(res, R.drawable.cat_flying_armor_ally)
         catIdleGreenArmor = splitStrip(res, R.drawable.anim_cat_idle_green_armor, PLAYER_FRAMES)
+        gunCatAlly = BitmapFactory.decodeResource(res, R.drawable.cat_gun_ally)
+        gunCatAllyArmor = BitmapFactory.decodeResource(res, R.drawable.cat_gun_armor_ally)
+        gunIdle = splitStrip(res, R.drawable.anim_cat_idle_gun, PLAYER_FRAMES)
+        gunIdleArmor = splitStrip(res, R.drawable.anim_cat_idle_gun_armor, PLAYER_FRAMES)
+        gunCat = BitmapFactory.decodeResource(res, R.drawable.cat_gun)
+        gunIdleEnemy = splitStrip(res, R.drawable.anim_cat_idle_gun_enemy, PLAYER_FRAMES)
         catIdleBlueArmor = splitStrip(res, R.drawable.anim_cat_idle_blue_armor, PLAYER_FRAMES)
         laserIdle = splitStrip(res, R.drawable.anim_laser_idle, PLAYER_FRAMES)
         laserWalk = splitStrip(res, R.drawable.anim_laser_walk, PLAYER_FRAMES)

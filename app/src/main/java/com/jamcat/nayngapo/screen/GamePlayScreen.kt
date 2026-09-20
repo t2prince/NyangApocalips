@@ -891,13 +891,8 @@ class GamePlayScreen(
     }
 
     private fun updateWalls(deltaTime: Float) {
-        if (stageNumber < 2) return          // 첫 스테이지는 벽 없이 익힌다
-        wallTimer -= deltaTime
-        if (wallTimer <= 0f) {
-            wallTimer = wallInterval
-            val wx = player.x + Constants.WALL_DISTANCE
-            level.walls.add(Wall(wx, Terrain.groundY(wx + 35f), wallStyle))
-        }
+        // 갑자기 앞을 막는 벽이 생기는 기능은 뺐다 (대표님 2026-09-20 「갑자기 폭발하고 벽이 생성되는 건 없애줘」).
+        // 이미 있는 벽(있다면)만 갱신·정리한다.
 
         for (wall in level.walls) wall.update(deltaTime)
         // 다 부서진 잔해와 한참 뒤로 지나친 벽은 정리한다
@@ -962,6 +957,8 @@ class GamePlayScreen(
 
     private fun updateBlast(deltaTime: Float) {
         if (blastFx > 0f) blastFx -= deltaTime
+        return   // 폭격(표적이 찍히고 터지는 것)은 뺐다 (대표님 2026-09-20 「갑자기 폭발하고 벽이 생성되는 건 없애줘」)
+        @Suppress("UNREACHABLE_CODE")
         if (stageNumber < 3) return          // 폭격은 3스테이지부터
 
         // 표적이 떠 있는 동안 심지가 타들어간다
@@ -1690,6 +1687,7 @@ class GamePlayScreen(
                 com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN,
                 com.jamcat.nayngapo.entity.AllyCat.Kind.BLUE,
                 com.jamcat.nayngapo.entity.AllyCat.Kind.NORMAL,
+                com.jamcat.nayngapo.entity.AllyCat.Kind.GUN,      // 총냥이도 팀이 된다 (2026-09-20)
             )
             val kind = prison.catKind ?: randomKinds[(Math.random() * randomKinds.size).toInt()]
             // 구한 냥이는 팀 명단에만 올라간다 — 바로 싸우지 않고, 관리 화면에서 출전을 켜 줘야 한다

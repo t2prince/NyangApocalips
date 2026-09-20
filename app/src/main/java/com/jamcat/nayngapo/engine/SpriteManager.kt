@@ -169,6 +169,8 @@ object SpriteManager {
             R.drawable.anim_cat_idle_calico, R.drawable.anim_cat_walk_calico, R.drawable.anim_cat_jump_calico, R.drawable.anim_cat_attack_calico)
         loadCoat(res, CatCoat.TUXEDO, R.drawable.cat_tuxedo, R.drawable.cat_tuxedo_ally,
             R.drawable.anim_cat_idle_tuxedo, R.drawable.anim_cat_walk_tuxedo, R.drawable.anim_cat_jump_tuxedo, R.drawable.anim_cat_attack_tuxedo)
+        loadCoat(res, CatCoat.BICOLOR, R.drawable.cat_bicolor, R.drawable.cat_bicolor_ally,
+            R.drawable.anim_cat_idle_bicolor, R.drawable.anim_cat_walk_bicolor, R.drawable.anim_cat_jump_bicolor, R.drawable.anim_cat_attack_bicolor)
         loadCoat(res, CatCoat.MACKEREL, R.drawable.cat_mackerel, R.drawable.cat_mackerel_ally,
             R.drawable.anim_cat_idle_mackerel, R.drawable.anim_cat_walk_mackerel, R.drawable.anim_cat_jump_mackerel, R.drawable.anim_cat_attack_mackerel)
         // 갑옷 입은 그림 — 입히면 그림 자체가 바뀐다 (판·투구·볏이 그려진 별도 스프라이트)

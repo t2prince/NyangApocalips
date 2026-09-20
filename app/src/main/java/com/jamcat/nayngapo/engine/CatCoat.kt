@@ -12,7 +12,9 @@ enum class CatCoat(val label: String) {
     WHITE("하양이"),
     CALICO("삼색이"),
     TUXEDO("턱시도"),
-    MACKEREL("고등어");
+    MACKEREL("고등어"),
+    /** 흑백 얼룩 — 해머냥이 전용 (치즈냥이·감옥·팀 무작위에는 안 나온다) */
+    BICOLOR("얼룩이");
 
     /** 도감 id — 노랑이는 기존 치즈냥이 칸("normal"), 나머지는 무늬별 칸 */
     val dexId: String get() = if (this == CHEESE) "normal" else name.lowercase()
@@ -32,7 +34,7 @@ enum class CatCoat(val label: String) {
     companion object {
         /** 무작위 무늬 — 5종 똑같이 20%씩 (대표님 2026-09-20). 감옥(구출 냥이)·기존 팀 냥이 무늬 배정에 쓴다 */
         fun random(): CatCoat {
-            val all = values()
+            val all = values().filter { it != BICOLOR }
             return all[(Math.random() * all.size).toInt().coerceIn(0, all.size - 1)]
         }
 
@@ -43,7 +45,7 @@ enum class CatCoat(val label: String) {
         fun randomForEnemy(): CatCoat {
             val r = Math.random()
             if (r < 0.5) return CHEESE
-            val others = values().filter { it != CHEESE }
+            val others = values().filter { it != CHEESE && it != BICOLOR }
             return others[((r - 0.5) / 0.5 * others.size).toInt().coerceIn(0, others.size - 1)]
         }
 

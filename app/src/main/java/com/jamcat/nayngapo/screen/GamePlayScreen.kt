@@ -725,9 +725,15 @@ class GamePlayScreen(
                         if (enemy.tryStealOnTouch()) {
                             val taken = GameProgress.takeRubies(com.jamcat.nayngapo.entity.ThiefCat.STEAL_AMOUNT)
                             enemy.addStolen(taken)
-                            shake(0.12f, 7f)
-                            hitEffects.add(HitEffect(player.x, player.y - player.height, 0.9f,
-                                if (taken > 0) "루비 ${taken}개 도둑맞음!" else "훔칠 루비가 없다!"))
+                            if (taken > 0) {
+                                shake(0.12f, 7f)
+                                hitEffects.add(HitEffect(player.x, player.y - player.height, 0.9f, "루비 ${taken}개 도둑맞음!"))
+                            } else {
+                                // 루비가 하나도 없으면 마이너스 대신 하트를 하나 깎는다 (대표님 2026-09-20)
+                                player.takeDamage(1)
+                                shake(0.18f, 11f)
+                                hitEffects.add(HitEffect(player.x, player.y - player.height, 0.9f, "루비가 없어 하트를 뺏겼다!"))
+                            }
                         }
                         continue
                     }

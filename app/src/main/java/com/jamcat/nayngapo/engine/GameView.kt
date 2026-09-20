@@ -90,6 +90,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     }
 
     /** 로비(홈): 전투·상점·설정 등 모든 기능으로 갈라지는 중심 화면 */
+    /** 성능 로그용 — 지금 화면 이름 */
+    fun currentScreenName(): String = currentScreen?.javaClass?.simpleName ?: "-"
+
     fun showLobby() {
         // 스테이지에서 '나가기'로 돌아올 때도 스테이지 진입과 같은 페이드로 넘어간다.
         // (즉시 교체하면 그리는 중인 게임 스레드와 겹쳐 한 프레임이 깨져 보인다)

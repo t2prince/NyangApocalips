@@ -244,7 +244,9 @@ class GamePlayScreen(
 
         // 관리 화면에서 출전으로 골라 둔 팀 냥이들이 플레이어 뒤에 줄지어 함께 출발한다.
         // 여기서 쓰러져도 명단에서 사라지지는 않는다 (이번 판만 못 싸운다).
-        for ((i, cat) in com.jamcat.nayngapo.engine.CatTeam.party.withIndex()) {
+        // 날아냥이는 하늘 스테이지에만 있다 (대표님 2026-09-20) — 땅에는 데려오지 않는다
+        val groundParty = com.jamcat.nayngapo.engine.CatTeam.party.filter { it.kind != com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING }
+        for ((i, cat) in groundParty.withIndex()) {
             level.allies.add(
                 com.jamcat.nayngapo.entity.AllyCat(
                     // 출발선이 왼쪽 끝에 가까워도 화면 밖으로는 나가지 않게 한다

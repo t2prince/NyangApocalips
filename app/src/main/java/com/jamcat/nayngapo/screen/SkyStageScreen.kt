@@ -155,6 +155,8 @@ class SkyStageScreen(
         }
 
     private inner class Rider {
+        /** 로비에서 고른 인간 */
+        val hero = Heroes.selected()
         var x = 500f
         var y = 0f
         var hp = 5
@@ -197,17 +199,23 @@ class SkyStageScreen(
         }
 
         fun draw(canvas: Canvas) {
-            if (invincible > 0f && ((invincible * 12).toInt() % 2 == 0)) return   // 무적 깜빡임
-            val bob = sin((time * 5f).toDouble()).toFloat() * 7f
-            val cat = if (facingRight) SpriteManager.flyingCat else SpriteManager.getFlipped(SpriteManager.flyingCat)
+            if (falling < 0f && invincible > 0f && ((invincible * 12).toInt() % 2 == 0)) return   // 무적 깜빡임
+            val bob = if (falling >= 0f) 0f else sin((time * 5f).toDouble()).toFloat() * 7f
+            if (falling >= 0f) { canvas.save(); canvas.rotate(fallSpin.coerceAtMost(75f) * (if (facingRight) 1f else -1f), x, y) }
+            val mountBmp = if (mount.hasArmor) SpriteManager.flyingCatAllyArmor else SpriteManager.flyingCatAlly
+            val cat = if (facingRight) mountBmp else SpriteManager.getFlipped(mountBmp)
             val rider = SpriteManager.playerIdle[((time * 6).toInt()) % SpriteManager.playerIdle.size]
             val riderBmp = if (facingRight) rider else SpriteManager.getFlipped(rider)
-            // 인간이 날개냥이 등에 올라탄 모습
+            // 인간이 날개냥이 등에 올라탄 모습 — 로비에서 고른 인간(색·머리 장식) 그대로 (대표님 2026-09-20)
             val rw = riderBmp.width * 0.62f
             val rh = riderBmp.height * 0.62f
-            riderDst.set(x - rw / 2f, y + bob - cat.height / 2f - rh + 22f, x + rw / 2f, y + bob - cat.height / 2f + 22f)
-            canvas.drawBitmap(riderBmp, null, riderDst, bitmapPaint)
-            canvas.drawBitmap(cat, x - cat.width / 2f, y + bob - cat.height / 2f, bitmapPaint)
+            // 갑옷 그림은 투구만큼 위로 길다 — 몸통 기준(맨몸 높이)으로 탑승 위치를 잡는다
+            val bodyH = SpriteManager.flyingCatAlly.height.toFloat()
+            val catTop = y + bob - bodyH / 2f
+            riderDst.set(x - rw / 2f, catTop - rh + 22f, x + rw / 2f, catTop + 22f)
+            com.jamcat.nayngapo.ui.drawHero(canvas, riderBmp, riderDst, hero, facingRight, time)
+            canvas.drawBitmap(cat, x - cat.width / 2f, catTop + bodyH - cat.height, bitmapPaint)
+            if (falling >= 0f) canvas.restore()
         }
     }
 
@@ -338,6 +346,59 @@ class SkyStageScreen(
         }
     }
 
+    // ===== 아군 냥이 — 뒤에서 구름을 타고 날아온다 (대표님 2026-09-20). 싸우지는 않는다(지시 없음) =====
+    private inner class CloudAlly(val cat: com.jamcat.nayngapo.engine.CatTeam.TeamCat, val order: Int) {
+        var x = 0f; var y = 0f; var facingRight = true
+        private var bobPhase = order * 1.3f
+        fun update(deltaTime: Float, leaderX: Float, leaderY: Float, leaderRight: Boolean) {
+            bobPhase += deltaTime * 2.6f
+            val dir = if (leaderRight) 1f else -1f
+            val tx = leaderX - dir * (150f + 95f * order)
+            val ty = leaderY + 28f + 22f * order
+            if (x == 0f && y == 0f) { x = tx; y = ty }
+            x += (tx - x) * (1f - Math.exp((-6.0 * deltaTime))).toFloat()
+            y += (ty - y) * (1f - Math.exp((-5.0 * deltaTime))).toFloat()
+            facingRight = leaderRight
+        }
+        /** 구름이 사라졌다 — 이제부터 떨어진다 */
+        var cloudGone = false
+        private var vy = 0f
+        fun loseCloud() { cloudGone = true; vy = -80f - 60f * order }
+        fun updateFall(deltaTime: Float) { vy += 1400f * deltaTime; y += vy * deltaTime }
+
+        fun draw(canvas: Canvas) {
+            val bob = if (cloudGone) 0f else sin(bobPhase.toDouble()).toFloat() * 6f
+            val base = allySpriteFor(cat)
+            val bmp = if (facingRight) base else SpriteManager.getFlipped(base)
+            val bodyH = allyBodyHeight(cat)
+            val cy = y + bob
+            // 구름: 냥이 발밑 (탑승 냥이가 쓰러지면 구름도 사라진다)
+            if (!cloudGone) drawCloud(canvas, x, cy + bodyH * 0.42f, 34f, skyCloudPaint)
+            if (cloudGone) { canvas.save(); canvas.rotate(120f * (vy / 800f).coerceIn(0f, 1.5f), x, cy) }
+            canvas.drawBitmap(bmp, x - bmp.width / 2f, cy + bodyH * 0.45f - bmp.height, bitmapPaint)
+            if (cloudGone) canvas.restore()
+        }
+    }
+    private val cloudAllies: List<CloudAlly> =
+        com.jamcat.nayngapo.engine.CatTeam.party.filter { it.id != mount.id }.mapIndexed { i, c -> CloudAlly(c, i) }
+
+    private fun allySpriteFor(cat: com.jamcat.nayngapo.engine.CatTeam.TeamCat): Bitmap {
+        val armor = cat.hasArmor
+        return when (cat.kind) {
+            com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN -> if (armor) SpriteManager.greenCatAllyArmor else SpriteManager.greenCatAlly
+            com.jamcat.nayngapo.entity.AllyCat.Kind.BLUE -> if (armor) SpriteManager.blueCatAllyArmor else SpriteManager.blueCatAlly
+            com.jamcat.nayngapo.entity.AllyCat.Kind.NORMAL -> if (armor) cat.coat.allyArmor else cat.coat.ally
+            com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING -> if (armor) SpriteManager.flyingCatAllyArmor else SpriteManager.flyingCatAlly
+        }
+    }
+    /** 갑옷 그림은 위로 길어서 발 위치는 맨몸 높이로 잡는다 */
+    private fun allyBodyHeight(cat: com.jamcat.nayngapo.engine.CatTeam.TeamCat): Float = when (cat.kind) {
+        com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN -> SpriteManager.greenCatAlly.height.toFloat()
+        com.jamcat.nayngapo.entity.AllyCat.Kind.BLUE -> SpriteManager.blueCatAlly.height.toFloat()
+        com.jamcat.nayngapo.entity.AllyCat.Kind.NORMAL -> cat.coat.ally.height.toFloat()
+        com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING -> SpriteManager.flyingCatAlly.height.toFloat()
+    }
+
     // ===== 상태 =====
     private val player = Rider()
     private val enemies = mutableListOf<SkyEnemy>()
@@ -349,6 +410,8 @@ class SkyStageScreen(
     /** 이 스테이지에서 구한 인간·냥이 수 (결과 화면으로 넘긴다) */
     private var rescued = 0
     private val touchControls = TouchControls().apply { skyMode = true }
+    /** 땅 스테이지와 같은 HUD (대표님 2026-09-20 「화면 구성 똑같게」) — 버튼은 하늘용 그대로 */
+    private val hud = com.jamcat.nayngapo.ui.HUD()
 
     private var camera = 0f
     private var score = 0
@@ -360,6 +423,10 @@ class SkyStageScreen(
     private var clearTimer = -1f
     private var paused = false
     private var time = 0f
+    /** 탑승한 날아냥이가 쓰러진 뒤 떨어지는 장면 (0 이상이면 진행 중, 초) — 대표님 2026-09-20 */
+    private var falling = -1f
+    private var fallVy = 0f
+    private var fallSpin = 0f
 
     private val courseLength = 11000f + (stageNumber - 11) * 700f
     private var flyMinY = 130f
@@ -494,6 +561,7 @@ class SkyStageScreen(
         if (paused) return
         time += deltaTime
         if (shake > 0f) shake -= deltaTime
+        if (falling >= 0f) { updateFalling(deltaTime); return }
 
         val h = gameView.screenHeight.toFloat()
         flyMaxY = h - 320f
@@ -501,6 +569,7 @@ class SkyStageScreen(
         player.y = if (player.y == 0f) skyMidY else player.y
 
         player.update(deltaTime)
+        for (a in cloudAllies) a.update(deltaTime, player.x, player.y, player.facingRight)
 
         // 카메라: 플레이어를 화면 1/3 지점에 둔다
         camera = (player.x - gameView.screenWidth * 0.35f).coerceIn(0f, courseLength - gameView.screenWidth)
@@ -591,9 +660,9 @@ class SkyStageScreen(
         effects.forEach { it.timer -= deltaTime; it.y -= 40f * deltaTime }
         effects.removeAll { it.timer <= 0f }
 
-        // 죽음 / 클리어
+        // 죽음: 탑승한 날아냥이가 쓰러진다 → 구름이 사라지고 다 같이 떨어지는 장면 뒤 게임 오버
         if (player.hp <= 0) {
-            gameView.showGameOver(score)
+            startFalling()
             return
         }
         if (enemies.all { it.isDead }) {
@@ -641,6 +710,7 @@ class SkyStageScreen(
         // 떠 있는 감옥은 적보다 뒤에 그린다 (앞을 지나가는 냥이가 가려지지 않게)
         for (prison in skyPrisons) prison.draw(canvas)
         for (enemy in enemies) enemy.draw(canvas)
+        for (a in cloudAllies) a.draw(canvas)   // 뒤에서 따라오는 아군 — 탑승자보다 뒤에 그린다
         player.draw(canvas)
         for (rocket in rockets) rocket.draw(canvas)
         for (proj in projectiles) proj.draw(canvas)
@@ -675,25 +745,35 @@ class SkyStageScreen(
         canvas.drawRect(cx - r * 1.4f, cy + r * 0.35f, cx + r * 1.5f, cy + r * 0.9f, paint)
     }
 
-    private fun drawHud(canvas: Canvas, w: Float, h: Float) {
-        // 하트
-        for (i in 0 until player.maxHp) {
-            val hx = 46f + i * 52f
-            val hy = 52f
-            if (i < player.hp) drawHeart(canvas, hx, hy, 19f, heartPaint)
-            else drawHeart(canvas, hx, hy, 19f, heartEmptyPaint)
-        }
-        hudTextPaint.textSize = h * 0.040f
-        canvas.drawText("스테이지 $stageNumber — 하늘", 36f, 128f, hudTextPaint)
-        hudRightPaint.textSize = h * 0.040f
-        canvas.drawText("점수 $score", w - 36f, 60f, hudRightPaint)
-        canvas.drawText("남은 냥이 ${totalEnemies - defeated}", w - 36f, 118f, hudRightPaint)
-        canvas.drawText("구출 $rescued", w - 36f, 176f, hudRightPaint)
+    /** 탑승한 날아냥이 사망 — 영구 사망(무덤)으로 기록하고 추락 연출을 시작한다 */
+    private fun startFalling() {
+        falling = 0f; fallVy = -120f; fallSpin = 0f
+        com.jamcat.nayngapo.engine.CatTeam.markDead(mount.id, stageNumber)
+        touchControls.releaseAll()
+        SoundManager.playCatDie()
+        effects.add(Effect(player.x, player.y - 120f, 2.2f, "${mount.name}이(가) 쓰러졌다!"))
+        for (a in cloudAllies) a.loseCloud()
+    }
 
-        // 지금 타고 있는 날아냥이 이름 (갑옷을 입었으면 표시)
-        hudTextPaint.textSize = h * 0.034f
-        val armor = if (mount.hasArmor) " · 갑옷" else ""
-        canvas.drawText("탑승: ${mount.name}$armor", 36f, 176f, hudTextPaint)
+    private fun updateFalling(deltaTime: Float) {
+        falling += deltaTime
+        fallVy += 1500f * deltaTime
+        player.y += fallVy * deltaTime
+        fallSpin += 140f * deltaTime
+        for (a in cloudAllies) a.updateFall(deltaTime)
+        effects.forEach { it.timer -= deltaTime; it.y -= 40f * deltaTime }
+        effects.removeAll { it.timer <= 0f }
+        if (falling >= 2.4f) gameView.showGameOver(score)
+    }
+
+    private fun drawHud(canvas: Canvas, w: Float, h: Float) {
+        // 땅과 같은 패널 구성: STAGE·SCORE·LEVEL / 목숨·구출·필살기·루비 / 하트 / CLEARED
+        hud.allyOrderLabel = "탑승 ${mount.name}" + if (mount.hasArmor) " · 갑옷" else ""
+        hud.draw(canvas, com.jamcat.nayngapo.ui.HUD.Data(
+            stage = stageNumber, score = score, level = 1 + defeated / 10, lives = 1, rescueCount = rescued,
+            specialFill = (1f - rocketCooldown / (Constants.SPECIAL_COOLDOWN * 0.5f)).coerceIn(0f, 1f),
+            hp = player.hp, maxHp = player.maxHp, defeated = defeated, total = totalEnemies,
+        ), gameView.screenWidth, gameView.screenHeight)
     }
 
     private fun drawHeart(canvas: Canvas, cx: Float, cy: Float, r: Float, paint: Paint) {

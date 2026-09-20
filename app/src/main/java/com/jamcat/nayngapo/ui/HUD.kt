@@ -55,18 +55,34 @@ class HUD {
 
     private val rect = RectF()
 
+    /** HUD 에 보여 줄 값 묶음 — 땅(GamePlayScreen)과 하늘(SkyStageScreen)이 같은 화면 구성을 쓴다 */
+    data class Data(
+        val stage: Int, val score: Int, val level: Int, val lives: Int, val rescueCount: Int,
+        /** 필살기 게이지 0~1 */
+        val specialFill: Float, val hp: Int, val maxHp: Int, val defeated: Int, val total: Int,
+    )
+
     fun draw(canvas: Canvas, player: Player, level: Level, screenWidth: Int, screenHeight: Int) {
+        draw(canvas, Data(
+            stage = level.stageNumber, score = player.score, level = player.level, lives = player.lives,
+            rescueCount = player.rescueCount,
+            specialFill = (1f - player.specialCooldown / Constants.SPECIAL_COOLDOWN).coerceIn(0f, 1f),
+            hp = player.hp, maxHp = player.maxHp, defeated = level.defeatedEnemies, total = level.totalEnemies,
+        ), screenWidth, screenHeight)
+    }
+
+    fun draw(canvas: Canvas, d: Data, screenWidth: Int, screenHeight: Int) {
         val w = screenWidth.toFloat()
         val h = screenHeight.toFloat()
 
-        drawTopBar(canvas, player, level, w)
-        drawSideStats(canvas, player, w)
-        drawHearts(canvas, player, w, h)
-        drawProgress(canvas, level, w, h)
+        drawTopBar(canvas, d, w)
+        drawSideStats(canvas, d, w)
+        drawHearts(canvas, d, w, h)
+        drawProgress(canvas, d, w, h)
     }
 
     /** 상단 가운데: STAGE · SCORE · LEVEL 을 한 패널에 담는다 */
-    private fun drawTopBar(canvas: Canvas, player: Player, level: Level, w: Float) {
+    private fun drawTopBar(canvas: Canvas, d: Data, w: Float) {
         val panelW = 620f
         val panelH = 74f
         val left = w / 2f - panelW / 2f
@@ -81,7 +97,7 @@ class HUD {
         // STAGE
         var cx = left + cellW * 0.5f
         canvas.drawText("STAGE", cx - textW("STAGE", labelPaint) / 2f, labelY, labelPaint)
-        val stageText = "${level.stageNumber}"
+        val stageText = "${d.stage}"
         val totalText = " / ${GameProgress.TOTAL_STAGES}"
         val stageW = textW(stageText, accentTextPaint) + textW(totalText, labelPaint)
         canvas.drawText(stageText, cx - stageW / 2f, valueY, accentTextPaint)
@@ -92,7 +108,7 @@ class HUD {
         // SCORE
         cx = left + cellW * 1.5f
         canvas.drawText("SCORE", cx - textW("SCORE", labelPaint) / 2f, labelY, labelPaint)
-        val score = "%,d".format(player.score)
+        val score = "%,d".format(d.score)
         canvas.drawText(score, cx - textW(score, valuePaint) / 2f, valueY, valuePaint)
 
         canvas.drawRect(left + cellW * 2 - 0.5f, 30f, left + cellW * 2 + 0.5f, 72f, dividerPaint)
@@ -100,12 +116,12 @@ class HUD {
         // LEVEL
         cx = left + cellW * 2.5f
         canvas.drawText("LEVEL", cx - textW("LEVEL", labelPaint) / 2f, labelY, labelPaint)
-        val lv = "${player.level}"
+        val lv = "${d.level}"
         canvas.drawText(lv, cx - textW(lv, valuePaint) / 2f, valueY, valuePaint)
     }
 
     /** 우상단: 남은 목숨 · 구출한 인간 · 필살기 게이지 · 모은 루비 */
-    private fun drawSideStats(canvas: Canvas, player: Player, w: Float) {
+    private fun drawSideStats(canvas: Canvas, d: Data, w: Float) {
         val panelW = 208f
         val panelH = if (allyOrderLabel != null) 182f else 146f   // 루비 줄 + 지시 줄
         val left = w - panelW - 22f
@@ -116,11 +132,11 @@ class HUD {
 
         // 목숨
         drawLifeIcon(canvas, left + 34f, top + 32f)
-        canvas.drawText("×${player.lives}", left + 58f, top + 40f, smallValuePaint)
+        canvas.drawText("×${d.lives}", left + 58f, top + 40f, smallValuePaint)
 
         // 구출한 인간
         drawDoorIcon(canvas, left + 122f, top + 32f)
-        canvas.drawText("×${player.rescueCount}", left + 146f, top + 40f, smallValuePaint)
+        canvas.drawText("×${d.rescueCount}", left + 146f, top + 40f, smallValuePaint)
 
         // 필살기 게이지
         val gaugeY = top + 74f
@@ -130,7 +146,7 @@ class HUD {
         rect.set(gaugeL, gaugeY, gaugeR, gaugeY + 8f)
         canvas.drawRoundRect(rect, 4f, 4f, trackPaint)
 
-        val fill = (1f - player.specialCooldown / Constants.SPECIAL_COOLDOWN).coerceIn(0f, 1f)
+        val fill = d.specialFill.coerceIn(0f, 1f)
         if (fill > 0f) {
             rect.set(gaugeL, gaugeY, gaugeL + (gaugeR - gaugeL) * fill, gaugeY + 8f)
             canvas.drawRoundRect(rect, 4f, 4f, accentPaint)
@@ -148,10 +164,10 @@ class HUD {
     }
 
     /** 하단 가운데: 체력 하트를 얇은 트레이 위에 올린다 */
-    private fun drawHearts(canvas: Canvas, player: Player, w: Float, h: Float) {
+    private fun drawHearts(canvas: Canvas, d: Data, w: Float, h: Float) {
         val heart = SpriteManager.heart
         val step = heart.width + 8f
-        val totalW = player.maxHp * step - 8f
+        val totalW = d.maxHp * step - 8f
 
         val trayPad = 18f
         rect.set(
@@ -163,8 +179,8 @@ class HUD {
 
         var x = w / 2f - totalW / 2f
         val y = h - heart.height - 32f
-        for (i in 0 until player.maxHp) {
-            if (i < player.hp) {
+        for (i in 0 until d.maxHp) {
+            if (i < d.hp) {
                 canvas.drawBitmap(heart, x, y, null)
             } else {
                 rect.set(x + 4f, y + 6f, x + heart.width - 4f, y + heart.height - 4f)
@@ -175,7 +191,7 @@ class HUD {
     }
 
     /** 우하단: 남은 냥이 진행도 */
-    private fun drawProgress(canvas: Canvas, level: Level, w: Float, h: Float) {
+    private fun drawProgress(canvas: Canvas, d: Data, w: Float, h: Float) {
         val panelW = 236f
         val panelH = 60f
         val left = w - panelW - 22f
@@ -185,14 +201,14 @@ class HUD {
         canvas.drawRoundRect(rect, 16f, 16f, panelEdgePaint)
 
         canvas.drawText("CLEARED", left + 20f, top + 26f, labelPaint)
-        val count = "${level.defeatedEnemies}/${level.totalEnemies}"
+        val count = "${d.defeated}/${d.total}"
         canvas.drawText(count, left + panelW - 20f - textW(count, smallValuePaint), top + 26f, smallValuePaint)
 
         val barY = top + 38f
         rect.set(left + 20f, barY, left + panelW - 20f, barY + 8f)
         canvas.drawRoundRect(rect, 4f, 4f, trackPaint)
-        val frac = if (level.totalEnemies == 0) 0f
-        else (level.defeatedEnemies / level.totalEnemies.toFloat()).coerceIn(0f, 1f)
+        val frac = if (d.total == 0) 0f
+        else (d.defeated / d.total.toFloat()).coerceIn(0f, 1f)
         if (frac > 0f) {
             rect.set(left + 20f, barY, left + 20f + (panelW - 40f) * frac, barY + 8f)
             canvas.drawRoundRect(rect, 4f, 4f, accentPaint)

@@ -3,16 +3,19 @@ package com.jamcat.nayngapo.engine
 import android.graphics.Bitmap
 
 /**
- * 치즈냥이의 털 무늬 (기획 원안 `Cats/cats4.jpeg`: 흰둥이·삼색이·턱시도·노랑이·고등어).
+ * 치즈냥이의 털 무늬 (기획 원안 `Cats/cats4.jpeg`: 하양이·삼색이·턱시도·노랑이·고등어).
  * 같은 치즈냥이(체력·공격력·행동 동일)이고 그림만 다르다. 노랑이 = 기존 치즈냥이 그대로.
  * 그림은 `scripts/make_coat_variants.py` 가 치즈냥이 그림에서 만든다.
  */
 enum class CatCoat(val label: String) {
     CHEESE("노랑이"),
-    WHITE("흰둥이"),
+    WHITE("하양이"),
     CALICO("삼색이"),
     TUXEDO("턱시도"),
     MACKEREL("고등어");
+
+    /** 도감 id — 노랑이는 기존 치즈냥이 칸("normal"), 나머지는 무늬별 칸 */
+    val dexId: String get() = if (this == CHEESE) "normal" else name.lowercase()
 
     /** 적(두꺼운 꼬리) 정지 그림 */
     val enemy: Bitmap get() = SpriteManager.coatEnemy[this] ?: SpriteManager.normalCat

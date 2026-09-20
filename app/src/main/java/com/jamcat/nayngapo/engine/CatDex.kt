@@ -21,6 +21,11 @@ object CatDex {
     val entries: List<Entry> = listOf(
         Entry("normal", "치즈냥이", "어디에나 있다", { SpriteManager.normalCat },
             frames = { SpriteManager.catIdle }),
+        // 치즈냥이 무늬 변형 4종 (원안 Cats/cats4.jpeg) — 같은 냥이지만 도감엔 따로 칸이 있다 (2026-09-20)
+        Entry("white", "하양이", "새하얀 치즈냥이", { CatCoat.WHITE.enemy }, frames = { CatCoat.WHITE.idle }),
+        Entry("calico", "삼색이", "세 가지 색 얼룩", { CatCoat.CALICO.enemy }, frames = { CatCoat.CALICO.idle }),
+        Entry("tuxedo", "턱시도", "정장을 차려입었다", { CatCoat.TUXEDO.enemy }, frames = { CatCoat.TUXEDO.idle }),
+        Entry("mackerel", "고등어", "회색 줄무늬", { CatCoat.MACKEREL.enemy }, frames = { CatCoat.MACKEREL.idle }),
         Entry("blue", "물냥이", "물을 뱉는다", { SpriteManager.blueCatEvil },
             frames = { SpriteManager.catIdleBlue }),
         Entry("green", "그린냥이", "슬라임을 뱉는다", { SpriteManager.greenCatEvil },
@@ -42,7 +47,7 @@ object CatDex {
 
     /** 적 개체 → 도감 id (도감에 없는 개체는 null) */
     fun idOf(enemy: Enemy): String? = when (enemy) {
-        is NormalCat -> "normal"
+        is NormalCat -> enemy.coat.dexId    // 무늬별 칸
         is BlueCat -> "blue"
         is GreenCat -> "green"
         is PoopCat -> "poop"

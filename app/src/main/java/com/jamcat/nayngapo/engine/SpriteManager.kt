@@ -46,7 +46,7 @@ object SpriteManager {
     lateinit var catWalk: List<Bitmap>
     lateinit var catJump: List<Bitmap>
     lateinit var catAttack: List<Bitmap>
-    /** 치즈냥이 무늬 변형(흰둥이·삼색이·턱시도·고등어) — 노랑이는 위의 기본 그림을 그대로 쓴다 */
+    /** 치즈냥이 무늬 변형(하양이·삼색이·턱시도·고등어) — 노랑이는 위의 기본 그림을 그대로 쓴다 */
     val coatEnemy = mutableMapOf<CatCoat, Bitmap>()
     val coatAlly = mutableMapOf<CatCoat, Bitmap>()
     val coatIdle = mutableMapOf<CatCoat, List<Bitmap>>()

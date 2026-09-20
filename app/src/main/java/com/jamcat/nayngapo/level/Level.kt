@@ -169,6 +169,21 @@ class Level(val stageNumber: Int) {
             }
         }
 
+        // ===== 낭떠러지: 3스테이지부터, 그룹 사이 빈 구간 중 함정이 없는 곳에 (대표님 2026-09-20 「슈퍼마리오처럼 낭떠러지」) =====
+        // 폭 160~215 는 점프 사거리(약 300) 안이라 뛰어넘을 수 있다. 냥이들도 hazardAhead 로 뛰어넘는다.
+        val chasmCount = if (stageNumber < 3) 0 else (1 + (stageNumber - 3) / 4).coerceAtMost(5)
+        val chasmFreeGaps = gapCenters.filter { gc -> hazardX.none { kotlin.math.abs(it - gc) < 500f } }
+        repeat(chasmCount) { i ->
+            if (chasmFreeGaps.isEmpty()) return@repeat
+            val gc = chasmFreeGaps[((i + 1) * chasmFreeGaps.size) / (chasmCount + 1) % chasmFreeGaps.size]
+            val cx = gc + 260f                      // 빈 구간 뒤쪽(다음 그룹 앞)에
+            if (chasms.any { kotlin.math.abs(it.x - cx) < 700f }) return@repeat
+            val seed = stageNumber * 17 + i * 11
+            val probe = Chasm(cx, 0f, seed)
+            chasms.add(Chasm(cx, Terrain.groundY(cx + probe.width / 2f), seed))
+            hazardX.add(cx - 80f)                    // 비밀의 방·감옥이 위에 안 놓이게
+        }
+
         // ===== 비밀의 방: 함정이 없는 빈 구간에 숨긴다 =====
         val freeGaps = gapCenters.filter { gc -> hazardX.none { kotlin.math.abs(it - gc) < 400f } }
         repeat(plan.secrets) { i ->

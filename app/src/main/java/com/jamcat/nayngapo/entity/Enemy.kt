@@ -247,7 +247,8 @@ class HammerCat(x: Float, y: Float) : Enemy(x, y, 10, 3) {
     private var wanderDirX = 0f
     private var hopPhase = (Math.random() * Math.PI).toFloat()
     private var swing = 0f                 // 0보다 크면 내려치는 중 (SWING_TIME 에서 0으로)
-    private val coat = com.jamcat.nayngapo.engine.CatCoat.CALICO
+    /** 무늬는 삼색이·고등어·턱시도·하양이 중 무작위 (대표님 2026-09-20 — 노랑이는 목록에 없어 제외) */
+    private val coat = HAMMER_COATS[(Math.random() * HAMMER_COATS.size).toInt().coerceIn(0, HAMMER_COATS.size - 1)]
 
     init { pickNewDirection() }
 
@@ -312,6 +313,10 @@ class HammerCat(x: Float, y: Float) : Enemy(x, y, 10, 3) {
 
     companion object {
         private const val SWING_TIME = 0.6f
+        private val HAMMER_COATS = listOf(
+            com.jamcat.nayngapo.engine.CatCoat.CALICO, com.jamcat.nayngapo.engine.CatCoat.MACKEREL,
+            com.jamcat.nayngapo.engine.CatCoat.TUXEDO, com.jamcat.nayngapo.engine.CatCoat.WHITE,
+        )
         private val headRect = RectF()
         private val handlePaint = Paint().apply { color = Color.rgb(150, 100, 60); isAntiAlias = true }
         private val headPaint = Paint().apply { color = Color.rgb(120, 124, 134); isAntiAlias = true }

@@ -1,4 +1,4 @@
-"""도둑냥이 그림 — 치즈냥이에 도둑 눈가리개(검은 띠 + 눈구멍)와 등에 멘 보따리를 얹는다 (대표님 2026-09-20 「도둑처럼 생겼고」).
+"""도둑냥이 그림 — 치즈냥이에 도둑 눈가리개(도미노 가면)를 씌운다 — 보따리는 없다 (대표님 2026-09-20 「도둑처럼 생겼고」).
 cat_normal.png -> cat_thief.png.  사용법: python scripts/make_thief_cat.py
 """
 import os, sys
@@ -33,25 +33,27 @@ def main():
         ey0, ey1 = int(y0 + bh * 0.16), int(y0 + bh * 0.24); ex0, ex1 = int(x0 + bw * 0.66), int(x0 + bw * 0.86)
     d = ImageDraw.Draw(im)
     pad = max(3, int(bh * 0.05))
-    # 눈가리개 띠: 얼굴 폭을 가로지르는 검은 띠, 양 끝은 머리 뒤로 묶은 매듭
-    band = [int(x0 + bw * 0.52), ey0 - pad, int(x0 + bw * 1.01), ey1 + pad]
-    d.rounded_rectangle(band, radius=pad, fill=INK)
-    # 눈구멍: 눈보다 조금 큰 흰 타원, 그 안에 원래 눈점
-    r = max(2, int((ey1 - ey0) * 0.9))
-    for y_, x_ in eyes:
-        cx, cy = (x_.min() + x_.max()) / 2, (y_.min() + y_.max()) / 2
-        d.ellipse([cx - r - 1.5, cy - r, cx + r + 1.5, cy + r], fill=(250, 250, 245))
-        d.ellipse([cx - 1.2, cy - 1.2, cx + 1.2, cy + 1.2], fill=INK)
+    # 도둑 눈가리개 (원안 Cats/cat_thief_mask.jpeg): 눈 둘레를 감싸는 도미노 가면 — 두 눈구멍이 크고 하얗게 뚫려 있고,
+    # 양쪽 끝이 뾰족하게 머리 뒤로 넘어간다
+    if eyes:
+        cs = [((x_.min() + x_.max()) / 2, (y_.min() + y_.max()) / 2) for y_, x_ in eyes]
+    else:
+        cs = [(x0 + bw * 0.70, y0 + bh * 0.20), (x0 + bw * 0.84, y0 + bh * 0.20)]
+    cy = sum(c[1] for c in cs) / len(cs)
+    hole_r = max(3, int(bh * 0.055))
+    mh = hole_r * 1.6                                   # 가면 반높이
+    left, right = x0 + bw * 0.46, x0 + bw * 1.02
+    mask = [(left, cy), (left + bw * 0.10, cy - mh), (right - bw * 0.06, cy - mh * 1.05), (right, cy - mh * 0.3),
+            (right - bw * 0.02, cy + mh * 0.6), (right - bw * 0.10, cy + mh), (left + bw * 0.12, cy + mh * 0.9)]
+    d.polygon(mask, fill=INK, outline=INK)
+    for cx_, cy_ in cs:                                 # 눈구멍: 크고 하얀 타원 + 원래 눈점
+        d.ellipse([cx_ - hole_r * 1.25, cy_ - hole_r, cx_ + hole_r * 1.25, cy_ + hole_r], fill=(250, 250, 245))
+        d.ellipse([cx_ - 1.3, cy_ - 1.3, cx_ + 1.3, cy_ + 1.3], fill=INK)
     # 매듭 꼬리 (머리 뒤로 두 갈래)
-    kx, ky = int(x0 + bw * 0.50), (ey0 + ey1) // 2
-    d.polygon([(kx, ky - pad), (kx - bw * 0.10, ky - pad * 2.2), (kx - bw * 0.04, ky)], fill=INK)
-    d.polygon([(kx, ky + pad), (kx - bw * 0.11, ky + pad * 1.6), (kx - bw * 0.04, ky)], fill=INK)
-    # 보따리: 등 위(꼬리 앞)에 멘 갈색 주머니 + 묶은 목
-    sx, sy = x0 + bw * 0.22, y0 + bh * 0.08
-    sr = bw * 0.13
-    d.ellipse([sx - sr, sy - sr * 0.9, sx + sr, sy + sr * 0.9], fill=(196, 140, 80), outline=INK, width=2)
-    d.polygon([(sx + sr * 0.5, sy - sr * 0.8), (sx + sr * 0.95, sy - sr * 1.35), (sx + sr * 1.15, sy - sr * 0.75)], fill=(196, 140, 80), outline=INK)
-    d.line([(sx - sr * 0.4, sy - sr * 0.1), (sx + sr * 0.3, sy + sr * 0.3)], fill=(150, 100, 55), width=2)
+    kx, ky = int(left), int(cy)
+    d.polygon([(kx + 2, ky - 2), (kx - bw * 0.10, ky - mh * 1.3), (kx - bw * 0.03, ky + 1)], fill=INK)
+    d.polygon([(kx + 2, ky + 2), (kx - bw * 0.11, ky + mh * 0.9), (kx - bw * 0.03, ky - 1)], fill=INK)
+    # 보따리는 없다 (대표님 2026-09-20)
     im.save(os.path.join(DST, 'cat_thief.png')); print('cat_thief.png')
 
 if __name__ == '__main__':

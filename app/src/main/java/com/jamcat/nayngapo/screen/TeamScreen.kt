@@ -400,9 +400,12 @@ class TeamScreen(private val gameView: GameView) : Screen {
         val bmp = if (cat.isDead) SpriteManager.grave else spriteFor(cat)
         val availH = h * 0.45f
         val availW = w * 0.34f
-        val scale = min(availW / bmp.width, availH / bmp.height)
+        // 갑옷 그림은 투구·볏만큼 위로 길다 — 크기는 맨몸 그림 기준으로 잡아 냥이 몸집이 그대로여야 한다
+        val refH = refHeight(cat, bmp)
+        val scale = min(availW / bmp.width, availH / refH)
         val bw = bmp.width * scale
         val bh = bmp.height * scale
+        val refBh = refH * scale                 // 맨몸 높이 — 발 위치·방석 기준
         val bob = if (cat.gone) 0f else sin(timer * 2.0f) * h * 0.010f
         bigCx = cx
         bigCy = h * 0.475f + bob
@@ -413,14 +416,15 @@ class TeamScreen(private val gameView: GameView) : Screen {
             val chH = h * 0.085f
             val chScale = chH / cushion.height
             val chW = cushion.width * chScale
-            val feet = bigCy + bh / 2f
+            val feet = bigCy + refBh / 2f
             srcRect.set(0, 0, cushion.width, cushion.height)
             dstRect.set(cx - chW / 2f, feet - chH * 0.45f, cx + chW / 2f, feet + chH * 0.55f)
             canvas.drawBitmap(cushion, srcRect, dstRect, bitmapPaint)
         }
 
         srcRect.set(0, 0, bmp.width, bmp.height)
-        dstRect.set(cx - bw / 2f, bigCy - bh / 2f, cx + bw / 2f, bigCy + bh / 2f)
+        val feetY = bigCy + refBh / 2f
+        dstRect.set(cx - bw / 2f, feetY - bh, cx + bw / 2f, feetY)   // 발을 맞추고 투구·볏은 위로
         applyRevivePop(dstRect)
         canvas.drawBitmap(bmp, srcRect, dstRect, if (cat.hasLeft) silhouettePaint else bitmapPaint)
         bigRect.set(dstRect)
@@ -468,7 +472,7 @@ class TeamScreen(private val gameView: GameView) : Screen {
             if (dancing) idle[((timer * 7f).toInt()) % idle.size]
             else spriteFor(cat)
         val catH = h * 0.30f
-        val sc = catH / bmp.height
+        val sc = catH / (if (dancing) cat.coat.idle[0].height.toFloat() else refHeight(cat, bmp))   // 갑옷을 입어도 몸집은 같게
         val bw = bmp.width * sc
         val bh = bmp.height * sc
         bigCx = cx
@@ -756,13 +760,15 @@ class TeamScreen(private val gameView: GameView) : Screen {
         val bmp = if (cat.isDead) SpriteManager.grave else spriteFor(cat)
         val availW = rect.width() * 0.44f
         val availH = rect.height() * 0.38f
-        val scale = min(availW / bmp.width, availH / bmp.height)
+        val refH = refHeight(cat, bmp)                 // 갑옷을 입어도 몸집은 같게
+        val scale = min(availW / bmp.width, availH / refH)
         val bw = bmp.width * scale
         val bh = bmp.height * scale
         val cx = rect.centerX()
         val cy = rect.top + rect.height() * 0.24f
+        val feet = cy + refH * scale / 2f
         srcRect.set(0, 0, bmp.width, bmp.height)
-        dstRect.set(cx - bw / 2f, cy - bh / 2f, cx + bw / 2f, cy + bh / 2f)
+        dstRect.set(cx - bw / 2f, feet - bh, cx + bw / 2f, feet)
         canvas.drawBitmap(bmp, srcRect, dstRect, if (cat.hasLeft) silhouettePaint else bitmapPaint)
 
         // 이름 (칸 폭에 맞게 줄인다)
@@ -1024,6 +1030,17 @@ class TeamScreen(private val gameView: GameView) : Screen {
         value >= 60 -> Color.rgb(110, 200, 120)
         value >= 30 -> Color.rgb(245, 200, 60)
         else -> Color.rgb(230, 90, 80)
+    }
+
+    /** 크기 기준 높이 — 갑옷 그림은 투구·볏 때문에 위로 길어서, 맨몸 그림 높이로 배율을 잡아야 몸집이 안 줄어든다 */
+    private fun refHeight(cat: CatTeam.TeamCat, bmp: Bitmap): Float =
+        if (cat.hasArmor && !cat.gone) plainSpriteFor(cat).height.toFloat() else bmp.height.toFloat()
+
+    private fun plainSpriteFor(cat: CatTeam.TeamCat): Bitmap = when (cat.kind) {
+        AllyCat.Kind.GREEN -> SpriteManager.greenCatAlly
+        AllyCat.Kind.BLUE -> SpriteManager.blueCatAlly
+        AllyCat.Kind.NORMAL -> cat.coat.ally
+        AllyCat.Kind.FLYING -> SpriteManager.flyingCatAlly
     }
 
     /** 갑옷을 입은 냥이는 갑옷 입은 그림(원안 Cats/cat_armor.jpeg) */

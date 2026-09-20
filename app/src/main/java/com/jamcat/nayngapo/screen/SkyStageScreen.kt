@@ -255,15 +255,9 @@ class SkyStageScreen(
         val x: Float,
         private val baseY: Float
     ) {
-        /** 갇힌 냥이 종류 (날아냥이는 10스테이지 전용이라 여기서는 안 나온다) */
+        /** 갇힌 냥이 종류 — 하늘 감옥엔 날아냥이가 갇혀 있다 (날아냥이는 하늘에만, 대표님 2026-09-20) */
         val catKind: com.jamcat.nayngapo.entity.AllyCat.Kind? =
-            if (kind == com.jamcat.nayngapo.entity.Prison.Kind.CAT) {
-                listOf(
-                    com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN,
-                    com.jamcat.nayngapo.entity.AllyCat.Kind.BLUE,
-                    com.jamcat.nayngapo.entity.AllyCat.Kind.NORMAL,
-                ).let { it[(Math.random() * it.size).toInt()] }
-            } else null
+            if (kind == com.jamcat.nayngapo.entity.Prison.Kind.CAT) com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING else null
 
         /** 그림은 땅의 감옥을 그대로 빌려 쓴다 (창살·울상·열린 모습까지 같다) */
         private val cage = com.jamcat.nayngapo.entity.Prison(0f, 0f, kind, catKind)

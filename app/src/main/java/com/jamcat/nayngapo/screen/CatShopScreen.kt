@@ -231,6 +231,20 @@ class CatShopScreen(private val gameView: GameView) : Screen {
 
     private fun buy(index: Int) {
         val item = ShopCatalog.items[index]
+        if (item.id == "revive_all") {
+            // 다부활: 물건이 아니라 사는 즉시 무덤 냥이 전부 부활 (되살릴 냥이가 없으면 안 판다)
+            val dead = com.jamcat.nayngapo.engine.CatTeam.deadCount()
+            when {
+                dead == 0 -> showNotice("되살릴 냥이가 없다냥!")
+                !GameProgress.spendRubies(item.price) -> showNotice("루비가 부족하다냥!")
+                else -> {
+                    val n = com.jamcat.nayngapo.engine.CatTeam.reviveAll()
+                    showNotice("냥이 ${n}마리 다부활!")
+                    SoundManager.playCatHit()
+                }
+            }
+            return
+        }
         if (GameProgress.buyItem(item.id, item.price)) {
             showNotice("${item.name} 구매!")
             SoundManager.playCatHit()   // '예에에용!' — 짧고 기분 좋은 소리

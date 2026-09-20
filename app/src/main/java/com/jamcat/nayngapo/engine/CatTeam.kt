@@ -551,6 +551,16 @@ object CatTeam {
         return true
     }
 
+    /** 무덤이 된 팀 냥이 수 */
+    fun deadCount(): Int = roster.count { it.isDead }
+
+    /** '다부활' — 무덤이 된 팀 냥이를 전부 되살린다. 되살린 마릿수를 돌려준다 (대표님 2026-09-20) */
+    fun reviveAll(): Int {
+        val dead = roster.filter { it.isDead }
+        for (c in dead) revive(c.id)
+        return dead.size
+    }
+
     /** 'Lv업' 아이템 한 개를 써서 공격력을 영구히 올린다 */
     fun raiseAttack(id: Int): CareResult? {
         val cat = cat(id) ?: return null

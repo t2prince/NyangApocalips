@@ -334,6 +334,26 @@ def gen_revive_potion():
     save(im, "revive_potion")
 
 
+def gen_revive_all():
+    im, d = canvas()
+    # 다부활: 큰 물약병(부활 약과 같은 결) + 병 앞에 작은 하트 세 개 — "팀 전부" 느낌
+    rrect(d, (196, 40, 252, 110), 10, (222, 184, 120))               # 코르크
+    d.rectangle((186, 100, 262, 150), fill=(200, 220, 245), outline=INK, width=W)   # 병목
+    ell(d, (80, 130, 368, 418), (200, 220, 245))                     # 병
+    d.chord((92, 142, 356, 406), 0, 180, fill=(255, 150, 60))        # 아래 절반 액체 (주황 — 부활 약과 구분)
+    d.chord((92, 142, 356, 406), 0, 180, outline=INK, width=4)
+    line(d, [(110, 274), (338, 274)], width=5, fill=(220, 110, 40))  # 수면
+    for (cx, cy, r) in ((160, 300, 30), (224, 340, 34), (290, 300, 30)):    # 하트 셋
+        d.pieslice((cx - r, cy - r * 0.9, cx, cy + r * 0.1), 180, 360, fill=(255, 255, 255))
+        d.pieslice((cx, cy - r * 0.9, cx + r, cy + r * 0.1), 180, 360, fill=(255, 255, 255))
+        poly(d, [(cx - r, cy - r * 0.4), (cx + r, cy - r * 0.4), (cx, cy + r * 1.05)], (255, 255, 255), outline=None, width=0)
+        line(d, [(cx - r, cy - r * 0.4), (cx, cy + r * 1.05), (cx + r, cy - r * 0.4)], width=5)
+        d.arc((cx - r, cy - r * 0.9, cx, cy + r * 0.1), 180, 360, fill=INK, width=5)
+        d.arc((cx, cy - r * 0.9, cx + r, cy + r * 0.1), 180, 360, fill=INK, width=5)
+    sparkles(d, [(60, 90), (390, 120), (400, 300), (50, 330)])
+    save(im, "revive_all")
+
+
 def gen_attack_up():
     im, d = canvas()
     # 발톱 자국이 난 빨간 배지 + 위쪽 화살표 (공격력 Lv업)
@@ -351,7 +371,7 @@ def main():
     os.makedirs(DST_DIR, exist_ok=True)
     for fn in (gen_churu, gen_tuna_can, gen_feed, gen_catnip, gen_ball, gen_fish_toy,
                gen_brush, gen_water_bowl, gen_cushion, gen_scratcher, gen_litter, gen_cat_tower,
-               gen_cat_armor, gen_grave, gen_revive_potion, gen_attack_up):
+               gen_cat_armor, gen_grave, gen_revive_potion, gen_revive_all, gen_attack_up):
         fn()
 
 

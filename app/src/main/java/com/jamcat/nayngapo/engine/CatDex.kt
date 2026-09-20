@@ -26,6 +26,7 @@ object CatDex {
         Entry("calico", "삼색이", "세 가지 색 얼룩", { CatCoat.CALICO.enemy }, frames = { CatCoat.CALICO.idle }),
         Entry("tuxedo", "턱시도", "정장을 차려입었다", { CatCoat.TUXEDO.enemy }, frames = { CatCoat.TUXEDO.idle }),
         Entry("mackerel", "고등어", "회색 줄무늬", { CatCoat.MACKEREL.enemy }, frames = { CatCoat.MACKEREL.idle }),
+        Entry("hammer", "해머냥이", "망치를 내려친다", { CatCoat.CALICO.enemy }, frames = { CatCoat.CALICO.idle }),
         Entry("blue", "물냥이", "물을 뱉는다", { SpriteManager.blueCatEvil },
             frames = { SpriteManager.catIdleBlue }),
         Entry("green", "그린냥이", "슬라임을 뱉는다", { SpriteManager.greenCatEvil },
@@ -48,6 +49,7 @@ object CatDex {
     /** 적 개체 → 도감 id (도감에 없는 개체는 null) */
     fun idOf(enemy: Enemy): String? = when (enemy) {
         is NormalCat -> enemy.coat.dexId    // 무늬별 칸
+        is HammerCat -> "hammer"
         is BlueCat -> "blue"
         is GreenCat -> "green"
         is PoopCat -> "poop"

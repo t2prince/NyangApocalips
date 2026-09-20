@@ -234,6 +234,93 @@ class NormalCat(x: Float, y: Float, val coat: com.jamcat.nayngapo.engine.CatCoat
     }
 }
 
+// ============ Hammer Cat ============
+/**
+ * 해머냥이 (기획7: 피 10, 공격력 3). 얼룩 냥이가 큰 망치를 들고 다가와 내려친다.
+ * 몸은 삼색이 그림을 빌려 쓰고 망치는 코드로 그린다(들어올렸다가 내려치는 회전).
+ */
+class HammerCat(x: Float, y: Float) : Enemy(x, y, 10, 3) {
+    override val width = 80f
+    override val height = 95f
+    private val moveSpeed = 50f            // 망치가 무거워 치즈냥이보다 느리다
+    private var wanderTimer = 0f
+    private var wanderDirX = 0f
+    private var hopPhase = (Math.random() * Math.PI).toFloat()
+    private var swing = 0f                 // 0보다 크면 내려치는 중 (SWING_TIME 에서 0으로)
+    private val coat = com.jamcat.nayngapo.engine.CatCoat.CALICO
+
+    init { pickNewDirection() }
+
+    private fun pickNewDirection() {
+        wanderTimer = 1f + (Math.random() * 2f).toFloat()
+        wanderDirX = (if (Math.random() < 0.5) -1f else 1f) * moveSpeed
+    }
+
+    override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
+        facingRight = playerX > x
+        wanderTimer -= deltaTime
+        val dx = playerX - x
+        if (abs(dx) < 260f) velocityX = sign(dx) * moveSpeed * 1.4f
+        else { if (wanderTimer <= 0f) pickNewDirection(); velocityX = wanderDirX }
+
+        if (swing > 0f) swing -= deltaTime
+        else if (abs(dx) < 120f) swing = SWING_TIME    // 코앞이면 망치를 치켜들었다 내려친다
+
+        if (abs(velocityX) > 1f) { hopPhase += deltaTime * 8f; jumpZ = -abs(kotlin.math.sin(hopPhase)) * 4f }
+        else jumpZ = 0f
+        super.update(deltaTime, playerX, playerY)
+    }
+
+    override fun draw(canvas: Canvas) {
+        val frames = when {
+            swing > 0f -> coat.attack
+            abs(velocityX) > 1f -> coat.walk
+            else -> coat.idle
+        }
+        val bmp = frame(frames, 7f)
+        drawSprite(canvas, bmp)
+        drawHammer(canvas, bmp)
+        drawHpBar(canvas)
+    }
+
+    /** 망치: 앞발 자리에서 나가는 손잡이 + 네모 머리. 내려칠 땐 뒤로 치켜들었다가 앞으로 쾅. */
+    private fun drawHammer(canvas: Canvas, bmp: Bitmap) {
+        val cx = x + width / 2f
+        val baseY = y + jumpZ + windLift - bmp.height * 0.45f     // 앞발 높이
+        val dir = if (facingRight) 1f else -1f
+        val handX = cx + dir * bmp.width * 0.30f
+        // 진행률 0→1: 뒤로 들었다가(−70°) 앞으로 내려친다(+35°)
+        val angle = if (swing > 0f) {
+            val t = 1f - swing / SWING_TIME
+            if (t < 0.45f) -70f * (t / 0.45f) else -70f + 105f * ((t - 0.45f) / 0.55f)
+        } else -25f
+        val len = bmp.height * 0.55f
+        canvas.save()
+        canvas.translate(handX, baseY)
+        canvas.scale(dir, 1f)
+        canvas.rotate(angle)
+        // 손잡이 (위로 뻗음)
+        canvas.drawRoundRect(-3f, -len, 3f, 0f, 3f, 3f, handlePaint)
+        canvas.drawRoundRect(-3f, -len, 3f, 0f, 3f, 3f, hammerEdgePaint)
+        // 망치 머리
+        val hw = bmp.width * 0.30f; val hh = bmp.height * 0.18f
+        headRect.set(-hw * 0.35f, -len - hh * 0.5f, hw * 0.65f, -len + hh * 0.5f)
+        canvas.drawRoundRect(headRect, 3f, 3f, headPaint)
+        canvas.drawRoundRect(headRect, 3f, 3f, hammerEdgePaint)
+        canvas.restore()
+    }
+
+    companion object {
+        private const val SWING_TIME = 0.6f
+        private val headRect = RectF()
+        private val handlePaint = Paint().apply { color = Color.rgb(150, 100, 60); isAntiAlias = true }
+        private val headPaint = Paint().apply { color = Color.rgb(120, 124, 134); isAntiAlias = true }
+        private val hammerEdgePaint = Paint().apply {
+            color = Color.rgb(40, 40, 48); isAntiAlias = true; style = Paint.Style.STROKE; strokeWidth = 2.5f
+        }
+    }
+}
+
 // ============ Thief Cat ============
 class ThiefCat(x: Float, y: Float) : Enemy(x, y, 50, 15) {
     override val width = 85f

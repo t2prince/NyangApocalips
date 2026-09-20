@@ -209,7 +209,8 @@ class Level(val stageNumber: Int) {
 
     /** 잡몹 종류와 생성 방법 (cats/ 시트의 냥이들) */
     private enum class Kind(val factory: (Float, Float) -> Enemy) {
-        NORMAL({ x, y -> NormalCat(x, y) }),     // 냥이 HP15
+        // 치즈냥이 자리마다 15% 확률로 해머냥이가 대신 나온다 (기획7 「스테이지에서는 무작위로 나와」 — 비율은 Claude 판단)
+        NORMAL({ x, y -> if (Math.random() < HAMMER_CHANCE) HammerCat(x, y) else NormalCat(x, y) }),     // 냥이 HP15
         BLUE({ x, y -> BlueCat(x, y) }),         // 물냥이(파랑냥이) HP20
         GREEN({ x, y -> GreenCat(x, y) }),       // 그린냥이 HP20 (슬라임)
         POOP({ x, y -> PoopCat(x, y) }),         // 똥냥이 HP30 (이후 지역)
@@ -218,7 +219,12 @@ class Level(val stageNumber: Int) {
         ANVIL({ x, y -> AnvilCat(x, y) }),       // 모루냥이 HP75 (이후 지역)
         LASER({ x, y -> LaserCat(x, y) }),       // 레이저냥이 HP15 (이후 지역)
         THIEF({ x, y -> ThiefCat(x, y) }),       // 도둑냥이 (이후 지역)
-        VINE({ x, y -> VineCat(x, y) }),         // 덩굴냥이 HP15 (정글 — 덩굴 그네)
+        VINE({ x, y -> VineCat(x, y) });        // 덩굴냥이 HP15 (정글 — 덩굴 그네)
+
+        companion object {
+            /** 치즈냥이 자리 하나가 해머냥이로 바뀔 확률 */
+            const val HAMMER_CHANCE = 0.15
+        }
     }
 
     /** 경로에 심는 함정 종류 (앞에서 뒤로 갈수록 위험해진다) */

@@ -85,23 +85,23 @@ class Level(val stageNumber: Int) {
             14 -> StagePlan(mapOf(Kind.NORMAL to 5, Kind.BLUE to 4, Kind.VINE to 4,
                 Kind.POOP to 2),
                 spikes = 1, secrets = 1, humans = 1, cats = 1)
-            15 -> StagePlan(mapOf(Kind.NORMAL to 5, Kind.BLUE to 4, Kind.GREEN to 3,
+            15 -> StagePlan(mapOf(Kind.GUN to 2, Kind.NORMAL to 5, Kind.BLUE to 4, Kind.GREEN to 3,
                 Kind.VINE to 5),
                 spikes = 2, secrets = 2, humans = 1, cats = 1)
-            16 -> StagePlan(mapOf(Kind.NORMAL to 4, Kind.BLUE to 4, Kind.GREEN to 3,
+            16 -> StagePlan(mapOf(Kind.GUN to 2, Kind.NORMAL to 4, Kind.BLUE to 4, Kind.GREEN to 3,
                 Kind.VINE to 5, Kind.POOP to 2, Kind.FLUFFY to 2),
                 spikes = 1, dangerPits = 1, secrets = 2, cats = 2)
-            17 -> StagePlan(mapOf(Kind.NORMAL to 4, Kind.BLUE to 3, Kind.GREEN to 3,
+            17 -> StagePlan(mapOf(Kind.GUN to 3, Kind.NORMAL to 4, Kind.BLUE to 3, Kind.GREEN to 3,
                 Kind.VINE to 5, Kind.FLUFFY to 2, Kind.THIEF to 1),
                 spikes = 2, dangerPits = 1, secrets = 2, humans = 2)
-            18 -> StagePlan(mapOf(Kind.NORMAL to 4, Kind.BLUE to 3, Kind.GREEN to 3,
+            18 -> StagePlan(mapOf(Kind.GUN to 3, Kind.NORMAL to 4, Kind.BLUE to 3, Kind.GREEN to 3,
                 Kind.VINE to 6, Kind.POOP to 2, Kind.FLUFFY to 2, Kind.THIEF to 1, Kind.ANVIL to 2),
                 spikes = 1, dangerPits = 1, secrets = 2, humans = 1, cats = 2)
-            19 -> StagePlan(mapOf(Kind.NORMAL to 3, Kind.GREEN to 3, Kind.VINE to 6,
+            19 -> StagePlan(mapOf(Kind.GUN to 3, Kind.NORMAL to 3, Kind.GREEN to 3, Kind.VINE to 6,
                 Kind.FLUFFY to 3, Kind.THIEF to 1, Kind.ANVIL to 2, Kind.LASER to 3),
                 spikes = 2, dangerPits = 2, secrets = 3, humans = 1, cats = 2)
             // 정글의 끝: 마법사 냥이 삼형제가 신전을 지킨다 (원안 마지막 보스 디자인)
-            else -> StagePlan(mapOf(Kind.NORMAL to 4, Kind.GREEN to 3, Kind.VINE to 6, Kind.FLUFFY to 3,   // 20: 치즈냥이도 넣는다 (대표님 2026-09-20, 마릿수는 Claude 판단)
+            else -> StagePlan(mapOf(Kind.GUN to 4, Kind.NORMAL to 4, Kind.GREEN to 3, Kind.VINE to 6, Kind.FLUFFY to 3,   // 20: 치즈냥이도 넣는다 (대표님 2026-09-20, 마릿수는 Claude 판단)
                 Kind.ANVIL to 3, Kind.LASER to 3, Kind.THIEF to 1),
                 secrets = 3,
                 boss = { baseX ->

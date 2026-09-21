@@ -14,7 +14,10 @@ object Missions {
 
     /** 미션 목록 — 대표님 2026-09-21 「미션에 있는 걸 다 없애줘」: 전부 비웠다. 새 미션은 여기에 한 줄씩 넣는다.
      *  예) Mission("stage1", "첫 걸음", "1스테이지 클리어", 1, 5) { if (GameProgress.isCleared(1)) 1 else 0 } */
-    val all: List<Mission> = emptyList()
+    val all: List<Mission> = listOf(
+        // 대표님 2026-09-21: 이름 '살아남아라', 목적 '한 번도 죽지 않고 20스테이지 클리어'. 보상 200루비는 Claude 판단
+        Mission("survive20", "살아남아라", "한 번도 죽지 않고 20스테이지 클리어", 1, 200) { if (GameProgress.stage20NoDeath) 1 else 0 },
+    )
 
     fun hasClaimable() = all.any { it.claimable }
 

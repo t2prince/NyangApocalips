@@ -801,6 +801,8 @@ class GamePlayScreen(
         if (level.stageCleared && clearTimer < 0f) {
             clearTimer = STAGE_CLEAR_DELAY
             GameProgress.onStageCleared(stageNumber)
+            // 미션 '살아남아라': 목숨을 하나도 안 잃고 20스테이지를 깼다
+            if (stageNumber == 20 && player.lives >= Constants.MAX_LIVES) GameProgress.markStage20NoDeath()
             showWaveText("STAGE CLEAR!")
         }
         if (clearTimer > 0f) {

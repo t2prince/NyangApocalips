@@ -33,6 +33,7 @@ object GameProgress {
     private const val KEY_KILLS = "stat_kills"
     private const val KEY_THIEF_KILLS = "stat_thief_kills"
     private const val KEY_MISSIONS_CLAIMED = "missions_claimed"
+    private const val KEY_STAGE20_NO_DEATH = "stat_stage20_no_death"
     private const val KEY_BGM = "setting_bgm"
     private const val KEY_SFX = "setting_sfx"
     private const val KEY_SHAKE = "setting_shake"
@@ -109,6 +110,15 @@ object GameProgress {
     fun setSfx(on: Boolean) { sfxEnabled = on; prefs?.edit()?.putBoolean(KEY_SFX, on)?.apply() }
     fun setShake(on: Boolean) { shakeEnabled = on; prefs?.edit()?.putBoolean(KEY_SHAKE, on)?.apply() }
 
+    /** 한 번도 죽지 않고 20스테이지를 깬 적이 있는가 (미션 '살아남아라') */
+    var stage20NoDeath = false
+        private set
+    fun markStage20NoDeath() {
+        if (stage20NoDeath) return
+        stage20NoDeath = true
+        prefs?.edit()?.putBoolean(KEY_STAGE20_NO_DEATH, true)?.apply()
+    }
+
     /** 보상을 받은 미션 id */
     val claimedMissions = mutableSetOf<String>()
 
@@ -148,6 +158,7 @@ object GameProgress {
         bgmEnabled = prefs?.getBoolean(KEY_BGM, true) ?: true
         sfxEnabled = prefs?.getBoolean(KEY_SFX, true) ?: true
         shakeEnabled = prefs?.getBoolean(KEY_SHAKE, true) ?: true
+        stage20NoDeath = prefs?.getBoolean(KEY_STAGE20_NO_DEATH, false) ?: false
         claimedMissions.clear()
         claimedMissions.addAll(prefs?.getStringSet(KEY_MISSIONS_CLAIMED, emptySet()) ?: emptySet())
         bankScore = prefs?.getInt(KEY_BANK_SCORE, 0) ?: 0

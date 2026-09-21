@@ -11,6 +11,7 @@ class GameThread(
     var running = false
     private var perfFrames = 0; private var perfUpdate = 0L; private var perfDraw = 0L; private var perfLock = 0L
     private var perfTotal = 0L; private var perfMax = 0L; private var perfSince = System.nanoTime()
+    private var lastHw = false
     private val targetFPS = 60
     private val targetTime = 1000L / targetFPS
 
@@ -31,6 +32,7 @@ class GameThread(
                 canvas = try { surfaceHolder.lockHardwareCanvas() } catch (_: Exception) { null } ?: surfaceHolder.lockCanvas()
                 tLock = System.nanoTime() - t0
                 if (canvas != null) {
+                    lastHw = canvas.isHardwareAccelerated
                     synchronized(surfaceHolder) {
                         val t1 = System.nanoTime()
                         gameView.updateGame(deltaTime)
@@ -52,10 +54,10 @@ class GameThread(
             perfFrames++; perfUpdate += tUpdate; perfDraw += tDraw; perfLock += tLock; perfTotal += elapsed
             if (elapsed > perfMax) perfMax = elapsed
             if (System.nanoTime() - perfSince > 2_000_000_000L) {
-                android.util.Log.i("PERF", "frames=%d avg=%.1fms max=%dms update=%.1fms draw=%.1fms lock=%.1fms screen=%s".format(
+                android.util.Log.i("PERF", "frames=%d avg=%.1fms max=%dms update=%.1fms draw=%.1fms lock=%.1fms hw=%s screen=%s".format(
                     perfFrames, perfTotal.toFloat() / perfFrames, perfMax,
                     perfUpdate / 1e6f / perfFrames, perfDraw / 1e6f / perfFrames, perfLock / 1e6f / perfFrames,
-                    gameView.currentScreenName()))
+                    lastHw, gameView.currentScreenName()))
                 perfFrames = 0; perfUpdate = 0L; perfDraw = 0L; perfLock = 0L; perfTotal = 0L; perfMax = 0L
                 perfSince = System.nanoTime()
             }

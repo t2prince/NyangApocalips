@@ -70,6 +70,11 @@ class MissionScreen(private val gameView: GameView) : Screen {
         maxScroll = (rows * (ch + rowGap) - rowGap - (listBottom - listTop)).coerceAtLeast(0f)
         scroll = scroll.coerceIn(0f, maxScroll)
 
+        if (Missions.all.isEmpty()) {
+            descPaint.textSize = h * 0.04f; descPaint.textAlign = Paint.Align.CENTER
+            canvas.drawText("아직 미션이 없어요", w / 2f, h * 0.5f, descPaint)
+            descPaint.textAlign = Paint.Align.LEFT
+        }
         canvas.save(); canvas.clipRect(0f, listTop, w, listBottom)
         namePaint.textSize = h * 0.038f; descPaint.textSize = h * 0.028f; progPaint.textSize = h * 0.028f
         btnTextPaint.textSize = h * 0.032f; btnTextOffPaint.textSize = h * 0.032f; rewardPaint.textSize = h * 0.03f

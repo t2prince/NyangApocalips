@@ -587,7 +587,7 @@ class SkyStageScreen(
         if (falling >= 0f) { updateFalling(deltaTime); return }
 
         val h = gameView.screenHeight.toFloat()
-        flyMaxY = h * 0.55f          // 하늘에 떠 있는 것은 화면 아래(땅 쪽)로 못 내려간다 — 위쪽 절반에서만 난다 (대표님 2026-09-24)
+        flyMaxY = h - 320f
         skyMidY = (flyMinY + flyMaxY) / 2f
         player.y = if (player.y == 0f) skyMidY else player.y
 

@@ -602,7 +602,60 @@ abstract class ColorCat(x: Float, y: Float, private val sprite: () -> Bitmap) : 
 }
 class RedCat(x: Float, y: Float) : ColorCat(x, y, { SpriteManager.redCatEvil })
 class OrangeCat(x: Float, y: Float) : ColorCat(x, y, { SpriteManager.orangeCatEvil })
-class YellowCat(x: Float, y: Float) : ColorCat(x, y, { SpriteManager.yellowCatEvil })
+/** 노랑냥이 — 번개를 쏜다 (대표님 2026-09-24). 총냥이처럼 거리를 두고 2.5초마다 번개 한 줄기. HP 20 · 공격 5 */
+class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 5) {
+    override val width = 92f
+    override val height = 104f
+    private var hopPhase = (Math.random() * Math.PI).toFloat()
+    private var shootTimer = 1.8f
+    private var flash = 0f
+    private val pendingProjectiles = mutableListOf<Projectile>()
+
+    override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
+        pendingProjectiles.clear()
+        facingRight = playerX > x
+        val dx = playerX - x
+        val dist = abs(dx)
+        velocityX = when {
+            dist < 200f -> -sign(dx) * 150f          // 너무 가까우면 물러난다
+            dist < FIRE_RANGE -> 0f                   // 사거리 안: 서서 쏜다
+            else -> sign(dx) * 160f
+        }
+        shootTimer -= deltaTime
+        if (flash > 0f) flash -= deltaTime
+        if (shootTimer <= 0f && dist < FIRE_RANGE) {
+            shootTimer = 2.5f; flash = 0.2f
+            val dir = if (facingRight) 1f else -1f
+            pendingProjectiles.add(
+                Projectile(x + width / 2f + dir * 40f, y - height * 0.5f, dir * 900f, 0f, attackPower, false,
+                    tint = Color.rgb(255, 214, 40), radius = 8f, isLightning = true)
+            )
+        }
+        if (abs(velocityX) > 1f) { hopPhase += deltaTime * 13f; jumpZ = -abs(sin(hopPhase.toDouble())).toFloat() * 16f }
+        else jumpZ = 0f
+        super.update(deltaTime, playerX, playerY)
+    }
+
+    override fun draw(canvas: Canvas) {
+        drawSprite(canvas, SpriteManager.yellowCatEvil)
+        if (flash > 0f) {                              // 쏘는 순간 몸 주위 번쩍
+            val cx = x + width / 2f; val cy = y + jumpZ - height * 0.5f
+            sparkPaint.alpha = (200 * flash / 0.2f).toInt().coerceIn(0, 255)
+            for (k in 0 until 6) {
+                val a = k * 60.0 + flash * 400.0
+                canvas.drawLine(cx, cy, cx + (60 * Math.cos(Math.toRadians(a))).toFloat(), cy + (60 * Math.sin(Math.toRadians(a))).toFloat(), sparkPaint)
+            }
+        }
+        drawHpBar(canvas)
+    }
+
+    override fun getProjectiles(): List<Projectile> = pendingProjectiles.toList()
+
+    companion object {
+        private const val FIRE_RANGE = 560f
+        private val sparkPaint = Paint().apply { color = Color.rgb(255, 240, 120); strokeWidth = 4f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    }
+}
 
 // ============ 나쁜 그린냥이 (HP 20, 슬라임 대미지 10) ============
 /** 수북한 꼬리의 나쁜 편 그린냥이: 멈춰 서서 슬라임을 뱉는다 */

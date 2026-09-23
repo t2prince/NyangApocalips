@@ -1754,7 +1754,7 @@ class GamePlayScreen(
         }
 
         // 십자 패드 아래: 공중 발판 위에서는 내려온다
-        if (input.moveDown) player.dropFromPlatform()
+        // 공중 발판에서는 아래로 못 내려간다 — 가장자리로 걸어 나가야만 떨어진다 (대표님 2026-09-24). 아래 패드는 땅에서 아무 일도 안 한다
 
         if (input.jump || input.moveUp) {
             // 정글의 덩굴: 아래에서 점프를 누르면 잡고, 매달린 채 누르면 놓는다

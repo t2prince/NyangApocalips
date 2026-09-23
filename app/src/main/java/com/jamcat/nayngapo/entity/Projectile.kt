@@ -3,6 +3,7 @@ package com.jamcat.nayngapo.entity
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import kotlin.math.atan2
 import kotlin.math.sin
@@ -30,6 +31,8 @@ class Projectile(
     val isShuriken: Boolean = false,
     /** 데굴데굴 구르며 날아가는 돌 (인간 기술 '돌던지기') */
     val isStone: Boolean = false,
+    /** 번개 — 노랑냥이가 쏜다 (대표님 2026-09-24). 지그재그 노란 줄기 */
+    val isLightning: Boolean = false,
     /** 화면 안의 가장 가까운 적을 쫓아가 터지는 미사일 (인간 기술 '미사일') */
     val isMissile: Boolean = false
 ) {
@@ -139,6 +142,11 @@ class Projectile(
 
         if (isShuriken) {
             drawShuriken(canvas, cx, cy)
+            return
+        }
+
+        if (isLightning) {
+            drawLightning(canvas, cx, cy)
             return
         }
 
@@ -314,6 +322,34 @@ class Projectile(
     }
 
     /** 표창: 은색 네 날 별 + 가운데 구멍, 날아가는 동안 빠르게 돈다 */
+    private val boltPath = Path()
+    private val boltOuter = Paint().apply {
+        color = Color.rgb(255, 214, 40); style = Paint.Style.STROKE; strokeWidth = 9f
+        strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND; isAntiAlias = true
+    }
+    private val boltInner = Paint().apply {
+        color = Color.rgb(255, 255, 220); style = Paint.Style.STROKE; strokeWidth = 3.5f
+        strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND; isAntiAlias = true
+    }
+    private var boltPhase = 0f
+
+    /** 번개: 나아가는 방향으로 길게 뻗은 지그재그 줄기 (노란 테 + 흰 심). 프레임마다 살짝 흔들린다 */
+    private fun drawLightning(canvas: Canvas, cx: Float, cy: Float) {
+        boltPhase += 0.9f
+        val d = if (velocityX >= 0f) 1f else -1f
+        val len = 96f
+        val segs = 6
+        boltPath.reset()
+        boltPath.moveTo(cx - d * len / 2f, cy)
+        for (i in 1..segs) {
+            val t = i / segs.toFloat()
+            val jag = if (i == segs) 0f else (if (i % 2 == 0) 1f else -1f) * (10f + 4f * kotlin.math.sin(boltPhase + i))
+            boltPath.lineTo(cx - d * len / 2f + d * len * t, cy + jag)
+        }
+        canvas.drawPath(boltPath, boltOuter)
+        canvas.drawPath(boltPath, boltInner)
+    }
+
     private fun drawShuriken(canvas: Canvas, cx: Float, cy: Float) {
         val r = radius * 1.6f
         canvas.save()

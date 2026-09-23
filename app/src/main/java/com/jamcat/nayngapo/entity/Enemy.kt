@@ -602,8 +602,8 @@ abstract class ColorCat(x: Float, y: Float, private val sprite: () -> Bitmap) : 
 }
 class RedCat(x: Float, y: Float) : ColorCat(x, y, { SpriteManager.redCatEvil })
 class OrangeCat(x: Float, y: Float) : ColorCat(x, y, { SpriteManager.orangeCatEvil })
-/** 노랑냥이 — 번개를 쏜다 (대표님 2026-09-24). 총냥이처럼 거리를 두고 2.5초마다 번개 한 줄기. HP 20 · 공격 5 */
-class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 5) {
+/** 노랑냥이 — 번개를 쏜다 (대표님 2026-09-24). 총냥이처럼 거리를 두고 2.5초마다 번개 한 줄기. HP 20 · 공격(번개 대미지) 2 */
+class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
     override val width = 92f
     override val height = 104f
     private var hopPhase = (Math.random() * Math.PI).toFloat()

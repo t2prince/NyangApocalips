@@ -782,7 +782,8 @@ class GamePlayScreen(
         if (!player.isInvincible && !player.isJumping) {
             for (proj in level.projectiles) {
                 if (!proj.isPlayerOwned && proj.isAlive && RectF.intersects(playerBox, proj.hitBox)) {
-                    player.takeDamage(1)   // 탄에 스치면 하트 1
+                    // 탄 대미지는 쏜 냥이의 공격력(총냥이 2·노랑냥이 번개 2, 대표님 2026-09-24). 0 이하로 오면 최소 1
+                    player.takeDamage(proj.damage.coerceAtLeast(1))
                     proj.isAlive = false
                     hitEffects.add(HitEffect(player.x, player.y - player.height, 0.5f, "HIT!"))
                 }

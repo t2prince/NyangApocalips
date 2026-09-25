@@ -141,8 +141,27 @@ def gen_missile():
     save_h(im, "missile")
 
 
+def gen_stone_wall():
+    """돌벽: 땅을 뚫고 솟은 길고 뾰족한 회색 돌가시 세 개 + 튀는 흙."""
+    im, d = G.canvas()
+    # 땅
+    G.rrect(d, (20, 360, 428, 420), 20, (132, 100, 66))
+    for (cx, h, lean) in ((120, 230, 8), (230, 300, -6), (335, 250, 6)):
+        top = 370 - h
+        outline = [(cx - 42, 372), (cx - 24, 372 - h * 0.55), (cx + lean, top), (cx + 26, 372 - h * 0.5), (cx + 42, 372)]
+        G.poly(d, outline, (118, 116, 124))
+        G.poly(d, [(cx - 42, 372), (cx - 24, 372 - h * 0.55), (cx + lean, top), (cx - 2, 372)], (172, 170, 178), width=0)
+        G.poly(d, outline, None, outline=G.INK, width=7)
+        G.line(d, [(cx + 6, 372 - h * 0.35), (cx + 16, 372 - h * 0.22)], width=4)
+        G.ell(d, (cx - 54, 355, cx + 54, 385), (120, 92, 62), width=6)
+    # 튀는 흙·돌 조각
+    for (x, y, r) in ((50, 290, 11), (180, 250, 9), (285, 215, 10), (400, 280, 12)):
+        G.ell(d, (x - r, y - r, x + r, y + r), (150, 150, 158), width=4)
+    save_h(im, "stone_wall")
+
+
 def main():
-    for fn in (gen_tornado, gen_rapid_fire, gen_jelly_paw, gen_stone_throw, gen_fire_punch, gen_missile): fn()
+    for fn in (gen_tornado, gen_rapid_fire, gen_jelly_paw, gen_stone_throw, gen_fire_punch, gen_missile, gen_stone_wall): fn()
 
 if __name__ == '__main__':
     main()

@@ -130,11 +130,11 @@ class GamePlayScreen(
     /** 기술별 남은 쿨타임 (스테이지를 시작할 때는 모두 준비 완료) */
     private val skillCooldowns = FloatArray(battleSkills.size)
 
-    /** 이 스테이지에서 인간이 직접 쓸 수 있는 기술 (배운 것만, 최대 3개) */
+    /** 이 스테이지에서 인간이 직접 쓸 수 있는 기술 (배운 것만, 최대 4개) */
     private val humanBattleSkills =
         com.jamcat.nayngapo.engine.HumanSkills.all
             .filter { com.jamcat.nayngapo.engine.HumanSkills.isLearned(it.id) }
-            .take(3)
+            .take(4)   // 인간 기술 버튼 4칸 (TouchControls.HUMAN_SKILL_SLOTS)
 
     /** 인간 기술별 남은 쿨타임 (시작할 때는 모두 준비 완료) */
     private val humanSkillCooldowns = FloatArray(humanBattleSkills.size)
@@ -201,6 +201,9 @@ class GamePlayScreen(
 
     /** 지금 화면을 쓸고 지나가는 토네이도들 */
     private val tornadoes = mutableListOf<com.jamcat.nayngapo.entity.Tornado>()
+    /** 인간 기술 '돌벽'의 돌가시 줄 */
+    private val stoneWalls = mutableListOf<com.jamcat.nayngapo.entity.StoneWall>()
+    private val freshSpikes = mutableListOf<Int>()
 
     /** 폭죽이 터질 때 흩어지는 색 불꽃 */
     private class Spark(
@@ -393,6 +396,25 @@ class GamePlayScreen(
                     damageEnemy(enemy, tor.power)
                 }
                 if (tor.isDone) it.remove()
+            }
+        }
+
+        // 돌벽: 솟은 돌가시에 닿은 적을 한 번씩 찌른다
+        run {
+            val it = stoneWalls.iterator()
+            while (it.hasNext()) {
+                val wall = it.next()
+                wall.update(deltaTime)
+                wall.takeFreshSpikes(freshSpikes)
+                for (i in freshSpikes) spikeDust(wall.spikeXOf(i), wall.groundOf(i))
+                for (enemy in level.enemies) {
+                    if (enemy.isDead || enemy in wall.hit) continue
+                    if (!wall.touches(enemy.hitBox)) continue
+                    wall.hit.add(enemy)
+                    enemy.jumpZ = -40f          // 찔려 살짝 튀어오른다
+                    damageEnemy(enemy, wall.power)
+                }
+                if (wall.isDone) it.remove()
             }
         }
 
@@ -666,6 +688,24 @@ class GamePlayScreen(
             if (proj.y + proj.height >= ground) {
                 proj.isAlive = false
                 explodeMissile(mx, ground - 6f, proj.damage)
+            }
+        }
+
+        // 먹구름 번개가 땅에 닿으면 불꽃을 튀기고 사라진다
+        for (proj in level.projectiles) {
+            if (!proj.isLightning || !proj.isAlive) continue
+            val lx = proj.x + proj.width / 2f
+            val ground = Terrain.groundY(lx)
+            if (proj.y + proj.height >= ground) {
+                proj.isAlive = false
+                repeat(6) { i ->
+                    val ang = (-Math.PI * (0.1 + 0.8 * i / 5.0)).toFloat()
+                    val v = 180f + Math.random().toFloat() * 160f
+                    sparks.add(
+                        Spark(lx, ground - 4f, kotlin.math.cos(ang) * v, kotlin.math.sin(ang) * v, 0.3f,
+                            Color.rgb(255, 230, 90), size = 3.5f)
+                    )
+                }
             }
         }
 
@@ -1235,6 +1275,27 @@ class GamePlayScreen(
                 hitEffects.add(HitEffect(player.x, player.y - player.height - 40f, 1.0f, skill.name + "!"))
             }
 
+            "stone_wall" -> {
+                // 인간 앞 땅에서 돌가시가 바라보는 쪽으로 차례로 솟는다 — 낭떠러지 위에는 솟지 않는다
+                val dir = if (player.facingRight) 1f else -1f
+                val cx = player.x + player.width / 2f
+                val xs = ArrayList<Float>()
+                for (i in 0 until com.jamcat.nayngapo.entity.StoneWall.SPIKES) {
+                    val sx = cx + dir * (com.jamcat.nayngapo.entity.StoneWall.FIRST_OFFSET +
+                        i * com.jamcat.nayngapo.entity.StoneWall.SPACING)
+                    if (level.chasms.any { sx > it.x - 20f && sx < it.x + it.width + 20f }) continue
+                    xs.add(sx)
+                }
+                stoneWalls.add(
+                    com.jamcat.nayngapo.entity.StoneWall(
+                        xs.toFloatArray(), FloatArray(xs.size) { Terrain.groundY(xs[it]) }, skill.power
+                    )
+                )
+                shake(0.3f, 8f)
+                SoundManager.playSpecial()
+                hitEffects.add(HitEffect(player.x, player.y - player.height - 40f, 1.0f, skill.name + "!"))
+            }
+
             "stone_throw" -> {
                 // 손 높이에서 바라보는 쪽으로 돌을 포물선으로 던진다
                 val dir = if (player.facingRight) 1f else -1f
@@ -1251,6 +1312,22 @@ class GamePlayScreen(
                 SoundManager.playAttack()
                 hitEffects.add(HitEffect(player.x, player.y - player.height - 40f, 1.0f, skill.name + "!"))
             }
+        }
+    }
+
+    /** 돌가시가 땅을 뚫고 나올 때 흙·돌 부스러기가 튄다 */
+    private fun spikeDust(x: Float, ground: Float) {
+        repeat(5) {
+            val a = (-Math.PI * (0.15 + Math.random() * 0.7)).toFloat()
+            val sp = 140f + Math.random().toFloat() * 160f
+            sparks.add(
+                Spark(
+                    x + (Math.random().toFloat() - 0.5f) * 30f, ground - 4f,
+                    kotlin.math.cos(a) * sp, kotlin.math.sin(a) * sp, 0.4f,
+                    if (it % 2 == 0) Color.rgb(140, 108, 74) else Color.rgb(150, 150, 158),
+                    size = 4f, streak = false, twinkle = false
+                )
+            )
         }
     }
 
@@ -1944,6 +2021,8 @@ class GamePlayScreen(
 
         // 토네이도는 개체보다 앞에 그려 휘감는 느낌을 준다
         for (tor in tornadoes) tor.draw(canvas)
+        // 돌벽도 적 앞에 그려 찌르는 느낌을 준다
+        for (wall in stoneWalls) wall.draw(canvas)
 
         // 미사일 폭발 연기 (커지며 흐려진다)
         for (p in smokePuffs) {

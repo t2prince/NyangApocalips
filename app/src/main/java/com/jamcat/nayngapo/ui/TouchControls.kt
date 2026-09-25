@@ -105,7 +105,7 @@ class TouchControls {
     private val orderCatPaint = Paint().apply { isAntiAlias = true }
     /** 기술 버튼 자리 (최대 3칸) */
     private val skillCenters = FloatArray(SKILL_SLOTS * 2)
-    private val humanSkillCenters = FloatArray(SKILL_SLOTS * 2)
+    private val humanSkillCenters = FloatArray(HUMAN_SKILL_SLOTS * 2)
     private val skillIconDst = RectF()
 
     fun updateLayout(screenWidth: Int, screenHeight: Int) {
@@ -137,7 +137,8 @@ class TouchControls {
         // 인간 기술 버튼: JUMP 위 한 줄.
         // 2400·1920 x 1080에서 모든 버튼과 겹치지 않게 잰 자리 — 가장 가까운 것은
         // 고양이 기술 줄의 '냥이 없음' 글씨(15px)와 JUMP 터치 범위(5.7px)다.
-        for (i in 0 until SKILL_SLOTS) {
+        // 네 번째 칸은 셋째 칸 왼쪽 — 고양이 기술 줄(가장 왼쪽 가장자리)보다 더 왼쪽이라 겹치지 않는다.
+        for (i in 0 until HUMAN_SKILL_SLOTS) {
             humanSkillCenters[i * 2] = jumpBtnX - 90f - i * 110f
             humanSkillCenters[i * 2 + 1] = jumpBtnY - 185f
         }
@@ -215,7 +216,7 @@ class TouchControls {
 
         // 인간 기술 버튼: 냥이가 없어도 언제나 쓸 수 있다 (쿨타임이 끝난 기술만, 누를 때 한 번만)
         for (i in humanSkills.indices) {
-            if (i >= SKILL_SLOTS) break
+            if (i >= HUMAN_SKILL_SLOTS) break
             val sx = humanSkillCenters[i * 2]
             val sy = humanSkillCenters[i * 2 + 1]
             if (kotlin.math.hypot((px - sx).toDouble(), (py - sy).toDouble()) > SKILL_RADIUS + 12f) continue
@@ -279,7 +280,7 @@ class TouchControls {
             "special" -> inputState.special = false
             "order" -> Unit          // 한 번 누름으로 끝나는 버튼이라 놓을 때 할 일이 없다
             // 기술 버튼도 한 번 누름 — 놓을 때 되돌릴 것이 없다
-            "skill0", "skill1", "skill2", "hskill0", "hskill1", "hskill2" -> Unit
+            "skill0", "skill1", "skill2", "hskill0", "hskill1", "hskill2", "hskill3" -> Unit
         }
     }
 
@@ -363,7 +364,7 @@ class TouchControls {
         requiresCaster: Boolean
     ) {
         for (i in list.indices) {
-            if (i >= SKILL_SLOTS) break
+            if (i * 2 >= centers.size) break      // 줄마다 칸 수가 다르다 (고양이 3, 인간 4)
             val skill = list[i]
             val cx = centers[i * 2]
             val cy = centers[i * 2 + 1]
@@ -574,6 +575,9 @@ class TouchControls {
 
         /** 화면에 놓을 기술 버튼 칸 수 */
         const val SKILL_SLOTS = 3
+
+        /** 인간 기술 버튼 칸 수 */
+        const val HUMAN_SKILL_SLOTS = 4
 
         /** 기술 버튼 반지름 (지름 96px) */
         const val SKILL_RADIUS = 48f

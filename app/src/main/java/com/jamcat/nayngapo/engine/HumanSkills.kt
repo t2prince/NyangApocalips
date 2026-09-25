@@ -25,6 +25,11 @@ object HumanSkills : SkillBook {
             "가장 가까운 적을 쫓아가 터지는 미사일 (공격력 12)",
             power = 12, cooldown = 6f
         ),
+        CatSkills.Skill(
+            "stone_wall", "돌벽", 110,
+            "땅에서 길고 뾰족한 돌이 솟는다 (공격력 55)",
+            power = 55, cooldown = 8f
+        ),
     )
 
     fun byId(id: String): CatSkills.Skill? = all.firstOrNull { it.id == id }

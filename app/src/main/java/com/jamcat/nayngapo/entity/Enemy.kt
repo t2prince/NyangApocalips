@@ -602,7 +602,11 @@ abstract class ColorCat(x: Float, y: Float, private val sprite: () -> Bitmap) : 
 }
 class RedCat(x: Float, y: Float) : ColorCat(x, y, { SpriteManager.redCatEvil })
 class OrangeCat(x: Float, y: Float) : ColorCat(x, y, { SpriteManager.orangeCatEvil })
-/** 노랑냥이 — 번개를 쏜다 (대표님 2026-09-24). 총냥이처럼 거리를 두고 2.5초마다 번개 한 줄기. HP 20 · 공격(번개 대미지) 2 */
+/**
+ * 노랑냥이 — 번개를 부른다 (대표님 2026-09-24). 번개는 **먹구름에서 떨어진다** (대표님 2026-09-25).
+ * 거리를 두고 2.5초마다 인간 머리 위에 먹구름을 띄우고, 구름이 모이면 번개가 곧장 내리꽂힌다.
+ * 노랑냥이가 쓰러지면 떠 있던 먹구름도 사라진다. HP 20 · 공격(번개 대미지) 2
+ */
 class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
     override val width = 92f
     override val height = 104f
@@ -611,6 +615,14 @@ class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
     private var flash = 0f
     private val pendingProjectiles = mutableListOf<Projectile>()
 
+    /** 먹구름 하나: 자리 + 생긴 뒤 흐른 시간. 모이는 동안 비켜 설 틈이 있다 */
+    private class StormCloud(val x: Float, val y: Float) {
+        var t = 0f
+        var struck = false
+    }
+
+    private val clouds = mutableListOf<StormCloud>()
+
     override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
         pendingProjectiles.clear()
         facingRight = playerX > x
@@ -618,19 +630,33 @@ class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
         val dist = abs(dx)
         velocityX = when {
             dist < 200f -> -sign(dx) * 150f          // 너무 가까우면 물러난다
-            dist < FIRE_RANGE -> 0f                   // 사거리 안: 서서 쏜다
+            dist < FIRE_RANGE -> 0f                   // 사거리 안: 서서 부른다
             else -> sign(dx) * 160f
         }
         shootTimer -= deltaTime
         if (flash > 0f) flash -= deltaTime
         if (shootTimer <= 0f && dist < FIRE_RANGE) {
             shootTimer = 2.5f; flash = 0.2f
-            val dir = if (facingRight) 1f else -1f
-            pendingProjectiles.add(
-                Projectile(x + width / 2f + dir * 40f, y - height * 0.5f, dir * 900f, 0f, attackPower, false,
-                    tint = Color.rgb(255, 214, 40), radius = 8f, isLightning = true)
-            )
+            // 부르는 순간 인간의 머리 위에 먹구름이 뜬다
+            clouds.add(StormCloud(playerX + Constants.PLAYER_WIDTH / 2f, playerY - Constants.PLAYER_HEIGHT - CLOUD_HEIGHT))
         }
+
+        val it = clouds.iterator()
+        while (it.hasNext()) {
+            val c = it.next()
+            c.t += deltaTime
+            if (!c.struck && c.t >= GATHER_TIME) {
+                // 구름이 다 모였다 — 구름 밑에서 번개가 곧장 아래로 내리꽂힌다
+                c.struck = true
+                val r = 8f
+                pendingProjectiles.add(
+                    Projectile(c.x - r, c.y + 20f, 0f, BOLT_SPEED, attackPower, false,
+                        tint = Color.rgb(255, 214, 40), radius = r, isLightning = true)
+                )
+            }
+            if (c.t >= GATHER_TIME + LINGER_TIME) it.remove()
+        }
+
         if (abs(velocityX) > 1f) { hopPhase += deltaTime * 13f; jumpZ = -abs(sin(hopPhase.toDouble())).toFloat() * 16f }
         else jumpZ = 0f
         super.update(deltaTime, playerX, playerY)
@@ -638,7 +664,7 @@ class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
 
     override fun draw(canvas: Canvas) {
         drawSprite(canvas, SpriteManager.yellowCatEvil)
-        if (flash > 0f) {                              // 쏘는 순간 몸 주위 번쩍
+        if (flash > 0f) {                              // 부르는 순간 몸 주위 번쩍
             val cx = x + width / 2f; val cy = y + jumpZ - height * 0.5f
             sparkPaint.alpha = (200 * flash / 0.2f).toInt().coerceIn(0, 255)
             for (k in 0 until 6) {
@@ -647,13 +673,55 @@ class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
             }
         }
         drawHpBar(canvas)
+        if (!isDead) for (c in clouds) drawCloud(canvas, c)
+    }
+
+    /** 먹구름: 작게 모여 커지고, 모이는 동안 안에서 노란 빛이 깜빡인다. 번개를 친 뒤엔 흐려진다 */
+    private fun drawCloud(canvas: Canvas, c: StormCloud) {
+        val grow = (c.t / 0.25f).coerceIn(0f, 1f)
+        val s = 0.4f + 0.6f * grow
+        val fade = if (c.struck) (1f - (c.t - GATHER_TIME) / LINGER_TIME).coerceIn(0f, 1f) else 1f
+        val a = (235 * fade).toInt()
+        cloudDark.alpha = a
+        cloudLight.alpha = a
+        cloudInk.alpha = a
+        // 뭉게 세 덩이 + 납작한 밑
+        for ((ox, oy, r) in CLOUD_PUFFS) {
+            canvas.drawCircle(c.x + ox * s, c.y + oy * s, r * s, cloudDark)
+            canvas.drawCircle(c.x + ox * s, c.y + oy * s, r * s, cloudInk)
+        }
+        cloudRect.set(c.x - 78f * s, c.y - 4f * s, c.x + 78f * s, c.y + 24f * s)
+        canvas.drawRoundRect(cloudRect, 14f * s, 14f * s, cloudDark)
+        // 윗면 밝은 기운
+        canvas.drawCircle(c.x - 14f * s, c.y - 28f * s, 16f * s, cloudLight)
+        // 모이는 동안 안에서 번쩍 — 막바지일수록 자주
+        if (!c.struck) {
+            val rate = 6f + 18f * (c.t / GATHER_TIME)
+            if (sin((c.t * rate).toDouble()) > 0.55) {
+                glowPaint.alpha = (140 * fade).toInt()
+                canvas.drawCircle(c.x, c.y + 6f * s, 30f * s, glowPaint)
+            }
+        }
     }
 
     override fun getProjectiles(): List<Projectile> = pendingProjectiles.toList()
 
     companion object {
         private const val FIRE_RANGE = 560f
+        /** 먹구름이 모여 번개가 떨어지기까지 — 이 사이에 비켜 서면 피한다 (Claude 판단) */
+        private const val GATHER_TIME = 0.8f
+        /** 번개를 친 뒤 구름이 흩어지는 시간 */
+        private const val LINGER_TIME = 0.4f
+        /** 인간 머리에서 구름까지의 높이 */
+        private const val CLOUD_HEIGHT = 230f
+        private const val BOLT_SPEED = 1400f
+        private val CLOUD_PUFFS = listOf(Triple(-44f, -6f, 32f), Triple(0f, -24f, 42f), Triple(46f, -8f, 30f))
         private val sparkPaint = Paint().apply { color = Color.rgb(255, 240, 120); strokeWidth = 4f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+        private val cloudDark = Paint().apply { color = Color.rgb(78, 80, 96); isAntiAlias = true }
+        private val cloudLight = Paint().apply { color = Color.rgb(112, 114, 132); isAntiAlias = true }
+        private val cloudInk = Paint().apply { color = Color.rgb(36, 36, 44); style = Paint.Style.STROKE; strokeWidth = 3f; isAntiAlias = true }
+        private val glowPaint = Paint().apply { color = Color.rgb(255, 230, 90); isAntiAlias = true }
+        private val cloudRect = android.graphics.RectF()
     }
 }
 

@@ -34,7 +34,7 @@ object CatDex {
             frames = { SpriteManager.catIdleGreen }),
         Entry("red", "빨간냥이", "불처럼 빨갛다", { SpriteManager.redCatEvil }, frames = { SpriteManager.catIdleRed }),
         Entry("orange", "주황냥이", "귤처럼 주황", { SpriteManager.orangeCatEvil }, frames = { SpriteManager.catIdleOrange }),
-        Entry("yellow", "노랑냥이", "번개를 쏜다", { SpriteManager.yellowCatEvil }, frames = { SpriteManager.catIdleYellow }),
+        Entry("yellow", "노랑냥이", "먹구름에서 번개를 떨군다", { SpriteManager.yellowCatEvil }, frames = { SpriteManager.catIdleYellow }),
         Entry("poop", "똥냥이", "냄새가 지독하다", { SpriteManager.poopCat }),
         Entry("flying", "날아냥이", "하늘을 난다", { SpriteManager.flyingCat }),
         Entry("fluffy", "털뭉냥이", "털이 수북하다", { SpriteManager.fluffyCat }),

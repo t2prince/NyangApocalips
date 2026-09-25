@@ -31,7 +31,7 @@ class Projectile(
     val isShuriken: Boolean = false,
     /** 데굴데굴 구르며 날아가는 돌 (인간 기술 '돌던지기') */
     val isStone: Boolean = false,
-    /** 번개 — 노랑냥이가 쏜다 (대표님 2026-09-24). 지그재그 노란 줄기 */
+    /** 번개 — 노랑냥이가 부른 먹구름에서 떨어진다 (대표님 2026-09-24·25). 지그재그 노란 줄기 */
     val isLightning: Boolean = false,
     /** 화면 안의 가장 가까운 적을 쫓아가 터지는 미사일 (인간 기술 '미사일') */
     val isMissile: Boolean = false
@@ -336,15 +336,19 @@ class Projectile(
     /** 번개: 나아가는 방향으로 길게 뻗은 지그재그 줄기 (노란 테 + 흰 심). 프레임마다 살짝 흔들린다 */
     private fun drawLightning(canvas: Canvas, cx: Float, cy: Float) {
         boltPhase += 0.9f
-        val d = if (velocityX >= 0f) 1f else -1f
-        val len = 96f
-        val segs = 6
+        // 나아가는 방향(ux, uy)과 그 옆 방향(-uy, ux) — 먹구름에서 내리꽂히면 세로로 선다
+        val sp = kotlin.math.hypot(velocityX, velocityY)
+        val ux = if (sp > 0.01f) velocityX / sp else 1f
+        val uy = if (sp > 0.01f) velocityY / sp else 0f
+        val len = 150f
+        val segs = 7
         boltPath.reset()
-        boltPath.moveTo(cx - d * len / 2f, cy)
+        boltPath.moveTo(cx - ux * len, cy - uy * len)
         for (i in 1..segs) {
             val t = i / segs.toFloat()
             val jag = if (i == segs) 0f else (if (i % 2 == 0) 1f else -1f) * (10f + 4f * kotlin.math.sin(boltPhase + i))
-            boltPath.lineTo(cx - d * len / 2f + d * len * t, cy + jag)
+            val along = -len + len * t      // 끝(맞는 곳)이 탄 자리, 줄기는 뒤로 뻗는다
+            boltPath.lineTo(cx + ux * along - uy * jag, cy + uy * along + ux * jag)
         }
         canvas.drawPath(boltPath, boltOuter)
         canvas.drawPath(boltPath, boltInner)

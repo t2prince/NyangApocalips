@@ -60,6 +60,8 @@ object Terrain {
         18 -> Profile(Shape.ROLLING, 170f, 1000f, 8f, 0.4f)
         19 -> Profile(Shape.PEAKS, 190f, 1300f, 6f, 0.7f)
         20 -> Profile(Shape.TERRACES, 160f, 2600f, 3f, 0.6f)
+        // 꿀
+        21 -> Profile(Shape.DUNES, 110f, 1300f, 4f, 0.2f)
         else -> Profile(Shape.ROLLING, 60f + stage * 4f, 1500f, 4f, 0f)
     }
 

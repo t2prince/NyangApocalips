@@ -151,7 +151,7 @@ class StageClearScreen(
                 canvas.drawText("하늘의 왕 왕왕냥이를 타도했습니다!", w / 2f, h * 0.66f, endPaint)
                 canvas.drawText("저 아래 울창한 정글이 기다린다!", w / 2f, h * 0.72f, endPaint)
             }
-            GameProgress.PLAYABLE_STAGES -> {
+            20 -> {
                 endPaint.textSize = h * 0.048f
                 canvas.drawText("마법사 냥이 삼형제를 타도했습니다!", w / 2f, h * 0.66f, endPaint)
                 canvas.drawText("정글에 평화가 찾아왔다!", w / 2f, h * 0.72f, endPaint)

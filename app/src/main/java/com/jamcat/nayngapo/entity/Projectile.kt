@@ -40,7 +40,9 @@ class Projectile(
     /** 불꽃 한 덩이 — 빨간냥이가 뱉는 불 (대표님 2026-09-27). fuse 동안 커지며 노랑→주황→빨강으로 식어 사라진다 */
     val isFlame: Boolean = false,
     /** 용암 덩이 — 주황냥이가 포물선으로 던진다 (대표님 2026-09-27). 땅에 닿으면 화면이 용암 웅덩이를 남긴다 */
-    val isLava: Boolean = false
+    val isLava: Boolean = false,
+    /** 꽃가루 — 꽃냥이가 뿜는다. 맞으면 숨이 막힌다 (대표님 2026-09-27) */
+    val isPollen: Boolean = false
 ) {
     val width = radius * 2f
     val height = radius * 2f
@@ -158,6 +160,17 @@ class Projectile(
 
         if (isLava) {
             drawLava(canvas, cx, cy)
+            return
+        }
+
+        if (isPollen) {
+            // 노란 꽃가루 알갱이 몇 개 — 날아가며 퍼지고 흐려진다
+            val life = if (fuse > 0f) (1f - fuseLeft / fuse).coerceIn(0f, 1f) else 0f
+            pollenPaint.alpha = ((1f - life * 0.7f) * 255).toInt()
+            val spread = radius * (0.6f + life * 1.6f)
+            canvas.drawCircle(cx, cy, radius * 0.55f, pollenPaint)
+            canvas.drawCircle(cx + spread, cy - spread * 0.5f, radius * 0.35f, pollenPaint)
+            canvas.drawCircle(cx - spread * 0.7f, cy + spread * 0.6f, radius * 0.3f, pollenPaint)
             return
         }
 
@@ -389,6 +402,7 @@ class Projectile(
         canvas.drawCircle(cx, cy + wob * 0.5f, r * 0.55f, flameInner)
     }
 
+    private val pollenPaint = Paint().apply { color = Color.rgb(250, 214, 60); isAntiAlias = true }
     private val lavaCrust = Paint().apply { color = Color.rgb(120, 30, 20); isAntiAlias = true }
     private val lavaBody = Paint().apply { color = Color.rgb(255, 110, 20); isAntiAlias = true }
     private val lavaCore = Paint().apply { color = Color.rgb(255, 225, 90); isAntiAlias = true }

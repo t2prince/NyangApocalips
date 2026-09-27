@@ -8,7 +8,7 @@ object GameProgress {
     const val TOTAL_STAGES = 37
 
     /** 실제 스테이지 데이터가 만들어진 곳까지 — 그 뒤는 '준비 중' (1~10 초원, 11 하늘, 12~20 정글) */
-    const val PLAYABLE_STAGES = 20
+    const val PLAYABLE_STAGES = 21   // 21 꿀 스테이지 (2026-09-27)
 
     /** 해당 스테이지를 실제로 플레이할 수 있는가 */
     fun hasData(stageNumber: Int) = stageNumber in 1..PLAYABLE_STAGES

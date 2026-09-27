@@ -21,11 +21,12 @@ class GamePlayScreen(
 ) : Screen {
 
     /** 스테이지 테마: 지면 스프라이트·하늘색·원경 오브젝트가 함께 바뀐다 */
-    private enum class Theme { GRASS, JUNGLE, SNOW, DESERT, BEACH, VOLCANO }
+    private enum class Theme { GRASS, JUNGLE, HONEY, SNOW, DESERT, BEACH, VOLCANO }
     /** 지역별 테마. 1~10 초원, 11 하늘(SkyStageScreen), 12~20 정글, 그 뒤는 만들어지는 대로. */
     private val theme = when {
         stageNumber <= 10 -> Theme.GRASS   // 초원: 잔디 + 나무 + 구름
         stageNumber <= 20 -> Theme.JUNGLE  // 정글: 거대한 나무 + 늘어진 덩굴
+        stageNumber == 21 -> Theme.HONEY   // 꿀: 벌집 바닥 + 큰 꽃 (기획10, 2026-09-27)
         stageNumber <= 30 -> Theme.SNOW
         stageNumber <= 40 -> Theme.DESERT
         else -> Theme.VOLCANO
@@ -288,6 +289,8 @@ class GamePlayScreen(
         /** 용암 웅덩이가 남는 시간 · 반폭 (Claude 판단) */
         private const val LAVA_POOL_TIME = 2.5f
         private const val LAVA_POOL_HALF = 55f
+        /** 꽃가루에 숨이 막혀 느려지는 시간 (Claude 판단) */
+        private const val CHOKE_TIME = 1.5f
         /** 젤리 발바닥 반지름 */
         const val JELLY_R = 22f
 
@@ -868,7 +871,11 @@ class GamePlayScreen(
                     // 적 탄에 스치면 하트 1. 노랑냥이 번개만 2 (대표님 2026-09-24 — 총냥이 총알은 2가 아니다)
                     player.takeDamage(if (proj.isLightning) 2 else 1)
                     proj.isAlive = false
-                    hitEffects.add(HitEffect(player.x, player.y - player.height, 0.5f, "HIT!"))
+                    if (proj.isPollen) {
+                        // 꽃가루: 숨이 막혀 잠깐 느려진다 (기획10 「숨막힘」)
+                        player.chokeTimer = CHOKE_TIME
+                        hitEffects.add(HitEffect(player.x, player.y - player.height, 0.8f, "콜록! 숨막혀!"))
+                    } else hitEffects.add(HitEffect(player.x, player.y - player.height, 0.5f, "HIT!"))
                 }
             }
         }
@@ -1955,6 +1962,10 @@ class GamePlayScreen(
                 // (초록 지평선 그라데이션은 하늘을 물들여 보여서 뺐다 — 사용자 요청)
                 drawBackgroundTrees(canvas)
             }
+            Theme.HONEY -> {
+                drawClouds(canvas)
+                drawHoneyFlowers(canvas)    // 멀리 선 커다란 꽃들
+            }
             Theme.JUNGLE -> {
                 drawClouds(canvas)
                 drawJungleTrees(canvas)     // 초원보다 훨씬 큰 나무들
@@ -2002,6 +2013,7 @@ class GamePlayScreen(
         for (room in level.secretRooms) room.draw(canvas)
         for (swamp in level.swamps) swamp.draw(canvas)
         for (pool in lavaPools) drawLavaPool(canvas, pool)
+        for (hx in level.hives) drawHive(canvas, hx)
         for (pit in level.pits) pit.draw(canvas)
         for (trap in level.traps) trap.draw(canvas)
         for (wall in level.walls) wall.draw(canvas)
@@ -2209,6 +2221,7 @@ class GamePlayScreen(
         if (skyShader == null) {
             val top = when (theme) {
                 Theme.JUNGLE -> Color.rgb(64, 152, 192)     // 축축하고 무성한 정글 하늘
+                Theme.HONEY -> Color.rgb(96, 178, 236)      // 맑은 꽃밭 하늘
                 Theme.SNOW -> Color.rgb(120, 175, 215)      // 창백하고 차가운 하늘
                 Theme.DESERT -> Color.rgb(86, 168, 224)     // 쨍한 사막 하늘
                 Theme.BEACH -> Color.rgb(70, 176, 232)      // 맑은 바닷가 하늘
@@ -2217,6 +2230,7 @@ class GamePlayScreen(
             }
             val bottom = when (theme) {
                 Theme.JUNGLE -> Color.rgb(215, 238, 224)    // 옅은 물안개
+                Theme.HONEY -> Color.rgb(255, 236, 190)     // 지평선의 꿀빛
                 Theme.SNOW -> Color.rgb(226, 240, 250)
                 Theme.DESERT -> Color.rgb(250, 226, 170)    // 지평선의 모래 먼지
                 Theme.BEACH -> Color.rgb(214, 244, 252)
@@ -2625,6 +2639,52 @@ class GamePlayScreen(
     }
 
     /** 하늘에 떠 있는 구름 — 카메라보다 아주 느리게 흘러 멀리 있어 보인다 */
+    // ===== 꿀 스테이지 (기획10) =====
+    private val hiveBody = Paint().apply { color = Color.rgb(232, 168, 48); isAntiAlias = true }
+    private val hiveRing = Paint().apply { color = Color.rgb(150, 90, 20); style = Paint.Style.STROKE; strokeWidth = 5f; isAntiAlias = true }
+    private val hiveHole = Paint().apply { color = Color.rgb(60, 34, 12); isAntiAlias = true }
+    private val hiveRect = RectF()
+    private val stemPaint = Paint().apply { color = Color.rgb(96, 170, 80); strokeWidth = 14f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    private val petalPaint = Paint().apply { isAntiAlias = true }
+    private val petalCore = Paint().apply { color = Color.rgb(255, 214, 70); isAntiAlias = true }
+
+    /** 바닥에 놓인 벌집: 층층이 쌓인 둥근 벌집 + 아래쪽 검은 구멍 (벌냥이가 여기서 나온다) */
+    private fun drawHive(canvas: Canvas, hx: Float) {
+        val gy = Terrain.groundY(hx) + 6f
+        val w = 170f; val h = 190f
+        for (k in 0 until 4) {
+            val t = k / 4f
+            val rw = w * (1f - t * 0.45f)
+            val y1 = gy - h * t
+            hiveRect.set(hx - rw / 2f, y1 - h * 0.34f, hx + rw / 2f, y1)
+            canvas.drawOval(hiveRect, hiveBody)
+            canvas.drawOval(hiveRect, hiveRing)
+        }
+        hiveRect.set(hx - 26f, gy - 60f, hx + 26f, gy - 22f)
+        canvas.drawOval(hiveRect, hiveHole)
+    }
+
+    /** 멀리 선 커다란 꽃들 (느린 원경) */
+    private fun drawHoneyFlowers(canvas: Canvas) {
+        val sw = gameView.screenWidth.toFloat()
+        val gap = 520f
+        val drift = camera.x * 0.25f
+        var k = kotlin.math.floor(drift / gap).toInt() - 1
+        while (k * gap - drift < sw + gap) {
+            val sx = k * gap - drift
+            val seed = ((k % 4) + 4) % 4
+            val topY = Constants.GROUND_Y - 260f - seed * 50f
+            canvas.drawLine(sx, Constants.GROUND_Y, sx, topY, stemPaint)
+            petalPaint.color = when (seed) { 0 -> Color.rgb(250, 140, 180); 1 -> Color.rgb(255, 255, 255); 2 -> Color.rgb(255, 170, 90); else -> Color.rgb(200, 150, 240) }
+            for (p in 0 until 6) {
+                val a = Math.toRadians(p * 60.0)
+                canvas.drawCircle(sx + (kotlin.math.cos(a) * 34).toFloat(), topY + (kotlin.math.sin(a) * 34).toFloat(), 26f, petalPaint)
+            }
+            canvas.drawCircle(sx, topY, 24f, petalCore)
+            k++
+        }
+    }
+
     /** 끓는 용암 웅덩이: 납작한 검붉은 테 + 주황 속 + 부글거리는 노란 방울, 식을 때 흐려진다 */
     private fun drawLavaPool(canvas: Canvas, pool: LavaPool) {
         val grow = (pool.t / 0.15f).coerceIn(0f, 1f)
@@ -2864,6 +2924,7 @@ class GamePlayScreen(
         val sh = gameView.screenHeight.toFloat()
         val grassOverlap = 42f                 // 표면(잔디/눈/모래)이 지면 기준선 위로 솟는 높이
         val bmp = when (theme) {
+            Theme.HONEY -> SpriteManager.honeyGround           // 벌집 바닥 + 흘러내리는 꿀
             Theme.SNOW -> SpriteManager.snowGround
             Theme.DESERT, Theme.BEACH -> SpriteManager.sandGround
             Theme.VOLCANO -> SpriteManager.ashGround

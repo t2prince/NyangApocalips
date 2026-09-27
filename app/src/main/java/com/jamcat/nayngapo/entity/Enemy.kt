@@ -53,7 +53,7 @@ abstract class Enemy(
     // 전신 히트박스 (부유 연출 jumpZ 포함): 경사 지형에서도 근접 공격이 빗나가지 않는다
     private val hitBoxRect = RectF()
     /** 전신 히트박스 — 매 프레임 새로 만들지 않고 하나를 갱신해 돌려준다 (호출 직후에만 유효) */
-    val hitBox: RectF get() = hitBoxRect.apply { set(x, y + jumpZ - height, x + width, y + 10f) }
+    open val hitBox: RectF get() = hitBoxRect.apply { set(x, y + jumpZ - height, x + width, y + 10f) }
 
     /**
      * 피격 무적 시간. 공격 판정이 여러 프레임에 걸쳐 겹쳐도 한 번의 공격은 한 번만 적중시킨다
@@ -836,6 +836,160 @@ class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
         var skyBottomY = 240f
         private val sparkPaint = Paint().apply { color = Color.rgb(255, 240, 120); strokeWidth = 4f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
         private const val BOLT_SPEED = 3400f   // 하늘에서 땅까지 약 0.25초
+    }
+}
+
+// ============ 꿀 스테이지(21) — 기획10 `Plan/기획10_꿀스테이지_벌냥이_꽃냥이.jpg` (대표님 2026-09-27) ============
+/**
+ * 벌냥이 — HP 3. 노랑·검정 줄무늬에 파란 날개, 엉덩이에 침. **바닥의 벌집에서 나온다**:
+ * 인간이 다가오면 벌집에서 날아올라 머리 위에 떠 있다가, 뒤로 돌아 **엉덩이 침으로 내려와 찌른다**(닿으면 하트 1).
+ * 떠 있는 동안은 높이 있어 닿지 않고, 찌르러 내려왔을 때 때릴 수 있다. 공격력(아군 피해)은 기획서 판독 중 — 임시 10.
+ * 나오는 거리·높이·찌르기 간격은 Claude 판단.
+ */
+class BeeCat(x: Float, y: Float, private val hiveX: Float, private val emergeDelay: Float) : Enemy(x, y, 3, 10) {
+    override val width = 84f
+    override val height = 80f
+    private enum class State { HIVE, FLY, DIVE }
+    private var state = State.HIVE
+    private var wait = emergeDelay
+    private var stingT = 0f
+    private var cooldown = 0.8f
+    private var bob = (Math.random() * 6.0).toFloat()
+    private val box = RectF()
+
+    init { this.x = hiveX - width / 2f }
+
+    /** 벌집 속에 있으면 안 보이고 닿지도 않는다 */
+    override val isTangible: Boolean get() = state != State.HIVE
+    override val hitBox: RectF get() = box.apply { set(x, y + jumpZ - height, x + width, y + jumpZ + 6f) }
+
+    override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
+        if (hitCooldown > 0f) hitCooldown -= deltaTime
+        animTime += deltaTime
+        bob += deltaTime * 4f
+        y = com.jamcat.nayngapo.engine.Terrain.groundY(x + width / 2f)
+        val pcx = playerX + Constants.PLAYER_WIDTH / 2f
+        val cx = x + width / 2f
+        when (state) {
+            State.HIVE -> {
+                jumpZ = 0f
+                if (abs(pcx - hiveX) < EMERGE_RANGE) {
+                    wait -= deltaTime
+                    if (wait <= 0f) state = State.FLY
+                }
+            }
+            State.FLY -> {
+                // 벌집에서 떠올라 인간 머리 위로
+                jumpZ += (HOVER_Z + sin(bob) * 14f - jumpZ) * (deltaTime * 3f).coerceAtMost(1f)
+                val dx = pcx - cx
+                facingRight = dx > 0f
+                x += sign(dx) * (if (abs(dx) > 60f) FLY_SPEED else 0f) * deltaTime
+                cooldown -= deltaTime
+                if (cooldown <= 0f && abs(dx) < 110f && jumpZ < HOVER_Z * 0.7f) { state = State.DIVE; stingT = 0f }
+            }
+            State.DIVE -> {
+                // 뒤로 돌아 엉덩이 침을 인간에게 — 내려왔다가 다시 떠오른다
+                stingT += deltaTime
+                facingRight = pcx < cx            // 엉덩이(침)가 인간 쪽
+                jumpZ = when {
+                    stingT < 0.35f -> HOVER_Z + (STING_Z - HOVER_Z) * (stingT / 0.35f)
+                    stingT < 0.6f -> STING_Z
+                    else -> STING_Z + (HOVER_Z - STING_Z) * ((stingT - 0.6f) / 0.4f).coerceAtMost(1f)
+                }
+                if (stingT >= 1.0f) { state = State.FLY; cooldown = STING_EVERY }
+            }
+        }
+        x = x.coerceIn(Constants.PLAY_AREA_LEFT + 5f, Constants.PLAY_AREA_RIGHT - width - 5f)
+    }
+
+    override fun takeDamage(amount: Int) {
+        if (isTangible) super.takeDamage(amount)
+    }
+
+    override fun draw(canvas: Canvas) {
+        if (state == State.HIVE) return
+        drawSprite(canvas, SpriteManager.beeCat)
+        // 파닥이는 날개 잔상 (그림 위에 반투명하게)
+        val flap = abs(sin(animTime * 38f))
+        val cx = x + width / 2f
+        val top = y + jumpZ - height * 0.95f
+        wingRect.set(cx - 30f, top - 26f * flap, cx + 4f, top + 10f)
+        canvas.drawOval(wingRect, wingPaint)
+        wingRect.set(cx - 4f, top - 22f * flap, cx + 30f, top + 10f)
+        canvas.drawOval(wingRect, wingPaint)
+        drawHpBar(canvas)
+    }
+
+    companion object {
+        private const val EMERGE_RANGE = 700f
+        private const val HOVER_Z = -210f
+        private const val STING_Z = -70f
+        private const val FLY_SPEED = 230f
+        private const val STING_EVERY = 1.6f
+        private val wingPaint = Paint().apply { color = Color.argb(110, 120, 170, 240); isAntiAlias = true }
+        private val wingRect = RectF()
+    }
+}
+
+/**
+ * 꽃냥이 — HP 15 · 공격 10. 주황 줄무늬 노란 몸, 얼굴에 초록 잎, 머리에서 분홍 꽃대 두 개.
+ * 거리를 두고 서서 **꽃에서 꽃가루를 뿜고**, 꽃가루를 맞은 인간은 **숨이 막힌다**(하트 1 + 잠깐 느려짐).
+ * 사거리 320·3초마다 0.9초 뿜기·느려짐 1.5초는 Claude 판단.
+ */
+class FlowerCat(x: Float, y: Float) : Enemy(x, y, 15, 10) {
+    override val width = 92f
+    override val height = 104f
+    private var hopPhase = (Math.random() * Math.PI).toFloat()
+    private var sprayCooldown = 1.5f
+    private var spraying = 0f
+    private var puff = 0f
+    private val pendingProjectiles = mutableListOf<Projectile>()
+
+    override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
+        pendingProjectiles.clear()
+        val dx = playerX - x
+        if (spraying <= 0f) facingRight = dx > 0f
+        val dist = abs(dx)
+        sprayCooldown -= deltaTime
+        if (spraying <= 0f && sprayCooldown <= 0f && dist < SPRAY_RANGE) { spraying = SPRAY_TIME; sprayCooldown = SPRAY_EVERY; puff = 0f }
+        if (spraying > 0f) {
+            spraying -= deltaTime
+            velocityX = 0f; jumpZ = 0f
+            puff -= deltaTime
+            if (puff <= 0f) {
+                puff = 0.07f
+                val dir = if (facingRight) 1f else -1f
+                // 꽃대 끝(머리 위 앞쪽)에서 인간 쪽으로 흩날린다
+                val fx = x + width / 2f + dir * width * 0.35f
+                val fy = y - height * 1.15f
+                val r = 7f
+                pendingProjectiles.add(
+                    Projectile(fx - r, fy - r, dir * (300f + Math.random().toFloat() * 120f), 60f + (Math.random().toFloat() - 0.5f) * 180f,
+                        1, false, tint = Color.rgb(250, 220, 80), radius = r, fuse = 0.8f, isPollen = true)
+                )
+            }
+        } else {
+            velocityX = when {
+                dist < SPRAY_RANGE * 0.7f -> 0f
+                dist < 500f -> sign(dx) * 150f
+                else -> sign(dx) * 80f
+            }
+            if (abs(velocityX) > 1f) { hopPhase += deltaTime * 12f; jumpZ = -abs(sin(hopPhase.toDouble())).toFloat() * 12f } else jumpZ = 0f
+        }
+        super.update(deltaTime, playerX, playerY)
+    }
+
+    override fun draw(canvas: Canvas) {
+        drawSprite(canvas, SpriteManager.flowerCat)
+        drawHpBar(canvas)
+    }
+
+    override fun getProjectiles(): List<Projectile> = pendingProjectiles.toList()
+
+    companion object {
+        private const val SPRAY_RANGE = 320f
+        private const val SPRAY_TIME = 0.9f
+        private const val SPRAY_EVERY = 3f
     }
 }
 

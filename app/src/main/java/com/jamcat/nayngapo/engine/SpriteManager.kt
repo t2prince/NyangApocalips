@@ -37,6 +37,10 @@ object SpriteManager {
     lateinit var yellowCatEvil: Bitmap
     /** 머드냥이 (기획9, 2026-09-27) — 늪 속에 숨어 있는 진흙 냥이 */
     lateinit var mudCatEvil: Bitmap
+    /** 꿀 스테이지(21) — 벌냥이·꽃냥이·벌집 바닥 (기획10, 2026-09-27) */
+    lateinit var beeCat: Bitmap
+    lateinit var flowerCat: Bitmap
+    lateinit var honeyGround: Bitmap
     lateinit var catIdleRed: List<Bitmap>
     lateinit var catIdleOrange: List<Bitmap>
     lateinit var catIdleYellow: List<Bitmap>
@@ -164,6 +168,9 @@ object SpriteManager {
         orangeCatEvil = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_orange), 1.06f)
         yellowCatEvil = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_yellow), 1.06f)
         mudCatEvil = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_mud), 1.06f)
+        beeCat = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_bee), 1.0f)
+        flowerCat = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_flower), 1.06f)
+        honeyGround = BitmapFactory.decodeResource(res, R.drawable.honey_ground)
         blueCatEvil = scaled(blueCat, 1.06f)
         // 아군은 꼬리가 얇다 (기획: 같은편 꼬리 얇음, 다른편 두꺼움)
         greenCatAlly = BitmapFactory.decodeResource(res, R.drawable.cat_green_ally)

@@ -75,6 +75,8 @@ class Player(var x: Float, var y: Float) {
     var inDeepSnow = false
     /** 늪에 빠져 있는지 — 5배 느려지지만 점프로 빠져나올 수 있다 */
     var inSwamp = false
+    /** 꽃가루에 숨이 막혀 느려진 남은 시간 (꽃냥이, 2026-09-27) */
+    var chokeTimer = 0f
     /** 눈에 잠긴 깊이 (0 = 평지, 최대치면 몸이 완전히 파묻힌다) */
     private var snowSink = 0f
 
@@ -129,6 +131,7 @@ class Player(var x: Float, var y: Float) {
 
     fun update(deltaTime: Float) {
         if (isDead) return
+        if (chokeTimer > 0f) chokeTimer -= deltaTime
 
         // 덩굴에 매달린 동안은 위치를 덩굴이 정한다 (화면 쪽에서 매 프레임 넣어 준다)
         if (!ridingVine) {
@@ -425,6 +428,7 @@ class Player(var x: Float, var y: Float) {
         }
         // 깊은 눈·늪에 빠지면 허우적거리며 아주 느리게 움직인다 (늪은 기획대로 5배 감속)
         val speed = when {
+            chokeTimer > 0f -> moveSpeed * 0.4f      // 콜록콜록 — 숨이 막혀 느리다
             inDeepSnow -> moveSpeed * 0.3f
             inSwamp -> moveSpeed * 0.2f
             else -> moveSpeed

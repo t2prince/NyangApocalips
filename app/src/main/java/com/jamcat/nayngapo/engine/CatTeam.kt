@@ -66,8 +66,8 @@ object CatTeam {
         var hasLeft: Boolean = false,
         /** 'Lv업' 아이템으로 영구히 올린 공격력 (되살아나도 남는다) */
         var attackBonus: Int = 0,
-        /** 팀 냥이끼리 교배해 태어난 새끼인가 (대표님 2026-09-27) */
-        val isKitten: Boolean = false,
+        /** 새끼인가 — 교배로 태어나거나 감옥에서 구한 새끼 (대표님 2026-09-27). 키워서 GROW_UP_LEVEL 이 되면 어른이 된다 */
+        var isKitten: Boolean = false,
         /** 새끼의 부모 이름 "A × B" (태어날 때의 이름) */
         val parents: String = "",
         /** 치즈냥이의 털 무늬 (다른 종은 CHEESE 로 두고 무시) */
@@ -93,6 +93,8 @@ object CatTeam {
      * 20분·50%·닮는 방식은 Claude 판단.
      */
     const val BREED_EVERY = 1200f
+    /** 새끼를 키워 이 레벨이 되면 다 자란다 (대표님 「새끼 고양이를 키울 수 있어」, 레벨 5 는 Claude 판단) */
+    const val GROW_UP_LEVEL = 5
     private const val BREED_CHANCE = 0.5
     private var breedSeconds = 0f
     private val pendingBirthNotices = mutableListOf<String>()
@@ -572,7 +574,14 @@ object CatTeam {
         cat.affection = bump(cat.affection, 2)
         save()
         val leveled = cat.level > beforeLevel
-        val msg = if (leveled) "레벨 업! Lv ${cat.level}" else "냠냠! 포만감 +$fullGain · +$expGain exp"
+        // 새끼가 충분히 자라면 어른 냥이가 된다
+        val grewUp = cat.isKitten && cat.level >= GROW_UP_LEVEL
+        if (grewUp) { cat.isKitten = false; save() }
+        val msg = when {
+            grewUp -> "레벨 업! Lv ${cat.level} · 다 자랐다냥!"
+            leveled -> "레벨 업! Lv ${cat.level}" + if (cat.isKitten) " (Lv $GROW_UP_LEVEL 이면 다 자라요)" else ""
+            else -> "냠냠! 포만감 +$fullGain · +$expGain exp"
+        }
         return CareResult(true, msg, leveled)
     }
 

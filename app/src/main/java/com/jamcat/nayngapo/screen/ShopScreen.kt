@@ -20,7 +20,7 @@ import kotlin.math.sin
  * 열린 천막 앞에 서면 '들어가기' 말풍선이 뜨고, 누르면 그 가게에서 물건을 산다.
  * **고양이 상점도 천막 중 하나** — 1번 천막.
  *
- * 조작은 스테이지와 같은 패드(좌우 이동·점프·공격 휘두르기). 구한 인간 수는 GameProgress.humansRescued.
+ * 조작·버튼 구성은 스테이지와 똑같다(패드·공격·점프·필살기·기술·지시·멈추기·나가기, 기술은 여기선 안 써진다). 구한 인간 수는 GameProgress.humansRescued.
  * 천막 수(TENT_COUNT)와 2번~ 천막의 물건은 대표님이 아직 정하지 않았다 — 열린 천막 안은 '준비 중'.
  * (천막 6개·간격·색·고양이 상점을 1번에 둔 것은 Claude 임시 판단)
  */
@@ -30,7 +30,15 @@ class ShopScreen(private val gameView: GameView) : Screen {
     private val player: Player
 
     private var timer = 0f
+    private var paused = false
     private var cameraX = 0f
+
+    // 버튼 구성은 스테이지와 똑같이 (대표님 2026-09-27): 배운 고양이 기술·인간 기술 버튼, 팀 지시, 필살기, 멈추기·나가기
+    private val catSkills = com.jamcat.nayngapo.engine.CatSkills.all
+        .filter { com.jamcat.nayngapo.engine.CatSkills.isLearned(it.id) }.take(3)
+    private val humanSkills = com.jamcat.nayngapo.engine.HumanSkills.all
+        .filter { com.jamcat.nayngapo.engine.HumanSkills.isLearned(it.id) }.take(4)
+    private var order = com.jamcat.nayngapo.entity.AllyOrder.FOLLOW
     private var noticeText = ""
     private var noticeTimer = 0f
     /** 지금 앞에 서 있는 천막 (없으면 -1) */
@@ -78,32 +86,53 @@ class ShopScreen(private val gameView: GameView) : Screen {
     private val bubblePaint = Paint().apply { color = Color.rgb(255, 214, 74); isAntiAlias = true }
     private val bubbleText = Paint().apply { color = Color.rgb(60, 44, 12); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
     private val lockedBubble = Paint().apply { color = Color.rgb(250, 246, 236); isAntiAlias = true }
-    private val exitPaint = Paint().apply { color = Color.argb(170, 255, 255, 255); isAntiAlias = true }
-    private val exitText = Paint().apply { color = Color.rgb(40, 36, 34); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
     private val noticeBg = Paint().apply { color = Color.rgb(255, 250, 225); isAntiAlias = true }
     private val noticeTextPaint = Paint().apply { color = Color.rgb(35, 32, 30); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
 
     private val path = Path()
     private val rect = RectF()
     private val src = Rect()
-    private val exitRect = RectF()
     /** 화면 좌표의 '들어가기' 말풍선 (없으면 비어 있다) */
     private val enterRect = RectF()
     /** 화면 좌표의 천막 자리 — 천막을 눌러도 들어간다 */
     private val tentScreenRects = List(TENT_COUNT) { RectF() }
 
     override fun update(deltaTime: Float) {
+        if (paused) return
         timer += deltaTime
         if (noticeTimer > 0f) noticeTimer -= deltaTime
 
+        touchControls.skills = catSkills
+        touchControls.skillCooldowns = FloatArray(catSkills.size)
+        touchControls.skillsHaveCaster = allies.isNotEmpty()
+        touchControls.humanSkills = humanSkills
+        touchControls.humanSkillCooldowns = FloatArray(humanSkills.size)
+        touchControls.showOrder = allies.isNotEmpty()
+        touchControls.orderLabel = order.label
+        touchControls.specialCooldown = player.specialCooldown
+
         val input = touchControls.inputState
+        // 상점 마을은 싸우는 곳이 아니라 기술은 쓰지 않는다 (누르면 알려 준다)
+        if (input.useSkill != null || input.useHumanSkill != null) {
+            input.useSkill = null; input.useHumanSkill = null
+            showNotice("상점 마을에서는 기술을 쓸 수 없어요")
+        }
+        if (input.cycleOrder) {
+            input.cycleOrder = false
+            order = when (order) {
+                com.jamcat.nayngapo.entity.AllyOrder.FOLLOW -> com.jamcat.nayngapo.entity.AllyOrder.ATTACK
+                com.jamcat.nayngapo.entity.AllyOrder.ATTACK -> com.jamcat.nayngapo.entity.AllyOrder.HOLD
+                com.jamcat.nayngapo.entity.AllyOrder.HOLD -> com.jamcat.nayngapo.entity.AllyOrder.FOLLOW
+            }
+            for (ally in allies) ally.order = order
+        }
+        if (input.special) { if (player.performSpecial()) SoundManager.playSpecial(); input.special = false }
         var dirX = 0f
         if (input.moveLeft) dirX -= 1f
         if (input.moveRight) dirX += 1f
         player.setMovement(dirX, 0f)
         if (input.jump || input.moveUp) { player.jump(); input.jump = false }
         if (input.attack) { if (player.performAttack()) SoundManager.playAttack(); input.attack = false }
-        input.special = false
         player.update(deltaTime)
         player.x = player.x.coerceIn(40f, worldWidth - player.width - 40f)
         for (ally in allies) {
@@ -214,15 +243,18 @@ class ShopScreen(private val gameView: GameView) : Screen {
         canvas.drawRoundRect(rect, 34f, 34f, hudBg)
         canvas.drawText(info, w / 2f, 72f, hudText)
 
-        // 왼쪽 위: 나가기
-        exitRect.set(28f, 24f, 228f, 100f)
-        canvas.drawRoundRect(exitRect, 38f, 38f, exitPaint)
-        exitText.textSize = 38f
-        canvas.drawText("◀ 나가기", exitRect.centerX(), exitRect.centerY() + 13f, exitText)
-
-        // 스테이지와 같은 패드 (기술·지시 버튼은 없다)
+        // 스테이지와 같은 패드·버튼
         touchControls.draw(canvas, w.toInt(), h.toInt())
+        // 왼쪽 위: 스테이지와 같은 멈추기·나가기
+        drawMenuButtons(canvas)
 
+        if (paused) {
+            canvas.drawRect(0f, 0f, w, h, pauseVeil)
+            canvas.drawText("PAUSED", w / 2f, h / 2f - 6f, pauseText)
+            canvas.drawText("멈추기 버튼을 다시 누르면 이어서 진행합니다", w / 2f, h / 2f + 44f, pauseHint)
+            drawMenuButtons(canvas)
+            return
+        }
         if (noticeTimer > 0f) {
             noticeTextPaint.textSize = 42f
             val nw = noticeTextPaint.measureText(noticeText) + 70f
@@ -231,6 +263,43 @@ class ShopScreen(private val gameView: GameView) : Screen {
             canvas.drawRoundRect(rect, 24f, 24f, ink)
             canvas.drawText(noticeText, w / 2f, rect.centerY() + 15f, noticeTextPaint)
         }
+    }
+
+    // ===== 스테이지와 같은 멈추기·나가기 버튼 (GamePlayScreen 과 같은 자리·모양) =====
+    private val menuBtnPaint = Paint().apply { color = Color.argb(165, 16, 18, 26); isAntiAlias = true }
+    private val exitBtnPaint = Paint().apply { color = Color.argb(165, 34, 18, 22); isAntiAlias = true }
+    private val menuBtnEdgePaint = Paint().apply {
+        color = Color.argb(60, 255, 255, 255); style = Paint.Style.STROKE; strokeWidth = 1.5f; isAntiAlias = true
+    }
+    private val menuIconPaint = Paint().apply { color = Color.argb(230, 238, 242, 250); isAntiAlias = true }
+    private val menuIconStrokePaint = Paint().apply {
+        color = Color.argb(230, 255, 150, 140); strokeWidth = 4.5f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true
+    }
+    private val menuLabelPaint = Paint().apply {
+        color = Color.argb(150, 226, 232, 244); textSize = 20f; textAlign = Paint.Align.CENTER; letterSpacing = 0.1f; isAntiAlias = true
+    }
+    private val pauseVeil = Paint().apply { color = Color.argb(185, 8, 10, 16) }
+    private val pauseText = Paint().apply { color = Color.WHITE; textSize = 68f; textAlign = Paint.Align.CENTER; letterSpacing = 0.24f; isAntiAlias = true }
+    private val pauseHint = Paint().apply { color = Color.argb(200, 230, 234, 244); textSize = 30f; textAlign = Paint.Align.CENTER; isAntiAlias = true }
+
+    private fun drawMenuButtons(canvas: Canvas) {
+        canvas.drawCircle(PAUSE_BTN_X, MENU_BTN_Y, MENU_BTN_R, menuBtnPaint)
+        canvas.drawCircle(PAUSE_BTN_X, MENU_BTN_Y, MENU_BTN_R, menuBtnEdgePaint)
+        if (paused) {
+            path.reset()
+            path.moveTo(PAUSE_BTN_X - 12f, MENU_BTN_Y - 18f); path.lineTo(PAUSE_BTN_X + 20f, MENU_BTN_Y)
+            path.lineTo(PAUSE_BTN_X - 12f, MENU_BTN_Y + 18f); path.close()
+            canvas.drawPath(path, menuIconPaint)
+        } else {
+            canvas.drawRect(PAUSE_BTN_X - 13f, MENU_BTN_Y - 16f, PAUSE_BTN_X - 5f, MENU_BTN_Y + 16f, menuIconPaint)
+            canvas.drawRect(PAUSE_BTN_X + 5f, MENU_BTN_Y - 16f, PAUSE_BTN_X + 13f, MENU_BTN_Y + 16f, menuIconPaint)
+        }
+        canvas.drawText("멈추기", PAUSE_BTN_X, MENU_BTN_Y + MENU_BTN_R + 30f, menuLabelPaint)
+        canvas.drawCircle(EXIT_BTN_X, MENU_BTN_Y, MENU_BTN_R, exitBtnPaint)
+        canvas.drawCircle(EXIT_BTN_X, MENU_BTN_Y, MENU_BTN_R, menuBtnEdgePaint)
+        canvas.drawLine(EXIT_BTN_X - 14f, MENU_BTN_Y - 14f, EXIT_BTN_X + 14f, MENU_BTN_Y + 14f, menuIconStrokePaint)
+        canvas.drawLine(EXIT_BTN_X + 14f, MENU_BTN_Y - 14f, EXIT_BTN_X - 14f, MENU_BTN_Y + 14f, menuIconStrokePaint)
+        canvas.drawText("나가기", EXIT_BTN_X, MENU_BTN_Y + MENU_BTN_R + 30f, menuLabelPaint)
     }
 
     private fun tentName(i: Int) = TENT_NAMES[i] ?: "${i + 1}번 가게"
@@ -383,7 +452,13 @@ class ShopScreen(private val gameView: GameView) : Screen {
         if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
             val idx = event.actionIndex
             val px = event.getX(idx); val py = event.getY(idx)
-            if (exitRect.contains(px, py)) { touchControls.releaseAll(); gameView.showLobby(); return true }
+            if (kotlin.math.hypot(px - PAUSE_BTN_X, py - MENU_BTN_Y) < MENU_HIT_R) {
+                paused = !paused; touchControls.releaseAll(); return true
+            }
+            if (kotlin.math.hypot(px - EXIT_BTN_X, py - MENU_BTN_Y) < MENU_HIT_R) {
+                touchControls.releaseAll(); gameView.showLobby(); return true
+            }
+            if (paused) return true
             if (!enterRect.isEmpty && enterRect.contains(px, py) && nearTent in 0 until openCount) {
                 enterTent(nearTent); return true
             }
@@ -392,6 +467,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 enterTent(nearTent); return true
             }
         }
+        if (paused) return true
         return touchControls.onTouchEvent(event, gameView.screenWidth, gameView.screenHeight)
     }
 
@@ -400,11 +476,21 @@ class ShopScreen(private val gameView: GameView) : Screen {
         noticeTimer = 2f
     }
 
-    override fun onBack(): Boolean { touchControls.releaseAll(); gameView.showLobby(); return true }
+    /** 뒤로가기: 스테이지처럼 먼저 멈추고, 멈춘 상태에서 한 번 더 누르면 로비로 */
+    override fun onBack(): Boolean {
+        touchControls.releaseAll()
+        if (!paused) paused = true else gameView.showLobby()
+        return true
+    }
 
     companion object {
         /** 천막 수 — 대표님이 정할 때까지 임시 6개 (Claude 판단) */
         const val TENT_COUNT = 6
+        private const val MENU_BTN_R = 46f
+        private const val MENU_HIT_R = 60f
+        private const val MENU_BTN_Y = 118f
+        private const val PAUSE_BTN_X = 110f
+        private const val EXIT_BTN_X = 232f
         /** 고양이 상점이 들어 있는 천막 (0 = 1번, 첫 인간을 구하면 열린다) */
         const val CAT_SHOP_TENT = 0
         private val TENT_NAMES: List<String?> = List(TENT_COUNT) { if (it == CAT_SHOP_TENT) "고양이 상점" else null }

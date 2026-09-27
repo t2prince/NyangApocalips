@@ -164,6 +164,12 @@ class ShopScreen(private val gameView: GameView) : Screen {
             if (cx + TENT_W < cameraX - 50f || cx - TENT_W > cameraX + w + 50f) continue
             drawTent(canvas, i, cx, groundY, TENT_W, TENT_H, i < openCount)
         }
+        // 열린 천막 앞에는 가게 주인(구해 온 인간)이 서서 광고를 한다 (대표님 2026-09-27)
+        for (i in 0 until openCount) {
+            val cx = tentX(i)
+            if (cx + TENT_W < cameraX - 50f || cx - TENT_W > cameraX + w + 50f) continue
+            drawOwner(canvas, i, cx + TENT_W * 0.40f, groundY)
+        }
         for (ally in allies) ally.draw(canvas)
         player.draw(canvas)
         canvas.restore()
@@ -228,6 +234,39 @@ class ShopScreen(private val gameView: GameView) : Screen {
     }
 
     private fun tentName(i: Int) = TENT_NAMES[i] ?: "${i + 1}번 가게"
+
+    private val ownerDst = RectF()
+    private val adBubble = Paint().apply { color = Color.WHITE; isAntiAlias = true }
+    private val adText = Paint().apply { color = Color.rgb(40, 36, 32); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
+
+    /** 가게 주인: 천막 색 옷의 인간이 손님 쪽(왼쪽)을 보고 서서, 말풍선으로 광고 문구를 번갈아 외친다 */
+    private fun drawOwner(canvas: Canvas, i: Int, x: Float, groundY: Float) {
+        val (c1, _) = TENT_COLORS[i % TENT_COLORS.size]
+        val frames = SpriteManager.playerIdle
+        val bmp = SpriteManager.getFlipped(frames[((timer * 7f).toInt() + i * 2) % frames.size])
+        val sh = 190f
+        val sw = sh * bmp.width / bmp.height
+        ownerDst.set(x - sw / 2f, groundY - sh + 10f, x + sw / 2f, groundY + 10f)
+        rect.set(x - 26f, groundY - 6f, x + 26f, groundY + 8f)
+        canvas.drawOval(rect, shadowPaint)
+        canvas.drawBitmap(bmp, null, ownerDst, com.jamcat.nayngapo.ui.heroTintPaint(c1))
+
+        // 광고 말풍선: 문구를 2.5초마다 바꾸고, 바뀔 때 살짝 튄다
+        val ads = TENT_ADS[i] ?: DEFAULT_ADS
+        val phase = timer / 2.5f + i * 0.37f
+        val text = ads[phase.toInt() % ads.size]
+        val pop = 1f + 0.08f * (1f - ((phase % 1f) * 6f).coerceAtMost(1f))
+        adText.textSize = 30f * pop
+        val bw = adText.measureText(text) + 36f
+        val by = groundY - sh - 30f
+        rect.set(x - bw / 2f, by - 50f * pop, x + bw / 2f, by)
+        canvas.drawRoundRect(rect, 22f, 22f, adBubble)
+        canvas.drawRoundRect(rect, 22f, 22f, ink)
+        path.reset()
+        path.moveTo(x - 12f, by - 2f); path.lineTo(x + 4f, by + 20f); path.lineTo(x + 14f, by - 2f); path.close()
+        canvas.drawPath(path, adBubble)
+        canvas.drawText(text, x, by - 25f * pop + 11f, adText)
+    }
 
     /** 천막 하나: 줄무늬 지붕 + 깃발 + 이름 팻말 + 문(닫힘: 여민 천과 끈 매듭 / 열림: 걷어 묶은 천과 안쪽 팻말) */
     private fun drawTent(canvas: Canvas, i: Int, cx: Float, baseY: Float, tw: Float, th: Float, open: Boolean) {
@@ -369,6 +408,11 @@ class ShopScreen(private val gameView: GameView) : Screen {
         /** 고양이 상점이 들어 있는 천막 (0 = 1번, 첫 인간을 구하면 열린다) */
         const val CAT_SHOP_TENT = 0
         private val TENT_NAMES: List<String?> = List(TENT_COUNT) { if (it == CAT_SHOP_TENT) "고양이 상점" else null }
+        /** 가게 주인의 광고 문구 (Claude 판단 — 대표님이 정하면 바꾼다) */
+        private val TENT_ADS: Map<Int, List<String>> = mapOf(
+            CAT_SHOP_TENT to listOf("어서 오세요!", "냥이 간식 있어요~", "장난감·캣타워 팝니다!", "튼튼한 고양이 갑옷!"),
+        )
+        private val DEFAULT_ADS = listOf("어서 오세요!", "곧 좋은 물건 들어와요~")
         private const val START_X = 160f
         private const val FIRST_TENT_X = 900f
         private const val TENT_GAP = 760f

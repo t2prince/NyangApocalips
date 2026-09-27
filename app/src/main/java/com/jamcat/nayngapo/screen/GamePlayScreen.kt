@@ -1928,6 +1928,7 @@ class GamePlayScreen(
             }
         }
         drawFloor(canvas)
+        drawStormSky(canvas)
 
         // Apply camera transform for game objects (+타격 셰이크)
         var shakeX = 0f
@@ -2571,6 +2572,75 @@ class GamePlayScreen(
     }
 
     /** 하늘에 떠 있는 구름 — 카메라보다 아주 느리게 흘러 멀리 있어 보인다 */
+    // ===== 노랑냥이 먹구름 (대표님 그림 2026-09-27): 하늘 위쪽 전체가 먹구름으로 덮이고 거기서 번개가 떨어진다 =====
+    private val stormFill = Paint().apply { color = Color.rgb(70, 72, 84); isAntiAlias = true }
+    private val stormEdge = Paint().apply {
+        color = Color.rgb(34, 34, 42); style = Paint.Style.STROKE; strokeWidth = 4f
+        strokeJoin = Paint.Join.ROUND; isAntiAlias = true
+    }
+    private val stormScribble = Paint().apply {
+        color = Color.rgb(46, 46, 56); strokeWidth = 3f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true
+    }
+    private val stormShade = Paint().apply { color = Color.BLACK }
+    private val stormGlow = Paint().apply { color = Color.rgb(255, 230, 90); isAntiAlias = true }
+    private val stormPath = Path()
+
+    /** 먹구름 띠 아랫자락 높이(화면 y) — 물결치며 이보다 조금 오르내린다 (Claude 판단) */
+    private val stormBottom = 230f
+
+    private fun drawStormSky(canvas: Canvas) {
+        val sw = gameView.screenWidth.toFloat()
+        com.jamcat.nayngapo.entity.YellowCat.skyBottomY = camera.y + stormBottom
+        var storm = 0f
+        for (enemy in level.enemies) if (enemy is com.jamcat.nayngapo.entity.YellowCat) storm = maxOf(storm, enemy.storm)
+        if (storm <= 0.01f) return
+        val a = storm.coerceIn(0f, 1f)
+        // 온 화면이 살짝 어두워진다
+        stormShade.alpha = (70 * a).toInt()
+        canvas.drawRect(0f, 0f, sw, gameView.screenHeight.toFloat(), stormShade)
+        // 위에서 내려오는 띠 — 아랫자락은 큰 물결 (카메라를 따라 천천히 흐른다)
+        val drop = (1f - a) * (stormBottom + 60f)            // 짙어지며 위에서 내려온다
+        val drift = camera.x * 0.3f
+        stormPath.reset()
+        stormPath.moveTo(0f, -10f)
+        stormPath.lineTo(0f, stormBottom - drop)
+        var x = 0f
+        while (x <= sw + 40f) {
+            val wx = x + drift
+            val y = stormBottom - drop + (kotlin.math.sin(wx * 0.009f) * 34f + kotlin.math.sin(wx * 0.021f + 1.7f) * 14f)
+            stormPath.lineTo(x, y)
+            x += 24f
+        }
+        stormPath.lineTo(sw + 40f, -10f)
+        stormPath.close()
+        stormFill.alpha = (235 * a).toInt()
+        canvas.drawPath(stormPath, stormFill)
+        // 손으로 칠한 듯한 비스듬한 빗금
+        stormScribble.alpha = (200 * a).toInt()
+        canvas.save()
+        canvas.clipPath(stormPath)
+        var k = -((drift % 46f))
+        while (k < sw + 200f) {
+            canvas.drawLine(k, stormBottom - drop + 30f, k + 160f, -20f, stormScribble)
+            k += 46f
+        }
+        canvas.restore()
+        stormEdge.alpha = (255 * a).toInt()
+        canvas.drawPath(stormPath, stormEdge)
+        // 번개가 떨어질 자리: 구름 속이 번쩍인다 (막바지일수록 자주) — 비켜 설 신호
+        for (enemy in level.enemies) {
+            if (enemy !is com.jamcat.nayngapo.entity.YellowCat) continue
+            for ((tx, prog) in enemy.stormTargets) {
+                if (prog >= 1f) continue
+                val rate = 6f + 18f * prog
+                if (kotlin.math.sin(elapsed * rate) > 0.4) {
+                    stormGlow.alpha = (150 * a).toInt()
+                    canvas.drawCircle(tx - camera.x, stormBottom - drop - 30f, 44f + 20f * prog, stormGlow)
+                }
+            }
+        }
+    }
+
     private fun drawClouds(canvas: Canvas) {
         val sw = gameView.screenWidth.toFloat()
         val gap = 620f

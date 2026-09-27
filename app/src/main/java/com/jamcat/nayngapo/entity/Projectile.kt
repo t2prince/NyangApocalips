@@ -33,6 +33,8 @@ class Projectile(
     val isStone: Boolean = false,
     /** 번개 — 노랑냥이가 부른 먹구름에서 떨어진다 (대표님 2026-09-24·25). 지그재그 노란 줄기 */
     val isLightning: Boolean = false,
+    /** 번개 줄기가 시작되는 하늘 y (먹구름 띠 아랫자락). 0보다 크면 줄기가 거기까지 이어진다 */
+    val boltTopY: Float = 0f,
     /** 화면 안의 가장 가까운 적을 쫓아가 터지는 미사일 (인간 기술 '미사일') */
     val isMissile: Boolean = false
 ) {
@@ -340,13 +342,14 @@ class Projectile(
         val sp = kotlin.math.hypot(velocityX, velocityY)
         val ux = if (sp > 0.01f) velocityX / sp else 1f
         val uy = if (sp > 0.01f) velocityY / sp else 0f
-        val len = 150f
-        val segs = 7
+        // 하늘 먹구름에서 떨어지는 번개는 구름 밑부터 탄 자리까지 한 줄기로 이어진다
+        val len = if (boltTopY > 0f && uy > 0.5f) (cy - boltTopY).coerceAtLeast(150f) else 150f
+        val segs = (len / 22f).toInt().coerceIn(7, 30)
         boltPath.reset()
         boltPath.moveTo(cx - ux * len, cy - uy * len)
         for (i in 1..segs) {
             val t = i / segs.toFloat()
-            val jag = if (i == segs) 0f else (if (i % 2 == 0) 1f else -1f) * (10f + 4f * kotlin.math.sin(boltPhase + i))
+            val jag = if (i == segs) 0f else (if (i % 2 == 0) 1f else -1f) * (12f + 5f * kotlin.math.sin(boltPhase + i))
             val along = -len + len * t      // 끝(맞는 곳)이 탄 자리, 줄기는 뒤로 뻗는다
             boltPath.lineTo(cx + ux * along - uy * jag, cy + uy * along + ux * jag)
         }

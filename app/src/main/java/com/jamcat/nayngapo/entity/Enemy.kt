@@ -604,7 +604,9 @@ class RedCat(x: Float, y: Float) : ColorCat(x, y, { SpriteManager.redCatEvil })
 class OrangeCat(x: Float, y: Float) : ColorCat(x, y, { SpriteManager.orangeCatEvil })
 /**
  * 노랑냥이 — 번개를 부른다 (대표님 2026-09-24). 번개는 **먹구름에서 떨어진다** (대표님 2026-09-25).
- * 거리를 두고 2.5초마다 인간 머리 위에 먹구름을 띄우고, 구름이 모이면 번개가 곧장 내리꽂힌다.
+ * 2026-09-27 그림(「이게 노랑냥이 공격이야」): 부르면 **하늘 위쪽 전체가 먹구름으로 덮이고** 거기서 번개가 인간에게 내리꽂힌다.
+ * 먹구름 띠는 화면이 그린다(GamePlayScreen.drawStormSky — storm 세기·stormTargets 를 읽는다).
+ * 거리를 두고 2.5초마다 인간 자리를 노리고, 구름이 모이면(그 자리 구름 속이 번쩍인다) 번개가 곧장 내리꽂힌다.
  * 노랑냥이가 쓰러지면 떠 있던 먹구름도 사라진다. HP 20 · 공격(번개 대미지) 2
  */
 class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
@@ -637,8 +639,8 @@ class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
         if (flash > 0f) flash -= deltaTime
         if (shootTimer <= 0f && dist < FIRE_RANGE) {
             shootTimer = 2.5f; flash = 0.2f
-            // 부르는 순간 인간의 머리 위에 먹구름이 뜬다
-            clouds.add(StormCloud(playerX + Constants.PLAYER_WIDTH / 2f, playerY - Constants.PLAYER_HEIGHT - CLOUD_HEIGHT))
+            // 부르는 순간 하늘이 먹구름으로 덮이고, 인간이 선 자리를 노린다
+            clouds.add(StormCloud(playerX + Constants.PLAYER_WIDTH / 2f, skyBottomY))
         }
 
         val it = clouds.iterator()
@@ -650,8 +652,8 @@ class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
                 c.struck = true
                 val r = 8f
                 pendingProjectiles.add(
-                    Projectile(c.x - r, c.y + 20f, 0f, BOLT_SPEED, attackPower, false,
-                        tint = Color.rgb(255, 214, 40), radius = r, isLightning = true)
+                    Projectile(c.x - r, skyBottomY + 20f, 0f, BOLT_SPEED, attackPower, false,
+                        tint = Color.rgb(255, 214, 40), radius = r, isLightning = true, boltTopY = skyBottomY - 20f)
                 )
             }
             if (c.t >= GATHER_TIME + LINGER_TIME) it.remove()
@@ -673,36 +675,23 @@ class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
             }
         }
         drawHpBar(canvas)
-        if (!isDead) for (c in clouds) drawCloud(canvas, c)
     }
 
-    /** 먹구름: 작게 모여 커지고, 모이는 동안 안에서 노란 빛이 깜빡인다. 번개를 친 뒤엔 흐려진다 */
-    private fun drawCloud(canvas: Canvas, c: StormCloud) {
-        val grow = (c.t / 0.25f).coerceIn(0f, 1f)
-        val s = 0.4f + 0.6f * grow
-        val fade = if (c.struck) (1f - (c.t - GATHER_TIME) / LINGER_TIME).coerceIn(0f, 1f) else 1f
-        val a = (235 * fade).toInt()
-        cloudDark.alpha = a
-        cloudLight.alpha = a
-        cloudInk.alpha = a
-        // 뭉게 세 덩이 + 납작한 밑
-        for ((ox, oy, r) in CLOUD_PUFFS) {
-            canvas.drawCircle(c.x + ox * s, c.y + oy * s, r * s, cloudDark)
-            canvas.drawCircle(c.x + ox * s, c.y + oy * s, r * s, cloudInk)
-        }
-        cloudRect.set(c.x - 78f * s, c.y - 4f * s, c.x + 78f * s, c.y + 24f * s)
-        canvas.drawRoundRect(cloudRect, 14f * s, 14f * s, cloudDark)
-        // 윗면 밝은 기운
-        canvas.drawCircle(c.x - 14f * s, c.y - 28f * s, 16f * s, cloudLight)
-        // 모이는 동안 안에서 번쩍 — 막바지일수록 자주
-        if (!c.struck) {
-            val rate = 6f + 18f * (c.t / GATHER_TIME)
-            if (sin((c.t * rate).toDouble()) > 0.55) {
-                glowPaint.alpha = (140 * fade).toInt()
-                canvas.drawCircle(c.x, c.y + 6f * s, 30f * s, glowPaint)
+    /** 하늘 먹구름 세기 0~1 — 부르면 빠르게 짙어지고 번개를 친 뒤 흩어진다. 쓰러지면 0 */
+    val storm: Float
+        get() {
+            if (isDead) return 0f
+            var m = 0f
+            for (c in clouds) {
+                val v = if (c.struck) 1f - (c.t - GATHER_TIME) / LINGER_TIME else (c.t / 0.3f)
+                m = maxOf(m, v.coerceIn(0f, 1f))
             }
+            return m
         }
-    }
+
+    /** 번개가 떨어질 자리들: (월드 x, 모인 정도 0~1 — 1 이면 이미 쳤음) */
+    val stormTargets: List<Pair<Float, Float>>
+        get() = if (isDead) emptyList() else clouds.map { it.x to (it.t / GATHER_TIME).coerceAtMost(1f) }
 
     override fun getProjectiles(): List<Projectile> = pendingProjectiles.toList()
 
@@ -712,16 +701,10 @@ class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
         private const val GATHER_TIME = 0.8f
         /** 번개를 친 뒤 구름이 흩어지는 시간 */
         private const val LINGER_TIME = 0.4f
-        /** 인간 머리에서 구름까지의 높이 */
-        private const val CLOUD_HEIGHT = 230f
-        private const val BOLT_SPEED = 1400f
-        private val CLOUD_PUFFS = listOf(Triple(-44f, -6f, 32f), Triple(0f, -24f, 42f), Triple(46f, -8f, 30f))
+        /** 하늘 먹구름 띠의 아랫자락 (월드 y) — 화면이 카메라에 맞춰 매 프레임 알려 준다 */
+        var skyBottomY = 240f
         private val sparkPaint = Paint().apply { color = Color.rgb(255, 240, 120); strokeWidth = 4f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
-        private val cloudDark = Paint().apply { color = Color.rgb(78, 80, 96); isAntiAlias = true }
-        private val cloudLight = Paint().apply { color = Color.rgb(112, 114, 132); isAntiAlias = true }
-        private val cloudInk = Paint().apply { color = Color.rgb(36, 36, 44); style = Paint.Style.STROKE; strokeWidth = 3f; isAntiAlias = true }
-        private val glowPaint = Paint().apply { color = Color.rgb(255, 230, 90); isAntiAlias = true }
-        private val cloudRect = android.graphics.RectF()
+        private const val BOLT_SPEED = 2600f   // 하늘에서 땅까지 약 0.25초
     }
 }
 

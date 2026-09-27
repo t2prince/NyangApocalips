@@ -23,7 +23,7 @@ PLATE = (176, 182, 194)
 PLATE_DARK = (140, 146, 160)
 PLATE_LIGHT = (206, 210, 220)
 INK = (44, 44, 52)
-SEAM = (98, 102, 116)
+SEAM = (70, 74, 88)
 
 def lw_of(bh):
     return max(2, int(bh * 0.035))
@@ -83,8 +83,18 @@ def armor(im, wide=False, base=None):
     face_open = (xx >= muzzle_left - 0.04 * bw) & (yy >= open_y) & (yy <= muzzle_bot + 1)
     plate = grown & (yy < bottom_y) & ~face_open
     out = arr.copy()
-    out[plate, :3] = PLATE
-    out[plate & (yy > bottom_y - max(3, bh * 0.08)), :3] = PLATE_DARK     # 아랫단 그늘
+    # 철판 느낌 (대표님 2026-09-27): 위는 밝고 아래로 갈수록 어두운 금속 명암 + 윗등을 따라 흐르는 흰 광택 줄 + 아랫단 그늘
+    top_row = np.where(plate.any(axis=0), plate.argmax(axis=0), H)          # 열마다 판의 맨 윗줄
+    depth = np.clip((yy - top_row[None, :]) / max(1.0, bottom_y - y0), 0, 1)   # 판 윗선에서 아랫단까지 0~1
+    light, dark = np.array(PLATE_LIGHT, float), np.array(PLATE_DARK, float)
+    shade = light[None, None, :] * (1 - depth[..., None]) + dark[None, None, :] * depth[..., None]
+    # 가로로도 둥근 몸통처럼: 가운데가 조금 밝다
+    roll = 1.0 + 0.06 * np.cos(np.clip((U - 0.35) * np.pi, -np.pi / 2, np.pi / 2))
+    shade = np.clip(shade * roll[..., None], 0, 255)
+    out[plate, :3] = shade[plate].astype(np.uint8)
+    gloss = plate & (yy - top_row[None, :] >= max(2, lw)) & (yy - top_row[None, :] <= max(3, lw + 1)) & (U > 0.06) & (U < 0.5)
+    out[gloss, :3] = (238, 242, 250)
+    out[plate & (yy > bottom_y - max(3, bh * 0.08)), :3] = (122, 128, 142)   # 아랫단 그늘
     img = Image.fromarray(out); d = ImageDraw.Draw(img)
 
     # 판 아래 경계(배와의 곧은 선) — 몸 전체 폭
@@ -92,12 +102,17 @@ def armor(im, wide=False, base=None):
     d.line([(xs_row.min(), bottom_y), (xs_row.max(), bottom_y)], fill=INK, width=lw)
     # 등판 이음새 (원안: 가운데 살짝 휜 세로 하나 + 1/3 높이 가로 하나) + 이음새를 따라 찍힌 리벳
     r = max(1.4, bh * 0.017)
-    dot = lambda x, y: d.ellipse([x - r, y - r, x + r, y + r], fill=INK)
+    def dot(x, y):
+        d.ellipse([x - r, y - r, x + r, y + r], fill=INK)
+        d.point((x - r * 0.4, y - r * 0.4), fill=(210, 214, 224))
     pil_l = muzzle_left - 0.17 * bw                     # 투구 기둥(뒤통수) 왼쪽 끝
     vs = [(ux(0.24 + 0.04 * np.sin(np.pi * t)), vy(0.02) + (bottom_y - vy(0.02)) * t) for t in np.linspace(0, 1, 9)]
-    d.line(vs, fill=SEAM, width=max(1, lw - 1))
+    HI = (232, 236, 244)
+    d.line([(x + max(2, lw - 1), y) for x, y in vs], fill=HI, width=1)        # 판이 겹친 턱의 밝은 모서리
+    d.line(vs, fill=SEAM, width=max(2, lw - 1))
     hy = vy(0.33)
-    d.line([(ux(0.02), hy), (pil_l, hy)], fill=SEAM, width=max(1, lw - 1))
+    d.line([(ux(0.02), hy + max(2, lw - 1)), (pil_l, hy + max(2, lw - 1))], fill=HI, width=1)
+    d.line([(ux(0.02), hy), (pil_l, hy)], fill=SEAM, width=max(2, lw - 1))
     for u in (0.08, 0.16, 0.32):
         if ux(u) < pil_l - 2: dot(ux(u), hy + r * 2.2)
     for t in (0.25, 0.55, 0.85):
@@ -144,6 +159,10 @@ def armor(im, wide=False, base=None):
     hood += arc2
     hood += [(brim_l[0], brim_l[1] + bt), (pil_r, brim_l[1] + bt), (pil_r, base_y)]
     o.polygon(P(hood), fill=PLATE_LIGHT + (255,), outline=INK + (255,), width=LW)
+    # 투구 광택: 둥근 머리 안쪽을 따라 흰 줄 (철판 느낌)
+    gl = [(cx + (rx1 - 0.035 * bw) * np.cos(t), cy + (ry1 - 0.035 * bh) * np.sin(t)) for t in np.linspace(1.08 * np.pi, 1.45 * np.pi, 8)]
+    gl = [(pil_l + 0.035 * bw, base_y - 0.05 * bh)] + gl
+    o.line(P(gl), fill=(240, 244, 252, 255), width=max(SS, int(LW * 0.6)), joint='curve')
     # 기둥 가운데 가로 이음새 (원안의 기둥 아랫단)
     sy = (E + muzzle_bot) / 2
     o.line(P([(pil_l, sy), (pil_r, sy)]), fill=INK + (255,), width=max(SS, LW - SS))

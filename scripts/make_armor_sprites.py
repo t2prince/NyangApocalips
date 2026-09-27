@@ -125,9 +125,9 @@ def armor(im, wide=False, base=None):
     LW = lw * SS
     E = eye_top
     right = ux(1.0)
-    brim_l = (muzzle_left - 0.04 * bw, E - 0.20 * bh)   # 챙 뒤끝(경첩) — 앞보다 높다
-    brim_r = (right + 0.05 * bw, E - 0.09 * bh)          # 챙 앞끝
-    bt = 0.10 * bh                                       # 챙 두께
+    brim_l = (muzzle_left - 0.04 * bw, E - 0.15 * bh)   # 챙 뒤끝(경첩) — 앞보다 높다
+    brim_r = (right + 0.05 * bw, E - 0.13 * bh)          # 챙 앞끝
+    bt = 0.12 * bh                                       # 챙 두께
     pil_r = muzzle_left - 0.04 * bw
     top_y = E - 0.50 * bh
     base_y = muzzle_bot + 1
@@ -150,36 +150,38 @@ def armor(im, wide=False, base=None):
     o.polygon(P([(pil_l + LW / SS / 2, sy + 1), (pil_r - LW / SS / 2, sy + 1), (pil_r - LW / SS / 2, base_y - 1), (pil_l + LW / SS / 2, base_y - 1)]),
               fill=PLATE + (255,))
 
-    # 볏: 후드 윗선을 따라 바깥으로 두께 cw 인 띠 — 뒤쪽 끝은 평평하게 잘리고 앞쪽 끝은 아래로 휘어 뾰족
-    top_pts = [(cx + rx1 * np.cos(t), cy + ry1 * np.sin(t)) for t in np.linspace(1.22 * np.pi, 1.5 * np.pi, 8)]
-    top_pts += [(cx + rx2 * np.cos(t), top_y + ry2 + ry2 * np.sin(t)) for t in np.linspace(1.5 * np.pi, 1.86 * np.pi, 12)[1:]]
-    cw = 0.13 * bh
+    # 볏: 후드 윗선을 따라 얹힌 가는 띠 — 뒤쪽 끝은 네모나게 잘리고, 앞으로 휘어 내려가 챙 앞끝 위에서 가늘게 끝난다. 빗금은 몇 개만.
+    top_pts = [(cx + rx1 * np.cos(t), cy + ry1 * np.sin(t)) for t in np.linspace(1.30 * np.pi, 1.5 * np.pi, 6)]
+    top_pts += [(cx + rx2 * np.cos(t), top_y + ry2 + ry2 * np.sin(t)) for t in np.linspace(1.5 * np.pi, 1.93 * np.pi, 12)[1:]]
+    cw = 0.09 * bh
     outer = []
     for i, (x, y) in enumerate(top_pts):
         x0_, y0_ = top_pts[max(0, i - 1)]; x1_, y1_ = top_pts[min(len(top_pts) - 1, i + 1)]
         tx, ty = x1_ - x0_, y1_ - y0_; n = max(np.hypot(tx, ty), 1e-6)
-        k = cw * (1.0 if i < len(top_pts) - 4 else (len(top_pts) - 1 - i) / 4 * 0.8 + 0.2)   # 앞끝은 가늘어진다
+        k = cw * (1.0 if i < len(top_pts) - 5 else (len(top_pts) - 1 - i) / 5 * 0.8 + 0.2)   # 앞끝은 가늘어진다
         outer.append((x + ty / n * k, y - tx / n * k))
     crest = top_pts + outer[::-1]
-    o.polygon(P(crest), fill=PLATE_DARK + (255,), outline=INK + (255,), width=max(SS, LW - SS))
-    for i in range(1, len(top_pts) - 2):
+    o.polygon(P(crest), fill=PLATE + (255,), outline=INK + (255,), width=max(SS, LW - SS))
+    for i in range(2, len(top_pts) - 3, 3):
         o.line(P([top_pts[i], outer[i]]), fill=INK + (255,), width=SS)
 
-    # 귀: 머리 색으로 — 기둥 바로 앞(챙 위)과 볏 앞끝 아래
+    # 귀: 머리 색으로, 투구를 뚫고 나온 것처럼 챙 위에 붙어 있다 — 경첩 바로 앞 하나, 볏 앞끝 아래 하나
     sxp, syp = int(ux(0.66)), int(y0 + bh * 0.06)
     col = tuple(int(v) for v in arr[min(max(syp, 0), H - 1), min(max(sxp, 0), W - 1), :3]) if a_ref[min(max(syp, 0), H - 1), min(max(sxp, 0), W - 1)] else PLATE
-    es = 0.16 * bh
-    ex = pil_r + 0.03 * bw; ey = brim_l[1] - 0.01 * bh
-    o.polygon(P([(ex, ey), (ex + es * 0.35, ey - es * 1.1), (ex + es * 0.95, ey - es * 0.15)]), fill=col + (255,), outline=INK + (255,), width=max(SS, LW - SS))
-    fx, fy = outer[-3]
-    o.polygon(P([(fx - es * 0.2, fy + es * 0.9), (fx + es * 0.25, fy - es * 0.1), (fx + es * 0.7, fy + es * 0.85)]), fill=col + (255,), outline=INK + (255,), width=max(SS, LW - SS))
+    es = 0.15 * bh
+    brim_top = lambda x: brim_l[1] + (brim_r[1] - brim_l[1]) * (x - brim_l[0]) / (brim_r[0] - brim_l[0]) - 0.05 * bh * np.sin(np.pi * np.clip((x - brim_l[0]) / (brim_r[0] - brim_l[0]), 0, 1))
+    for ex, lean in ((brim_l[0] + 0.05 * bw, -0.15), (brim_l[0] + (brim_r[0] - brim_l[0]) * 0.58, 0.15)):
+        by0, by1 = brim_top(ex) + 1, brim_top(ex + es) + 1
+        o.polygon(P([(ex, by0), (ex + es * (0.5 + lean), min(by0, by1) - es * 0.95), (ex + es, by1)]),
+                  fill=col + (255,), outline=INK + (255,), width=max(SS, LW - SS))
 
-    # 챙: 뒤(경첩)에서 앞으로 살짝 내려가는 띠 + 세로 빗금 + 경첩 리벳(동그라미 속 점)
-    brim = [brim_l, brim_r, (brim_r[0] - 0.02 * bw, brim_r[1] + bt), (brim_l[0], brim_l[1] + bt)]
-    o.polygon(P(brim), fill=PLATE_DARK + (255,), outline=INK + (255,), width=LW)
-    for i in range(1, 9):
-        t = i / 9
-        xa = brim_l[0] + (brim_r[0] - brim_l[0]) * t; ya = brim_l[1] + (brim_r[1] - brim_l[1]) * t
+    # 챙: 경첩(뒤, 낮음)에서 이마를 감싸며 앞으로 — 윗선이 살짝 볼록한 띠 + 세로 빗금 + 경첩 리벳(동그라미 속 점)
+    xs_b = np.linspace(brim_l[0], brim_r[0], 14)
+    top_edge = [(x, brim_top(x)) for x in xs_b]
+    bot_edge = [(x - 0.02 * bw * (x - brim_l[0]) / (brim_r[0] - brim_l[0]), brim_top(x) + bt) for x in xs_b[::-1]]
+    o.polygon(P(top_edge + bot_edge), fill=PLATE_DARK + (255,), outline=INK + (255,), width=LW)
+    for i in range(1, 8):
+        xa = brim_l[0] + (brim_r[0] - brim_l[0]) * i / 8; ya = brim_top(xa)
         o.line(P([(xa, ya + 1), (xa - 0.01 * bw, ya + bt - 1)]), fill=INK + (255,), width=SS)
     hr = bt * 0.55
     o.ellipse(P([(brim_l[0] - hr, brim_l[1] + bt / 2 - hr), (brim_l[0] + hr, brim_l[1] + bt / 2 + hr)]), fill=PLATE_LIGHT + (255,), outline=INK + (255,), width=SS * 2)

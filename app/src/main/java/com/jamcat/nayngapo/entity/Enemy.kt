@@ -692,7 +692,7 @@ class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
     override val width = 92f
     override val height = 104f
     private var hopPhase = (Math.random() * Math.PI).toFloat()
-    private var shootTimer = 1.8f
+    private var shootTimer = 0.8f
     private var flash = 0f
     private val pendingProjectiles = mutableListOf<Projectile>()
 
@@ -717,7 +717,7 @@ class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
         shootTimer -= deltaTime
         if (flash > 0f) flash -= deltaTime
         if (shootTimer <= 0f && dist < FIRE_RANGE) {
-            shootTimer = 2.5f; flash = 0.2f
+            shootTimer = SHOOT_EVERY; flash = 0.2f
             // 부르는 순간 하늘이 먹구름으로 덮이고, 인간이 선 자리를 노린다
             clouds.add(StormCloud(playerX + Constants.PLAYER_WIDTH / 2f, skyBottomY))
         }
@@ -762,7 +762,7 @@ class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
             if (isDead) return 0f
             var m = 0f
             for (c in clouds) {
-                val v = if (c.struck) 1f - (c.t - GATHER_TIME) / LINGER_TIME else (c.t / 0.3f)
+                val v = if (c.struck) 1f - (c.t - GATHER_TIME) / LINGER_TIME else (c.t / 0.2f)
                 m = maxOf(m, v.coerceIn(0f, 1f))
             }
             return m
@@ -776,14 +776,16 @@ class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
 
     companion object {
         private const val FIRE_RANGE = 560f
+        /** 번개를 부르는 간격 — 「공격이 너무 느려」(대표님 2026-09-27)로 2.5초 → 1.5초 */
+        private const val SHOOT_EVERY = 1.5f
         /** 먹구름이 모여 번개가 떨어지기까지 — 이 사이에 비켜 서면 피한다 (Claude 판단) */
-        private const val GATHER_TIME = 0.8f
+        private const val GATHER_TIME = 0.5f
         /** 번개를 친 뒤 구름이 흩어지는 시간 */
         private const val LINGER_TIME = 0.4f
         /** 하늘 먹구름 띠의 아랫자락 (월드 y) — 화면이 카메라에 맞춰 매 프레임 알려 준다 */
         var skyBottomY = 240f
         private val sparkPaint = Paint().apply { color = Color.rgb(255, 240, 120); strokeWidth = 4f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
-        private const val BOLT_SPEED = 2600f   // 하늘에서 땅까지 약 0.25초
+        private const val BOLT_SPEED = 3400f   // 하늘에서 땅까지 약 0.25초
     }
 }
 

@@ -240,7 +240,7 @@ class Level(val stageNumber: Int) {
     /** 잡몹 종류와 생성 방법 (cats/ 시트의 냥이들) */
     private enum class Kind(val factory: (Float, Float) -> Enemy) {
         NORMAL({ x, y -> NormalCat(x, y) }),     // 냥이 HP15
-        KITTEN({ x, y -> KittenCat(x, y) }),     // 새끼 고양이 HP6, 하트 반 칸 (2026-09-27)
+        KITTEN({ x, y -> KittenCat(x, y) }),     // 새끼 고양이 HP3, 하트 반 칸 (2026-09-27)
         BLUE({ x, y -> BlueCat(x, y) }),         // 물냥이(파랑냥이) HP20
         RED({ x, y -> RedCat(x, y) }),           // 빨강냥이 HP20 (색만 다른 일반 냥이, 2026-09-20)
         ORANGE({ x, y -> OrangeCat(x, y) }),     // 주황냥이 HP20

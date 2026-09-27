@@ -841,11 +841,11 @@ class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
 
 // ============ 새끼 고양이 (대표님 2026-09-27) ============
 /**
- * 새끼 고양이 — HP 6 · 닿으면 **하트 반 칸**. 치즈냥이를 작게 줄인 모습(무늬는 치즈냥이처럼 무작위).
+ * 새끼 고양이 — HP 3 (처음 6 → 대표님 정정) · 닿으면 **하트 반 칸**. 치즈냥이를 작게 줄인 모습(무늬는 치즈냥이처럼 무작위).
  * 종종걸음으로 빠르게 쫓아와 문다. 속도·크기(치즈냥이의 60%)·배치는 Claude 판단. 아군 냥이에게는 1 피해.
  */
 class KittenCat(x: Float, y: Float, val coat: com.jamcat.nayngapo.engine.CatCoat = com.jamcat.nayngapo.engine.CatCoat.randomForEnemy())
-    : Enemy(x, y, 6, 1) {
+    : Enemy(x, y, 3, 1) {
     override val width = 52f
     override val height = 58f
     override val halfHeart: Boolean get() = true

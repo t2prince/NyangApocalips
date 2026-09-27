@@ -600,7 +600,86 @@ abstract class ColorCat(x: Float, y: Float, private val sprite: () -> Bitmap) : 
         drawHpBar(canvas)
     }
 }
-class RedCat(x: Float, y: Float) : ColorCat(x, y, { SpriteManager.redCatEvil })
+/**
+ * 빨간냥이 — 불을 뱉는다 (대표님 2026-09-27 「빨간 냥이는 불을 뱉어」).
+ * 다가오다 인간이 불 사거리 안에 들면 멈춰 서서, 입에서 불꽃 줄기를 0.8초 동안 뿜는다(3초마다).
+ * 불꽃 하나하나가 적 탄이라 인간은 스치면 하트 1(무적 시간이 있어 한 번 뿜는 동안 한 번만), 아군 냥이는 불꽃마다 1.
+ * 사거리 약 300·뿜는 시간·간격·불꽃 수는 Claude 판단. HP 20.
+ */
+class RedCat(x: Float, y: Float) : Enemy(x, y, 20, 5) {
+    override val width = 92f
+    override val height = 104f
+    private var hopPhase = (Math.random() * Math.PI).toFloat()
+    private var breathCooldown = 1.5f
+    /** 뿜는 중이면 남은 시간 */
+    private var breathing = 0f
+    private var puffTimer = 0f
+    private val pendingProjectiles = mutableListOf<Projectile>()
+
+    override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
+        pendingProjectiles.clear()
+        val dx = playerX - x
+        if (breathing <= 0f) facingRight = playerX > x      // 뿜는 동안은 방향 고정
+        val dist = abs(dx)
+        breathCooldown -= deltaTime
+        if (breathing <= 0f && breathCooldown <= 0f && dist < BREATH_RANGE) {
+            breathing = BREATH_TIME; breathCooldown = BREATH_EVERY; puffTimer = 0f
+        }
+        if (breathing > 0f) {
+            breathing -= deltaTime
+            velocityX = 0f
+            jumpZ = 0f
+            puffTimer -= deltaTime
+            if (puffTimer <= 0f) {
+                puffTimer = PUFF_EVERY
+                val dir = if (facingRight) 1f else -1f
+                val mouthX = x + width / 2f + dir * width * 0.45f
+                val mouthY = y - height * 0.45f
+                val spread = (Math.random().toFloat() - 0.5f) * 120f
+                val r = 13f
+                pendingProjectiles.add(
+                    Projectile(mouthX - r, mouthY - r, dir * FLAME_SPEED, spread, 1, false,
+                        tint = Color.rgb(255, 140, 30), radius = r, fuse = FLAME_LIFE, isFlame = true)
+                )
+            }
+        } else {
+            velocityX = when {
+                dist < BREATH_RANGE * 0.6f -> 0f                  // 충분히 가까우면 멈춰 불을 기다린다
+                dist < 500f -> sign(dx) * 200f
+                else -> sign(dx) * 90f
+            }
+            if (abs(velocityX) > 1f) { hopPhase += deltaTime * 13f; jumpZ = -abs(sin(hopPhase.toDouble())).toFloat() * 16f }
+            else jumpZ = 0f
+        }
+        super.update(deltaTime, playerX, playerY)
+    }
+
+    override fun draw(canvas: Canvas) {
+        drawSprite(canvas, SpriteManager.redCatEvil)
+        if (breathing > 0f) {
+            // 입가에 불씨가 이글거린다
+            val dir = if (facingRight) 1f else -1f
+            val mx = x + width / 2f + dir * width * 0.45f
+            val my = y + jumpZ - height * 0.45f
+            emberPaint.alpha = (180 + 70 * sin(breathing * 50.0)).toInt().coerceIn(0, 255)
+            canvas.drawCircle(mx, my, 14f, emberPaint)
+        }
+        drawHpBar(canvas)
+    }
+
+    override fun getProjectiles(): List<Projectile> = pendingProjectiles.toList()
+
+    companion object {
+        private const val BREATH_RANGE = 300f
+        private const val BREATH_TIME = 0.8f
+        private const val BREATH_EVERY = 3f
+        private const val PUFF_EVERY = 0.08f
+        private const val FLAME_SPEED = 480f
+        /** 불꽃이 살아 있는 시간 — 480 × 0.55 ≈ 260px 날아가 식는다 */
+        private const val FLAME_LIFE = 0.55f
+        private val emberPaint = Paint().apply { color = Color.rgb(255, 170, 40); isAntiAlias = true }
+    }
+}
 class OrangeCat(x: Float, y: Float) : ColorCat(x, y, { SpriteManager.orangeCatEvil })
 /**
  * 노랑냥이 — 번개를 부른다 (대표님 2026-09-24). 번개는 **먹구름에서 떨어진다** (대표님 2026-09-25).

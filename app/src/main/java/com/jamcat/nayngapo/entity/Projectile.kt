@@ -36,7 +36,9 @@ class Projectile(
     /** 번개 줄기가 시작되는 하늘 y (먹구름 띠 아랫자락). 0보다 크면 줄기가 거기까지 이어진다 */
     val boltTopY: Float = 0f,
     /** 화면 안의 가장 가까운 적을 쫓아가 터지는 미사일 (인간 기술 '미사일') */
-    val isMissile: Boolean = false
+    val isMissile: Boolean = false,
+    /** 불꽃 한 덩이 — 빨간냥이가 뱉는 불 (대표님 2026-09-27). fuse 동안 커지며 노랑→주황→빨강으로 식어 사라진다 */
+    val isFlame: Boolean = false
 ) {
     val width = radius * 2f
     val height = radius * 2f
@@ -80,7 +82,7 @@ class Projectile(
         x += velocityX * deltaTime
         y += velocityY * deltaTime
 
-        if (isShuriken || isStone) animTime += deltaTime
+        if (isShuriken || isStone || isFlame) animTime += deltaTime
         if (isMissile) {
             missileAge += deltaTime
             // 방향은 그대로 두고 속력만 0.5초에 걸쳐 900까지 올린다
@@ -144,6 +146,11 @@ class Projectile(
 
         if (isShuriken) {
             drawShuriken(canvas, cx, cy)
+            return
+        }
+
+        if (isFlame) {
+            drawFlame(canvas, cx, cy)
             return
         }
 
@@ -355,6 +362,24 @@ class Projectile(
         }
         canvas.drawPath(boltPath, boltOuter)
         canvas.drawPath(boltPath, boltInner)
+    }
+
+    private val flameOuter = Paint().apply { isAntiAlias = true }
+    private val flameInner = Paint().apply { isAntiAlias = true }
+
+    /** 불꽃: 갓 뱉은 건 작고 노랗고, 날아가며 커지고 주황·빨강으로 식어 흐려진다. 살짝 일렁인다 */
+    private fun drawFlame(canvas: Canvas, cx: Float, cy: Float) {
+        val life = if (fuse > 0f) (1f - fuseLeft / fuse).coerceIn(0f, 1f) else 0f
+        val r = radius * (0.8f + 1.4f * life)
+        val wob = kotlin.math.sin(animTime * 40f + cx * 0.05f) * r * 0.12f
+        val a = ((1f - life * life) * 255).toInt().coerceIn(0, 255)
+        val g = (200 - 150 * life).toInt().coerceIn(40, 200)
+        flameOuter.color = Color.argb(a * 3 / 4, 240, g, 30)
+        flameInner.color = Color.argb(a, 255, (245 - 90 * life).toInt(), (150 - 150 * life).toInt().coerceAtLeast(0))
+        canvas.drawCircle(cx, cy + wob, r, flameOuter)
+        // 불꽃 끝이 위로 날린다
+        canvas.drawCircle(cx - velocityX * 0.02f, cy - r * 0.55f - wob, r * 0.6f, flameOuter)
+        canvas.drawCircle(cx, cy + wob * 0.5f, r * 0.55f, flameInner)
     }
 
     private fun drawShuriken(canvas: Canvas, cx: Float, cy: Float) {

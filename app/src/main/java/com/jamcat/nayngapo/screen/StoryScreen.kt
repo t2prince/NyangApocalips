@@ -18,6 +18,10 @@ class StoryScreen(private val gameView: GameView) : Screen {
     private val pages: List<Bitmap> = listOf(R.drawable.story_1, R.drawable.story_2, R.drawable.story_3)
         .map { BitmapFactory.decodeResource(gameView.resources, it) }
 
+    /** 가로 화면 양옆을 채우는 같은 그림의 흐린 배경 (대표님 「옆에 여백이 없어… 사진도 채워줘」) */
+    private val backs: List<Bitmap> = listOf(R.drawable.story_bg_1, R.drawable.story_bg_2, R.drawable.story_bg_3)
+        .map { BitmapFactory.decodeResource(gameView.resources, it) }
+
     private var page = 0
     /** 이 장이 뜬 뒤 흐른 시간 — 들어오자마자 잘못 눌러 넘어가지 않게 */
     private var shown = 0f
@@ -27,7 +31,6 @@ class StoryScreen(private val gameView: GameView) : Screen {
 
     private val bgPaint = Paint().apply { color = Color.rgb(28, 26, 30) }
     private val picPaint = Paint().apply { isFilterBitmap = true; isAntiAlias = true }
-    private val framePaint = Paint().apply { color = Color.rgb(250, 248, 242); isAntiAlias = true }
     private val shadowPaint = Paint().apply { color = Color.argb(120, 0, 0, 0); isAntiAlias = true }
     private val skipBg = Paint().apply { color = Color.argb(170, 255, 255, 255); isAntiAlias = true }
     private val skipText = Paint().apply {
@@ -69,27 +72,33 @@ class StoryScreen(private val gameView: GameView) : Screen {
         val idx = page.coerceAtMost(pages.size - 1)
         val bmp = pages[idx]
 
-        // 그림: 화면 높이에 맞춰 가운데 — 종이처럼 흰 테두리와 그림자
-        val ph = h * 0.86f
+        // 뒤: 같은 그림을 흐리게 화면 가득 (가로·세로 중 넉넉한 쪽에 맞춰 잘라 채운다)
+        val back = backs[idx]
+        val cover = maxOf(w / back.width, h / back.height)
+        val bw0 = back.width * cover; val bh0 = back.height * cover
+        tmp.set((w - bw0) / 2f, (h - bh0) / 2f, (w + bw0) / 2f, (h + bh0) / 2f)
+        // 그림: 화면 높이 가득 가운데 — 종이 그림자
+        val ph = h
         val pw = ph * bmp.width / bmp.height
-        dst.set((w - pw) / 2f, (h - ph) / 2f - h * 0.02f, (w + pw) / 2f, (h + ph) / 2f - h * 0.02f)
+        dst.set((w - pw) / 2f, 0f, (w + pw) / 2f, h)
         // 장이 바뀔 때: 앞 장은 어두워지며 사라지고 새 장이 밝아진다
         val alpha = when {
             turning >= 0f -> ((1f - turning) * 255).toInt()
             shown < FADE -> (shown / FADE * 255).toInt()
             else -> 255
         }.coerceIn(0, 255)
-        picPaint.alpha = alpha; framePaint.alpha = alpha; shadowPaint.alpha = alpha * 120 / 255
-        tmp.set(dst.left - 10f + 12f, dst.top - 10f + 14f, dst.right + 10f + 12f, dst.bottom + 10f + 14f)
-        canvas.drawRoundRect(tmp, 10f, 10f, shadowPaint)
-        tmp.set(dst.left - 10f, dst.top - 10f, dst.right + 10f, dst.bottom + 10f)
-        canvas.drawRoundRect(tmp, 10f, 10f, framePaint)
+        picPaint.alpha = alpha; shadowPaint.alpha = alpha * 120 / 255
+        canvas.drawBitmap(back, null, tmp, picPaint)
+        tmp.set(dst.left - 18f, 0f, dst.right + 18f, h)
+        canvas.drawRect(tmp, shadowPaint)
         canvas.drawBitmap(bmp, null, dst, picPaint)
 
         // 몇 번째 장인지 점으로
-        val dy = h - h * 0.035f
+        // (그림 오른쪽 흐린 배경 위, 아래쪽)
+        val dy = h - h * 0.05f
+        val dcx = (dst.right + w) / 2f
         for (i in pages.indices) {
-            canvas.drawCircle(w / 2f + (i - (pages.size - 1) / 2f) * 34f, dy, 9f, if (i == idx) dotOn else dotOff)
+            canvas.drawCircle(dcx + (i - (pages.size - 1) / 2f) * 34f, dy - 56f, 9f, if (i == idx) dotOn else dotOff)
         }
         // 누르면 넘어간다는 안내 (그림 오른쪽 아래 빈 곳)
         if (shown > 1.2f && turning < 0f) {

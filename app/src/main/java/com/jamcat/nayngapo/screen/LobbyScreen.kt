@@ -31,9 +31,9 @@ class LobbyScreen(private val gameView: GameView) : Screen {
 
     private val slots = listOf(
         // 왼쪽 세로줄
-        Slot("character", "캐릭터 변경", 0.015f, 0.100f, 0.245f, 0.420f),
-        Slot("cat_skill", "고양이 기술", 0.015f, 0.440f, 0.245f, 0.640f),
-        Slot("cat_shop", "고양이 상점", 0.015f, 0.660f, 0.245f, 0.855f),
+        // '고양이 상점' 칸은 뺐다 — 고양이 상점은 상점 마을의 천막 중 하나 (대표님 2026-09-27)
+        Slot("character", "캐릭터 변경", 0.015f, 0.100f, 0.245f, 0.470f),
+        Slot("cat_skill", "고양이 기술", 0.015f, 0.490f, 0.245f, 0.855f),
         // 가운데 스테이지 길
         Slot("worldmap", "", 0.260f, 0.100f, 0.735f, 0.855f),
         // 오른쪽 세로줄
@@ -438,8 +438,6 @@ class LobbyScreen(private val gameView: GameView) : Screen {
             "character" -> gameView.showCharacterSelect()
             // 고양이 관리 = 내 팀 냥이를 돌보는 곳 (도감은 그 화면에서 따로 들어간다)
             "cat_manage" -> gameView.showTeam()
-            // 루비로 냥이 물건을 사는 곳
-            "cat_shop" -> gameView.showCatShop()
             // 쌓아온 점수를 루비로 바꾸는 곳
             "ruby_shop" -> gameView.showRubyShop()
             // 설정: 데이터 리셋

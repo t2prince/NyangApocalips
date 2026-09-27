@@ -239,7 +239,6 @@ object SpriteManager {
         lobbyIcons = mapOf(
             "character" to BitmapFactory.decodeResource(res, R.drawable.lobby_character),
             "cat_skill" to BitmapFactory.decodeResource(res, R.drawable.lobby_cat_skill),
-            "cat_shop" to BitmapFactory.decodeResource(res, R.drawable.lobby_cat_shop),
             "worldmap" to BitmapFactory.decodeResource(res, R.drawable.lobby_map),
             "battle" to BitmapFactory.decodeResource(res, R.drawable.lobby_battle),
             "cat_manage" to BitmapFactory.decodeResource(res, R.drawable.lobby_cat_manage),

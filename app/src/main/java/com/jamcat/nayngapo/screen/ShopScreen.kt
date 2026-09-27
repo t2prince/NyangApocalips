@@ -36,10 +36,24 @@ class ShopScreen(private val gameView: GameView) : Screen {
     /** 지금 앞에 서 있는 천막 (없으면 -1) */
     private var nearTent = -1
 
+    /** 출전시킨 팀 냥이는 상점 마을에도 인간을 따라온다 (대표님 2026-09-27 「출전시키기를 누르면 고양이와 같이 상점에 갈 수 있어」) */
+    private val allies = mutableListOf<com.jamcat.nayngapo.entity.AllyCat>()
+
     init {
         Terrain.stage = Terrain.SHOP            // 상점 마을은 평평한 초원
         player = Player(START_X, Constants.GROUND_Y)
         player.facingRight = true
+        // 땅 스테이지와 같이 날아냥이는 빼고, 인간 뒤에 줄지어 선다
+        val party = com.jamcat.nayngapo.engine.CatTeam.party.filter { it.kind != com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING }
+        for ((i, cat) in party.withIndex()) {
+            allies.add(
+                com.jamcat.nayngapo.entity.AllyCat(
+                    (START_X - 90f - 70f * i).coerceAtLeast(20f), Constants.GROUND_Y,
+                    cat.kind, level = cat.level, teamId = cat.id,
+                    armored = cat.hasArmor, attackBonus = cat.attackBonus, coat = cat.coat
+                )
+            )
+        }
     }
 
     /** 열린 천막 수 = 구한 인간 수 (천막 수까지) */
@@ -92,6 +106,10 @@ class ShopScreen(private val gameView: GameView) : Screen {
         input.special = false
         player.update(deltaTime)
         player.x = player.x.coerceIn(40f, worldWidth - player.width - 40f)
+        for (ally in allies) {
+            ally.update(deltaTime, player.x, player.y, emptyList())
+            ally.x = ally.x.coerceIn(10f, worldWidth - ally.width - 10f)
+        }
 
         // 카메라: 인간을 화면 왼쪽 3분의 1쯤에 두고 따라간다
         val sw = gameView.screenWidth.toFloat()
@@ -146,6 +164,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
             if (cx + TENT_W < cameraX - 50f || cx - TENT_W > cameraX + w + 50f) continue
             drawTent(canvas, i, cx, groundY, TENT_W, TENT_H, i < openCount)
         }
+        for (ally in allies) ally.draw(canvas)
         player.draw(canvas)
         canvas.restore()
 

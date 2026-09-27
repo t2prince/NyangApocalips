@@ -465,5 +465,11 @@ class LobbyScreen(private val gameView: GameView) : Screen {
             )
             noticeTimer = 2.6f   // 떠난 소식은 조금 더 오래 띄운다
         }
+        // 팀 냥이끼리 새끼를 낳았으면 누구랑 누구 사이인지 알려 준다 (대표님 2026-09-27)
+        val born = CatTeam.takePendingBirthNotices()
+        if (born.isNotEmpty()) {
+            showNotice(if (born.size == 1) born[0] else "${born[0]} (외 ${born.size - 1}마리)")
+            noticeTimer = 3.2f
+        }
     }
 }

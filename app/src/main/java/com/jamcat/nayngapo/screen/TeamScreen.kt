@@ -342,6 +342,12 @@ class TeamScreen(private val gameView: GameView) : Screen {
             drawPlainStage(canvas, w, h, cat, cx)
         }
 
+        // 교배로 태어난 새끼는 누구랑 누구 사이인지 보여 준다 (대표님 2026-09-27)
+        if (cat.isKitten && cat.parents.isNotEmpty()) {
+            centerSmallPaint.textSize = h * 0.028f
+            canvas.drawText("새끼 · 부모 ${cat.parents}", cx, h * 0.140f, centerSmallPaint)
+        }
+
         // 타워가 가운데를 채우면 안내 문구는 생략한다 (그림과 겹친다)
         if (!cat.gone && tower == null) {
             centerSmallPaint.textSize = h * 0.026f
@@ -405,7 +411,7 @@ class TeamScreen(private val gameView: GameView) : Screen {
         val availW = w * 0.34f
         // 갑옷 그림은 투구·볏만큼 위로 길다 — 크기는 맨몸 그림 기준으로 잡아 냥이 몸집이 그대로여야 한다
         val refH = refHeight(cat, bmp)
-        val scale = min(availW / bmp.width, availH / refH)
+        val scale = min(availW / bmp.width, availH / refH) * (if (cat.isKitten) 0.7f else 1f)   // 새끼는 작게
         val bw = bmp.width * scale
         val bh = bmp.height * scale
         val refBh = refH * scale                 // 맨몸 높이 — 발 위치·방석 기준

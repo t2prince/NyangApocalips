@@ -66,6 +66,10 @@ object CatTeam {
         var hasLeft: Boolean = false,
         /** 'Lv업' 아이템으로 영구히 올린 공격력 (되살아나도 남는다) */
         var attackBonus: Int = 0,
+        /** 팀 냥이끼리 교배해 태어난 새끼인가 (대표님 2026-09-27) */
+        val isKitten: Boolean = false,
+        /** 새끼의 부모 이름 "A × B" (태어날 때의 이름) */
+        val parents: String = "",
         /** 치즈냥이의 털 무늬 (다른 종은 CHEESE 로 두고 무시) */
         val coat: CatCoat = CatCoat.CHEESE
     ) {
@@ -80,6 +84,18 @@ object CatTeam {
     private const val KEY_NEXT_ID = "team_next_id"
     private const val KEY_PLAY_SECONDS = "team_play_seconds"
     private const val KEY_NAME_COUNTS = "team_name_counts"
+    private const val KEY_BREED_SECONDS = "team_breed_seconds"
+
+    /**
+     * 교배 (대표님 2026-09-27 「고양이 관리에 있는 고양이들이 스스로 교배해 가끔 새끼를 낳고, 누구랑 교배했는지 나와」):
+     * 게임을 켜 둔 놀이 시간 BREED_EVERY 초마다, 살아 있는 냥이가 둘 이상이면 BREED_CHANCE 확률로
+     * 무작위 두 마리 사이에서 새끼 한 마리가 태어난다. 새끼는 부모 한쪽의 종류·무늬를 닮은 Lv1 냥이.
+     * 20분·50%·닮는 방식은 Claude 판단.
+     */
+    const val BREED_EVERY = 1200f
+    private const val BREED_CHANCE = 0.5
+    private var breedSeconds = 0f
+    private val pendingBirthNotices = mutableListOf<String>()
 
     /** 게임을 켜 둔 채 한 시간을 보내면 줄어드는 양 (애정은 줄지 않는다) */
     private const val DECAY_FULLNESS = FULLNESS_PER_HEART   // 놀이 시간 한 시간에 하트 하나
@@ -135,6 +151,8 @@ object CatTeam {
         pendingLeaveNotices.clear()
         nextId = prefs.getInt(KEY_NEXT_ID, 1)
         playSeconds = prefs.getInt(KEY_PLAY_SECONDS, 0).toFloat().coerceIn(0f, SECONDS_PER_HEART)
+        breedSeconds = prefs.getInt(KEY_BREED_SECONDS, 0).toFloat().coerceIn(0f, BREED_EVERY)
+        pendingBirthNotices.clear()
         saveDebt = 0f
         nameCounts.clear()
 
@@ -165,6 +183,8 @@ object CatTeam {
                             diedAtStage = o.optInt("diedAtStage", 0),
                             hasLeft = o.optBoolean("hasLeft", false),
                             attackBonus = o.optInt("attackBonus", 0).coerceAtLeast(0),
+                            isKitten = o.optBoolean("isKitten", false),
+                            parents = o.optString("parents", ""),
                             // 무늬 도입(2026-09-20) 전에 저장된 치즈냥이는 무늬가 없다 → 한 번 무작위로 뽑아 준다 (대표님 지시)
                             coat = if (o.has("coat")) CatCoat.of(o.optString("coat"))
                                    else if (kind == AllyCat.Kind.NORMAL) { migratedCoat = true; CatCoat.random() }
@@ -221,6 +241,8 @@ object CatTeam {
                     .put("diedAtStage", c.diedAtStage)
                     .put("hasLeft", c.hasLeft)
                     .put("attackBonus", c.attackBonus)
+                    .put("isKitten", c.isKitten)
+                    .put("parents", c.parents)
             )
         }
         val counts = JSONObject()
@@ -230,6 +252,7 @@ object CatTeam {
             ?.putString(KEY_CATS, arr.toString())
             ?.putInt(KEY_NEXT_ID, nextId)
             ?.putInt(KEY_PLAY_SECONDS, playSeconds.toInt())
+            ?.putInt(KEY_BREED_SECONDS, breedSeconds.toInt())
             ?.putString(KEY_NAME_COUNTS, counts.toString())
             ?.apply()
     }
@@ -253,6 +276,11 @@ object CatTeam {
             decayOnce()
             decayed = true
         }
+        breedSeconds += dt
+        while (breedSeconds >= BREED_EVERY) {
+            breedSeconds -= BREED_EVERY
+            if (Math.random() < BREED_CHANCE && breed() != null) decayed = true   // 태어나면 바로 저장
+        }
         if (decayed || saveDebt >= SAVE_EVERY_SECONDS) {
             saveDebt = 0f
             save()
@@ -274,6 +302,37 @@ object CatTeam {
                 pendingLeaveNotices.add(cat.name)
             }
         }
+    }
+
+    /** 살아 있는 냥이 둘을 골라 새끼를 낳는다. 둘이 안 되면 null */
+    private fun breed(): TeamCat? {
+        val alive = living
+        if (alive.size < 2) return null
+        val a = alive.random()
+        val b = alive.filter { it.id != a.id }.random()
+        val like = if (Math.random() < 0.5) a else b           // 닮는 쪽
+        val coat = if (like.kind == AllyCat.Kind.NORMAL) like.coat else CatCoat.CHEESE
+        val kid = TeamCat(
+            id = nextId++,
+            kind = like.kind,
+            name = autoName(like.kind, coat),
+            inParty = false,
+            seen = false,
+            coat = coat,
+            isKitten = true,
+            parents = "${a.name} × ${b.name}"
+        )
+        roster.add(kid)
+        pendingBirthNotices.add("${a.name}와(과) ${b.name} 사이에서 ${kid.name}이(가) 태어났다냥!")
+        return kid
+    }
+
+    /** 새로 태어난 새끼 소식 — 로비에서 한 번 알려 준 뒤 비운다 */
+    fun takePendingBirthNotices(): List<String> {
+        if (pendingBirthNotices.isEmpty()) return emptyList()
+        val out = pendingBirthNotices.toList()
+        pendingBirthNotices.clear()
+        return out
     }
 
     /** 다음 하트가 닳기까지 남은 놀이 시간(초) */

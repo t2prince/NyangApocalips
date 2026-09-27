@@ -1823,9 +1823,11 @@ class GamePlayScreen(
                 com.jamcat.nayngapo.entity.AllyCat.Kind.NORMAL,
                 com.jamcat.nayngapo.entity.AllyCat.Kind.GUN,      // 총냥이도 팀이 된다 (2026-09-20)
             )
-            val kind = prison.catKind ?: randomKinds[(Math.random() * randomKinds.size).toInt()]
+            // 새끼 고양이가 갇혀 있었으면 그 무늬의 새끼 치즈냥이가 팀에 들어온다 (대표님 2026-09-27)
+            val kind = if (prison.holdsKitten) com.jamcat.nayngapo.entity.AllyCat.Kind.NORMAL
+                else prison.catKind ?: randomKinds[(Math.random() * randomKinds.size).toInt()]
             // 구한 냥이는 팀 명단에만 올라간다 — 바로 싸우지 않고, 관리 화면에서 출전을 켜 줘야 한다
-            val recruited = com.jamcat.nayngapo.engine.CatTeam.recruit(kind, prison.catCoat)
+            val recruited = com.jamcat.nayngapo.engine.CatTeam.recruit(kind, prison.catCoat, isKitten = prison.holdsKitten)
             hitEffects.add(
                 HitEffect(
                     prison.x, prison.y - prison.height, 1.6f,

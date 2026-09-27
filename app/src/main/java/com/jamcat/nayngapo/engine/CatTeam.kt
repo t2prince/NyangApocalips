@@ -386,14 +386,15 @@ object CatTeam {
      * 구출한 냥이를 팀에 넣는다.
      * 바로 싸우지는 않는다 — 관리 화면에서 직접 출전을 켜 줘야 한다.
      */
-    fun recruit(kind: AllyCat.Kind, coat: CatCoat = CatCoat.CHEESE): TeamCat {
+    fun recruit(kind: AllyCat.Kind, coat: CatCoat = CatCoat.CHEESE, isKitten: Boolean = false): TeamCat {
         val cat = TeamCat(
             id = nextId++,
             kind = kind,
             name = autoName(kind, coat),
             inParty = false,
             seen = false,
-            coat = if (kind == AllyCat.Kind.NORMAL) coat else CatCoat.CHEESE
+            coat = if (kind == AllyCat.Kind.NORMAL) coat else CatCoat.CHEESE,
+            isKitten = isKitten
         )
         roster.add(cat)
         save()

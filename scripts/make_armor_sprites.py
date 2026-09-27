@@ -93,7 +93,7 @@ def armor(im, wide=False, base=None):
     # 등판 이음새 (원안: 가운데 살짝 휜 세로 하나 + 1/3 높이 가로 하나) + 이음새를 따라 찍힌 리벳
     r = max(1.4, bh * 0.017)
     dot = lambda x, y: d.ellipse([x - r, y - r, x + r, y + r], fill=INK)
-    pil_l = muzzle_left - 0.14 * bw                     # 투구 기둥(뒤통수) 왼쪽 끝
+    pil_l = muzzle_left - 0.12 * bw                     # 투구 기둥(뒤통수) 왼쪽 끝
     vs = [(ux(0.24 + 0.04 * np.sin(np.pi * t)), vy(0.02) + (bottom_y - vy(0.02)) * t) for t in np.linspace(0, 1, 9)]
     d.line(vs, fill=SEAM, width=max(1, lw - 1))
     hy = vy(0.33)
@@ -125,15 +125,15 @@ def armor(im, wide=False, base=None):
     LW = lw * SS
     E = eye_top
     right = ux(1.0)
-    brim_l = (muzzle_left - 0.04 * bw, E - 0.13 * bh)   # 챙 뒤끝(경첩) — 앞보다 높다
-    brim_r = (right + 0.02 * bw, E - 0.11 * bh)          # 챙 앞끝
-    bt = 0.10 * bh                                       # 챙 두께
+    brim_l = (muzzle_left - 0.04 * bw, E - 0.11 * bh)   # 챙 뒤끝(경첩) — 앞보다 높다
+    brim_r = (right + 0.01 * bw, E - 0.095 * bh)          # 챙 앞끝
+    bt = 0.085 * bh                                       # 챙 두께
     pil_r = muzzle_left - 0.04 * bw
-    top_y = E - 0.36 * bh
+    top_y = E - 0.27 * bh
     base_y = muzzle_bot + 1
     # 후드 외곽: 기둥 왼쪽 아래 → 위로 곧게 → 둥근 머리 → 앞으로 내려와 챙 앞끝 위
-    hood = [(pil_l, base_y), (pil_l, E - 0.22 * bh)]
-    cx, cy = pil_l + (right - pil_l) * 0.46, E - 0.22 * bh
+    hood = [(pil_l, base_y), (pil_l, E - 0.17 * bh)]
+    cx, cy = pil_l + (right - pil_l) * 0.46, E - 0.17 * bh
     rx1, ry1 = cx - pil_l, cy - top_y
     for t in np.linspace(np.pi, 1.5 * np.pi, 10)[1:]:
         hood.append((cx + rx1 * np.cos(t), cy + ry1 * np.sin(t)))
@@ -153,7 +153,7 @@ def armor(im, wide=False, base=None):
     # 볏: 후드 윗선을 따라 얹힌 가는 띠 — 뒤쪽 끝은 네모나게 잘리고, 앞으로 휘어 내려가 챙 앞끝 위에서 가늘게 끝난다. 빗금은 몇 개만.
     top_pts = [(cx + rx1 * np.cos(t), cy + ry1 * np.sin(t)) for t in np.linspace(1.30 * np.pi, 1.5 * np.pi, 6)]
     top_pts += [(cx + rx2 * np.cos(t), top_y + ry2 + ry2 * np.sin(t)) for t in np.linspace(1.5 * np.pi, 1.93 * np.pi, 12)[1:]]
-    cw = 0.07 * bh
+    cw = 0.055 * bh
     outer = []
     for i, (x, y) in enumerate(top_pts):
         x0_, y0_ = top_pts[max(0, i - 1)]; x1_, y1_ = top_pts[min(len(top_pts) - 1, i + 1)]
@@ -168,7 +168,7 @@ def armor(im, wide=False, base=None):
     # 귀: 머리 색으로, 투구를 뚫고 나온 것처럼 챙 위에 붙어 있다 — 경첩 바로 앞 하나, 볏 앞끝 아래 하나
     sxp, syp = int(ux(0.66)), int(y0 + bh * 0.06)
     col = tuple(int(v) for v in arr[min(max(syp, 0), H - 1), min(max(sxp, 0), W - 1), :3]) if a_ref[min(max(syp, 0), H - 1), min(max(sxp, 0), W - 1)] else PLATE
-    es = 0.12 * bh
+    es = 0.10 * bh
     brim_top = lambda x: brim_l[1] + (brim_r[1] - brim_l[1]) * (x - brim_l[0]) / (brim_r[0] - brim_l[0]) - 0.05 * bh * np.sin(np.pi * np.clip((x - brim_l[0]) / (brim_r[0] - brim_l[0]), 0, 1))
     for ex, lean in ((brim_l[0] + 0.05 * bw, -0.15), (brim_l[0] + (brim_r[0] - brim_l[0]) * 0.58, 0.15)):
         by0, by1 = brim_top(ex) + 1, brim_top(ex + es) + 1

@@ -62,9 +62,13 @@ def background(pg):
     return ImageEnhance.Brightness(bg).enhance(0.72)
 
 
+# 위쪽 손글씨 줄을 잘라낼 비율 — 문장은 화면 아래 자막 띠로 보여 준다 (「위의 글자는 잘라줘」 2026-09-27)
+TEXT_CUT = {1: 0.158, 2: 0.15, 3: 0.19}
+
 if __name__ == '__main__':
     for i in CORNERS:
         pg = page(i)
+        pg = pg.crop((0, int(pg.height * TEXT_CUT[i]), pg.width, pg.height))
         pg.save(f'{DST}/story_{i}.jpg', quality=92)
         background(pg).save(f'{DST}/story_bg_{i}.jpg', quality=85)
         print(f'story_{i}.jpg', pg.size)

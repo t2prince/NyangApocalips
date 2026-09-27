@@ -14,7 +14,8 @@ import kotlin.math.min
  * 고양이 상점. 루비로 냥이 물건(간식·장난감·살림살이)을 산다.
  * 도감 화면과 같은 도화지 + 흰 카드 손그림 톤.
  */
-class CatShopScreen(private val gameView: GameView) : Screen {
+/** fromTent: 상점(천막) 화면의 고양이 상점 천막에서 들어왔으면 돌아갈 때도 그 화면으로 */
+class CatShopScreen(private val gameView: GameView, private val fromTent: Boolean = false) : Screen {
 
     private val backRect = RectF()
 
@@ -214,7 +215,7 @@ class CatShopScreen(private val gameView: GameView) : Screen {
             MotionEvent.ACTION_UP -> {
                 if (backRect.contains(event.x, event.y)) {
                     pressedIndex = -1
-                    gameView.showLobby()
+                    if (fromTent) gameView.showShop() else gameView.showLobby()
                     return true
                 }
                 val hit = itemAt(event.x, event.y)
@@ -259,7 +260,7 @@ class CatShopScreen(private val gameView: GameView) : Screen {
     }
 
     override fun onBack(): Boolean {
-        gameView.showLobby()
+        if (fromTent) gameView.showShop() else gameView.showLobby()
         return true
     }
 }

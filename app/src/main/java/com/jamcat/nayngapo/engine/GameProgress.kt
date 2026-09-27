@@ -32,6 +32,7 @@ object GameProgress {
     private const val KEY_LAST_CLEARED = "last_cleared_stage"
     private const val KEY_KILLS = "stat_kills"
     private const val KEY_THIEF_KILLS = "stat_thief_kills"
+    private const val KEY_HUMANS_RESCUED = "stat_humans_rescued"
     private const val KEY_MISSIONS_CLAIMED = "missions_claimed"
     private const val KEY_STAGE20_NO_DEATH = "stat_stage20_no_death"
     private const val KEY_BGM = "setting_bgm"
@@ -95,6 +96,10 @@ object GameProgress {
     var rubyDebt = 0
         private set
     /** 누적 처치 수 (미션용, 2026-09-20) */
+    /** 지금까지 구한 인간 수 — 한 명마다 상점 천막 하나가 열린다 (대표님 2026-09-27). 이 기록은 2026-09-27 부터 센다 */
+    var humansRescued = 0
+        private set
+
     var totalKills = 0
         private set
     var thiefKills = 0
@@ -155,6 +160,7 @@ object GameProgress {
         rubyDebt = prefs?.getInt(KEY_RUBY_DEBT, 0) ?: 0
         totalKills = prefs?.getInt(KEY_KILLS, 0) ?: 0
         thiefKills = prefs?.getInt(KEY_THIEF_KILLS, 0) ?: 0
+        humansRescued = prefs?.getInt(KEY_HUMANS_RESCUED, 0) ?: 0
         bgmEnabled = prefs?.getBoolean(KEY_BGM, true) ?: true
         sfxEnabled = prefs?.getBoolean(KEY_SFX, true) ?: true
         shakeEnabled = prefs?.getBoolean(KEY_SHAKE, true) ?: true
@@ -192,6 +198,13 @@ object GameProgress {
         totalKills++
         if (isThief) thiefKills++
         prefs?.edit()?.putInt(KEY_KILLS, totalKills)?.putInt(KEY_THIEF_KILLS, thiefKills)?.apply()
+    }
+
+    /** 감옥에서 인간을 구했다 — 구하는 순간 바로 저장 (스테이지를 못 깨도 구한 건 구한 것) */
+    fun addRescuedHumans(n: Int) {
+        if (n <= 0) return
+        humansRescued += n
+        prefs?.edit()?.putInt(KEY_HUMANS_RESCUED, humansRescued)?.apply()
     }
 
     /** 미션 보상 수령 기록 */

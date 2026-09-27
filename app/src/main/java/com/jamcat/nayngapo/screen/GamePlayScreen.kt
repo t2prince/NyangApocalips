@@ -1784,6 +1784,7 @@ class GamePlayScreen(
                 )
             )
         } else {
+            com.jamcat.nayngapo.engine.GameProgress.addRescuedHumans(prison.rescueCount)   // 한 명마다 상점 천막이 열린다
             hitEffects.add(HitEffect(prison.x, prison.y - prison.height, 1f, "인간 ${prison.rescueCount}명 구출!"))
         }
     }

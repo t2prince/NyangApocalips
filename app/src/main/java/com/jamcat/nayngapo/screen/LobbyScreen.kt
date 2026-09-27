@@ -446,6 +446,8 @@ class LobbyScreen(private val gameView: GameView) : Screen {
             "settings" -> gameView.showSettings()
             // 미션: 해내면 루비
             "mission" -> gameView.showMissions()
+            // 상점: 초원 위 천막들, 구한 인간 수만큼 문이 열린다
+            "shop" -> gameView.showShop()
             else -> showNotice("${slot.label}은(는) 준비 중이다냥!")
         }
     }

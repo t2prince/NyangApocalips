@@ -569,6 +569,7 @@ class SkyStageScreen(
         if (GameProgress.shakeEnabled) shake = 0.2f
         if (prison.kind == com.jamcat.nayngapo.entity.Prison.Kind.HUMAN) {
             rescued += 3
+            GameProgress.addRescuedHumans(3)   // 한 명마다 상점 천막이 열린다
             effects.add(Effect(prison.x, prison.y - 70f, 1.2f, "인간 3명 구출!"))
         } else {
             rescued += 1

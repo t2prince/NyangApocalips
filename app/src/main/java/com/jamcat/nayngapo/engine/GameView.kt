@@ -152,8 +152,13 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     }
 
     /** 고양이 상점: 루비로 냥이 물건을 산다 */
-    fun showCatShop() {
-        fadeTo { CatShopScreen(this) }
+    fun showCatShop(fromTent: Boolean = false) {
+        fadeTo { CatShopScreen(this, fromTent) }
+    }
+
+    /** 상점: 평평한 초원 위 천막 상점들 — 인간을 한 명 구할 때마다 천막 하나가 열린다 */
+    fun showShop() {
+        fadeTo { ShopScreen(this) }
     }
 
     /** 루비 상점: 쌓아온 점수를 루비로 바꾼다 */

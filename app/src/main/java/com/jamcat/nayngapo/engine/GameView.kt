@@ -84,6 +84,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         }
     }
 
+    /** 로딩 뒤 스토리 그림 3장 (건너뛰기 가능) → 타이틀 */
+    fun showStory() {
+        currentScreen = StoryScreen(this)
+    }
+
     fun showTitle() {
         currentScreen = TitleScreen(this)
         SoundManager.resumeBgm()   // 홈으로 돌아오면 다시 노래가 흐른다
@@ -234,7 +239,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     override fun surfaceCreated(holder: SurfaceHolder) {
         screenWidth = width
         screenHeight = height
-        currentScreen = LoadingScreen(this)   // 로딩 화면 → 타이틀
+        currentScreen = LoadingScreen(this)   // 로딩 화면 → 스토리 → 타이틀
 
         gameThread = GameThread(holder, this)
         gameThread?.running = true

@@ -64,6 +64,8 @@ class HUD {
         val stage: Int, val score: Int, val level: Int, val lives: Int, val rescueCount: Int,
         /** 필살기 게이지 0~1 */
         val specialFill: Float, val hp: Int, val maxHp: Int, val defeated: Int, val total: Int,
+        /** 마지막 하트가 반 칸만 남았는가 (새끼 고양이에게 물림) */
+        val halfLost: Boolean = false,
     )
 
     fun draw(canvas: Canvas, player: Player, level: Level, screenWidth: Int, screenHeight: Int) {
@@ -72,6 +74,7 @@ class HUD {
             rescueCount = player.rescueCount,
             specialFill = (1f - player.specialCooldown / Constants.SPECIAL_COOLDOWN).coerceIn(0f, 1f),
             hp = player.hp, maxHp = player.maxHp, defeated = level.defeatedEnemies, total = level.totalEnemies,
+            halfLost = player.halfLost,
         ), screenWidth, screenHeight)
     }
 
@@ -186,7 +189,15 @@ class HUD {
         val y = h - heart.height - 32f
         for (i in 0 until d.maxHp) {
             if (i < d.hp) {
-                canvas.drawBitmap(heart, x, y, null)
+                if (d.halfLost && i == d.hp - 1) {
+                    // 반 칸: 빈 하트 위에 왼쪽 절반만 그린다
+                    rect.set(x + 4f, y + 6f, x + heart.width - 4f, y + heart.height - 4f)
+                    canvas.drawRoundRect(rect, 5f, 5f, emptyHeartPaint)
+                    canvas.save()
+                    canvas.clipRect(x, y, x + heart.width / 2f, y + heart.height)
+                    canvas.drawBitmap(heart, x, y, null)
+                    canvas.restore()
+                } else canvas.drawBitmap(heart, x, y, null)
             } else {
                 rect.set(x + 4f, y + 6f, x + heart.width - 4f, y + heart.height - 4f)
                 canvas.drawRoundRect(rect, 5f, 5f, emptyHeartPaint)

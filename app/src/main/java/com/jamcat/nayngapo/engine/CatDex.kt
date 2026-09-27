@@ -35,6 +35,7 @@ object CatDex {
         Entry("red", "빨간냥이", "불을 뱉는다", { SpriteManager.redCatEvil }, frames = { SpriteManager.catIdleRed }),
         Entry("orange", "주황냥이", "용암을 던진다", { SpriteManager.orangeCatEvil }, frames = { SpriteManager.catIdleOrange }),
         Entry("yellow", "노랑냥이", "먹구름에서 번개를 떨군다", { SpriteManager.yellowCatEvil }, frames = { SpriteManager.catIdleYellow }),
+        Entry("kitten", "새끼 고양이", "작지만 깨문다", { KittenCat.small(SpriteManager.normalCat) }),   // 2026-09-27
         Entry("mud", "머드냥이", "늪 속에 숨어 있다", { SpriteManager.mudCatEvil }),   // 기획9 (2026-09-27)
         Entry("poop", "똥냥이", "냄새가 지독하다", { SpriteManager.poopCat }),
         Entry("flying", "날아냥이", "하늘을 난다", { SpriteManager.flyingCat }),
@@ -63,6 +64,7 @@ object CatDex {
         is OrangeCat -> "orange"
         is YellowCat -> "yellow"
         is MudCat -> "mud"
+        is KittenCat -> "kitten"
         is PoopCat -> "poop"
         is FlyingCat -> "flying"
         is FluffyCat -> "fluffy"

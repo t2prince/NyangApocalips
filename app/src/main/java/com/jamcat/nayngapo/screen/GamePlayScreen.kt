@@ -817,7 +817,8 @@ class GamePlayScreen(
                         }
                         continue
                     }
-                    player.takeDamage(enemy.contactDamage)   // 잡몹 1, 보스 3 (기획4)
+                    if (enemy.halfHeart) player.takeHalfDamage()      // 새끼 고양이: 하트 반 칸
+                    else player.takeDamage(enemy.contactDamage)   // 잡몹 1, 보스 3 (기획4)
                     shake(0.18f, 11f)   // 피격: 크게 흔들림
                     hitEffects.add(HitEffect(player.x, player.y - player.height, 0.5f, "HIT!"))
                     break

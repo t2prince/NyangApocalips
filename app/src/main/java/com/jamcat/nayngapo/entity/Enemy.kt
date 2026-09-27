@@ -44,6 +44,9 @@ abstract class Enemy(
     /** 몸에 닿았을 때 플레이어가 잃는 체력 (잡몹 1, 보스 3 — 기획4) */
     open val contactDamage = 1
 
+    /** 닿으면 하트 반 칸만 깎는가 (새끼 고양이) */
+    open val halfHeart: Boolean get() = false
+
     /** 순간이동 등으로 잠시 사라져 몸이 닿지 않는 상태인지 */
     open val isTangible: Boolean get() = true
 
@@ -833,6 +836,41 @@ class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
         var skyBottomY = 240f
         private val sparkPaint = Paint().apply { color = Color.rgb(255, 240, 120); strokeWidth = 4f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
         private const val BOLT_SPEED = 3400f   // 하늘에서 땅까지 약 0.25초
+    }
+}
+
+// ============ 새끼 고양이 (대표님 2026-09-27) ============
+/**
+ * 새끼 고양이 — HP 6 · 닿으면 **하트 반 칸**. 치즈냥이를 작게 줄인 모습(무늬는 치즈냥이처럼 무작위).
+ * 종종걸음으로 빠르게 쫓아와 문다. 속도·크기(치즈냥이의 60%)·배치는 Claude 판단. 아군 냥이에게는 1 피해.
+ */
+class KittenCat(x: Float, y: Float, val coat: com.jamcat.nayngapo.engine.CatCoat = com.jamcat.nayngapo.engine.CatCoat.randomForEnemy())
+    : Enemy(x, y, 6, 1) {
+    override val width = 52f
+    override val height = 58f
+    override val halfHeart: Boolean get() = true
+    private var hopPhase = (Math.random() * Math.PI).toFloat()
+
+    override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
+        facingRight = playerX > x
+        val dx = playerX - x
+        velocityX = if (abs(dx) < 600f) sign(dx) * 190f else sign(dx) * 80f
+        hopPhase += deltaTime * 18f
+        jumpZ = -abs(sin(hopPhase.toDouble())).toFloat() * 10f
+        super.update(deltaTime, playerX, playerY)
+    }
+
+    override fun draw(canvas: Canvas) {
+        drawSprite(canvas, small(coat.enemy))
+        drawHpBar(canvas)
+    }
+
+    companion object {
+        private val cache = HashMap<Bitmap, Bitmap>()
+        /** 무늬별 치즈냥이 그림을 60% 로 줄여 한 번만 만들어 둔다 */
+        fun small(src: Bitmap): Bitmap = cache.getOrPut(src) {
+            Bitmap.createScaledBitmap(src, (src.width * 0.6f).toInt(), (src.height * 0.6f).toInt(), true)
+        }
     }
 }
 

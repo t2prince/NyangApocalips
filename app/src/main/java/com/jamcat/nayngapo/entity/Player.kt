@@ -13,6 +13,8 @@ class Player(var x: Float, var y: Float) {
     val hero = com.jamcat.nayngapo.engine.Heroes.selected()
 
     var hp = 5
+    /** 하트 반 칸을 잃은 상태 — 새끼 고양이에게 물리면 반 칸씩 (대표님 2026-09-27). 반 칸 두 번 = 한 칸 */
+    var halfLost = false
     var maxHp = 5
     var lives = Constants.MAX_LIVES
     var attackPower = 10
@@ -608,6 +610,21 @@ class Player(var x: Float, var y: Float) {
         if (hp <= 0) { lives--; if (lives <= 0) isDead = true }
     }
 
+    /** 하트 반 칸 피해 — 이미 반 칸을 잃었으면 그 하트가 다 닳는다 */
+    fun takeHalfDamage() {
+        if (isInvincible || isDead || isJumping || stompPhase != StompPhase.NONE) return
+        if (halfLost) {
+            halfLost = false
+            takeDamage(1)
+            return
+        }
+        halfLost = true
+        com.jamcat.nayngapo.engine.SoundManager.playPlayerHurt()
+        isInvincible = true
+        invincibilityTimer = Constants.INVINCIBILITY_DURATION
+        velocityX = (if (facingRight) -1f else 1f) * 200f
+    }
+
     /** 구덩이에 빠지면 남은 목숨과 상관없이 그대로 게임 오버 */
     fun fallIntoPit() {
         hp = 0
@@ -619,7 +636,7 @@ class Player(var x: Float, var y: Float) {
     fun needsRespawn(): Boolean = hp <= 0 && lives > 0
 
     fun respawn(startX: Float, startY: Float) {
-        x = startX; y = startY; hp = maxHp
+        x = startX; y = startY; hp = maxHp; halfLost = false
         velocityX = 0f; jumpZ = 0f; jumpVelocity = 0f
         isJumping = false; isAttacking = false
         stompPhase = StompPhase.NONE; stompTimer = 0f; shockwavePending = false

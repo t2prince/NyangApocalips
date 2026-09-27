@@ -579,27 +579,7 @@ class BlueCat(x: Float, y: Float) : Enemy(x, y, 20, 5) {
     }
 }
 
-// ============ 빨강·주황·노랑냥이 (파랑냥이처럼 색만 다른 일반 냥이 — 대표님 2026-09-20) ============
-/** 공통 몸통: 파랑냥이와 같은 움직임(총총 뛰며 다가와 몸으로 부딪친다). HP 20, 공격 5 — 파랑냥이와 같게 (Claude 판단) */
-abstract class ColorCat(x: Float, y: Float, private val sprite: () -> Bitmap) : Enemy(x, y, 20, 5) {
-    override val width = 92f
-    override val height = 104f
-    private var hopPhase = (Math.random() * Math.PI).toFloat()
-
-    override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
-        facingRight = playerX > x
-        val dx = playerX - x
-        velocityX = if (abs(dx) < 500f) sign(dx) * 200f else sign(dx) * 90f
-        hopPhase += deltaTime * 13f
-        jumpZ = -abs(sin(hopPhase.toDouble())).toFloat() * 16f
-        super.update(deltaTime, playerX, playerY)
-    }
-
-    override fun draw(canvas: Canvas) {
-        drawSprite(canvas, sprite())
-        drawHpBar(canvas)
-    }
-}
+// ============ 빨강·주황·노랑냥이 (파랑냥이 색만 바꾼 냥이 — 대표님 2026-09-20). 각자 공격이 다르다 ============
 /**
  * 빨간냥이 — 불을 뱉는다 (대표님 2026-09-27 「빨간 냥이는 불을 뱉어」).
  * 다가오다 인간이 불 사거리 안에 들면 멈춰 서서, 입에서 불꽃 줄기를 0.8초 동안 뿜는다(3초마다).
@@ -680,7 +660,74 @@ class RedCat(x: Float, y: Float) : Enemy(x, y, 20, 5) {
         private val emberPaint = Paint().apply { color = Color.rgb(255, 170, 40); isAntiAlias = true }
     }
 }
-class OrangeCat(x: Float, y: Float) : ColorCat(x, y, { SpriteManager.orangeCatEvil })
+/**
+ * 주황냥이 — 용암으로 공격한다 (대표님 2026-09-27 「주황 냥이는 용암으로 공격해」).
+ * 거리를 두고 2.2초마다 용암 덩이를 인간 쪽으로 포물선으로 던진다. 덩이에 맞으면 하트 1(적 탄 규칙),
+ * 땅에 떨어지면 2.5초 동안 끓는 용암 웅덩이가 남아 밟으면 하트 1 (웅덩이는 GamePlayScreen 이 관리).
+ * 사거리 480·간격·비행 시간·웅덩이 시간은 Claude 판단. HP 20.
+ */
+class OrangeCat(x: Float, y: Float) : Enemy(x, y, 20, 5) {
+    override val width = 92f
+    override val height = 104f
+    private var hopPhase = (Math.random() * Math.PI).toFloat()
+    private var throwTimer = 1.2f
+    private var windup = 0f
+    private val pendingProjectiles = mutableListOf<Projectile>()
+
+    override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
+        pendingProjectiles.clear()
+        facingRight = playerX > x
+        val dx = playerX - x
+        val dist = abs(dx)
+        velocityX = when {
+            dist < 220f -> -sign(dx) * 150f          // 너무 가까우면 물러난다
+            dist < THROW_RANGE -> 0f                  // 사거리 안: 서서 던진다
+            else -> sign(dx) * 160f
+        }
+        throwTimer -= deltaTime
+        if (windup > 0f) windup -= deltaTime
+        if (throwTimer <= 0f && dist < THROW_RANGE) {
+            throwTimer = THROW_EVERY; windup = 0.25f
+            // 인간 발밑에 떨어지게 포물선 속도를 거꾸로 계산한다
+            val r = 16f
+            val sx = x + width / 2f + (if (facingRight) 1f else -1f) * width * 0.4f
+            val sy = y - height * 0.7f
+            val tx = playerX + Constants.PLAYER_WIDTH / 2f
+            val ty = playerY - 20f
+            val t = FLIGHT_TIME
+            val vx = (tx - sx) / t
+            val vy = (ty - sy) / t - GRAVITY * t / 2f
+            pendingProjectiles.add(
+                Projectile(sx - r, sy - r, vx, vy, 1, false, tint = Color.rgb(255, 110, 20), radius = r,
+                    gravity = GRAVITY, isLava = true)
+            )
+        }
+        if (abs(velocityX) > 1f) { hopPhase += deltaTime * 13f; jumpZ = -abs(sin(hopPhase.toDouble())).toFloat() * 16f }
+        else jumpZ = 0f
+        super.update(deltaTime, playerX, playerY)
+    }
+
+    override fun draw(canvas: Canvas) {
+        drawSprite(canvas, SpriteManager.orangeCatEvil)
+        if (windup > 0f) {
+            // 던지는 순간 입가에 용암이 부글
+            val dir = if (facingRight) 1f else -1f
+            glow.alpha = (220 * windup / 0.25f).toInt().coerceIn(0, 255)
+            canvas.drawCircle(x + width / 2f + dir * width * 0.4f, y + jumpZ - height * 0.7f, 18f, glow)
+        }
+        drawHpBar(canvas)
+    }
+
+    override fun getProjectiles(): List<Projectile> = pendingProjectiles.toList()
+
+    companion object {
+        private const val THROW_RANGE = 480f
+        private const val THROW_EVERY = 2.2f
+        private const val FLIGHT_TIME = 0.75f
+        private const val GRAVITY = 1500f
+        private val glow = Paint().apply { color = Color.rgb(255, 140, 30); isAntiAlias = true }
+    }
+}
 /**
  * 노랑냥이 — 번개를 부른다 (대표님 2026-09-24). 번개는 **먹구름에서 떨어진다** (대표님 2026-09-25).
  * 2026-09-27 그림(「이게 노랑냥이 공격이야」): 부르면 **하늘 위쪽 전체가 먹구름으로 덮이고** 거기서 번개가 인간에게 내리꽂힌다.

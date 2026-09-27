@@ -38,7 +38,9 @@ class Projectile(
     /** 화면 안의 가장 가까운 적을 쫓아가 터지는 미사일 (인간 기술 '미사일') */
     val isMissile: Boolean = false,
     /** 불꽃 한 덩이 — 빨간냥이가 뱉는 불 (대표님 2026-09-27). fuse 동안 커지며 노랑→주황→빨강으로 식어 사라진다 */
-    val isFlame: Boolean = false
+    val isFlame: Boolean = false,
+    /** 용암 덩이 — 주황냥이가 포물선으로 던진다 (대표님 2026-09-27). 땅에 닿으면 화면이 용암 웅덩이를 남긴다 */
+    val isLava: Boolean = false
 ) {
     val width = radius * 2f
     val height = radius * 2f
@@ -82,7 +84,7 @@ class Projectile(
         x += velocityX * deltaTime
         y += velocityY * deltaTime
 
-        if (isShuriken || isStone || isFlame) animTime += deltaTime
+        if (isShuriken || isStone || isFlame || isLava) animTime += deltaTime
         if (isMissile) {
             missileAge += deltaTime
             // 방향은 그대로 두고 속력만 0.5초에 걸쳐 900까지 올린다
@@ -151,6 +153,11 @@ class Projectile(
 
         if (isFlame) {
             drawFlame(canvas, cx, cy)
+            return
+        }
+
+        if (isLava) {
+            drawLava(canvas, cx, cy)
             return
         }
 
@@ -380,6 +387,26 @@ class Projectile(
         // 불꽃 끝이 위로 날린다
         canvas.drawCircle(cx - velocityX * 0.02f, cy - r * 0.55f - wob, r * 0.6f, flameOuter)
         canvas.drawCircle(cx, cy + wob * 0.5f, r * 0.55f, flameInner)
+    }
+
+    private val lavaCrust = Paint().apply { color = Color.rgb(120, 30, 20); isAntiAlias = true }
+    private val lavaBody = Paint().apply { color = Color.rgb(255, 110, 20); isAntiAlias = true }
+    private val lavaCore = Paint().apply { color = Color.rgb(255, 225, 90); isAntiAlias = true }
+    private val lavaGlow = Paint().apply { color = Color.argb(90, 255, 120, 30); isAntiAlias = true }
+
+    /** 용암 덩이: 달아오른 빛 + 검붉은 껍질 + 주황 속 + 노란 심, 뒤로 방울이 떨어진다 */
+    private fun drawLava(canvas: Canvas, cx: Float, cy: Float) {
+        val r = radius
+        val pulse = 1f + 0.08f * kotlin.math.sin(animTime * 18f)
+        canvas.drawCircle(cx, cy, r * 1.7f * pulse, lavaGlow)
+        canvas.drawCircle(cx, cy, r * 1.08f, lavaCrust)
+        canvas.drawCircle(cx - r * 0.08f, cy - r * 0.05f, r * 0.9f, lavaBody)
+        canvas.drawCircle(cx - r * 0.25f, cy - r * 0.25f, r * 0.42f, lavaCore)
+        // 지나온 쪽으로 방울 두 개
+        val sp = kotlin.math.hypot(velocityX, velocityY).coerceAtLeast(1f)
+        val bx = -velocityX / sp; val by = -velocityY / sp
+        canvas.drawCircle(cx + bx * r * 1.5f, cy + by * r * 1.5f, r * 0.45f, lavaBody)
+        canvas.drawCircle(cx + bx * r * 2.4f, cy + by * r * 2.4f, r * 0.28f, lavaBody)
     }
 
     private fun drawShuriken(canvas: Canvas, cx: Float, cy: Float) {

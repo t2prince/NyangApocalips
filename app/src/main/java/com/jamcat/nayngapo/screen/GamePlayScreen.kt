@@ -215,6 +215,14 @@ class GamePlayScreen(
 
     private val sparks = mutableListOf<Spark>()
 
+    /** 주황냥이 용암 덩이가 떨어진 자리의 끓는 웅덩이 — 밟으면 하트 1 (대표님 2026-09-27, 2.5초·폭은 Claude 판단) */
+    private class LavaPool(val x: Float, val y: Float) { var t = 0f }
+    private val lavaPools = mutableListOf<LavaPool>()
+    private val lavaPoolPaint = Paint().apply { color = Color.rgb(255, 110, 20); isAntiAlias = true }
+    private val lavaPoolCrust = Paint().apply { color = Color.rgb(120, 30, 20); isAntiAlias = true }
+    private val lavaPoolGlow = Paint().apply { color = Color.rgb(255, 225, 90); isAntiAlias = true }
+    private val lavaRect = RectF()
+
     /** 폭죽이 터지는 순간의 번쩍임 (x, y, 남은 시간) */
     private class Flash(val x: Float, val y: Float, var life: Float)
     private val flashes = mutableListOf<Flash>()
@@ -277,6 +285,9 @@ class GamePlayScreen(
     }
 
     private companion object {
+        /** 용암 웅덩이가 남는 시간 · 반폭 (Claude 판단) */
+        private const val LAVA_POOL_TIME = 2.5f
+        private const val LAVA_POOL_HALF = 55f
         /** 젤리 발바닥 반지름 */
         const val JELLY_R = 22f
 
@@ -705,6 +716,37 @@ class GamePlayScreen(
                         Spark(lx, ground - 4f, kotlin.math.cos(ang) * v, kotlin.math.sin(ang) * v, 0.3f,
                             Color.rgb(255, 230, 90), size = 3.5f)
                     )
+                }
+            }
+        }
+
+        // 용암 덩이가 땅에 닿으면 튀면서 끓는 웅덩이를 남긴다
+        for (proj in level.projectiles) {
+            if (!proj.isLava || !proj.isAlive) continue
+            val lx = proj.x + proj.width / 2f
+            val ground = Terrain.groundY(lx)
+            if (proj.y + proj.height >= ground) {
+                proj.isAlive = false
+                // 낭떠러지 위에 떨어지면 웅덩이 없이 그냥 떨어져 사라진다
+                if (level.chasms.none { lx > it.x && lx < it.x + it.width }) lavaPools.add(LavaPool(lx, ground))
+                repeat(5) { i ->
+                    val ang = (-Math.PI * (0.15 + 0.7 * i / 4.0)).toFloat()
+                    val v = 140f + Math.random().toFloat() * 120f
+                    sparks.add(Spark(lx, ground - 4f, kotlin.math.cos(ang) * v, kotlin.math.sin(ang) * v, 0.35f,
+                        Color.rgb(255, 130, 30), size = 4f))
+                }
+            }
+        }
+        val poolIt = lavaPools.iterator()
+        while (poolIt.hasNext()) {
+            val pool = poolIt.next()
+            pool.t += deltaTime
+            if (pool.t >= LAVA_POOL_TIME) { poolIt.remove(); continue }
+            val pcx = player.x + player.width / 2f
+            if (!player.isJumping && kotlin.math.abs(pcx - pool.x) < LAVA_POOL_HALF + player.width * 0.3f) {
+                if (!player.isInvincible) {
+                    player.takeDamage(1)
+                    hitEffects.add(HitEffect(player.x, player.y - player.height, 0.5f, "앗 뜨거!"))
                 }
             }
         }
@@ -1950,6 +1992,7 @@ class GamePlayScreen(
         for (snow in level.snowPits) snow.draw(canvas)
         for (room in level.secretRooms) room.draw(canvas)
         for (swamp in level.swamps) swamp.draw(canvas)
+        for (pool in lavaPools) drawLavaPool(canvas, pool)
         for (pit in level.pits) pit.draw(canvas)
         for (trap in level.traps) trap.draw(canvas)
         for (wall in level.walls) wall.draw(canvas)
@@ -2573,6 +2616,24 @@ class GamePlayScreen(
     }
 
     /** 하늘에 떠 있는 구름 — 카메라보다 아주 느리게 흘러 멀리 있어 보인다 */
+    /** 끓는 용암 웅덩이: 납작한 검붉은 테 + 주황 속 + 부글거리는 노란 방울, 식을 때 흐려진다 */
+    private fun drawLavaPool(canvas: Canvas, pool: LavaPool) {
+        val grow = (pool.t / 0.15f).coerceIn(0f, 1f)
+        val fade = (1f - (pool.t - (LAVA_POOL_TIME - 0.5f)) / 0.5f).coerceIn(0f, 1f)
+        val a = (255 * fade).toInt()
+        val hw = LAVA_POOL_HALF * grow
+        lavaPoolCrust.alpha = a; lavaPoolPaint.alpha = a; lavaPoolGlow.alpha = a
+        lavaRect.set(pool.x - hw - 6f, pool.y - 14f, pool.x + hw + 6f, pool.y + 8f)
+        canvas.drawOval(lavaRect, lavaPoolCrust)
+        lavaRect.set(pool.x - hw, pool.y - 10f, pool.x + hw, pool.y + 4f)
+        canvas.drawOval(lavaRect, lavaPoolPaint)
+        for (k in 0 until 3) {
+            val ph = (pool.t * 2.2f + k * 0.33f) % 1f
+            val bx = pool.x + (k - 1) * hw * 0.55f
+            canvas.drawCircle(bx, pool.y - 6f - ph * 14f, 5f * (1f - ph) + 2f, lavaPoolGlow)
+        }
+    }
+
     // ===== 노랑냥이 먹구름 (대표님 그림 2026-09-27): 하늘 위쪽 전체가 먹구름으로 덮이고 거기서 번개가 떨어진다 =====
     private val stormFill = Paint().apply { color = Color.rgb(70, 72, 84); isAntiAlias = true }
     private val stormEdge = Paint().apply {

@@ -59,51 +59,52 @@ class Level(val stageNumber: Int) {
         Terrain.stage = stageNumber
 
         // ===== 기획5 표: 냥이 구성 · 함정 · 비밀의 방 · 구출 =====
+        // 노랑냥이는 「너무 안 나와」(대표님 2026-09-27)로 초원 4~10 에 2~4, 정글 12~20 에 2~4 마리 (마릿수는 Claude 판단)
         val plan = when (stageNumber) {
             1 -> StagePlan(mapOf(Kind.NORMAL to 8))
             2 -> StagePlan(mapOf(Kind.NORMAL to 10), spikes = 1)
             3 -> StagePlan(mapOf(Kind.NORMAL to 8, Kind.BLUE to 4), spikes = 1, humans = 1)
-            4 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 5, Kind.RED to 2),
+            4 -> StagePlan(mapOf(Kind.YELLOW to 2, Kind.NORMAL to 9, Kind.BLUE to 5, Kind.RED to 2),
                 spikes = 1, secrets = 1, humans = 1, cats = 1)
-            5 -> StagePlan(mapOf(Kind.NORMAL to 10, Kind.BLUE to 6, Kind.ORANGE to 2),
+            5 -> StagePlan(mapOf(Kind.YELLOW to 2, Kind.NORMAL to 10, Kind.BLUE to 6, Kind.ORANGE to 2),
                 spikes = 1, secrets = 1, humans = 1, cats = 1)
-            6 -> StagePlan(mapOf(Kind.NORMAL to 11, Kind.BLUE to 7, Kind.YELLOW to 2),
+            6 -> StagePlan(mapOf(Kind.NORMAL to 11, Kind.BLUE to 7, Kind.YELLOW to 4),
                 spikes = 2, secrets = 1, humans = 1, cats = 1)
-            7 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 6, Kind.RED to 2, Kind.ORANGE to 2),
+            7 -> StagePlan(mapOf(Kind.YELLOW to 3, Kind.NORMAL to 9, Kind.BLUE to 6, Kind.RED to 2, Kind.ORANGE to 2),
                 spikes = 2, secrets = 2, cats = 2)
-            8 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 6, Kind.GREEN to 3, Kind.YELLOW to 2),
+            8 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 6, Kind.GREEN to 3, Kind.YELLOW to 4),
                 spikes = 1, dangerPits = 1, secrets = 2, humans = 2)
-            9 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 7, Kind.GREEN to 4, Kind.RED to 2, Kind.ORANGE to 2, Kind.YELLOW to 2),
+            9 -> StagePlan(mapOf(Kind.NORMAL to 9, Kind.BLUE to 7, Kind.GREEN to 4, Kind.RED to 2, Kind.ORANGE to 2, Kind.YELLOW to 4),
                 spikes = 1, dangerPits = 1, secrets = 2, humans = 1, cats = 2)
-            10 -> StagePlan(mapOf(Kind.NORMAL to 12, Kind.BLUE to 9, Kind.GREEN to 8, Kind.RED to 2, Kind.ORANGE to 2, Kind.YELLOW to 2),
+            10 -> StagePlan(mapOf(Kind.NORMAL to 12, Kind.BLUE to 9, Kind.GREEN to 8, Kind.RED to 2, Kind.ORANGE to 2, Kind.YELLOW to 4),
                 secrets = 3,
                 boss = { baseX -> listOf(TeleportCatBoss(baseX, Constants.GROUND_Y)) })
 
             // ===== 12~20 정글: 거대한 나무 사이로 덩굴냥이가 날아다닌다 (11은 하늘 스테이지) =====
-            12 -> StagePlan(mapOf(Kind.NORMAL to 6, Kind.BLUE to 4, Kind.VINE to 3),
+            12 -> StagePlan(mapOf(Kind.YELLOW to 2, Kind.NORMAL to 6, Kind.BLUE to 4, Kind.VINE to 3),
                 spikes = 1, secrets = 1, humans = 1)
-            13 -> StagePlan(mapOf(Kind.NORMAL to 6, Kind.BLUE to 4, Kind.VINE to 4, Kind.POOP to 2),
+            13 -> StagePlan(mapOf(Kind.YELLOW to 2, Kind.NORMAL to 6, Kind.BLUE to 4, Kind.VINE to 4, Kind.POOP to 2),
                 spikes = 1, secrets = 1, cats = 1)
-            14 -> StagePlan(mapOf(Kind.NORMAL to 5, Kind.BLUE to 4, Kind.VINE to 4,
+            14 -> StagePlan(mapOf(Kind.YELLOW to 3, Kind.NORMAL to 5, Kind.BLUE to 4, Kind.VINE to 4,
                 Kind.POOP to 2),
                 spikes = 1, secrets = 1, humans = 1, cats = 1)
-            15 -> StagePlan(mapOf(Kind.GUN to 2, Kind.NORMAL to 5, Kind.BLUE to 4, Kind.GREEN to 3,
+            15 -> StagePlan(mapOf(Kind.YELLOW to 3, Kind.GUN to 2, Kind.NORMAL to 5, Kind.BLUE to 4, Kind.GREEN to 3,
                 Kind.VINE to 5),
                 spikes = 2, secrets = 2, humans = 1, cats = 1)
-            16 -> StagePlan(mapOf(Kind.GUN to 2, Kind.NORMAL to 4, Kind.BLUE to 4, Kind.GREEN to 3,
+            16 -> StagePlan(mapOf(Kind.YELLOW to 3, Kind.GUN to 2, Kind.NORMAL to 4, Kind.BLUE to 4, Kind.GREEN to 3,
                 Kind.VINE to 5, Kind.POOP to 2, Kind.FLUFFY to 2),
                 spikes = 1, dangerPits = 1, secrets = 2, cats = 2)
-            17 -> StagePlan(mapOf(Kind.GUN to 3, Kind.NORMAL to 4, Kind.BLUE to 3, Kind.GREEN to 3,
+            17 -> StagePlan(mapOf(Kind.YELLOW to 3, Kind.GUN to 3, Kind.NORMAL to 4, Kind.BLUE to 3, Kind.GREEN to 3,
                 Kind.VINE to 5, Kind.FLUFFY to 2, Kind.THIEF to 1),
                 spikes = 2, dangerPits = 1, secrets = 2, humans = 2)
-            18 -> StagePlan(mapOf(Kind.GUN to 3, Kind.NORMAL to 4, Kind.BLUE to 3, Kind.GREEN to 3,
+            18 -> StagePlan(mapOf(Kind.YELLOW to 4, Kind.GUN to 3, Kind.NORMAL to 4, Kind.BLUE to 3, Kind.GREEN to 3,
                 Kind.VINE to 6, Kind.POOP to 2, Kind.FLUFFY to 2, Kind.THIEF to 1, Kind.ANVIL to 2),
                 spikes = 1, dangerPits = 1, secrets = 2, humans = 1, cats = 2)
-            19 -> StagePlan(mapOf(Kind.GUN to 3, Kind.NORMAL to 3, Kind.GREEN to 3, Kind.VINE to 6,
+            19 -> StagePlan(mapOf(Kind.YELLOW to 4, Kind.GUN to 3, Kind.NORMAL to 3, Kind.GREEN to 3, Kind.VINE to 6,
                 Kind.FLUFFY to 3, Kind.THIEF to 1, Kind.ANVIL to 2, Kind.LASER to 3),
                 spikes = 2, dangerPits = 2, secrets = 3, humans = 1, cats = 2)
             // 정글의 끝: 마법사 냥이 삼형제가 신전을 지킨다 (원안 마지막 보스 디자인)
-            else -> StagePlan(mapOf(Kind.GUN to 4, Kind.NORMAL to 4, Kind.GREEN to 3, Kind.VINE to 6, Kind.FLUFFY to 3,   // 20: 치즈냥이도 넣는다 (대표님 2026-09-20, 마릿수는 Claude 판단)
+            else -> StagePlan(mapOf(Kind.YELLOW to 4, Kind.GUN to 4, Kind.NORMAL to 4, Kind.GREEN to 3, Kind.VINE to 6, Kind.FLUFFY to 3,   // 20: 치즈냥이도 넣는다 (대표님 2026-09-20, 마릿수는 Claude 판단)
                 Kind.ANVIL to 3, Kind.LASER to 3, Kind.THIEF to 1),
                 secrets = 3,
                 boss = { baseX ->

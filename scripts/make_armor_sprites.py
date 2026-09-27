@@ -101,18 +101,15 @@ def armor(im, wide=False, base=None):
     xs_row = np.nonzero(grown[bottom_y - 1])[0] if grown[bottom_y - 1].any() else np.array([x0, x1])
     d.line([(xs_row.min(), bottom_y), (xs_row.max(), bottom_y)], fill=INK, width=lw)
     # 등판 이음새 (원안: 가운데 살짝 휜 세로 하나 + 1/3 높이 가로 하나) + 이음새를 따라 찍힌 리벳
-    r = max(1.4, bh * 0.017)
+    r = max(1.0, bh * 0.012)
     def dot(x, y):
         d.ellipse([x - r, y - r, x + r, y + r], fill=INK)
-        d.point((x - r * 0.4, y - r * 0.4), fill=(210, 214, 224))
     pil_l = muzzle_left - 0.17 * bw                     # 투구 기둥(뒤통수) 왼쪽 끝
-    vs = [(ux(0.24 + 0.04 * np.sin(np.pi * t)), vy(0.02) + (bottom_y - vy(0.02)) * t) for t in np.linspace(0, 1, 9)]
-    HI = (232, 236, 244)
-    d.line([(x + max(2, lw - 1), y) for x, y in vs], fill=HI, width=1)        # 판이 겹친 턱의 밝은 모서리
-    d.line(vs, fill=SEAM, width=max(2, lw - 1))
+    seam_top = top_row[int(ux(0.26))] + 2                   # 판 윗선 안쪽에서 시작 — 몸 밖으로 삐져나오지 않게
+    vs = [(ux(0.26 - 0.05 * np.sin(np.pi * t)), seam_top + (bottom_y - seam_top) * t) for t in np.linspace(0, 1, 9)]
+    d.line(vs, fill=SEAM, width=1)
     hy = vy(0.33)
-    d.line([(ux(0.02), hy + max(2, lw - 1)), (pil_l, hy + max(2, lw - 1))], fill=HI, width=1)
-    d.line([(ux(0.02), hy), (pil_l, hy)], fill=SEAM, width=max(2, lw - 1))
+    d.line([(ux(0.02), hy), (pil_l, hy)], fill=SEAM, width=1)
     for u in (0.08, 0.16, 0.32):
         if ux(u) < pil_l - 2: dot(ux(u), hy + r * 2.2)
     for t in (0.25, 0.55, 0.85):

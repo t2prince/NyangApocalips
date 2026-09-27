@@ -850,18 +850,31 @@ class KittenCat(x: Float, y: Float, val coat: com.jamcat.nayngapo.engine.CatCoat
     override val height = 58f
     override val halfHeart: Boolean get() = true
     private var hopPhase = (Math.random() * Math.PI).toFloat()
+    private var attackAnim = 0f      // 0보다 크면 냥냥펀치 모션 (치즈냥이와 똑같이 — 대표님 2026-09-27)
 
     override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
         facingRight = playerX > x
         val dx = playerX - x
         velocityX = if (abs(dx) < 600f) sign(dx) * 190f else sign(dx) * 80f
-        hopPhase += deltaTime * 18f
-        jumpZ = -abs(sin(hopPhase.toDouble())).toFloat() * 10f
+        // 코앞까지 붙으면 냥냥펀치 모션
+        if (attackAnim > 0f) attackAnim -= deltaTime
+        else if (abs(dx) < 80f) attackAnim = 0.5f
+        if (abs(velocityX) > 1f) {
+            hopPhase += deltaTime * 12f
+            jumpZ = -abs(sin(hopPhase.toDouble())).toFloat() * 4f
+        } else jumpZ = 0f
         super.update(deltaTime, playerX, playerY)
     }
 
     override fun draw(canvas: Canvas) {
-        drawSprite(canvas, small(coat.enemy))
+        // 치즈냥이와 같은 공격·이동·대기 애니메이션을 작게 줄여 재생
+        val frames = when {
+            attackAnim > 0f -> coat.attack
+            abs(velocityX) > 1f -> coat.walk
+            else -> coat.idle
+        }
+        val fps = if (attackAnim > 0f) 8f else 9f
+        drawSprite(canvas, small(frame(frames, fps)))
         drawHpBar(canvas)
     }
 

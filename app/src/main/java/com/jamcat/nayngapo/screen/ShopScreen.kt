@@ -2,144 +2,232 @@ package com.jamcat.nayngapo.screen
 
 import android.graphics.*
 import android.view.MotionEvent
+import com.jamcat.nayngapo.engine.Constants
 import com.jamcat.nayngapo.engine.GameProgress
 import com.jamcat.nayngapo.engine.GameView
+import com.jamcat.nayngapo.engine.SoundManager
+import com.jamcat.nayngapo.engine.SpriteManager
+import com.jamcat.nayngapo.engine.Terrain
+import com.jamcat.nayngapo.entity.Player
+import com.jamcat.nayngapo.ui.TouchControls
+import kotlin.math.abs
 import kotlin.math.sin
 
 /**
- * 상점 (로비 오른쪽 '상점' 칸, 대표님 2026-09-27):
- * 평평한 초원 위에 천막 상점들이 줄지어 있고, **인간을 한 명 구할 때마다 천막 하나의 문이 열린다**.
- * 구한 인간이 없으면 모든 천막이 닫혀 있다. 구한 수는 GameProgress.humansRescued (감옥을 여는 순간 저장).
+ * 상점 마을 (로비 오른쪽 '상점' 칸, 대표님 2026-09-27):
+ * **스테이지처럼 인간이 걸어 다니며 가게로 간다.** 평평한 초원 위에 천막 상점들이 줄지어 있고,
+ * **인간을 한 명 구할 때마다 천막 하나의 문이 열린다** (구한 인간이 없으면 전부 닫힘).
+ * 열린 천막 앞에 서면 '들어가기' 말풍선이 뜨고, 누르면 그 가게에서 물건을 산다.
+ * **고양이 상점도 천막 중 하나** — 1번 천막.
  *
- * 열린 천막을 누르면 그 가게에서 물건을 산다. **고양이 상점도 여기 천막 중 하나다** (대표님 2026-09-27) — 1번 천막.
- * 나머지 천막의 물건과 천막 수(TENT_COUNT)는 아직 대표님이 정하지 않았다 — 열린 천막 안은 '준비 중' 팻말만 둔다.
- * (천막 6개·색·고양이 상점을 1번에 둔 것은 Claude 임시 판단)
+ * 조작은 스테이지와 같은 패드(좌우 이동·점프·공격 휘두르기). 구한 인간 수는 GameProgress.humansRescued.
+ * 천막 수(TENT_COUNT)와 2번~ 천막의 물건은 대표님이 아직 정하지 않았다 — 열린 천막 안은 '준비 중'.
+ * (천막 6개·간격·색·고양이 상점을 1번에 둔 것은 Claude 임시 판단)
  */
 class ShopScreen(private val gameView: GameView) : Screen {
 
+    private val touchControls = TouchControls()
+    private val player: Player
+
     private var timer = 0f
+    private var cameraX = 0f
     private var noticeText = ""
     private var noticeTimer = 0f
+    /** 지금 앞에 서 있는 천막 (없으면 -1) */
+    private var nearTent = -1
 
-    private val skyTop = Paint()
-    private val groundPaint = Paint().apply { color = Color.rgb(126, 196, 92); isAntiAlias = true }
-    private val groundDark = Paint().apply { color = Color.rgb(98, 168, 70); isAntiAlias = true }
-    private val grassPaint = Paint().apply { color = Color.rgb(78, 146, 56); strokeWidth = 3f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    init {
+        Terrain.stage = Terrain.SHOP            // 상점 마을은 평평한 초원
+        player = Player(START_X, Constants.GROUND_Y)
+        player.facingRight = true
+    }
+
+    /** 열린 천막 수 = 구한 인간 수 (천막 수까지) */
+    private val openCount: Int get() = GameProgress.humansRescued.coerceIn(0, TENT_COUNT)
+
+    private fun tentX(i: Int) = FIRST_TENT_X + i * TENT_GAP
+
+    private val worldWidth = FIRST_TENT_X + (TENT_COUNT - 1) * TENT_GAP + 700f
+
+    // ===== 그림 도구 =====
+    private val skyPaint = Paint()
+    private var skyShader: Shader? = null
     private val cloudPaint = Paint().apply { color = Color.argb(235, 255, 255, 255); isAntiAlias = true }
-    private val ink = Paint().apply { color = Color.rgb(34, 30, 28); style = Paint.Style.STROKE; strokeWidth = 4f; strokeJoin = Paint.Join.ROUND; isAntiAlias = true }
+    private val hillFar = Paint().apply { color = Color.rgb(150, 206, 120); isAntiAlias = true }
+    private val ink = Paint().apply { color = Color.rgb(34, 30, 28); style = Paint.Style.STROKE; strokeWidth = 5f; strokeJoin = Paint.Join.ROUND; isAntiAlias = true }
     private val fill = Paint().apply { isAntiAlias = true }
     private val shadowPaint = Paint().apply { color = Color.argb(60, 0, 0, 0); isAntiAlias = true }
-    private val titlePaint = Paint().apply {
-        color = Color.rgb(40, 36, 32); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
-    }
-    private val infoPaint = Paint().apply { color = Color.rgb(60, 56, 50); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
     private val signPaint = Paint().apply { color = Color.rgb(250, 240, 214); isAntiAlias = true }
     private val signText = Paint().apply { color = Color.rgb(70, 46, 24); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
-    private val btnPaint = Paint().apply { color = Color.rgb(255, 214, 74); isAntiAlias = true }
-    private val btnText = Paint().apply { color = Color.rgb(60, 44, 12); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
+    private val hudBg = Paint().apply { color = Color.argb(150, 20, 18, 22); isAntiAlias = true }
+    private val hudText = Paint().apply { color = Color.WHITE; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
+    private val bubblePaint = Paint().apply { color = Color.rgb(255, 214, 74); isAntiAlias = true }
+    private val bubbleText = Paint().apply { color = Color.rgb(60, 44, 12); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
+    private val lockedBubble = Paint().apply { color = Color.rgb(250, 246, 236); isAntiAlias = true }
+    private val exitPaint = Paint().apply { color = Color.argb(170, 255, 255, 255); isAntiAlias = true }
+    private val exitText = Paint().apply { color = Color.rgb(40, 36, 34); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
     private val noticeBg = Paint().apply { color = Color.rgb(255, 250, 225); isAntiAlias = true }
     private val noticeTextPaint = Paint().apply { color = Color.rgb(35, 32, 30); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
 
     private val path = Path()
     private val rect = RectF()
-    private val backRect = RectF()
-    private val tentRects = List(TENT_COUNT) { RectF() }
-
-    /** 열린 천막 수 = 구한 인간 수 (천막 수까지) */
-    private val openCount: Int get() = GameProgress.humansRescued.coerceIn(0, TENT_COUNT)
+    private val src = Rect()
+    private val exitRect = RectF()
+    /** 화면 좌표의 '들어가기' 말풍선 (없으면 비어 있다) */
+    private val enterRect = RectF()
+    /** 화면 좌표의 천막 자리 — 천막을 눌러도 들어간다 */
+    private val tentScreenRects = List(TENT_COUNT) { RectF() }
 
     override fun update(deltaTime: Float) {
         timer += deltaTime
         if (noticeTimer > 0f) noticeTimer -= deltaTime
+
+        val input = touchControls.inputState
+        var dirX = 0f
+        if (input.moveLeft) dirX -= 1f
+        if (input.moveRight) dirX += 1f
+        player.setMovement(dirX, 0f)
+        if (input.jump || input.moveUp) { player.jump(); input.jump = false }
+        if (input.attack) { if (player.performAttack()) SoundManager.playAttack(); input.attack = false }
+        input.special = false
+        player.update(deltaTime)
+        player.x = player.x.coerceIn(40f, worldWidth - player.width - 40f)
+
+        // 카메라: 인간을 화면 왼쪽 3분의 1쯤에 두고 따라간다
+        val sw = gameView.screenWidth.toFloat()
+        cameraX = (player.x + player.width / 2f - sw * 0.4f).coerceIn(0f, (worldWidth - sw).coerceAtLeast(0f))
+
+        // 인간이 서 있는 천막
+        val pcx = player.x + player.width / 2f
+        nearTent = (0 until TENT_COUNT).firstOrNull { abs(pcx - tentX(it)) < TENT_W * 0.42f } ?: -1
     }
 
     override fun draw(canvas: Canvas) {
         val w = gameView.screenWidth.toFloat()
         val h = gameView.screenHeight.toFloat()
-        val groundY = h * 0.70f
+        val groundY = Constants.GROUND_Y
 
-        // 하늘 + 뭉게구름
-        skyTop.shader = LinearGradient(0f, 0f, 0f, groundY, Color.rgb(132, 200, 246), Color.rgb(214, 238, 252), Shader.TileMode.CLAMP)
-        canvas.drawRect(0f, 0f, w, groundY, skyTop)
-        for (i in 0 until 4) {
-            val cx = ((i * 0.29f + timer * 0.006f) % 1.1f) * w * 1.05f - w * 0.05f
-            val cy = h * (0.10f + (i % 2) * 0.07f)
-            canvas.drawCircle(cx, cy, h * 0.045f, cloudPaint)
-            canvas.drawCircle(cx + h * 0.05f, cy - h * 0.02f, h * 0.06f, cloudPaint)
-            canvas.drawCircle(cx + h * 0.11f, cy, h * 0.042f, cloudPaint)
+        // 하늘
+        if (skyShader == null) skyShader = LinearGradient(0f, 0f, 0f, groundY, Color.rgb(64, 165, 235), Color.rgb(206, 236, 252), Shader.TileMode.CLAMP)
+        skyPaint.shader = skyShader
+        canvas.drawRect(0f, 0f, w, groundY, skyPaint)
+        // 구름 (느린 원경)
+        for (i in 0 until 6) {
+            val cx = ((i * 520f - cameraX * 0.15f) % (w + 400f) + w + 400f) % (w + 400f) - 200f
+            val cy = 120f + (i % 3) * 60f
+            canvas.drawCircle(cx, cy, 46f, cloudPaint)
+            canvas.drawCircle(cx + 52f, cy - 18f, 58f, cloudPaint)
+            canvas.drawCircle(cx + 112f, cy, 44f, cloudPaint)
         }
-        // 평평한 초원 (지평선 곧게) + 풀 포기
-        canvas.drawRect(0f, groundY, w, h, groundPaint)
-        canvas.drawRect(0f, groundY, w, groundY + h * 0.018f, groundDark)
-        var gx = 20f
-        var k = 0
-        while (gx < w) {
-            val gy = groundY + h * (0.06f + ((k * 37) % 23) / 23f * 0.24f)
-            canvas.drawLine(gx, gy, gx - 6f, gy - 16f, grassPaint)
-            canvas.drawLine(gx, gy, gx + 5f, gy - 18f, grassPaint)
-            gx += 70f + (k * 53) % 60
-            k++
+        // 멀리 낮은 언덕 (원경)
+        var hx = -((cameraX * 0.3f) % 900f) - 450f
+        while (hx < w + 900f) {
+            rect.set(hx, groundY - 170f, hx + 900f, groundY + 170f)
+            canvas.drawOval(rect, hillFar)
+            hx += 900f
+        }
+        // 평평한 초원 바닥 — 스테이지와 같은 잔디 타일
+        val bmp = SpriteManager.groundTile
+        val top = groundY - 42f
+        val stripH = (h - top).coerceAtLeast(80f)
+        val tileW = stripH * bmp.width / bmp.height
+        var tx = -(cameraX % tileW)
+        while (tx < w) {
+            rect.set(tx, top, tx + tileW + 1f, top + stripH)
+            canvas.drawBitmap(bmp, null, rect, null)
+            tx += tileW
         }
 
-        // 제목 + 구한 인간 수
-        titlePaint.textSize = h * 0.075f
-        canvas.drawText("상점", w / 2f, h * 0.10f, titlePaint)
-        infoPaint.textSize = h * 0.038f
+        // ----- 월드 (카메라) -----
+        canvas.save()
+        canvas.translate(-cameraX, 0f)
+        for (i in 0 until TENT_COUNT) {
+            val cx = tentX(i)
+            if (cx + TENT_W < cameraX - 50f || cx - TENT_W > cameraX + w + 50f) continue
+            drawTent(canvas, i, cx, groundY, TENT_W, TENT_H, i < openCount)
+        }
+        player.draw(canvas)
+        canvas.restore()
+
+        for (i in 0 until TENT_COUNT) {
+            val cx = tentX(i) - cameraX
+            tentScreenRects[i].set(cx - TENT_W / 2f, groundY - TENT_H, cx + TENT_W / 2f, groundY)
+        }
+
+        // 천막 앞에 서면 머리 위 말풍선: 열렸으면 '들어가기', 닫혔으면 몇 명 더 구해야 하는지
+        enterRect.setEmpty()
+        if (nearTent >= 0) {
+            val bx = tentX(nearTent) - cameraX
+            val by = groundY - TENT_H - 70f
+            if (nearTent < openCount) {
+                val label = "▼ ${tentName(nearTent)} 들어가기"
+                bubbleText.textSize = 44f
+                val bw = bubbleText.measureText(label) + 60f
+                val bob = sin(timer * 4f) * 6f
+                enterRect.set(bx - bw / 2f, by - 46f + bob, bx + bw / 2f, by + 30f + bob)
+                canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
+                canvas.drawRoundRect(enterRect, 38f, 38f, ink)
+                canvas.drawText(label, bx, enterRect.centerY() + 15f, bubbleText)
+            } else {
+                val need = nearTent + 1 - GameProgress.humansRescued
+                val label = "잠겨 있어요 · 인간을 ${need}명 더 구하면 열려요"
+                bubbleText.textSize = 36f
+                val bw = bubbleText.measureText(label) + 50f
+                rect.set(bx - bw / 2f, by - 40f, bx + bw / 2f, by + 24f)
+                canvas.drawRoundRect(rect, 30f, 30f, lockedBubble)
+                canvas.drawRoundRect(rect, 30f, 30f, ink)
+                canvas.drawText(label, bx, rect.centerY() + 12f, bubbleText)
+            }
+        }
+
+        // 위 가운데: 구한 인간 · 열린 가게
+        hudText.textSize = 40f
         val info = if (openCount == 0) "인간을 구하면 가게 문이 열려요!"
             else "구한 인간 ${GameProgress.humansRescued}명 · 열린 가게 $openCount / $TENT_COUNT"
-        canvas.drawText(info, w / 2f, h * 0.17f, infoPaint)
+        val iw = hudText.measureText(info) + 60f
+        rect.set(w / 2f - iw / 2f, 24f, w / 2f + iw / 2f, 92f)
+        canvas.drawRoundRect(rect, 34f, 34f, hudBg)
+        canvas.drawText(info, w / 2f, 72f, hudText)
 
-        // 천막들: 지평선 위에 한 줄
-        val margin = w * 0.05f
-        val slot = (w - margin * 2f) / TENT_COUNT
-        val tw = slot * 0.84f
-        val th = h * 0.40f
-        for (i in 0 until TENT_COUNT) {
-            val cx = margin + slot * (i + 0.5f)
-            drawTent(canvas, i, cx, groundY + h * 0.03f, tw, th, i < openCount, h)
-            tentRects[i].set(cx - tw / 2f, groundY + h * 0.03f - th, cx + tw / 2f, groundY + h * 0.03f)
-        }
+        // 왼쪽 위: 나가기
+        exitRect.set(28f, 24f, 228f, 100f)
+        canvas.drawRoundRect(exitRect, 38f, 38f, exitPaint)
+        exitText.textSize = 38f
+        canvas.drawText("◀ 나가기", exitRect.centerX(), exitRect.centerY() + 13f, exitText)
 
-        // 돌아가기
-        val bw = w * 0.16f; val bh = h * 0.09f
-        backRect.set(w * 0.03f, h - bh - h * 0.04f, w * 0.03f + bw, h - h * 0.04f)
-        canvas.drawRoundRect(backRect, 20f, 20f, btnPaint)
-        canvas.drawRoundRect(backRect, 20f, 20f, ink)
-        btnText.textSize = h * 0.042f
-        canvas.drawText("돌아가기", backRect.centerX(), backRect.centerY() + h * 0.015f, btnText)
+        // 스테이지와 같은 패드 (기술·지시 버튼은 없다)
+        touchControls.draw(canvas, w.toInt(), h.toInt())
 
-        // 안내 한 줄
         if (noticeTimer > 0f) {
-            noticeTextPaint.textSize = h * 0.042f
-            val nw = noticeTextPaint.measureText(noticeText) + w * 0.06f
-            rect.set(w / 2f - nw / 2f, h * 0.84f, w / 2f + nw / 2f, h * 0.94f)
-            noticeBg.alpha = (255 * noticeTimer.coerceAtMost(0.3f) / 0.3f).toInt()
-            canvas.drawRoundRect(rect, 22f, 22f, noticeBg)
-            canvas.drawRoundRect(rect, 22f, 22f, ink)
-            canvas.drawText(noticeText, w / 2f, rect.centerY() + h * 0.015f, noticeTextPaint)
+            noticeTextPaint.textSize = 42f
+            val nw = noticeTextPaint.measureText(noticeText) + 70f
+            rect.set(w / 2f - nw / 2f, h * 0.30f, w / 2f + nw / 2f, h * 0.30f + 80f)
+            canvas.drawRoundRect(rect, 24f, 24f, noticeBg)
+            canvas.drawRoundRect(rect, 24f, 24f, ink)
+            canvas.drawText(noticeText, w / 2f, rect.centerY() + 15f, noticeTextPaint)
         }
     }
 
-    /** 천막 하나: 줄무늬 지붕 + 깃발 + 번호 팻말 + 문(닫힘: 여민 천과 끈 매듭 / 열림: 걷어 묶은 천과 안쪽 '준비 중') */
-    private fun drawTent(canvas: Canvas, i: Int, cx: Float, baseY: Float, tw: Float, th: Float, open: Boolean, h: Float) {
+    private fun tentName(i: Int) = TENT_NAMES[i] ?: "${i + 1}번 가게"
+
+    /** 천막 하나: 줄무늬 지붕 + 깃발 + 이름 팻말 + 문(닫힘: 여민 천과 끈 매듭 / 열림: 걷어 묶은 천과 안쪽 팻말) */
+    private fun drawTent(canvas: Canvas, i: Int, cx: Float, baseY: Float, tw: Float, th: Float, open: Boolean) {
         val (c1, c2) = TENT_COLORS[i % TENT_COLORS.size]
         val left = cx - tw / 2f; val right = cx + tw / 2f
-        val eaveY = baseY - th * 0.52f          // 지붕 처마
-        val topY = baseY - th                   // 꼭대기
-        ink.strokeWidth = h * 0.006f
+        val eaveY = baseY - th * 0.52f
+        val topY = baseY - th
 
-        // 그림자
-        rect.set(left - tw * 0.02f, baseY - h * 0.012f, right + tw * 0.06f, baseY + h * 0.02f)
+        rect.set(left - 10f, baseY - 14f, right + 30f, baseY + 22f)
         canvas.drawOval(rect, shadowPaint)
 
-        // 몸통 벽 (처마 아래 네모)
+        // 벽
         fill.color = c2
         rect.set(left + tw * 0.06f, eaveY, right - tw * 0.06f, baseY)
         canvas.drawRect(rect, fill)
         canvas.drawRect(rect, ink)
 
-        // 문: 벽 가운데 뾰족한 아치
-        val dw = tw * 0.34f; val dTop = eaveY + th * 0.06f
+        // 문
+        val dw = tw * 0.36f; val dTop = eaveY + th * 0.06f
         path.reset()
         path.moveTo(cx - dw / 2f, baseY)
         path.lineTo(cx - dw / 2f, dTop + th * 0.10f)
@@ -148,7 +236,6 @@ class ShopScreen(private val gameView: GameView) : Screen {
         path.lineTo(cx + dw / 2f, baseY)
         path.close()
         if (open) {
-            // 안쪽은 어둑하고, 걷어 올린 천이 양옆에 묶여 있다
             fill.color = Color.rgb(64, 46, 40)
             canvas.drawPath(path, fill)
             canvas.drawPath(path, ink)
@@ -164,44 +251,38 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 canvas.drawPath(path, fill)
                 canvas.drawPath(path, ink)
             }
-            // 안에 팻말 — 고양이 상점은 '들어오세요', 물건이 안 정해진 가게는 '준비 중'
-            val inner = if (TENT_NAMES[i] != null) "들어오세요" else "준비 중"
-            signText.textSize = h * 0.026f
-            val sw = signText.measureText(inner) + tw * 0.06f
-            rect.set(cx - sw / 2f, baseY - th * 0.20f, cx + sw / 2f, baseY - th * 0.10f)
-            canvas.drawRoundRect(rect, 8f, 8f, signPaint)
-            canvas.drawRoundRect(rect, 8f, 8f, ink)
-            canvas.drawText(inner, cx, rect.centerY() + h * 0.009f, signText)
+            val inner = if (TENT_NAMES[i] != null) "어서 오세요" else "준비 중"
+            signText.textSize = 30f
+            val sw = signText.measureText(inner) + 30f
+            rect.set(cx - sw / 2f, baseY - th * 0.22f, cx + sw / 2f, baseY - th * 0.22f + 50f)
+            canvas.drawRoundRect(rect, 10f, 10f, signPaint)
+            canvas.drawRoundRect(rect, 10f, 10f, ink)
+            canvas.drawText(inner, cx, rect.centerY() + 11f, signText)
         } else {
-            // 여민 천 두 폭 + 가운데 이음 + 끈 매듭
             fill.color = c1
             canvas.drawPath(path, fill)
             canvas.drawPath(path, ink)
             canvas.drawLine(cx, dTop - th * 0.01f, cx, baseY, ink)
             fill.color = Color.rgb(150, 100, 50)
             val ky = dTop + th * 0.16f
-            canvas.drawCircle(cx, ky, h * 0.012f, fill)
-            canvas.drawCircle(cx, ky, h * 0.012f, ink)
+            canvas.drawCircle(cx, ky, 13f, fill)
+            canvas.drawCircle(cx, ky, 13f, ink)
             canvas.drawLine(cx, ky, cx - dw * 0.18f, ky + th * 0.07f, ink)
             canvas.drawLine(cx, ky, cx + dw * 0.18f, ky + th * 0.07f, ink)
         }
 
-        // 지붕: 꼭대기에서 처마로 퍼지는 줄무늬 삼각 + 물결 처마
+        // 줄무늬 지붕
         val stripes = 6
         for (s in 0 until stripes) {
             val a = left + tw * s / stripes; val b = left + tw * (s + 1) / stripes
             path.reset()
-            path.moveTo(cx, topY)
-            path.lineTo(a, eaveY)
-            path.lineTo(b, eaveY)
-            path.close()
+            path.moveTo(cx, topY); path.lineTo(a, eaveY); path.lineTo(b, eaveY); path.close()
             fill.color = if (s % 2 == 0) c1 else Color.WHITE
             canvas.drawPath(path, fill)
         }
         path.reset()
         path.moveTo(cx, topY); path.lineTo(left, eaveY); path.lineTo(right, eaveY); path.close()
         canvas.drawPath(path, ink)
-        // 물결 처마
         val scallops = 6
         for (s in 0 until scallops) {
             val a = left + tw * s / scallops
@@ -211,7 +292,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
             canvas.drawArc(rect, 0f, 180f, false, ink)
         }
 
-        // 깃대 + 나부끼는 깃발
+        // 깃발
         canvas.drawLine(cx, topY, cx, topY - th * 0.14f, ink)
         val wave = sin((timer * 5f + i).toDouble()).toFloat() * th * 0.012f
         path.reset()
@@ -223,33 +304,37 @@ class ShopScreen(private val gameView: GameView) : Screen {
         canvas.drawPath(path, fill)
         canvas.drawPath(path, ink)
 
-        // 번호 팻말 (처마 아래)
-        signText.textSize = h * 0.03f
-        val label = TENT_NAMES[i] ?: "${i + 1}번 가게"
-        val lw = signText.measureText(label) + tw * 0.08f
-        rect.set(cx - lw / 2f, eaveY + th * 0.02f - h * 0.045f, cx + lw / 2f, eaveY + th * 0.02f)
-        rect.offset(0f, -th * 0.11f)
-        canvas.drawRoundRect(rect, 8f, 8f, signPaint)
-        canvas.drawRoundRect(rect, 8f, 8f, ink)
-        canvas.drawText(label, cx, rect.centerY() + h * 0.011f, signText)
+        // 이름 팻말 (처마 위)
+        signText.textSize = 34f
+        val label = tentName(i)
+        val lw = signText.measureText(label) + 36f
+        rect.set(cx - lw / 2f, eaveY - th * 0.13f - 54f, cx + lw / 2f, eaveY - th * 0.13f)
+        canvas.drawRoundRect(rect, 10f, 10f, signPaint)
+        canvas.drawRoundRect(rect, 10f, 10f, ink)
+        canvas.drawText(label, cx, rect.centerY() + 12f, signText)
+    }
+
+    private fun enterTent(i: Int) {
+        touchControls.releaseAll()
+        if (i == CAT_SHOP_TENT) gameView.showCatShop(fromTent = true)
+        else showNotice("${tentName(i)}은(는) 아직 물건을 준비 중이에요")
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.actionMasked != MotionEvent.ACTION_UP) return true
-        if (backRect.contains(event.x, event.y)) { gameView.showLobby(); return true }
-        for (i in 0 until TENT_COUNT) {
-            if (!tentRects[i].contains(event.x, event.y)) continue
-            if (i < openCount) {
-                if (i == CAT_SHOP_TENT) gameView.showCatShop(fromTent = true)
-                else showNotice("${i + 1}번 가게는 아직 물건을 준비 중이에요")
+        val action = event.actionMasked
+        if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
+            val idx = event.actionIndex
+            val px = event.getX(idx); val py = event.getY(idx)
+            if (exitRect.contains(px, py)) { touchControls.releaseAll(); gameView.showLobby(); return true }
+            if (!enterRect.isEmpty && enterRect.contains(px, py) && nearTent in 0 until openCount) {
+                enterTent(nearTent); return true
             }
-            else {
-                val need = i + 1 - GameProgress.humansRescued
-                showNotice("인간을 ${need}명 더 구하면 ${i + 1}번 가게 문이 열려요")
+            // 서 있는 열린 천막 자체를 눌러도 들어간다
+            if (nearTent in 0 until openCount && tentScreenRects[nearTent].contains(px, py)) {
+                enterTent(nearTent); return true
             }
-            return true
         }
-        return true
+        return touchControls.onTouchEvent(event, gameView.screenWidth, gameView.screenHeight)
     }
 
     private fun showNotice(text: String) {
@@ -257,16 +342,19 @@ class ShopScreen(private val gameView: GameView) : Screen {
         noticeTimer = 2f
     }
 
-    override fun onBack(): Boolean { gameView.showLobby(); return true }
+    override fun onBack(): Boolean { touchControls.releaseAll(); gameView.showLobby(); return true }
 
     companion object {
         /** 천막 수 — 대표님이 정할 때까지 임시 6개 (Claude 판단) */
         const val TENT_COUNT = 6
         /** 고양이 상점이 들어 있는 천막 (0 = 1번, 첫 인간을 구하면 열린다) */
         const val CAT_SHOP_TENT = 0
-        /** 천막 팻말 — 정해진 가게만 이름, 나머지는 'N번 가게' */
         private val TENT_NAMES: List<String?> = List(TENT_COUNT) { if (it == CAT_SHOP_TENT) "고양이 상점" else null }
-        /** 천막마다 줄무늬 색 · 벽 색 */
+        private const val START_X = 160f
+        private const val FIRST_TENT_X = 900f
+        private const val TENT_GAP = 760f
+        private const val TENT_W = 460f
+        private const val TENT_H = 520f
         private val TENT_COLORS = listOf(
             Color.rgb(226, 72, 64) to Color.rgb(250, 232, 214),
             Color.rgb(58, 128, 214) to Color.rgb(232, 240, 250),

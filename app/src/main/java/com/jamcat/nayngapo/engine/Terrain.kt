@@ -29,12 +29,16 @@ object Terrain {
     private const val START_FLAT = 500f
     private const val START_FADE = 600f
 
-    private enum class Shape { ROLLING, DUNES, MESA, PEAKS, STAIRS, VALLEY, MOUNTAIN, TERRACES }
+    private enum class Shape { FLAT, ROLLING, DUNES, MESA, PEAKS, STAIRS, VALLEY, MOUNTAIN, TERRACES }
 
     /** height: 모양의 최대 높이, period: 한 굽이의 길이, rough: 잔굴곡, phase: 스테이지마다 어긋나게 */
     private class Profile(val shape: Shape, val height: Float, val period: Float, val rough: Float, val phase: Float)
 
+    /** 상점 마을(평평한 초원)은 stage = SHOP 으로 둔다 */
+    const val SHOP = 0
+
     private fun profile(s: Int): Profile = when (s) {
+        SHOP -> Profile(Shape.FLAT, 0f, 1000f, 0f, 0f)
         // 초원
         1 -> Profile(Shape.ROLLING, 60f, 1500f, 4f, 0.0f)
         2 -> Profile(Shape.DUNES, 80f, 1100f, 3f, 0.3f)
@@ -70,6 +74,7 @@ object Terrain {
         val k = floor(t).toLong()                        // 몇 번째 굽이인지
         val f = t - k                                    // 굽이 안 위치 0~1
         val shape = when (p.shape) {
+            Shape.FLAT -> 0f
             Shape.ROLLING -> (sin(t * 6.2832f) * 0.6f + sin(t * 2.3f + 1.3f) * 0.4f) * 0.5f + 0.5f
             Shape.DUNES -> if (f < 0.75f) smooth(f / 0.75f) else 1f - smooth((f - 0.75f) / 0.25f)
             Shape.MESA -> if (seeded(k) % 3L == 0L) 0f

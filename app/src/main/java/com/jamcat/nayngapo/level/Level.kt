@@ -186,16 +186,7 @@ class Level(val stageNumber: Int) {
             hazardX.add(cx - 80f)                    // 비밀의 방·감옥이 위에 안 놓이게
         }
 
-        // ===== 공중 발판: 2스테이지부터, 그룹 위·빈 구간 위에 띄운다 (점프 최고 200px 안: 지면 위 130~170) =====
-        val platformCount = if (stageNumber < 2) 0 else (1 + stageNumber / 5).coerceAtMost(5)
-        repeat(platformCount) { i ->
-            val gc = gapCenters[((i + 1) * gapCenters.size) / (platformCount + 1) % gapCenters.size]
-            val px = gc - 420f + (i % 2) * 160f
-            val pw = 220f + ((stageNumber * 7 + i * 13) % 100)
-            val lift = 130f + ((stageNumber * 11 + i * 17) % 40)
-            val gy = minOf(Terrain.groundY(px), Terrain.groundY(px + pw))   // 지형 중 더 높은 쪽 기준으로 띄운다
-            platforms.add(Platform(px, gy - lift, pw))
-        }
+        // 공중 발판(벽돌판)은 뺐다 (대표님 2026-09-27 「위에 떠 있는 벽돌 모두 없애」) — platforms 는 늘 비어 있다
 
         // ===== 비밀의 방: 함정이 없는 빈 구간에 숨긴다 =====
         val freeGaps = gapCenters.filter { gc -> hazardX.none { kotlin.math.abs(it - gc) < 400f } }

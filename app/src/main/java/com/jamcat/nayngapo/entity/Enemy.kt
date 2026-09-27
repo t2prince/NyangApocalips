@@ -836,6 +836,99 @@ class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
     }
 }
 
+// ============ 머드냥이 (기획9 `Plan/기획9_머드냥이.jpg`, 대표님 2026-09-27) ============
+/**
+ * 머드냥이 — HP 20 · 공격력 2. **늪 속에 숨어 있어 평소엔 안 보인다**(늪 위로 등만 살짝 볼록).
+ * **인간이 늪에 빠졌을 때만 공격**한다: 늪에서 튀어 올라 인간 머리 위를 넘어 반대편으로 뛰어들며, 닿으면 하트 2.
+ * **늪 밖으로는 못 나온다** — 공격할 때만 잠깐 튀어나오고, 그때만 때릴 수 있다.
+ * 늪마다 한 마리 (스테이지 배치는 Claude 판단). 숨어 있으면 스테이지 클리어 조건에서 빠진다(Level.stageCleared).
+ * 도약 시간 0.9초·높이·다시 뛰기까지 1.6초는 Claude 판단.
+ */
+class MudCat(private val swamp: Swamp) : Enemy(swamp.x + swamp.width / 2f - 46f, swamp.y, 20, 2) {
+    override val width = 92f
+    override val height = 90f
+    override val contactDamage = 2
+
+    /** 화면이 매 프레임 알려 준다: 인간이 이 늪에 빠져 있는가, 인간 가운데 x */
+    var preyInSwamp = false
+    var preyX = 0f
+
+    private var leapT = -1f           // 뛰는 중이면 0~1
+    private var fromX = 0f
+    private var toX = 0f
+    private var rest = 0.6f           // 다시 뛰기까지
+    private var bubble = (Math.random() * 3.0).toFloat()
+
+    val isHidden: Boolean get() = leapT < 0f
+
+    /** 이 x 가 제 늪 안쪽인가 */
+    fun inSwampOf(cx: Float) = swamp.swallows(cx)
+    override val isTangible: Boolean get() = !isHidden
+
+    override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
+        if (hitCooldown > 0f) hitCooldown -= deltaTime
+        animTime += deltaTime
+        bubble += deltaTime
+        y = swamp.y
+        if (leapT >= 0f) {
+            leapT += deltaTime / LEAP_TIME
+            val t = leapT.coerceAtMost(1f)
+            x = fromX + (toX - fromX) * t
+            jumpZ = -4f * LEAP_HEIGHT * t * (1f - t)            // 포물선
+            facingRight = toX > fromX
+            if (leapT >= 1f) { leapT = -1f; jumpZ = 0f; rest = REST_TIME }
+            return
+        }
+        jumpZ = 0f
+        if (rest > 0f) rest -= deltaTime
+        if (preyInSwamp && rest <= 0f) {
+            // 인간 머리 위를 넘어 반대편으로 — 도착점도 늪 안쪽
+            val c = x + width / 2f
+            val side = if (c < preyX) 1f else -1f
+            val land = (preyX + side * 150f).coerceIn(swamp.x + 30f, swamp.x + swamp.width - 30f)
+            fromX = x
+            toX = land - width / 2f
+            leapT = 0f
+        }
+    }
+
+    override fun takeDamage(amount: Int) {
+        if (isTangible) super.takeDamage(amount)
+    }
+
+    override fun draw(canvas: Canvas) {
+        if (isHidden) {
+            // 늪 위로 진흙 등만 볼록 — 가끔 거품이 올라온다
+            val cx = x + width / 2f
+            val by = y + 12f
+            moundRect.set(cx - 34f, by - 20f, cx + 34f, by + 14f)
+            canvas.drawArc(moundRect, 180f, 180f, true, moundPaint)
+            canvas.drawArc(moundRect, 180f, 180f, false, moundInk)
+            val t = bubble % 2.2f
+            if (t < 1.2f) canvas.drawCircle(cx + 22f, by - 8f - t * 12f, 4f + t * 3f, bubbleInk)
+            return
+        }
+        drawSprite(canvas, SpriteManager.mudCatEvil)
+        // 몸에서 진흙 방울이 떨어진다
+        val cx = x + width / 2f
+        for (k in 0 until 3) {
+            val ph = (animTime * 3f + k * 0.33f) % 1f
+            canvas.drawCircle(cx + (k - 1) * 22f, y + jumpZ + 4f + ph * 40f, 5f * (1f - ph) + 2f, moundPaint)
+        }
+        drawHpBar(canvas)
+    }
+
+    companion object {
+        private const val LEAP_TIME = 0.9f
+        private const val LEAP_HEIGHT = 120f
+        private const val REST_TIME = 1.6f
+        private val moundPaint = Paint().apply { color = Color.rgb(150, 102, 60); isAntiAlias = true }
+        private val moundInk = Paint().apply { color = Color.rgb(40, 30, 22); style = Paint.Style.STROKE; strokeWidth = 4f; isAntiAlias = true }
+        private val bubbleInk = Paint().apply { color = Color.rgb(132, 118, 74); style = Paint.Style.STROKE; strokeWidth = 3f; isAntiAlias = true }
+        private val moundRect = RectF()
+    }
+}
+
 // ============ 나쁜 그린냥이 (HP 20, 슬라임 대미지 10) ============
 /** 수북한 꼬리의 나쁜 편 그린냥이: 멈춰 서서 슬라임을 뱉는다 */
 class GreenCat(x: Float, y: Float) : Enemy(x, y, 20, 10) {

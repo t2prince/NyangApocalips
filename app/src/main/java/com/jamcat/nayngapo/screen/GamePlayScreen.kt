@@ -640,7 +640,7 @@ class GamePlayScreen(
         // 늪: 걸어 들어간 냥이(적·아군)는 5배 느려진다 (공중의 덩굴냥이는 제외)
         for (swamp in level.swamps) {
             for (enemy in level.enemies) {
-                if (enemy.isDead || enemy is com.jamcat.nayngapo.entity.VineCat) continue
+                if (enemy.isDead || enemy is com.jamcat.nayngapo.entity.VineCat || enemy is com.jamcat.nayngapo.entity.MudCat) continue
                 if (swamp.swallows(enemy.x + enemy.width / 2f)) {
                     enemy.x -= enemy.velocityX * deltaTime * 0.8f
                 }
@@ -922,6 +922,12 @@ class GamePlayScreen(
         for (swamp in level.swamps) swamp.update(deltaTime)
         player.inSwamp = !player.isJumping && !player.ridingVine &&
             level.swamps.any { it.swallows(player.x + player.width / 2f) }
+        // 머드냥이는 인간이 제 늪에 빠졌을 때만 튀어나온다 (기획9)
+        for (enemy in level.enemies) {
+            if (enemy !is com.jamcat.nayngapo.entity.MudCat) continue
+            enemy.preyX = player.x + player.width / 2f
+            enemy.preyInSwamp = player.inSwamp && enemy.inSwampOf(enemy.preyX)
+        }
 
         // 비밀의 방(기획5·6): 숨은 입구를 밟으면 발견 — 하트 2개
         for (room in level.secretRooms) {

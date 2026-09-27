@@ -52,7 +52,8 @@ class Level(val stageNumber: Int) {
 
     var totalEnemies = 0
     var defeatedEnemies = 0
-    val stageCleared: Boolean get() = enemies.isNotEmpty() && enemies.all { it.isDead }
+    // 늪 속에 숨은 머드냥이는 인간이 늪에 빠져야만 나오므로 클리어 조건에서 뺀다 (대표님 2026-09-27 기획9)
+    val stageCleared: Boolean get() = enemies.isNotEmpty() && enemies.all { it.isDead || it is MudCat }
 
     init {
         // 지형 굴곡 설정: 스테이지가 오를수록 울퉁불퉁해진다
@@ -165,7 +166,11 @@ class Level(val stageNumber: Int) {
                 val hx = slot - 80f
                 hazardX.add(hx)
                 when (hazardOrder[i]) {
-                    Hazard.SWAMP -> swamps.add(Swamp(hx, Terrain.groundY(hx + 150f), seed = stageNumber * 13 + i * 5))
+                    Hazard.SWAMP -> {
+                        val swamp = Swamp(hx, Terrain.groundY(hx + 150f), seed = stageNumber * 13 + i * 5)
+                        swamps.add(swamp)
+                        enemies.add(MudCat(swamp))      // 늪마다 머드냥이 한 마리가 숨어 있다 (기획9)
+                    }
                     Hazard.SPIKE -> traps.add(Trap(hx, Terrain.groundY(hx + 75f)))
                     Hazard.PIT -> pits.add(PitTrap(hx, Terrain.groundY(hx + 85f), seed = stageNumber * 31 + i * 7))
                 }

@@ -184,11 +184,11 @@ class AllyCat(
         // 지시에 따라 노리는 범위가 달라진다
         val target = when (order) {
             // 공격: 멀리 있는 적까지 찾아간다
-            AllyOrder.ATTACK -> enemies.filter { !it.isDead && abs(it.x - x) < 1500f }
+            AllyOrder.ATTACK -> enemies.filter { !it.isDead && it.isTangible && abs(it.x - x) < 1500f }
             // 따라와: 인간 가까이 온 적만 상대한다
-            AllyOrder.FOLLOW -> enemies.filter { !it.isDead && abs(it.x - playerX) < 450f }
+            AllyOrder.FOLLOW -> enemies.filter { !it.isDead && it.isTangible && abs(it.x - playerX) < 450f }
             // 대기: 코앞까지 온 적만
-            AllyOrder.HOLD -> enemies.filter { !it.isDead && abs(it.x - x) < attackRange }
+            AllyOrder.HOLD -> enemies.filter { !it.isDead && it.isTangible && abs(it.x - x) < attackRange }
         }.minByOrNull { abs(it.x - x) }
 
         val speed = if (order == AllyOrder.ATTACK) moveSpeed * 1.15f else moveSpeed

@@ -93,7 +93,7 @@ def armor(im, wide=False, base=None):
     # 등판 이음새 (원안: 가운데 살짝 휜 세로 하나 + 1/3 높이 가로 하나) + 이음새를 따라 찍힌 리벳
     r = max(1.4, bh * 0.017)
     dot = lambda x, y: d.ellipse([x - r, y - r, x + r, y + r], fill=INK)
-    pil_l = muzzle_left - 0.12 * bw                     # 투구 기둥(뒤통수) 왼쪽 끝
+    pil_l = muzzle_left - 0.17 * bw                     # 투구 기둥(뒤통수) 왼쪽 끝
     vs = [(ux(0.24 + 0.04 * np.sin(np.pi * t)), vy(0.02) + (bottom_y - vy(0.02)) * t) for t in np.linspace(0, 1, 9)]
     d.line(vs, fill=SEAM, width=max(1, lw - 1))
     hy = vy(0.33)
@@ -129,17 +129,17 @@ def armor(im, wide=False, base=None):
     brim_r = (right + 0.01 * bw, E - 0.095 * bh)          # 챙 앞끝
     bt = 0.085 * bh                                       # 챙 두께
     pil_r = muzzle_left - 0.04 * bw
-    top_y = E - 0.27 * bh
+    top_y = E - 0.29 * bh
     base_y = muzzle_bot + 1
     # 후드 외곽: 기둥 왼쪽 아래 → 위로 곧게 → 둥근 머리 → 앞으로 내려와 챙 앞끝 위
-    hood = [(pil_l, base_y), (pil_l, E - 0.17 * bh)]
-    cx, cy = pil_l + (right - pil_l) * 0.46, E - 0.17 * bh
+    hood = [(pil_l, base_y), (pil_l, E + 0.02 * bh)]
+    cx, cy = pil_l + (right - pil_l) * 0.48, E + 0.02 * bh
     rx1, ry1 = cx - pil_l, cy - top_y
-    for t in np.linspace(np.pi, 1.5 * np.pi, 10)[1:]:
+    for t in np.linspace(np.pi, 1.5 * np.pi, 16)[1:]:
         hood.append((cx + rx1 * np.cos(t), cy + ry1 * np.sin(t)))
     rx2 = right - 0.02 * bw - cx; ry2 = brim_r[1] - bt * 0.5 - top_y
     arc2 = []
-    for t in np.linspace(1.5 * np.pi, 2 * np.pi, 12)[1:]:
+    for t in np.linspace(1.5 * np.pi, 2 * np.pi, 16)[1:]:
         arc2.append((cx + rx2 * np.cos(t), top_y + ry2 + ry2 * np.sin(t)))
     hood += arc2
     hood += [(brim_l[0], brim_l[1] + bt), (pil_r, brim_l[1] + bt), (pil_r, base_y)]

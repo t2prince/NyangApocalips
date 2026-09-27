@@ -35,15 +35,20 @@ def page(i):
     im = big.transform((W, H), Image.PERSPECTIVE, perspective_coeffs([(0, 0), (W, 0), (W, H), (0, H)], c), Image.BICUBIC)
     a = np.asarray(im).astype(float)
     outside = a.sum(axis=2) < 30                       # 사진 밖(검은 빈칸)
-    # 조명 얼룩 지우기: 밝은 종이 바탕을 크게 흐려 나누면 종이는 고르게 하얘진다
-    g = np.asarray(im.convert('L').filter(ImageFilter.MaxFilter(21)).filter(ImageFilter.GaussianBlur(70))).astype(float)
-    flat = np.clip(a / np.maximum(g, 60)[..., None] * 246, 0, 255)
-    flat[outside] = 246
+    # 조명 얼룩·누런 기 지우기: 색 채널마다 밝은 종이 바탕을 크게 흐려 나누면 종이는 고르게 흰색이 된다
+    # (「사진 색이 누렇다, 원본과 비슷하게」 2026-09-27 — 밝기만 나누면 실내등의 누런 기가 남았다)
+    flat = np.empty_like(a)
+    for ch in range(3):
+        band = Image.fromarray(a[..., ch].astype(np.uint8))
+        g = np.asarray(band.filter(ImageFilter.MaxFilter(21)).filter(ImageFilter.GaussianBlur(70))).astype(float)
+        flat[..., ch] = a[..., ch] / np.maximum(g, 60) * 248
+    flat = np.clip(flat, 0, 255)
+    flat[outside] = 248
     out = Image.fromarray(flat.astype(np.uint8))
     out = out.filter(ImageFilter.MedianFilter(3))                          # 사진 잡티
     out = out.filter(ImageFilter.UnsharpMask(radius=3, percent=170, threshold=2))   # 연필·크레파스 선을 또렷하게
-    out = ImageEnhance.Color(out).enhance(1.3)
-    out = ImageEnhance.Contrast(out).enhance(1.12)
+    out = ImageEnhance.Color(out).enhance(1.08)
+    out = ImageEnhance.Contrast(out).enhance(1.08)
     return out
 
 

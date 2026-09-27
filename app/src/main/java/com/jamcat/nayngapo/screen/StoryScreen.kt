@@ -7,9 +7,7 @@ import com.jamcat.nayngapo.engine.GameView
 
 /**
  * 스토리 — 로딩이 끝나면 대표님이 그린 그림 3장이 차례로 나온다 (2026-09-27, 원화 `Plan/story/story1~3.jpg`).
- *  1. 인간과 고양이가 어울려져 평화롭게 사는 도시가 있었다.
- *  2. 하지만 외계인들이 복제 냥이를 만들어 우리의 도시를 파괴시켰다.
- *  3. 우리를 철창에 가두고, 우리의 물건을 훔쳐갔다.
+ * 그림 아래 자막 띠에 대표님이 정한 문장을 또렷한 글씨로 보여 준다 (CAPTIONS).
  * 화면을 누르면 다음 장, 마지막 장 다음은 타이틀. 오른쪽 맨 위 '건너뛰기'는 곧장 타이틀로.
  * (장면 전환 0.35초 페이드 · 한 장이 떠 있는 최소 시간 0.4초는 Claude 판단)
  */
@@ -21,6 +19,16 @@ class StoryScreen(private val gameView: GameView) : Screen {
     /** 가로 화면 양옆을 채우는 같은 그림의 흐린 배경 (대표님 「옆에 여백이 없어… 사진도 채워줘」) */
     private val backs: List<Bitmap> = listOf(R.drawable.story_bg_1, R.drawable.story_bg_2, R.drawable.story_bg_3)
         .map { BitmapFactory.decodeResource(gameView.resources, it) }
+
+    /** 장마다 자막 — 대표님 문장 (2026-09-27) */
+    private val captions = CAPTIONS
+
+    private val captionBand = Paint().apply { color = Color.argb(200, 20, 18, 22) }
+    private val captionPaint = Paint().apply {
+        color = Color.WHITE; textAlign = Paint.Align.CENTER
+        typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
+        setShadowLayer(6f, 0f, 3f, Color.argb(160, 0, 0, 0))
+    }
 
     private var page = 0
     /** 이 장이 뜬 뒤 흐른 시간 — 들어오자마자 잘못 눌러 넘어가지 않게 */
@@ -77,10 +85,11 @@ class StoryScreen(private val gameView: GameView) : Screen {
         val cover = maxOf(w / back.width, h / back.height)
         val bw0 = back.width * cover; val bh0 = back.height * cover
         tmp.set((w - bw0) / 2f, (h - bh0) / 2f, (w + bw0) / 2f, (h + bh0) / 2f)
-        // 그림: 화면 높이 가득 가운데 — 종이 그림자
-        val ph = h
+        // 그림: 아래 자막 띠 위로 높이 가득, 가운데 — 종이 그림자
+        val band = h * 0.17f
+        val ph = h - band
         val pw = ph * bmp.width / bmp.height
-        dst.set((w - pw) / 2f, 0f, (w + pw) / 2f, h)
+        dst.set((w - pw) / 2f, 0f, (w + pw) / 2f, ph)
         // 장이 바뀔 때: 앞 장은 어두워지며 사라지고 새 장이 밝아진다
         val alpha = when {
             turning >= 0f -> ((1f - turning) * 255).toInt()
@@ -89,21 +98,29 @@ class StoryScreen(private val gameView: GameView) : Screen {
         }.coerceIn(0, 255)
         picPaint.alpha = alpha; shadowPaint.alpha = alpha * 120 / 255
         canvas.drawBitmap(back, null, tmp, picPaint)
-        tmp.set(dst.left - 18f, 0f, dst.right + 18f, h)
+        tmp.set(dst.left - 18f, 0f, dst.right + 18f, ph)
         canvas.drawRect(tmp, shadowPaint)
         canvas.drawBitmap(bmp, null, dst, picPaint)
 
-        // 몇 번째 장인지 점으로
-        // (그림 오른쪽 흐린 배경 위, 아래쪽)
-        val dy = h - h * 0.05f
-        val dcx = (dst.right + w) / 2f
+        // 자막 띠: 화면 아래 가로 가득, 문장은 가운데 한 줄 (넘치면 글씨를 줄인다)
+        canvas.drawRect(0f, ph, w, h, captionBand)
+        captionPaint.alpha = alpha
+        captionPaint.textSize = band * 0.36f
+        val text = captions[idx]
+        val maxW = w * 0.74f
+        val tw = captionPaint.measureText(text)
+        if (tw > maxW) captionPaint.textSize *= maxW / tw
+        canvas.drawText(text, w * 0.46f, ph + band / 2f + captionPaint.textSize * 0.36f, captionPaint)
+
+        // 몇 번째 장인지 점 + 누르면 넘어간다는 안내 (자막 띠 오른쪽)
+        val dcx = w - w * 0.07f
         for (i in pages.indices) {
-            canvas.drawCircle(dcx + (i - (pages.size - 1) / 2f) * 34f, dy - 56f, 9f, if (i == idx) dotOn else dotOff)
+            canvas.drawCircle(dcx + (i - (pages.size - 1) / 2f) * 30f, ph + band * 0.32f, 8f, if (i == idx) dotOn else dotOff)
         }
-        // 누르면 넘어간다는 안내 (그림 오른쪽 아래 빈 곳)
         if (shown > 1.2f && turning < 0f) {
             hintPaint.alpha = (150 + 80 * kotlin.math.sin(shown * 3.0)).toInt().coerceIn(0, 255)
-            canvas.drawText("화면을 누르면 다음 ▶", (dst.right + w) / 2f, dy, hintPaint)
+            hintPaint.textSize = band * 0.2f
+            canvas.drawText("누르면 다음 ▶", dcx, ph + band * 0.72f, hintPaint)
         }
 
         // 오른쪽 맨 위: 건너뛰기
@@ -131,6 +148,11 @@ class StoryScreen(private val gameView: GameView) : Screen {
     }
 
     companion object {
+        private val CAPTIONS = listOf(
+            "인간과 고양이가 어우러져 평화롭게 사는 도시가 있었다.",
+            "하지만 외계인들이 복제 냥이를 만들어 우리를 속인 다음 도시를 파괴시켰다.",
+            "그들은 우리를 가두고 우리의 물건을 훔쳤다.",
+        )
         private const val FADE = 0.35f
         private const val MIN_SHOWN = 0.4f
     }

@@ -125,7 +125,7 @@ class Level(val stageNumber: Int) {
                 })
         }
         // 늪(기획3): 2스테이지부터 하나, 7스테이지부터 둘 (함정은 과하지 않게)
-        val swampCount = if (stageNumber < 2) 0 else (1 + (stageNumber - 2) / 5).coerceAtMost(2)
+        val swampCount = if (stageNumber < 2) 0 else (1 + (stageNumber - 2) / 5).coerceAtMost(if (stageNumber == 20) 1 else 2)   // 20 은 「함정이 너무 많아」(2026-10-04)로 1개
 
         // 해머냥이는 모루냥이가 나오는 스테이지에만, 1~3마리 무작위로 섞인다 (대표님 2026-09-20)
         val mobs = plan.mobs.toMutableMap()
@@ -187,7 +187,7 @@ class Level(val stageNumber: Int) {
 
         // ===== 낭떠러지: 3스테이지부터, 그룹 사이 빈 구간 중 함정이 없는 곳에 (대표님 2026-09-20 「슈퍼마리오처럼 낭떠러지」) =====
         // 폭 160~215 는 점프 사거리(약 300) 안이라 뛰어넘을 수 있다. 냥이들도 hazardAhead 로 뛰어넘는다.
-        val chasmCount = if (stageNumber < 3) 0 else (1 + (stageNumber - 3) / 4).coerceAtMost(5)
+        val chasmCount = if (stageNumber < 3) 0 else (1 + (stageNumber - 3) / 4).coerceAtMost(if (stageNumber == 20) 2 else 5)   // 20 은 5 → 2 (2026-10-04)
         val chasmFreeGaps = gapCenters.filter { gc -> hazardX.none { kotlin.math.abs(it - gc) < 500f } }
         repeat(chasmCount) { i ->
             if (chasmFreeGaps.isEmpty()) return@repeat

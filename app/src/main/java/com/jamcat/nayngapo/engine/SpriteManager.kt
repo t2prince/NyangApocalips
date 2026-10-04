@@ -41,6 +41,9 @@ object SpriteManager {
     lateinit var beeCat: Bitmap
     lateinit var flowerCat: Bitmap
     lateinit var honeyGround: Bitmap
+    /** 해적 스테이지(31) — 해적냥이·배냥이 (기획13, 2026-10-04). 아직 도감 그림만 쓴다 */
+    lateinit var pirateCat: Bitmap
+    lateinit var boatCat: Bitmap
     lateinit var catIdleRed: List<Bitmap>
     lateinit var catIdleOrange: List<Bitmap>
     lateinit var catIdleYellow: List<Bitmap>
@@ -171,6 +174,8 @@ object SpriteManager {
         beeCat = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_bee), 1.0f)
         flowerCat = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_flower), 1.06f)
         honeyGround = BitmapFactory.decodeResource(res, R.drawable.honey_ground)
+        pirateCat = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_pirate), 1.06f)
+        boatCat = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_boat), 1.06f)
         blueCatEvil = scaled(blueCat, 1.06f)
         // 아군은 꼬리가 얇다 (기획: 같은편 꼬리 얇음, 다른편 두꺼움)
         greenCatAlly = BitmapFactory.decodeResource(res, R.drawable.cat_green_ally)

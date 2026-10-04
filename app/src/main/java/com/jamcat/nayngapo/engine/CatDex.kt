@@ -37,6 +37,8 @@ object CatDex {
         Entry("yellow", "노랑냥이", "먹구름에서 번개를 떨군다", { SpriteManager.yellowCatEvil }, frames = { SpriteManager.catIdleYellow }),
         Entry("bee", "벌냥이", "벌집에서 나와 침으로 찌른다", { SpriteManager.beeCat }),        // 기획10 (2026-09-27)
         Entry("flower", "꽃냥이", "꽃가루로 숨막히게 한다", { SpriteManager.flowerCat }),
+        Entry("boat", "배냥이", "나무배를 타고 다닌다", { SpriteManager.boatCat }),            // 31 해적 스테이지 (기획13, 2026-10-04)
+        Entry("pirate", "해적냥이", "해적선의 선장 (31 보스)", { SpriteManager.pirateCat }),
         Entry("kitten", "새끼 고양이", "작지만 깨문다", { KittenCat.small(SpriteManager.normalCat) }),   // 2026-09-27
         Entry("mud", "머드냥이", "늪 속에 숨어 있다", { SpriteManager.mudCatEvil }),   // 기획9 (2026-09-27)
         Entry("poop", "똥냥이", "냄새가 지독하다", { SpriteManager.poopCat }),

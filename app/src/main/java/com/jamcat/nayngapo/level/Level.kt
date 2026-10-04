@@ -108,9 +108,10 @@ class Level(val stageNumber: Int) {
                 Kind.FLUFFY to 3, Kind.THIEF to 1, Kind.ANVIL to 2, Kind.LASER to 3),
                 spikes = 2, dangerPits = 2, secrets = 3, humans = 1, cats = 2)
             // ===== 21 꿀 스테이지 (기획10, 2026-09-27): 바닥의 벌집에서 벌냥이가 나오고 꽃냥이가 꽃가루를 뿜는다 =====
-            // (벌냥이는 표가 아니라 벌집마다 2마리씩 따로 넣는다. 구성·마릿수는 Claude 판단)
-            21 -> StagePlan(mapOf(Kind.FLOWER to 6, Kind.NORMAL to 5, Kind.KITTEN to 3),
-                spikes = 1, secrets = 2, humans = 1, cats = 1)
+            // 특수 스테이지 표(기획12 `Plan/기획12_특수스테이지_21_31.jpg`, 2026-10-04): 벌냥이·냥이·꽃냥이 / 비밀의 방 1 / 구덩이 함정.
+            // (벌냥이는 벌집마다 2마리씩 따로 넣는다. 마릿수·구출은 표에 없어 Claude 판단)
+            21 -> StagePlan(mapOf(Kind.FLOWER to 6, Kind.NORMAL to 6),
+                dangerPits = 1, secrets = 1, humans = 1, cats = 1)
             // 정글의 끝: 마법사 냥이 삼형제가 신전을 지킨다 (원안 마지막 보스 디자인)
             else -> StagePlan(mapOf(Kind.KITTEN to 3, Kind.YELLOW to 4, Kind.GUN to 4, Kind.NORMAL to 4, Kind.GREEN to 3, Kind.VINE to 6, Kind.FLUFFY to 3,   // 20: 치즈냥이도 넣는다 (대표님 2026-09-20, 마릿수는 Claude 판단)
                 Kind.ANVIL to 3, Kind.LASER to 3, Kind.THIEF to 1),

@@ -27,7 +27,7 @@ class LoadingScreen(private val gameView: GameView) : Screen {
         timer += deltaTime
         if (timer >= DURATION && !done) {
             done = true
-            gameView.showStory()   // 로딩이 끝나면 스토리 그림 (대표님 2026-09-27)
+            gameView.showTitle()   // 스토리 화면은 없앴다 (대표님 2026-10-04) — 로딩 뒤 바로 타이틀
         }
     }
 

@@ -7,14 +7,16 @@
 사용법: python scripts/make_pirate_ship.py
 """
 import math
+import numpy as np
 from PIL import Image, ImageDraw
 
-W, H = 1100, 760
+W, H = 1500, 760                 # 배가 더 길다 (대표님 2026-10-04)
 SS = 2
 INK = (34, 28, 24, 255)
 WOOD = (150, 78, 40, 255)
 WOOD_D = (110, 54, 26, 255)
-WOOD_L = (196, 118, 66, 255)
+WOOD_L = (214, 146, 84, 255)
+WOOD_TOP = (226, 168, 98, 255)   # 1번째 칸은 색이 밝다 (2026-10-04)
 SAIL = (250, 248, 240, 255)
 
 
@@ -26,7 +28,7 @@ def main():
 
     deck_y = 470
     # ---- 돛대 + 깃발 ----
-    mx = 640
+    mx = 780
     d.rectangle(P([(mx - 9, 70), (mx + 9, deck_y)]), fill=WOOD_D, outline=INK, width=SS * 3)
     d.polygon(P([(mx + 9, 72), (mx + 70, 82), (mx + 9, 118)]), fill=(250, 200, 70, 255), outline=INK)
     d.rectangle(P([(mx + 9, 72), (mx + 66, 112)]), fill=(250, 200, 70, 255), outline=INK, width=SS * 2)
@@ -46,10 +48,10 @@ def main():
             t = i / 20
             pts.append((x0 - bulge * math.sin(math.pi * t), y1 - (y1 - y0) * t))
         d.polygon(P(pts), fill=SAIL, outline=INK, width=SS * 3)
-    sail(480, 630, 130, 330, 22)
-    sail(650, 800, 130, 330, 22)
+    sail(620, 770, 130, 330, 22)
+    sail(790, 940, 130, 330, 22)
     # 돛 무늬: 안대 낀 냥이 얼굴 + 엇갈린 뼈
-    fx, fy = 640, 200
+    fx, fy = 780, 200
     L([(fx - 100, fy + 70), (fx + 100, fy + 120)], INK, 22); L([(fx - 100, fy + 70), (fx + 100, fy + 120)], SAIL, 16)
     L([(fx + 100, fy + 70), (fx - 100, fy + 120)], INK, 22); L([(fx + 100, fy + 70), (fx - 100, fy + 120)], SAIL, 16)
     for bx, by in ((fx - 100, fy + 70), (fx + 100, fy + 120), (fx + 100, fy + 70), (fx - 100, fy + 120)):
@@ -69,7 +71,7 @@ def main():
     # ---- 밧줄: 돛대 꼭대기 → 뱃머리 막대 끝 ----
     bow_tip = (170, 400)
     L([(mx, 120), bow_tip], INK, 3)
-    L([(mx, 120), (930, 455)], INK, 2)
+    L([(mx, 120), (1330, 452)], INK, 2)
     # ---- 그물: 돛 아래 양옆에서 갑판으로 ----
     def net(top_a, top_b, bot_a, bot_b, n=7):
         for i in range(n + 1):
@@ -82,10 +84,10 @@ def main():
             a = (top_a[0] + (bot_a[0] - top_a[0]) * t, top_a[1] + (bot_a[1] - top_a[1]) * t)
             b = (top_b[0] + (bot_b[0] - top_b[0]) * t, top_b[1] + (bot_b[1] - top_b[1]) * t)
             L([a, b], INK, 2.2)
-    net((440, 320), (500, 336), (430, deck_y - 4), (520, deck_y))
-    net((800, 336), (860, 320), (850, deck_y), (960, deck_y - 6))
+    net((580, 320), (640, 336), (560, deck_y - 4), (660, deck_y))
+    net((940, 336), (1000, 320), (1000, deck_y), (1120, deck_y - 4))
     # ---- 철창 두 개 (안에 갇힌 인간) ----
-    for cx in (575, 705):
+    for cx in (715, 845):
         x0, x1, y0, y1 = cx - 40, cx + 40, deck_y - 110, deck_y
         d.rectangle(P([(x0, y0), (x1, y1)]), fill=(236, 228, 212, 255), outline=INK, width=SS * 4)
         # 졸라맨 인간 (울상)
@@ -98,26 +100,37 @@ def main():
         for k in range(5):
             bx = x0 + (x1 - x0) * (k + 0.5) / 5
             L([(bx, y0 + 2), (bx, y1 - 2)], (70, 70, 76, 255), 4)
-    # ---- 선체 ----
-    hull = [(110, 330), (150, 350), (290, deck_y), (870, deck_y), (920, 440), (1010, 438), (980, 600), (900, 690), (420, 700), (330, 650)]
+    # ---- 선체: 길게. 옆면은 가로 4칸으로 나뉘고 맨 위 1번째 칸은 밝다 (대표님 2026-10-04) ----
+    hull = [(110, 330), (150, 350), (290, deck_y), (1270, deck_y), (1320, 440), (1420, 438), (1390, 600), (1300, 690), (420, 700), (330, 650)]
     d.polygon(P(hull), fill=WOOD, outline=INK, width=SS * 4)
+    # 열마다 선체 윗선(T)·아랫선(B)을 재서, 그 사이를 4등분한 경계선을 긋는다 (뱃머리 쪽은 윗선을 따라 휘어 오른다)
+    mask = Image.new('L', (W, H), 0); ImageDraw.Draw(mask).polygon(hull, fill=255)
+    mk = np.asarray(mask) > 0
+    cols = [x for x in range(140, 1415, 6) if mk[:, x].any()]
+    T = {x: np.nonzero(mk[:, x])[0].min() for x in cols}
+    B = {x: np.nonzero(mk[:, x])[0].max() for x in cols}
+    def band_line(k):
+        return [(x, T[x] + (B[x] - T[x]) * k / 4) for x in cols]
+    # 1번째 칸(맨 위)을 밝게
+    top_band = [(x, T[x] + 3) for x in cols] + band_line(1)[::-1]
+    d.polygon(P(top_band), fill=WOOD_TOP)
+    # 3·4번째 칸은 조금 더 짙게 (크레파스 칠 느낌)
+    low_band = band_line(3) + [(x, B[x] - 3) for x in cols][::-1]
+    d.polygon(P(low_band), fill=WOOD_D)
+    for k in (1, 2, 3):
+        L(band_line(k), INK, 3)
+    d.polygon(P(hull), outline=INK, width=SS * 4)
     # 뱃머리 막대(앞으로 뻗은 나무)
     L([(110, 330), bow_tip], WOOD_D, 10); L([(110, 330), bow_tip], INK, 2)
-    # 갑판 난간 (위 가장자리 밝은 띠)
-    L([(150, 350), (290, deck_y), (870, deck_y), (920, 440), (1010, 438)], WOOD_L, 8)
-    L([(150, 350), (290, deck_y), (870, deck_y), (920, 440), (1010, 438)], INK, 3)
-    # 널빤지 줄
-    for k in range(1, 5):
-        t = k / 5
-        y = deck_y + (690 - deck_y) * t
-        xa = 290 + (330 - 290) * t + 40 * t
-        xb = 980 - 60 * t
-        L([(xa + 30 * (1 - t) - 20, y - 20 * (1 - t)), (xb, y)], WOOD_D, 4)
-    # 포문 구멍
-    for k in range(8):
-        px = 380 + k * 78
-        py = deck_y + 40
-        d.ellipse(P([(px - 13, py - 13), (px + 13, py + 13)]), fill=(46, 30, 20, 255), outline=INK, width=SS * 2)
+    # 갑판 난간
+    L([(150, 350), (290, deck_y), (1270, deck_y), (1320, 440), (1420, 438)], INK, 4)
+    # 포문 구멍: 1번째 칸 가운데 줄에
+    for k in range(11):
+        px = 400 + k * 86
+        if px not in T and min(cols, key=lambda c: abs(c - px)) is None: continue
+        cx_ = min(cols, key=lambda c: abs(c - px))
+        py = T[cx_] + (B[cx_] - T[cx_]) / 8
+        d.ellipse(P([(px - 12, py - 12), (px + 12, py + 12)]), fill=(46, 30, 20, 255), outline=INK, width=SS * 2)
     im = im.resize((W, H), Image.LANCZOS)
     im.save('app/src/main/res/drawable-nodpi/pirate_ship.png')
     print('pirate_ship.png', im.size)

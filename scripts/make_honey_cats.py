@@ -43,20 +43,24 @@ def finish(base, ov, clip=None):
 
 
 def remove_tail(src):
-    """벌냥이는 꼬리가 없다 (대표님 2026-10-04). 치즈냥이 몸통 달걀꼴(가운데 70,43 · 반지름 48×35) 왼쪽 바깥의 꼬리를 지우고,
+    """벌냥이는 꼬리가 없다 (대표님 2026-10-04). 치즈냥이 몸통 달걀꼴 왼쪽 위 바깥(꼬리 자리)만 지우고,
     잘린 자리에 몸 외곽선을 다시 그린다."""
     a = np.array(src)
     H, W = a.shape[:2]
-    cx, cy, rx, ry = 70.0, 43.0, 48.0, 35.5
+    # 몸통 달걀꼴(엉덩이까지 넉넉히): 꼬리가 붙은 윗부분(y < 56)에서만 그 바깥을 지운다 — 엉덩이 아래쪽은 그대로
+    cx, cy, rx, ry = 70.0, 44.0, 51.0, 38.0
     yy, xx = np.mgrid[0:H, 0:W]
     outside = ((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2 > 1.0
-    tail = outside & (xx < cx) & (yy < 74)
+    tail = outside & (xx < cx - 10) & (yy < 56)
     a[tail, 3] = 0
+    # 잘린 자리(지운 칸과 맞닿은 몸 가장자리)에 외곽선을 2px 로 다시 칠한다 — 몸 밖으로 선이 뜨지 않게
+    keep = a[..., 3] > 100
+    near_cut = np.zeros_like(keep)
+    for dy in (-2, -1, 0, 1, 2):
+        for dx in (-2, -1, 0, 1, 2):
+            near_cut |= np.roll(np.roll(tail, dy, 0), dx, 1)
+    a[keep & near_cut, :3] = INK[:3]
     out = Image.fromarray(a)
-    ov = Image.new('RGBA', (W * SS, H * SS), (0, 0, 0, 0)); d = ImageDraw.Draw(ov)
-    d.arc([(cx - rx) * SS, (cy - ry) * SS, (cx + rx) * SS, (cy + ry) * SS], 110, 250, fill=INK, width=SS * 3)
-    ov = ov.resize((W, H), Image.LANCZOS)
-    out.alpha_composite(ov)
     return out
 
 
@@ -85,8 +89,8 @@ def make_bee():
     ov = overlay(im.size); d = ImageDraw.Draw(ov)
     sy = y0 + bh * 0.55
     d.polygon(P([(x0 + 4, sy - bh * 0.09), (x0 - 26, sy + 2), (x0 + 4, sy + bh * 0.09)]), fill=(60, 60, 66, 255), outline=INK, width=SS * 2)
-    # 날개는 4개 (대표님 2026-10-04): 뒤쪽에 조금 작은 한 쌍을 바깥으로 벌려 먼저 그리고, 앞쪽 큰 한 쌍을 그 위에
-    for k, (u, tilt, sz) in enumerate(((0.32, 38, 0.78), (0.60, -34, 0.78), (0.40, 12, 1.0), (0.52, -10, 1.0))):
+    # 날개는 한 쌍 (대표님 2026-10-04 「날개는 한 쌍만」)
+    for k, (u, tilt, sz) in enumerate(((0.40, 12, 1.0), (0.52, -10, 1.0))):
         wx, wy = x0 + u * bw, y0 + bh * 0.06
         wl = Image.new('RGBA', ov.size, (0, 0, 0, 0)); wd = ImageDraw.Draw(wl)
         ww, wh = bw * 0.17 * sz, bh * 0.50 * sz

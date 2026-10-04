@@ -42,8 +42,26 @@ def finish(base, ov, clip=None):
     out = base.copy(); out.alpha_composite(ov); return out
 
 
+def remove_tail(src):
+    """벌냥이는 꼬리가 없다 (대표님 2026-10-04). 치즈냥이 몸통 달걀꼴(가운데 70,43 · 반지름 48×35) 왼쪽 바깥의 꼬리를 지우고,
+    잘린 자리에 몸 외곽선을 다시 그린다."""
+    a = np.array(src)
+    H, W = a.shape[:2]
+    cx, cy, rx, ry = 70.0, 43.0, 48.0, 35.5
+    yy, xx = np.mgrid[0:H, 0:W]
+    outside = ((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2 > 1.0
+    tail = outside & (xx < cx) & (yy < 74)
+    a[tail, 3] = 0
+    out = Image.fromarray(a)
+    ov = Image.new('RGBA', (W * SS, H * SS), (0, 0, 0, 0)); d = ImageDraw.Draw(ov)
+    d.arc([(cx - rx) * SS, (cy - ry) * SS, (cx + rx) * SS, (cy + ry) * SS], 110, 250, fill=INK, width=SS * 3)
+    ov = ov.resize((W, H), Image.LANCZOS)
+    out.alpha_composite(ov)
+    return out
+
+
 def make_bee():
-    src = Image.open(os.path.join(DST, 'cat_normal.png')).convert('RGBA')
+    src = remove_tail(Image.open(os.path.join(DST, 'cat_normal.png')).convert('RGBA'))
     pad = 30                                                   # 날개가 위로, 침이 왼쪽으로 삐져나올 자리
     im = Image.new('RGBA', (src.width + pad, src.height + pad), (0, 0, 0, 0)); im.paste(src, (pad, pad))
     body, (x0, y0, x1, y1), mz = body_info(im)
@@ -67,10 +85,11 @@ def make_bee():
     ov = overlay(im.size); d = ImageDraw.Draw(ov)
     sy = y0 + bh * 0.55
     d.polygon(P([(x0 + 4, sy - bh * 0.09), (x0 - 26, sy + 2), (x0 + 4, sy + bh * 0.09)]), fill=(60, 60, 66, 255), outline=INK, width=SS * 2)
-    for k, (u, tilt) in enumerate(((0.40, 14), (0.52, -10))):
+    # 날개는 4개 (대표님 2026-10-04): 뒤쪽에 조금 작은 한 쌍을 바깥으로 벌려 먼저 그리고, 앞쪽 큰 한 쌍을 그 위에
+    for k, (u, tilt, sz) in enumerate(((0.32, 38, 0.78), (0.60, -34, 0.78), (0.40, 12, 1.0), (0.52, -10, 1.0))):
         wx, wy = x0 + u * bw, y0 + bh * 0.06
         wl = Image.new('RGBA', ov.size, (0, 0, 0, 0)); wd = ImageDraw.Draw(wl)
-        ww, wh = bw * 0.17, bh * 0.50
+        ww, wh = bw * 0.17 * sz, bh * 0.50 * sz
         wd.ellipse([(wx - ww / 2) * SS, (wy - wh) * SS, (wx + ww / 2) * SS, wy * SS], fill=(140, 206, 250, 255), outline=INK, width=SS * 2)
         wd.line([(wx * SS, (wy - wh * 0.12) * SS), (wx * SS, (wy - wh * 0.88) * SS)], fill=(70, 140, 200, 255), width=SS * 2)
         wd.ellipse([(wx - ww * 0.32) * SS, (wy - wh * 0.80) * SS, (wx - ww * 0.05) * SS, (wy - wh * 0.55) * SS], fill=(220, 242, 255, 220))

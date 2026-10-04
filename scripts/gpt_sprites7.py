@@ -71,3 +71,43 @@ for name, (res, h) in ITEMS.items():
         img = clear_ship_pockets(img)
     img.save(os.path.join(DST, res + '.png'))
     print(res, img.size)
+
+
+# ===== 갑옷 입은 내 편 냥이 (GPT, 2026-10-04 「갑옷도 다시 만들어줘」) =====
+# 맨몸 아군 그림과 몸집이 비슷하게: 높이를 맨몸 높이 × 1.14(작은 투구 몫)로 맞춘다 .
+# 대기(춤) 줄은 GPT 그림 한 장을 7칸으로 — 칸마다 살짝 들썩이고 눌린다.
+ARMOR = {  # 원본 → (맨몸 아군 그림, 정지 리소스, 대기 줄 리소스 또는 None)
+    'cheese': ('cat_ally', 'cat_cheese_armor_ally', 'anim_cat_idle_cheese_armor'),
+    'white': ('cat_white_ally', 'cat_white_armor_ally', 'anim_cat_idle_white_armor'),
+    'calico': ('cat_calico_ally', 'cat_calico_armor_ally', 'anim_cat_idle_calico_armor'),
+    'tuxedo': ('cat_tuxedo_ally', 'cat_tuxedo_armor_ally', 'anim_cat_idle_tuxedo_armor'),
+    'mackerel': ('cat_mackerel_ally', 'cat_mackerel_armor_ally', 'anim_cat_idle_mackerel_armor'),
+    'green': ('cat_green_ally', 'cat_green_armor_ally', 'anim_cat_idle_green_armor'),
+    'blue': ('cat_blue_ally', 'cat_blue_armor_ally', 'anim_cat_idle_blue_armor'),
+    'gun': ('cat_gun_ally', 'cat_gun_armor_ally', 'anim_cat_idle_gun_armor'),
+    'flying': ('cat_flying_ally', 'cat_flying_armor_ally', None),
+}
+BOB = [0, 2, 4, 5, 4, 2, 0]          # 칸마다 들썩임(px)
+SQUASH = [1.0, 0.985, 0.97, 0.965, 0.97, 0.985, 1.0]
+
+for name, (plain, res, strip) in ARMOR.items():
+    p = os.path.join(SRC, f'armor_{name}.png')
+    if not os.path.exists(p):
+        print('없음: armor_' + name); continue
+    img = strip_background(Image.open(p))
+    img = img.crop(img.getbbox())
+    ref = Image.open(os.path.join(DST, plain + '.png'))
+    # GPT 냥이는 가로로 길쭉하다 — 높이를 맨몸 높이 + 작은 투구 만큼(×1.14)으로 맞춘다 (날아냥이도 같게)
+    th = round(ref.height * 1.14)
+    img = img.resize((max(1, round(img.width * th / img.height)), th), Image.LANCZOS)
+    img.save(os.path.join(DST, res + '.png'))
+    print(res, img.size)
+    if strip:
+        fw, fh = img.width + 13, img.height + 8
+        out = Image.new('RGBA', (fw * 7, fh), (0, 0, 0, 0))
+        for i in range(7):
+            h2 = round(img.height * SQUASH[i]); w2 = round(img.width * (2 - SQUASH[i]))
+            fr = img.resize((w2, h2), Image.LANCZOS)
+            out.alpha_composite(fr, (i * fw + (fw - w2) // 2, fh - h2 - BOB[i] - 2))
+        out.save(os.path.join(DST, strip + '.png'))
+        print(strip, out.size)

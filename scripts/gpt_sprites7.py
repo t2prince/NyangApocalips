@@ -39,6 +39,24 @@ def clear_ship_pockets(img):
             continue                                   # 돛 속 흰 칸은 남긴다
         if any(inside(b, cx, cy) for b in boxes) or n > 400:
             a[ys, xs, 3] = 0
+    # 철창과 갇힌 사람은 지운다 (대표님 2026-10-04 「사람 갇혀 있는 것만 없애줘」) — 갑판 난간 위까지만
+    for x0, y0, x1, y1 in boxes[2:]:
+        a[int(y0):int(558 * k), int(x0):int(x1), 3] = 0
+        # 철창 바닥 받침(회색, 채도 낮음)이 난간 위에 남지 않게
+        sub = a[int(556 * k):int(574 * k), int(x0):int(x1)]
+        rgb = sub[..., :3].astype(int)
+        gray = (rgb.max(axis=2) - rgb.min(axis=2) < 30) & (rgb.max(axis=2) > 40)
+        sub[gray, 3] = 0
+        # 받침 테두리까지 지우기: 철창 바깥 양옆 열에서 난간 윗선 높이를 재서, 그 사이 열은 그 선 위를 모두 지운다
+        def rail_top(x):
+            col = a[int(540 * k):int(590 * k), x]
+            d = np.nonzero((col[:, 3] > 0) & (col[:, :3].max(axis=1) < 90))[0]
+            return int(540 * k) + (d[0] if len(d) else int(25 * k))
+        xl, xr = int(x0) - 14, int(x1) + 14
+        yl, yr = rail_top(xl), rail_top(xr)
+        for x in range(xl + 4, xr - 3):
+            yt = round(yl + (yr - yl) * (x - xl) / (xr - xl))
+            a[int(y0):yt, x, 3] = 0
     return Image.fromarray(a)
 
 

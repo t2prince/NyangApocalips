@@ -54,25 +54,31 @@ def done(im, ov, name):
 
 
 def make_pirate():
-    im = canvas_from(Image.open(os.path.join(DST, 'cat_normal.png')).convert('RGBA'), pad_top=34, pad_bottom=10, pad_x=6)
+    src = Image.open(os.path.join(DST, 'cat_normal.png')).convert('RGBA')
+    # 갈고리는 다리 대신 (대표님 2026-10-04): 맨 앞 다리(치즈냥이 그림 x 94~100, 몸 아래 y 81~)를 지운다
+    a = np.array(src); a[81:, 94:101, 3] = 0; src = Image.fromarray(a)
+    PX, PY = 6, 34
+    im = canvas_from(src, pad_top=PY, pad_bottom=14, pad_x=PX)
     (x0, y0, x1, y1), eyes, mz = info(im)
     bw, bh = x1 - x0, y1 - y0
     ov, d = overlay(im)
     P = lambda pts: [(x * SS, y * SS) for x, y in pts]
-    # 안대: 앞쪽(오른쪽) 눈을 덮는 검은 타원 + 머리를 비스듬히 가로지르는 끈
+    # 안대: 앞쪽(오른쪽) 눈을 완전히 덮는 큰 검은 안대 + 머리를 비스듬히 가로지르는 끈
     ex, ey = eyes[-1] if eyes else (x0 + bw * 0.78, y0 + bh * 0.11)
-    d.line(P([(x0 + bw * 0.50, y0 + 2), (ex + 3, ey), (x1 - 2, ey + bh * 0.20)]), fill=INK, width=SS * 3, joint='curve')
-    d.ellipse(P([(ex - 8, ey - 7), (ex + 8, ey + 8)]), fill=INK)
-    # 해적 모자: 머리 위에 얹힌 회색 챙 + 그 위 둥근 꼭대기(챙에 딱 붙게) + 검은 띠
-    hx = x0 + bw * 0.60; hy = y0 - 8                      # 챙이 눈(안대)을 가리지 않게 머리 꼭대기 위로
+    d.line(P([(x0 + bw * 0.48, y0 + 1), (ex, ey - 2), (x1 - 1, ey + bh * 0.22)]), fill=INK, width=SS * 3, joint='curve')
+    d.ellipse(P([(ex - 10, ey - 8), (ex + 10, ey + 10)]), fill=INK)
+    d.ellipse(P([(ex - 5, ey - 4), (ex - 1, ey)]), fill=(90, 90, 96, 255))       # 안대 윤기
+    # 해적 모자: 머리 꼭대기 위 회색 챙 + 챙에 딱 붙은 둥근 꼭대기 + 검은 띠 (눈·안대를 가리지 않게 높이)
+    hx = x0 + bw * 0.58; hy = y0 - 9
     d.chord(P([(hx - 22, hy - 30), (hx + 22, hy + 26)]), 180, 360, fill=(140, 140, 150, 255), outline=INK, width=SS * 2)
     d.rectangle(P([(hx - 21, hy - 8), (hx + 21, hy - 3)]), fill=(40, 40, 44, 255))
     d.ellipse(P([(hx - 36, hy - 6), (hx + 36, hy + 8)]), fill=(120, 120, 128, 255), outline=INK, width=SS * 2)
-    # 갈고리 다리: 앞다리 자리에 회색 쇠막대 + 휘어진 갈고리
-    lx = x0 + bw * 0.62; ly = y1 - 2
-    d.line(P([(lx, ly), (lx, ly + 12)]), fill=(150, 150, 160, 255), width=SS * 4)
-    d.arc(P([(lx - 10, ly + 6), (lx + 2, ly + 20)]), 270, 180, fill=(150, 150, 160, 255), width=SS * 3)
-    d.arc(P([(lx - 10, ly + 6), (lx + 2, ly + 20)]), 270, 180, fill=INK, width=SS * 1)
+    # 갈고리 다리: 지운 앞다리 자리에서 쇠막대가 내려와 끝이 J 자로 휜다
+    lx = 97.5 + PX; top = 80 + PY; bot = 88 + PY
+    d.line(P([(lx, top), (lx, bot)]), fill=INK, width=SS * 5)
+    d.line(P([(lx, top), (lx, bot)]), fill=(170, 170, 180, 255), width=SS * 3)
+    d.arc(P([(lx - 9, bot - 5), (lx + 1, bot + 7)]), 330, 180, fill=INK, width=SS * 4)
+    d.arc(P([(lx - 9, bot - 5), (lx + 1, bot + 7)]), 330, 180, fill=(170, 170, 180, 255), width=SS * 2)
     return done(im, ov, 'cat_pirate.png')
 
 

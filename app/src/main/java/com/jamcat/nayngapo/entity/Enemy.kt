@@ -841,26 +841,25 @@ class YellowCat(x: Float, y: Float) : Enemy(x, y, 20, 2) {
 
 // ============ 꿀 스테이지(21) — 기획10 `Plan/기획10_꿀스테이지_벌냥이_꽃냥이.jpg` (대표님 2026-09-27) ============
 /**
- * 벌냥이 — HP 3. 노랑·검정 줄무늬에 파란 날개, 엉덩이에 침. **바닥의 벌집에서 나온다**:
- * 인간이 다가오면 벌집에서 날아올라 머리 위에 떠 있다가, 뒤로 돌아 **엉덩이 침으로 내려와 찌른다**(닿으면 하트 1).
+ * 벌냥이 — HP 3. 노랑 몸에 둥근 검은 띠, 하늘색 날개 한 쌍, 엉덩이 침, 꼬리 없음. 공중에 떠 다닌다(벌집 구조물은 2026-10-04 삭제):
+ * 인간이 다가오면 머리 위로 날아와 떠 있다가, 뒤로 돌아 **엉덩이 침으로 내려와 찌른다**(닿으면 하트 1).
  * 떠 있는 동안은 높이 있어 닿지 않고, 찌르러 내려왔을 때 때릴 수 있다. 공격력(아군 피해)은 기획서 판독 중 — 임시 10.
- * 나오는 거리·높이·찌르기 간격은 Claude 판단.
+ * 쫓아오는 거리·높이·찌르기 간격은 Claude 판단.
  */
-class BeeCat(x: Float, y: Float, private val hiveX: Float, private val emergeDelay: Float) : Enemy(x, y, 3, 10) {
+class BeeCat(x: Float, y: Float) : Enemy(x, y, 3, 10) {
     override val width = 84f
     override val height = 80f
-    private enum class State { HIVE, FLY, DIVE }
-    private var state = State.HIVE
-    private var wait = emergeDelay
+    private enum class State { FLY, DIVE }
+    private var state = State.FLY
     private var stingT = 0f
     private var cooldown = 0.8f
     private var bob = (Math.random() * 6.0).toFloat()
     private val box = RectF()
 
-    init { this.x = hiveX - width / 2f }
+    init { jumpZ = HOVER_Z }
 
-    /** 벌집 속에 있으면 안 보이고 닿지도 않는다 */
-    override val isTangible: Boolean get() = state != State.HIVE
+    /** 떠 있는 동안은 높이 있어 닿지 않는다 — 찌르러 내려왔을 때만 때리고 맞는다 */
+    override val isTangible: Boolean get() = state == State.DIVE || jumpZ > HOVER_Z * 0.6f
     override val hitBox: RectF get() = box.apply { set(x, y + jumpZ - height, x + width, y + jumpZ + 6f) }
 
     override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
@@ -871,19 +870,13 @@ class BeeCat(x: Float, y: Float, private val hiveX: Float, private val emergeDel
         val pcx = playerX + Constants.PLAYER_WIDTH / 2f
         val cx = x + width / 2f
         when (state) {
-            State.HIVE -> {
-                jumpZ = 0f
-                if (abs(pcx - hiveX) < EMERGE_RANGE) {
-                    wait -= deltaTime
-                    if (wait <= 0f) state = State.FLY
-                }
-            }
             State.FLY -> {
-                // 벌집에서 떠올라 인간 머리 위로
+                // 공중에 떠서 파닥이다가, 인간이 가까이 오면 머리 위로 날아간다
                 jumpZ += (HOVER_Z + sin(bob) * 14f - jumpZ) * (deltaTime * 3f).coerceAtMost(1f)
                 val dx = pcx - cx
                 facingRight = dx > 0f
-                x += sign(dx) * (if (abs(dx) > 60f) FLY_SPEED else 0f) * deltaTime
+                val chase = abs(dx) < CHASE_RANGE
+                x += sign(dx) * (if (chase && abs(dx) > 60f) FLY_SPEED else 0f) * deltaTime
                 cooldown -= deltaTime
                 if (cooldown <= 0f && abs(dx) < 110f && jumpZ < HOVER_Z * 0.7f) { state = State.DIVE; stingT = 0f }
             }
@@ -907,7 +900,6 @@ class BeeCat(x: Float, y: Float, private val hiveX: Float, private val emergeDel
     }
 
     override fun draw(canvas: Canvas) {
-        if (state == State.HIVE) return
         // 날개가 파닥이게: 그림을 살짝 위아래로 떨게 한다 (날개는 그림 속 기획서 모양 그대로)
         val flapLift = sin(animTime * 40f) * 2f
         jumpZ += flapLift
@@ -917,7 +909,8 @@ class BeeCat(x: Float, y: Float, private val hiveX: Float, private val emergeDel
     }
 
     companion object {
-        private const val EMERGE_RANGE = 700f
+        /** 인간이 이 안에 오면 쫓아온다 (Claude 판단) */
+        private const val CHASE_RANGE = 800f
         private const val HOVER_Z = -210f
         private const val STING_Z = -70f
         private const val FLY_SPEED = 230f

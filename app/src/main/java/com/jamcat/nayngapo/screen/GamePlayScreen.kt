@@ -2013,7 +2013,6 @@ class GamePlayScreen(
         for (room in level.secretRooms) room.draw(canvas)
         for (swamp in level.swamps) swamp.draw(canvas)
         for (pool in lavaPools) drawLavaPool(canvas, pool)
-        for (hx in level.hives) drawHive(canvas, hx)
         for (pit in level.pits) pit.draw(canvas)
         for (trap in level.traps) trap.draw(canvas)
         for (wall in level.walls) wall.draw(canvas)
@@ -2640,29 +2639,9 @@ class GamePlayScreen(
 
     /** 하늘에 떠 있는 구름 — 카메라보다 아주 느리게 흘러 멀리 있어 보인다 */
     // ===== 꿀 스테이지 (기획10) =====
-    private val hiveBody = Paint().apply { color = Color.rgb(232, 168, 48); isAntiAlias = true }
-    private val hiveRing = Paint().apply { color = Color.rgb(150, 90, 20); style = Paint.Style.STROKE; strokeWidth = 5f; isAntiAlias = true }
-    private val hiveHole = Paint().apply { color = Color.rgb(60, 34, 12); isAntiAlias = true }
-    private val hiveRect = RectF()
     private val stemPaint = Paint().apply { color = Color.rgb(96, 170, 80); strokeWidth = 14f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
     private val petalPaint = Paint().apply { isAntiAlias = true }
     private val petalCore = Paint().apply { color = Color.rgb(255, 214, 70); isAntiAlias = true }
-
-    /** 바닥에 놓인 벌집: 층층이 쌓인 둥근 벌집 + 아래쪽 검은 구멍 (벌냥이가 여기서 나온다) */
-    private fun drawHive(canvas: Canvas, hx: Float) {
-        val gy = Terrain.groundY(hx) + 6f
-        val w = 170f; val h = 190f
-        for (k in 0 until 4) {
-            val t = k / 4f
-            val rw = w * (1f - t * 0.45f)
-            val y1 = gy - h * t
-            hiveRect.set(hx - rw / 2f, y1 - h * 0.34f, hx + rw / 2f, y1)
-            canvas.drawOval(hiveRect, hiveBody)
-            canvas.drawOval(hiveRect, hiveRing)
-        }
-        hiveRect.set(hx - 26f, gy - 60f, hx + 26f, gy - 22f)
-        canvas.drawOval(hiveRect, hiveHole)
-    }
 
     /** 멀리 선 커다란 꽃들 (느린 원경) */
     private fun drawHoneyFlowers(canvas: Canvas) {

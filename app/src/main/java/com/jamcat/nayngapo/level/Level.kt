@@ -46,8 +46,6 @@ class Level(val stageNumber: Int) {
     val walls = mutableListOf<Wall>()
     /** 정글의 덩굴 그네 — 인간도 점프로 잡고 타서 건널 수 있다 (12~20) */
     val vines = mutableListOf<Vine>()
-    /** 꿀 스테이지(21) 바닥의 벌집 자리(x) — 벌냥이가 여기서 나온다 (기획10) */
-    val hives = mutableListOf<Float>()
     val projectiles = mutableListOf<Projectile>()
     var playerStartX = 200f
     var areaWidth = Constants.PLAY_AREA_RIGHT
@@ -109,8 +107,8 @@ class Level(val stageNumber: Int) {
                 spikes = 2, dangerPits = 2, secrets = 3, humans = 1, cats = 2)
             // ===== 21 꿀 스테이지 (기획10, 2026-09-27): 바닥의 벌집에서 벌냥이가 나오고 꽃냥이가 꽃가루를 뿜는다 =====
             // 특수 스테이지 표(기획12 `Plan/기획12_특수스테이지_21_31.jpg`, 2026-10-04): 벌냥이·냥이·꽃냥이 / 비밀의 방 1 / 구덩이 함정.
-            // (벌냥이는 벌집마다 2마리씩 따로 넣는다. 마릿수·구출은 표에 없어 Claude 판단)
-            21 -> StagePlan(mapOf(Kind.FLOWER to 6, Kind.NORMAL to 6),
+            // (마릿수·구출은 표에 없어 Claude 판단)
+            21 -> StagePlan(mapOf(Kind.BEE to 8, Kind.FLOWER to 6, Kind.NORMAL to 6),
                 dangerPits = 1, secrets = 1, humans = 1, cats = 1)
             // 정글의 끝: 마법사 냥이 삼형제가 신전을 지킨다 (원안 마지막 보스 디자인)
             else -> StagePlan(mapOf(Kind.KITTEN to 3, Kind.YELLOW to 4, Kind.GUN to 4, Kind.NORMAL to 4, Kind.GREEN to 3, Kind.VINE to 6, Kind.FLUFFY to 3,   // 20: 치즈냥이도 넣는다 (대표님 2026-09-20, 마릿수는 Claude 판단)
@@ -223,16 +221,7 @@ class Level(val stageNumber: Int) {
             prisons.add(Prison(px, Terrain.groundY(px), kind))
         }
 
-        // ===== 꿀 스테이지(21): 그룹 사이 빈 구간 바닥에 벌집, 벌집마다 벌냥이 2마리 =====
-        if (stageNumber == 21) {
-            for ((i, gc) in gapCenters.withIndex()) {
-                if (i % 2 == 0) continue                       // 한 칸 걸러 하나
-                val hx = gc + 180f
-                if (hx > bossBaseX - 300f) break
-                hives.add(hx)
-                repeat(2) { k -> enemies.add(BeeCat(hx, Terrain.groundY(hx), hx, emergeDelay = k * 0.7f)) }
-            }
-        }
+        // 벌집 구조물은 뺐다 (대표님 2026-10-04 「벌집을 없애줘」) — 벌냥이는 다른 냥이처럼 표에서 바로 배치되어 날아다닌다
 
         // ===== 정글(12~20)의 덩굴 그네: 그룹 사이 빈 구간에 매달아 둔다 =====
         if (stageNumber in 12..20) {
@@ -274,7 +263,8 @@ class Level(val stageNumber: Int) {
         VINE({ x, y -> VineCat(x, y) }),         // 덩굴냥이 HP15 (정글 — 덩굴 그네)
         HAMMER({ x, y -> HammerCat(x, y) }),     // 해머냥이 HP10 공격3 (기획7 — 모루냥이가 나오는 스테이지에만, 마릿수 무작위)
         GUN({ x, y -> GunCat(x, y) }),           // 총냥이 HP15 공격2 (기획8) — 표엔 안 넣고 LASER 자리에서 50% 로 나온다
-        FLOWER({ x, y -> FlowerCat(x, y) });     // 꽃냥이 HP15 공격10 (기획10, 꿀 스테이지)
+        FLOWER({ x, y -> FlowerCat(x, y) }),
+        BEE({ x, y -> BeeCat(x, y) });           // 벌냥이 HP3 (기획10) — 처음부터 날아다닌다     // 꽃냥이 HP15 공격10 (기획10, 꿀 스테이지)
 
         companion object {
             /** 모루냥이 스테이지에 섞이는 해머냥이 마릿수 범위 (무작위) */

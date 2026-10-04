@@ -908,15 +908,11 @@ class BeeCat(x: Float, y: Float, private val hiveX: Float, private val emergeDel
 
     override fun draw(canvas: Canvas) {
         if (state == State.HIVE) return
+        // 날개가 파닥이게: 그림을 살짝 위아래로 떨게 한다 (날개는 그림 속 기획서 모양 그대로)
+        val flapLift = sin(animTime * 40f) * 2f
+        jumpZ += flapLift
         drawSprite(canvas, SpriteManager.beeCat)
-        // 파닥이는 날개 잔상 (그림 위에 반투명하게)
-        val flap = abs(sin(animTime * 38f))
-        val cx = x + width / 2f
-        val top = y + jumpZ - height * 0.95f
-        wingRect.set(cx - 30f, top - 26f * flap, cx + 4f, top + 10f)
-        canvas.drawOval(wingRect, wingPaint)
-        wingRect.set(cx - 4f, top - 22f * flap, cx + 30f, top + 10f)
-        canvas.drawOval(wingRect, wingPaint)
+        jumpZ -= flapLift
         drawHpBar(canvas)
     }
 
@@ -926,8 +922,6 @@ class BeeCat(x: Float, y: Float, private val hiveX: Float, private val emergeDel
         private const val STING_Z = -70f
         private const val FLY_SPEED = 230f
         private const val STING_EVERY = 1.6f
-        private val wingPaint = Paint().apply { color = Color.argb(110, 120, 170, 240); isAntiAlias = true }
-        private val wingRect = RectF()
     }
 }
 

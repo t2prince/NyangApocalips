@@ -49,25 +49,31 @@ def make_bee():
     body, (x0, y0, x1, y1), mz = body_info(im)
     bw, bh = x1 - x0, y1 - y0
     P = lambda pts: [(x * SS, y * SS) for x, y in pts]
-    # 1) 몸통 위 굵은 검은 세로 줄 두 개 (몸 안에서만)
+    # 1) 몸통을 감싸 도는 둥근 검은 띠 두 개 — 몸이 둥그니 띠도 바깥(엉덩이 쪽)으로 휘어진다 (대표님 2026-10-04 「직선 말고 둥글게」)
     ov = overlay(im.size); d = ImageDraw.Draw(ov)
-    for u in (0.30, 0.46):
+    for u in (0.30, 0.48):
         cx = x0 + u * bw
-        d.polygon(P([(cx - bw * 0.055, y0 - 5), (cx + bw * 0.055, y0 - 5), (cx + bw * 0.035, y1 + 5), (cx - bw * 0.075, y1 + 5)]), fill=INK)
+        bow = -bw * 0.10                                  # 가운데가 엉덩이 쪽으로 볼록
+        half = bw * 0.065
+        ts = np.linspace(0, 1, 24)
+        left = [(cx + bow * np.sin(np.pi * t) - half, y0 - 6 + (bh + 12) * t) for t in ts]
+        right = [(cx + bow * np.sin(np.pi * t) + half, y0 - 6 + (bh + 12) * t) for t in ts[::-1]]
+        d.polygon(P(left + right), fill=INK)
     grown = body.copy()
     for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
         grown |= np.roll(np.roll(body, dy, 0), dx, 1)
     im = finish(im, ov, grown)
-    # 2) 엉덩이 침 (왼쪽 끝, 몸 가운데 높이) + 등 위 파란 날개 한 쌍
+    # 2) 엉덩이 침 (왼쪽 끝, 몸 가운데 높이) + 등 위에 곧게 선 파란 날개 한 쌍 (기획서처럼 둥근 타원, 가운데 날개맥)
     ov = overlay(im.size); d = ImageDraw.Draw(ov)
     sy = y0 + bh * 0.55
     d.polygon(P([(x0 + 4, sy - bh * 0.09), (x0 - 26, sy + 2), (x0 + 4, sy + bh * 0.09)]), fill=(60, 60, 66, 255), outline=INK, width=SS * 2)
-    for k, (u, tilt) in enumerate(((0.28, -28), (0.54, 24))):
-        wx, wy = x0 + u * bw, y0 + 2
+    for k, (u, tilt) in enumerate(((0.40, 14), (0.52, -10))):
+        wx, wy = x0 + u * bw, y0 + bh * 0.06
         wl = Image.new('RGBA', ov.size, (0, 0, 0, 0)); wd = ImageDraw.Draw(wl)
-        ww, wh = bw * 0.20, bh * 0.42
-        wd.ellipse([(wx - ww / 2) * SS, (wy - wh) * SS, (wx + ww / 2) * SS, wy * SS], fill=(70, 120, 220, 235), outline=INK, width=SS * 2)
-        wd.line([(wx * SS, (wy - wh * 0.15) * SS), (wx * SS, (wy - wh * 0.85) * SS)], fill=(40, 70, 150, 255), width=SS)
+        ww, wh = bw * 0.17, bh * 0.50
+        wd.ellipse([(wx - ww / 2) * SS, (wy - wh) * SS, (wx + ww / 2) * SS, wy * SS], fill=(66, 112, 214, 255), outline=INK, width=SS * 2)
+        wd.line([(wx * SS, (wy - wh * 0.12) * SS), (wx * SS, (wy - wh * 0.88) * SS)], fill=(30, 56, 130, 255), width=SS * 2)
+        wd.ellipse([(wx - ww * 0.32) * SS, (wy - wh * 0.80) * SS, (wx - ww * 0.05) * SS, (wy - wh * 0.55) * SS], fill=(150, 190, 250, 200))
         wl = wl.rotate(tilt, center=(wx * SS, wy * SS), resample=Image.BICUBIC)
         ov.alpha_composite(wl)
     im = finish(im, ov)

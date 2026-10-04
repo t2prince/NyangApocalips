@@ -417,6 +417,11 @@ class LobbyScreen(private val gameView: GameView) : Screen {
         when {
             !GameProgress.hasData(stage) -> showNotice("준비 중입니다")
             stage > GameProgress.unlockedStage -> showNotice("아직 잠겨 있다냥!")
+            // 날아냥이가 죽었으면 하늘 스테이지에 못 간다 — 부활 약으로 깨워야 한다
+            GameProgress.isSkyStage(stage) && CatTeam.flyingDead() -> {
+                showNotice("날아냥이가 잠들어 있다냥! 고양이 관리에서 부활 약을 먹여야 하늘에 갈 수 있다")
+                noticeTimer = 2.8f
+            }
             // 하늘 스테이지는 들어가면 날아냥이를 그냥 준다 (따로 구해 올 필요가 없다)
             else -> gameView.startStage(stage)
         }

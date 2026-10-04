@@ -140,6 +140,9 @@ object CatTeam {
     /** 날아냥이를 한 마리라도 데리고 있는가 (11스테이지 입장 조건) */
     fun hasFlyingCat() = flyingMount() != null
 
+    /** 날아냥이가 죽어 무덤에 있고 살아 있는 날아냥이가 없다 — 이러면 하늘 스테이지에 못 간다 (대표님 2026-10-04 「날아냥이가 죽으면 하늘 스테이지를 깰 수 없어」) */
+    fun flyingDead(): Boolean = flyingMount() == null && roster.any { it.kind == AllyCat.Kind.FLYING && it.isDead }
+
     /** 아직 살아 있는 냥이들 */
     val living: List<TeamCat> get() = roster.filter { !it.gone }
 

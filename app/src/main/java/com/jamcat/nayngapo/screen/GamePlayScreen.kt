@@ -26,7 +26,7 @@ class GamePlayScreen(
     private val theme = when {
         stageNumber <= 10 -> Theme.GRASS   // 초원: 잔디 + 나무 + 구름
         stageNumber <= 20 -> Theme.JUNGLE  // 정글: 거대한 나무 + 늘어진 덩굴
-        stageNumber == 21 -> Theme.HONEY   // 꿀: 벌집 바닥 + 큰 꽃 (기획10, 2026-09-27)
+        stageNumber <= 30 -> Theme.HONEY   // 꿀: 21~30 (대표님 2026-10-04) — 벌집 바닥 + 큰 꽃 (기획10)
         stageNumber <= 30 -> Theme.SNOW
         stageNumber <= 40 -> Theme.DESERT
         else -> Theme.VOLCANO

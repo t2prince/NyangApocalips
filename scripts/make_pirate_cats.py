@@ -70,8 +70,10 @@ def make_pirate():
     d.ellipse(P([(ex - 5, ey - 4), (ex - 1, ey)]), fill=(90, 90, 96, 255))       # 안대 윤기
     # 해적 모자: 머리 꼭대기 위 회색 챙 + 챙에 딱 붙은 둥근 꼭대기 + 검은 띠 (눈·안대를 가리지 않게 높이)
     hx = x0 + bw * 0.58; hy = y0 - 12
-    d.chord(P([(hx - 22, hy - 30), (hx + 22, hy + 26)]), 180, 360, fill=(140, 140, 150, 255), outline=INK, width=SS * 2)
-    d.rectangle(P([(hx - 21, hy - 8), (hx + 21, hy - 3)]), fill=(40, 40, 44, 255))
+    # 꼭대기는 챙에 붙어 있어야 한다 (2026-10-04): 꼭대기 아래끝을 챙 속까지 내려 그리고 챙을 그 위에 덮는다
+    d.chord(P([(hx - 22, hy - 25), (hx + 22, hy + 35)]), 180, 360, fill=(140, 140, 150, 255), outline=INK, width=SS * 2)
+    d.rectangle(P([(hx - 21, hy - 1), (hx + 21, hy + 6)]), fill=(140, 140, 150, 255))
+    d.rectangle(P([(hx - 21, hy - 5), (hx + 21, hy + 1)]), fill=(40, 40, 44, 255))
     # 챙은 크게 (대표님 2026-10-04 「모자는 챙이 커」): 넓고 두툼한 챙, 양 끝이 살짝 위로 말린다
     ts = np.linspace(-1, 1, 41)
     top_edge = [(hx + 52 * t, hy + 1 - 11 * abs(t) ** 3) for t in ts]                 # 끝으로 갈수록 위로 말린다

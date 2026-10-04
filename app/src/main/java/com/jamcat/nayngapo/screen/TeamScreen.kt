@@ -1250,7 +1250,7 @@ class TeamScreen(private val gameView: GameView) : Screen {
         val cat = selected ?: return
         if (!cat.isDead) return
         if (GameProgress.itemCount("revive_potion") <= 0) {
-            showNotice("부활 약이 없다냥! 고양이 상점에서 사 오자 (200루비)")
+            showNotice("부활 약이 없다냥! 고양이 상점에서 사 오자 (${com.jamcat.nayngapo.engine.ShopCatalog.priceOf("revive_potion")}루비)")
             return
         }
         val name = cat.name

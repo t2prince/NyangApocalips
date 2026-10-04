@@ -644,10 +644,10 @@ object CatTeam {
         val cat = cat(id) ?: return null
         if (cat.gone) return null
         if (GameProgress.itemCount("attack_up") <= 0) {
-            return CareResult(false, "공격력 Lv업 아이템이 없다냥! (고양이 상점 200루비)")
+            return CareResult(false, "공격력 Lv업 아이템이 없다냥! (고양이 상점 ${ShopCatalog.priceOf("attack_up")}루비)")
         }
         if (!GameProgress.consumeItem("attack_up")) {
-            return CareResult(false, "공격력 Lv업 아이템이 없다냥! (고양이 상점 200루비)")
+            return CareResult(false, "공격력 Lv업 아이템이 없다냥! (고양이 상점 ${ShopCatalog.priceOf("attack_up")}루비)")
         }
         cat.attackBonus += ATTACK_UP_AMOUNT
         save()

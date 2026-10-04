@@ -43,6 +43,19 @@ python scripts/find_hands.py                 # 인간 스트립 프레임별 손
 
 `ally_tails.py`는 이제 아무 일도 하지 않습니다 (아군 그림은 위 스크립트들이 만듦).
 
+## GPT 이미지를 Claude가 직접 만들기 (2026-10-04)
+
+이 PC에는 Codex CLI(`codex exec`)에 이미지 생성 기능이 있다. 대표님 지시: **「그림은 지피티에게 맡겨서 그려」** — 새 캐릭터·구조물은 코드로 그리지 말고 GPT로 만든다.
+
+```bash
+# 프롬프트는 stdin 으로 (-i 가 뒤의 인자를 이미지로 먹기 때문). 참고 이미지: 그림체 기준 + 원안 사진
+cat prompt.txt | codex exec --skip-git-repo-check -C "$PWD" -s workspace-write \
+  -i Plan/cat_frames5/normal_idle.png -i "Plan/기획10_꿀스테이지_벌냥이_꽃냥이.jpg"
+# 프롬프트 끝에 "생성한 이미지를 Plan/cat_sprites7/<이름>.png 로 복사해 저장해" 를 붙이면 그 자리에 저장된다
+python scripts/gpt_sprites7.py      # Plan/cat_sprites7 → drawable-nodpi (Plan/cat_sprites6 에 cat_sprites.py 를 돌리면 예전 냥이를 덮어쓰니 주의)
+```
+공통 프롬프트는 `Plan/GPT_냥이_스프라이트_프롬프트.md`. GPT로 바꾼 것: 벌냥이·머드냥이·해적냥이·배냥이·해적선. 꽃냥이는 대표님이 이전(코드) 그림 유지.
+
 ## 아직 남은 그림 일
 
 - 똥·모루·레이저·털뭉·보스 냥이는 `smooth_cats.py`로 임시 평면화한 것입니다. 털뭉냥이·인간편 보스는 자동 처리가 망가뜨려 원본 그대로입니다.

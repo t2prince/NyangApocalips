@@ -69,10 +69,15 @@ def make_pirate():
     d.ellipse(P([(ex - 10, ey - 8), (ex + 10, ey + 10)]), fill=INK)
     d.ellipse(P([(ex - 5, ey - 4), (ex - 1, ey)]), fill=(90, 90, 96, 255))       # 안대 윤기
     # 해적 모자: 머리 꼭대기 위 회색 챙 + 챙에 딱 붙은 둥근 꼭대기 + 검은 띠 (눈·안대를 가리지 않게 높이)
-    hx = x0 + bw * 0.58; hy = y0 - 9
+    hx = x0 + bw * 0.58; hy = y0 - 12
     d.chord(P([(hx - 22, hy - 30), (hx + 22, hy + 26)]), 180, 360, fill=(140, 140, 150, 255), outline=INK, width=SS * 2)
     d.rectangle(P([(hx - 21, hy - 8), (hx + 21, hy - 3)]), fill=(40, 40, 44, 255))
-    d.ellipse(P([(hx - 36, hy - 6), (hx + 36, hy + 8)]), fill=(120, 120, 128, 255), outline=INK, width=SS * 2)
+    # 챙은 크게 (대표님 2026-10-04 「모자는 챙이 커」): 넓고 두툼한 챙, 양 끝이 살짝 위로 말린다
+    ts = np.linspace(-1, 1, 41)
+    top_edge = [(hx + 52 * t, hy + 1 - 11 * abs(t) ** 3) for t in ts]                 # 끝으로 갈수록 위로 말린다
+    bot_edge = [(hx + 52 * t, hy + 12 - 7 * abs(t) ** 2.5 - 4 * abs(t) ** 6) for t in ts[::-1]]
+    brim = top_edge + bot_edge
+    d.polygon(P(brim), fill=(120, 120, 128, 255), outline=INK, width=SS * 2)
     # 갈고리 다리: 지운 앞다리 자리에서 쇠막대가 내려와 끝이 J 자로 휜다
     lx = 97.5 + PX; top = 80 + PY; bot = 88 + PY
     d.line(P([(lx, top), (lx, bot)]), fill=INK, width=SS * 5)

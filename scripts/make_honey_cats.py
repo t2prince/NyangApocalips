@@ -63,7 +63,7 @@ def make_bee():
     for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
         grown |= np.roll(np.roll(body, dy, 0), dx, 1)
     im = finish(im, ov, grown)
-    # 2) 엉덩이 침 (왼쪽 끝, 몸 가운데 높이) + 등 위에 곧게 선 파란 날개 한 쌍 (기획서처럼 둥근 타원, 가운데 날개맥)
+    # 2) 엉덩이 침 (왼쪽 끝, 몸 가운데 높이) + 등 위에 곧게 선 하늘색 날개 한 쌍 (대표님 2026-10-04 「파랑 말고 하늘색」, 기획서처럼 둥근 타원, 가운데 날개맥)
     ov = overlay(im.size); d = ImageDraw.Draw(ov)
     sy = y0 + bh * 0.55
     d.polygon(P([(x0 + 4, sy - bh * 0.09), (x0 - 26, sy + 2), (x0 + 4, sy + bh * 0.09)]), fill=(60, 60, 66, 255), outline=INK, width=SS * 2)
@@ -71,9 +71,9 @@ def make_bee():
         wx, wy = x0 + u * bw, y0 + bh * 0.06
         wl = Image.new('RGBA', ov.size, (0, 0, 0, 0)); wd = ImageDraw.Draw(wl)
         ww, wh = bw * 0.17, bh * 0.50
-        wd.ellipse([(wx - ww / 2) * SS, (wy - wh) * SS, (wx + ww / 2) * SS, wy * SS], fill=(66, 112, 214, 255), outline=INK, width=SS * 2)
-        wd.line([(wx * SS, (wy - wh * 0.12) * SS), (wx * SS, (wy - wh * 0.88) * SS)], fill=(30, 56, 130, 255), width=SS * 2)
-        wd.ellipse([(wx - ww * 0.32) * SS, (wy - wh * 0.80) * SS, (wx - ww * 0.05) * SS, (wy - wh * 0.55) * SS], fill=(150, 190, 250, 200))
+        wd.ellipse([(wx - ww / 2) * SS, (wy - wh) * SS, (wx + ww / 2) * SS, wy * SS], fill=(140, 206, 250, 255), outline=INK, width=SS * 2)
+        wd.line([(wx * SS, (wy - wh * 0.12) * SS), (wx * SS, (wy - wh * 0.88) * SS)], fill=(70, 140, 200, 255), width=SS * 2)
+        wd.ellipse([(wx - ww * 0.32) * SS, (wy - wh * 0.80) * SS, (wx - ww * 0.05) * SS, (wy - wh * 0.55) * SS], fill=(220, 242, 255, 220))
         wl = wl.rotate(tilt, center=(wx * SS, wy * SS), resample=Image.BICUBIC)
         ov.alpha_composite(wl)
     im = finish(im, ov)

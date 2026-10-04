@@ -73,44 +73,65 @@ def main():
     L([(mx, 120), bow_tip], INK, 3)
     L([(mx, 120), (1330, 452)], INK, 2)
     # ---- 그물: 돛 아래 양옆에서 갑판으로 ----
-    def net(top_a, top_b, bot_a, bot_b, n=7):
-        for i in range(n + 1):
+    def qb(p0, p1, p2, n=16):
+        return [((1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * p1[0] + t ** 2 * p2[0], (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * p1[1] + t ** 2 * p2[1]) for t in np.linspace(0, 1, n)]
+    def net(top_a, top_b, bot_a, bot_b, n=7, sag=38):
+        """축 처진 그물 (대표님 2026-10-04): 가로줄은 가운데가 아래로 늘어지고, 세로줄도 바깥으로 불룩하게 처진다"""
+        def side(p, q, t):
+            return (p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t)
+        for i in range(n + 1):                                           # 가로줄
             t = i / n
-            a = (top_a[0] + (top_b[0] - top_a[0]) * t, top_a[1] + (top_b[1] - top_a[1]) * t)
-            b = (bot_a[0] + (bot_b[0] - bot_a[0]) * t, bot_a[1] + (bot_b[1] - bot_a[1]) * t)
-            L([a, b], INK, 2.2)
-        for i in range(n + 1):
+            l, r = side(top_a, bot_a, t), side(top_b, bot_b, t)
+            mid = ((l[0] + r[0]) / 2, (l[1] + r[1]) / 2 + sag * (0.6 + 0.4 * t))
+            L(qb(l, mid, r), INK, 2.2)
+        for i in range(n + 1):                                           # 세로줄
             t = i / n
-            a = (top_a[0] + (bot_a[0] - top_a[0]) * t, top_a[1] + (bot_a[1] - top_a[1]) * t)
-            b = (top_b[0] + (bot_b[0] - top_b[0]) * t, top_b[1] + (bot_b[1] - top_b[1]) * t)
-            L([a, b], INK, 2.2)
+            tp, bt = side(top_a, top_b, t), side(bot_a, bot_b, t)
+            droop = sag * 0.9 * math.sin(math.pi * t) + sag * 0.3
+            mid = ((tp[0] + bt[0]) / 2, (tp[1] + bt[1]) / 2 + droop)
+            L(qb(tp, mid, bt), INK, 2.2)
     net((580, 320), (640, 336), (560, deck_y - 4), (660, deck_y))
     net((940, 336), (1000, 320), (1000, deck_y), (1120, deck_y - 4))
-    # ---- 철창 두 개 (안에 갇힌 인간) ----
-    for cx in (715, 845):
-        x0, x1, y0, y1 = cx - 40, cx + 40, deck_y - 110, deck_y
-        d.rectangle(P([(x0, y0), (x1, y1)]), fill=(236, 228, 212, 255), outline=INK, width=SS * 4)
-        # 졸라맨 인간 (울상)
-        hx, hy = cx, y0 + 30
-        d.ellipse(P([(hx - 13, hy - 13), (hx + 13, hy + 13)]), fill=(255, 255, 255, 255), outline=INK, width=SS * 3)
-        L([(hx - 5, hy + 5), (hx, hy + 2), (hx + 5, hy + 5)], INK, 2)
-        L([(hx, hy + 13), (hx, hy + 60)], INK, 3)
-        L([(hx - 20, hy + 30), (hx, hy + 22), (hx + 20, hy + 30)], INK, 3)
-        L([(hx, hy + 60), (hx - 14, y1 - 4)], INK, 3); L([(hx, hy + 60), (hx + 14, y1 - 4)], INK, 3)
-        for k in range(5):
-            bx = x0 + (x1 - x0) * (k + 0.5) / 5
-            L([(bx, y0 + 2), (bx, y1 - 2)], (70, 70, 76, 255), 4)
+    # ---- 철창 두 개 (안에 갇힌 인간) — 일반 스테이지 감옥(entity/Prison.kt)과 같은 모습 (대표님 2026-10-04) ----
+    SKIN = (255, 200, 150, 255); FACE = (40, 34, 30, 255); TEAR = (110, 175, 240, 255)
+    for cx in (700, 860):
+        k = 2.6                                          # 감옥 그림(폭 100·높이 140)을 이 배율로
+        x0, x1, y1 = cx - 50 * k / 2.6 * 1.0, cx + 50 * k / 2.6 * 1.0, deck_y
+        cw, ch = 100 * 0.88, 140 * 0.88
+        x0, x1, y0 = cx - cw / 2, cx + cw / 2, deck_y - ch
+        cy = y0 + ch / 2
+        s_ = ch / 140                                    # Prison 좌표 → 여기
+        hx, hy = cx, cy - 15 * s_
+        d.ellipse(P([(hx - 9 * s_ * 1.7, hy - 9 * s_ * 1.7), (hx + 9 * s_ * 1.7, hy + 9 * s_ * 1.7)]), fill=SKIN)
+        d.rectangle(P([(cx - 6 * s_ * 1.7, cy - 5 * s_), (cx + 6 * s_ * 1.7, cy + 15 * s_ * 1.6)]), fill=SKIN)
+        L([(cx - 5 * s_ * 1.7, cy - 19 * s_), (cx - 2 * s_ * 1.7, cy - 17 * s_)], FACE, 2.5)
+        L([(cx + 5 * s_ * 1.7, cy - 19 * s_), (cx + 2 * s_ * 1.7, cy - 17 * s_)], FACE, 2.5)
+        d.arc(P([(cx - 4 * s_ * 1.7, cy - 13 * s_), (cx + 4 * s_ * 1.7, cy - 7 * s_)]), 200, 340, fill=FACE, width=int(2.5 * SS))
+        d.ellipse(P([(cx - 7.5 * s_ * 1.7, cy - 13.5 * s_), (cx - 4.5 * s_ * 1.7, cy - 10.5 * s_)]), fill=TEAR)
+        d.ellipse(P([(cx - 9.5 * s_ * 1.7, cy - 7.5 * s_), (cx - 6.5 * s_ * 1.7, cy - 4.5 * s_)]), fill=TEAR)
+        d.rectangle(P([(x0, y0), (x1, y1)]), outline=(128, 128, 128, 255), width=int(4 * SS))
+        for i in range(1, 5):
+            bx = x0 + (x1 - x0) * i / 5
+            L([(bx, y0), (bx, y1)], (68, 68, 68, 255), 3)
     # ---- 선체: 길게. 옆면은 가로 4칸으로 나뉘고 맨 위 1번째 칸은 밝다 (대표님 2026-10-04) ----
-    hull = [(110, 330), (150, 350), (290, deck_y), (1270, deck_y), (1320, 440), (1420, 438), (1390, 600), (1300, 690), (420, 700), (330, 650)]
-    d.polygon(P(hull), fill=WOOD, outline=INK, width=SS * 4)
+    def bz(p0, p1, p2, n=30):
+        return [((1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * p1[0] + t ** 2 * p2[0], (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * p1[1] + t ** 2 * p2[1]) for t in np.linspace(0, 1, n)]
+    # 선이 꺾이지 않게 (대표님 2026-10-04): 뱃머리→갑판→고물, 고물→바닥→뱃머리 모두 부드러운 곡선으로 잇는다
+    top = bz((112, 332), (240, 468), (420, 470)) + bz((420, 470), (830, 470), (1240, 470))[1:] + bz((1240, 470), (1340, 470), (1420, 436))[1:]
+    bottom = bz((1420, 436), (1415, 640), (1290, 690))[1:] + bz((1290, 690), (860, 708), (430, 700))[1:] + bz((430, 700), (250, 690), (112, 332))[1:]
+    hull = top + bottom
+    d.polygon(P(hull), fill=WOOD)
     # 열마다 선체 윗선(T)·아랫선(B)을 재서, 그 사이를 4등분한 경계선을 긋는다 (뱃머리 쪽은 윗선을 따라 휘어 오른다)
     mask = Image.new('L', (W, H), 0); ImageDraw.Draw(mask).polygon(hull, fill=255)
     mk = np.asarray(mask) > 0
-    cols = [x for x in range(140, 1415, 6) if mk[:, x].any()]
+    cols = [x for x in range(150, 1410, 4) if mk[:, x].any()]
     T = {x: np.nonzero(mk[:, x])[0].min() for x in cols}
     B = {x: np.nonzero(mk[:, x])[0].max() for x in cols}
     def band_line(k):
-        return [(x, T[x] + (B[x] - T[x]) * k / 4) for x in cols]
+        ys = np.array([T[x] + (B[x] - T[x]) * k / 4 for x in cols], float)
+        ker = np.ones(9) / 9
+        sm = np.convolve(np.pad(ys, 4, mode='edge'), ker, mode='valid')     # 꺾임 없이 매끈하게
+        return list(zip(cols, sm))
     # 1번째 칸(맨 위)을 밝게
     top_band = [(x, T[x] + 3) for x in cols] + band_line(1)[::-1]
     d.polygon(P(top_band), fill=WOOD_TOP)
@@ -121,9 +142,9 @@ def main():
         L(band_line(k), INK, 3)
     d.polygon(P(hull), outline=INK, width=SS * 4)
     # 뱃머리 막대(앞으로 뻗은 나무)
-    L([(110, 330), bow_tip], WOOD_D, 10); L([(110, 330), bow_tip], INK, 2)
-    # 갑판 난간
-    L([(150, 350), (290, deck_y), (1270, deck_y), (1320, 440), (1420, 438)], INK, 4)
+    L([(112, 332), bow_tip], WOOD_D, 10); L([(112, 332), bow_tip], INK, 2)
+    # 갑판 난간 (윗선 그대로)
+    L(top, INK, 4)
     # 포문 구멍: 1번째 칸 가운데 줄에
     for k in range(11):
         px = 400 + k * 86

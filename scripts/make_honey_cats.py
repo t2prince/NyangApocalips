@@ -111,30 +111,40 @@ def make_flower():
     body, (x0, y0, x1, y1), mz = body_info(im)
     bw, bh = x1 - x0, y1 - y0
     P = lambda pts: [(x * SS, y * SS) for x, y in pts]
-    # 1) 주황 가는 줄무늬를 몸에 더한다
+    # 둥글게 (대표님 2026-10-04 「직선으로 하지 말고 둥글게」): 줄무늬는 둥근 몸을 따라 휘고, 잎은 둥근 덩어리, 꽃대는 부드러운 곡선
+    def bezier(p0, p1, p2, n=28):
+        t = np.linspace(0, 1, n)[:, None]
+        return [tuple(v) for v in ((1 - t) ** 2 * np.array(p0) + 2 * (1 - t) * t * np.array(p1) + t ** 2 * np.array(p2))]
+    # 1) 주황 줄무늬 — 몸통을 감싸 도는 휜 띠
     ov = overlay(im.size); d = ImageDraw.Draw(ov)
-    for k in range(7):
-        u = 0.10 + k * 0.08
+    for k in range(6):
+        u = 0.12 + k * 0.085
         cx = x0 + u * bw
-        d.line(P([(cx, y0 + bh * 0.25), (cx + bw * 0.02, y0 + bh * 0.85)]), fill=(236, 120, 30, 200), width=SS * 3)
+        bow = -bw * (0.07 - k * 0.01)
+        ts = np.linspace(0, 1, 20)
+        pts = [(cx + bow * np.sin(np.pi * t), y0 + bh * 0.12 + bh * 0.8 * t) for t in ts]
+        d.line(P(pts), fill=(236, 120, 30, 210), width=SS * 3, joint='curve')
     im = finish(im, ov, body)
-    # 2) 얼굴을 덮는 초록 잎 (눈~주둥이 위, 기획서처럼 얼굴 오른쪽 위를 덮는다)
+    # 2) 얼굴 위쪽을 덮는 둥근 초록 잎 (눈 둘레까지 동그스름하게)
     ov = overlay(im.size); d = ImageDraw.Draw(ov)
-    fx0 = mz[0] - bw * 0.10 if mz else x0 + bw * 0.55
-    fy0 = y0 + bh * 0.05
-    fy1 = (mz[1] + 4) if mz else y0 + bh * 0.45
-    d.polygon(P([(fx0, fy1), (fx0 + bw * 0.08, fy0 + 4), (x1 - bw * 0.02, fy0), (x1 + 4, fy1 - 6), (fx0 + bw * 0.25, fy1 + 6)]),
-              fill=(70, 150, 60, 235), outline=INK, width=SS * 2)
-    d.line(P([(fx0 + bw * 0.04, fy1 - 2), (x1 - bw * 0.04, fy0 + 6)]), fill=(40, 100, 40, 255), width=SS)
-    # 3) 머리 위로 휘어 올라간 분홍 꽃대 두 개 + 꽃
-    for k, (u, lean, top) in enumerate(((0.58, 0.40, 48), (0.70, 0.48, 32))):
-        bx, by = x0 + u * bw, y0 + 6
-        pts = [(bx, by), (bx + bw * lean * 0.15, by - top * 0.8), (bx + bw * lean * 0.55, by - top * 1.05), (bx + bw * lean, by - top * 0.85)]
-        d.line(P(pts), fill=(236, 130, 180, 255), width=SS * 7, joint='curve')
-        d.line(P(pts), fill=INK, width=SS * 1)
-        fx, fy = pts[-1]
-        for a in range(5):
-            ang = np.deg2rad(a * 72)
+    lx0 = (mz[0] - bw * 0.12) if mz else x0 + bw * 0.52
+    ly1 = (mz[1] + 6) if mz else y0 + bh * 0.45
+    leaf = Image.new('RGBA', ov.size, (0, 0, 0, 0)); ld = ImageDraw.Draw(leaf)
+    ld.ellipse([lx0 * SS, (y0 - 2) * SS, (x1 + 6) * SS, ly1 * SS], fill=(76, 156, 64, 240), outline=INK, width=SS * 2)
+    mid = [(lx0 + bw * 0.06, ly1 - 6), ((lx0 + x1) / 2, y0 + bh * 0.10), (x1, y0 + bh * 0.16)]
+    ld.line([(x * SS, y * SS) for x, y in bezier(*mid)], fill=(40, 104, 40, 255), width=SS * 2, joint='curve')
+    ov.alpha_composite(leaf)
+    # 3) 머리 위로 부드럽게 휘어 앞으로 굽은 분홍 꽃대 두 개 + 꽃
+    for k, (u, reach, top) in enumerate(((0.56, 0.42, 54), (0.68, 0.46, 34))):
+        bx, by = x0 + u * bw, y0 + 8
+        tip = (bx + bw * reach, by - top * 0.70)
+        ctrl = (bx - bw * 0.02, by - top * 1.45)
+        curve = bezier((bx, by), ctrl, tip)
+        d.line(P(curve), fill=INK, width=SS * 9, joint='curve')
+        d.line(P(curve), fill=(236, 140, 186, 255), width=SS * 6, joint='curve')
+        fx, fy = tip
+        for a_ in range(5):
+            ang = np.deg2rad(a_ * 72)
             px, py = fx + np.cos(ang) * 7, fy + np.sin(ang) * 7
             d.ellipse(P([(px - 5, py - 5), (px + 5, py + 5)]), fill=(250, 150, 190, 255), outline=INK, width=SS)
         d.ellipse(P([(fx - 4, fy - 4), (fx + 4, fy + 4)]), fill=(255, 220, 90, 255), outline=INK, width=SS)

@@ -62,6 +62,15 @@ object Terrain {
         20 -> Profile(Shape.TERRACES, 160f, 2600f, 3f, 0.6f)
         // 꿀
         21 -> Profile(Shape.DUNES, 110f, 1300f, 4f, 0.2f)
+        22 -> Profile(Shape.ROLLING, 120f, 1400f, 5f, 0.3f)
+        23 -> Profile(Shape.MESA, 150f, 1500f, 4f, 0.6f)
+        24 -> Profile(Shape.PEAKS, 150f, 1000f, 4f, 0.1f)
+        25 -> Profile(Shape.STAIRS, 180f, 2000f, 3f, 0.4f)
+        26 -> Profile(Shape.VALLEY, 170f, 1800f, 5f, 0.2f)
+        27 -> Profile(Shape.MOUNTAIN, 230f, 2200f, 5f, 0.7f)
+        28 -> Profile(Shape.DUNES, 170f, 1600f, 5f, 0.5f)
+        29 -> Profile(Shape.MESA, 200f, 1300f, 6f, 0.8f)
+        30 -> Profile(Shape.TERRACES, 150f, 2400f, 3f, 0.4f)
         else -> Profile(Shape.ROLLING, 60f + stage * 4f, 1500f, 4f, 0f)
     }
 

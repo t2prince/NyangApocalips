@@ -110,6 +110,26 @@ class Level(val stageNumber: Int) {
             // (마릿수·구출은 표에 없어 Claude 판단)
             21 -> StagePlan(mapOf(Kind.BEE to 16, Kind.FLOWER to 6, Kind.NORMAL to 4),   // 벌냥이 「많이」(2026-10-04) 8 → 16
                 dangerPits = 1, secrets = 1, humans = 1, cats = 1)
+            // ===== 22~30 꿀 지역 (대표님 2026-10-04 「그냥 너가 21-30 만들어줘」 — 구성 전부 Claude 판단) =====
+            // 벌냥이·꽃냥이가 중심, 다른 냥이를 조금씩 섞고 뒤로 갈수록 많아진다. 보스는 아직 없다(대표님이 정하면 넣는다).
+            22 -> StagePlan(mapOf(Kind.BEE to 10, Kind.FLOWER to 4, Kind.NORMAL to 5, Kind.KITTEN to 3),
+                spikes = 1, secrets = 1, humans = 1)
+            23 -> StagePlan(mapOf(Kind.BEE to 10, Kind.FLOWER to 5, Kind.NORMAL to 4, Kind.YELLOW to 2, Kind.KITTEN to 3),
+                spikes = 1, dangerPits = 1, secrets = 1, cats = 1)
+            24 -> StagePlan(mapOf(Kind.BEE to 12, Kind.FLOWER to 5, Kind.GREEN to 3, Kind.NORMAL to 4),
+                spikes = 2, secrets = 2, humans = 1)
+            25 -> StagePlan(mapOf(Kind.BEE to 12, Kind.FLOWER to 6, Kind.RED to 2, Kind.ORANGE to 2, Kind.NORMAL to 3, Kind.THIEF to 1),
+                spikes = 1, dangerPits = 1, secrets = 2, cats = 1)
+            26 -> StagePlan(mapOf(Kind.BEE to 14, Kind.FLOWER to 6, Kind.GUN to 2, Kind.NORMAL to 3, Kind.KITTEN to 3),
+                spikes = 2, secrets = 2, humans = 1)
+            27 -> StagePlan(mapOf(Kind.BEE to 14, Kind.FLOWER to 7, Kind.YELLOW to 3, Kind.ANVIL to 1, Kind.NORMAL to 3),
+                spikes = 1, dangerPits = 1, secrets = 2, cats = 1)
+            28 -> StagePlan(mapOf(Kind.BEE to 16, Kind.FLOWER to 7, Kind.BLUE to 3, Kind.GREEN to 3, Kind.KITTEN to 3),
+                spikes = 2, dangerPits = 1, secrets = 2, humans = 2)
+            29 -> StagePlan(mapOf(Kind.BEE to 16, Kind.FLOWER to 8, Kind.GUN to 3, Kind.RED to 2, Kind.ORANGE to 2, Kind.THIEF to 1),
+                spikes = 2, dangerPits = 1, secrets = 3, humans = 1, cats = 1)
+            30 -> StagePlan(mapOf(Kind.BEE to 18, Kind.FLOWER to 8, Kind.YELLOW to 3, Kind.ANVIL to 2, Kind.NORMAL to 4),
+                dangerPits = 1, secrets = 3, cats = 2)
             // 정글의 끝: 마법사 냥이 삼형제가 신전을 지킨다 (원안 마지막 보스 디자인)
             else -> StagePlan(mapOf(Kind.KITTEN to 3, Kind.YELLOW to 4, Kind.GUN to 4, Kind.NORMAL to 4, Kind.GREEN to 3, Kind.VINE to 6, Kind.FLUFFY to 3,   // 20: 치즈냥이도 넣는다 (대표님 2026-09-20, 마릿수는 Claude 판단)
                 Kind.ANVIL to 3, Kind.LASER to 3, Kind.THIEF to 1),
@@ -123,7 +143,7 @@ class Level(val stageNumber: Int) {
                 })
         }
         // 늪(기획3): 2스테이지부터 하나, 7스테이지부터 둘 (함정은 과하지 않게)
-        val swampCount = if (stageNumber < 2) 0 else (1 + (stageNumber - 2) / 5).coerceAtMost(if (stageNumber == 20) 1 else 2)   // 20 은 「함정이 너무 많아」(2026-10-04)로 1개
+        val swampCount = if (stageNumber < 2) 0 else (1 + (stageNumber - 2) / 5).coerceAtMost(if (stageNumber == 20 || stageNumber in 21..30) 1 else 2)   // 꿀 지역도 1개   // 20 은 「함정이 너무 많아」(2026-10-04)로 1개
 
         // 해머냥이는 모루냥이가 나오는 스테이지에만, 1~3마리 무작위로 섞인다 (대표님 2026-09-20)
         val mobs = plan.mobs.toMutableMap()
@@ -185,7 +205,7 @@ class Level(val stageNumber: Int) {
 
         // ===== 낭떠러지: 3스테이지부터, 그룹 사이 빈 구간 중 함정이 없는 곳에 (대표님 2026-09-20 「슈퍼마리오처럼 낭떠러지」) =====
         // 폭 160~215 는 점프 사거리(약 300) 안이라 뛰어넘을 수 있다. 냥이들도 hazardAhead 로 뛰어넘는다.
-        val chasmCount = if (stageNumber < 3) 0 else (1 + (stageNumber - 3) / 4).coerceAtMost(if (stageNumber == 20) 2 else 5)   // 20 은 5 → 2 (2026-10-04)
+        val chasmCount = if (stageNumber < 3) 0 else (1 + (stageNumber - 3) / 4).coerceAtMost(if (stageNumber == 20) 2 else if (stageNumber in 21..30) 3 else 5)   // 꿀 지역 최대 3 (Claude 판단)   // 20 은 5 → 2 (2026-10-04)
         val chasmFreeGaps = gapCenters.filter { gc -> hazardX.none { kotlin.math.abs(it - gc) < 500f } }
         repeat(chasmCount) { i ->
             if (chasmFreeGaps.isEmpty()) return@repeat

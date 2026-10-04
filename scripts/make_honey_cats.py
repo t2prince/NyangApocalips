@@ -54,7 +54,7 @@ def make_bee():
     for u in (0.30, 0.48):
         cx = x0 + u * bw
         bow = -bw * 0.10                                  # 가운데가 엉덩이 쪽으로 볼록
-        half = bw * 0.065
+        half = bw * 0.038                                # 「줄무늬 두께 줄여줘」 2026-10-04
         ts = np.linspace(0, 1, 24)
         left = [(cx + bow * np.sin(np.pi * t) - half, y0 - 6 + (bh + 12) * t) for t in ts]
         right = [(cx + bow * np.sin(np.pi * t) + half, y0 - 6 + (bh + 12) * t) for t in ts[::-1]]

@@ -46,6 +46,9 @@ class Level(val stageNumber: Int) {
     val walls = mutableListOf<Wall>()
     /** 정글의 덩굴 그네 — 인간도 점프로 잡고 타서 건널 수 있다 (12~20) */
     val vines = mutableListOf<Vine>()
+    /** 31 해적 스테이지: 토네이도 함정 · 끝의 해적선 자리(x, 없으면 null) */
+    val tornadoTraps = mutableListOf<TornadoTrap>()
+    var pirateShipX: Float? = null
     val projectiles = mutableListOf<Projectile>()
     var playerStartX = 200f
     var areaWidth = Constants.PLAY_AREA_RIGHT
@@ -130,6 +133,11 @@ class Level(val stageNumber: Int) {
                 spikes = 2, dangerPits = 1, secrets = 3, humans = 1, cats = 1)
             30 -> StagePlan(mapOf(Kind.BEE to 18, Kind.FLOWER to 8, Kind.YELLOW to 3, Kind.ANVIL to 2, Kind.NORMAL to 4),
                 dangerPits = 1, secrets = 3, cats = 2)
+            // ===== 31 해적 스테이지 (특수 스테이지 표 기획12): 해적냥이 Boss·냥이·물냥이·배냥이 / 토네이도 함정 =====
+            // 마릿수·구출·비밀의 방은 Claude 판단. 끝에 해적선이 있고 해적냥이가 그 앞을 지킨다.
+            31 -> StagePlan(mapOf(Kind.NORMAL to 8, Kind.BLUE to 6, Kind.BOAT to 6),
+                secrets = 1, humans = 1, cats = 1, tornadoes = 2,
+                boss = { baseX -> listOf(PirateCatBoss(baseX, Constants.GROUND_Y)) })
             // 정글의 끝: 마법사 냥이 삼형제가 신전을 지킨다 (원안 마지막 보스 디자인)
             else -> StagePlan(mapOf(Kind.KITTEN to 3, Kind.YELLOW to 4, Kind.GUN to 4, Kind.NORMAL to 4, Kind.GREEN to 3, Kind.VINE to 6, Kind.FLUFFY to 3,   // 20: 치즈냥이도 넣는다 (대표님 2026-09-20, 마릿수는 Claude 판단)
                 Kind.ANVIL to 3, Kind.LASER to 3, Kind.THIEF to 1),
@@ -241,6 +249,18 @@ class Level(val stageNumber: Int) {
             prisons.add(Prison(px, Terrain.groundY(px), kind))
         }
 
+        // ===== 31 해적: 토네이도 함정을 빈 구간에, 해적선은 보스 자리 뒤에 =====
+        if (plan.tornadoes > 0) {
+            val free = gapCenters.filter { gc -> hazardX.none { kotlin.math.abs(it - gc) < 450f } }
+            for (i in 0 until plan.tornadoes) {
+                if (free.isEmpty()) break
+                val tx = free[((i + 1) * free.size) / (plan.tornadoes + 1) % free.size]
+                tornadoTraps.add(TornadoTrap(tx, Terrain.groundY(tx), seed = stageNumber + i * 3))
+                hazardX.add(tx - 80f)
+            }
+        }
+        if (stageNumber == 31) pirateShipX = bossBaseX + 420f
+
         // 벌집 구조물은 뺐다 (대표님 2026-10-04 「벌집을 없애줘」) — 벌냥이는 다른 냥이처럼 표에서 바로 배치되어 날아다닌다
 
         // ===== 정글(12~20)의 덩굴 그네: 그룹 사이 빈 구간에 매달아 둔다 =====
@@ -284,7 +304,8 @@ class Level(val stageNumber: Int) {
         HAMMER({ x, y -> HammerCat(x, y) }),     // 해머냥이 HP10 공격3 (기획7 — 모루냥이가 나오는 스테이지에만, 마릿수 무작위)
         GUN({ x, y -> GunCat(x, y) }),           // 총냥이 HP15 공격2 (기획8) — 표엔 안 넣고 LASER 자리에서 50% 로 나온다
         FLOWER({ x, y -> FlowerCat(x, y) }),
-        BEE({ x, y -> BeeCat(x, y) });           // 벌냥이 HP3 (기획10) — 처음부터 날아다닌다     // 꽃냥이 HP15 공격10 (기획10, 꿀 스테이지)
+        BEE({ x, y -> BeeCat(x, y) }),
+        BOAT({ x, y -> BoatCat(x, y) });         // 배냥이 HP20 (31 해적)           // 벌냥이 HP3 (기획10) — 처음부터 날아다닌다     // 꽃냥이 HP15 공격10 (기획10, 꿀 스테이지)
 
         companion object {
             /** 모루냥이 스테이지에 섞이는 해머냥이 마릿수 범위 (무작위) */
@@ -304,6 +325,7 @@ class Level(val stageNumber: Int) {
         val humans: Int = 0,        // 구출: 인간 감옥
         val cats: Int = 0,          // 구출: 고양이 감옥 (부수면 아군 합류)
         val boss: ((Float) -> List<Enemy>)? = null,
+        val tornadoes: Int = 0,     // 토네이도 함정 (31 해적)
     )
 
     fun onEnemyDefeated() {

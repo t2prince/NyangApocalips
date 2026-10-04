@@ -980,6 +980,81 @@ class FlowerCat(x: Float, y: Float) : Enemy(x, y, 15, 10) {
     }
 }
 
+// ============ 31 해적 스테이지 (기획12·13, 2026-10-04 「해적 스테이지 만들어줘」 — 공격은 Claude 판단) ============
+/**
+ * 배냥이 — HP 20. 나무배를 타고 모래 위를 미끄러지듯 빠르게 다가와 **배로 들이받는다**(닿으면 하트 1).
+ * 배가 출렁이며 다가오고, 한 번 들이받으면 뒤로 물러났다가 다시 온다. 속도·물러나는 시간은 Claude 판단.
+ */
+class BoatCat(x: Float, y: Float) : Enemy(x, y, 20, 5) {
+    override val width = 110f
+    override val height = 90f
+    private var rock = (Math.random() * 6.0).toFloat()
+    private var backoff = 0f
+
+    override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
+        rock += deltaTime * 5f
+        val dx = playerX - x
+        if (backoff > 0f) {
+            backoff -= deltaTime
+            velocityX = -sign(dx) * 160f
+        } else {
+            velocityX = if (abs(dx) < 700f) sign(dx) * 240f else sign(dx) * 90f
+            if (abs(dx) < 50f) backoff = 0.8f              // 들이받고 물러난다
+        }
+        facingRight = dx > 0f
+        jumpZ = -abs(sin(rock.toDouble())).toFloat() * 6f
+        super.update(deltaTime, playerX, playerY)
+        if (velocityX != 0f && backoff > 0f) facingRight = dx > 0f   // 물러날 때도 인간 쪽을 본다
+    }
+
+    override fun draw(canvas: Canvas) {
+        drawSprite(canvas, SpriteManager.boatCat)
+        drawHpBar(canvas)
+    }
+}
+
+/**
+ * 해적냥이 — 31 보스, HP 40 (기획13). 해적선 앞을 지키며 다가와 **갈고리로 할퀴며 돌진**한다(보스라 닿으면 하트 3).
+ * 2.5초마다 살짝 웅크렸다가 인간 쪽으로 빠르게 돌진. 간격·돌진 속도는 Claude 판단.
+ */
+class PirateCatBoss(x: Float, y: Float) : Enemy(x, y, 40, 8) {
+    override val width = 120f
+    override val height = 120f
+    override val contactDamage = 3
+    private var dashTimer = 2.0f
+    private var windup = 0f
+    private var dashing = 0f
+    private var dir = 1f
+    private var hopPhase = 0f
+
+    override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
+        val dx = playerX - x
+        dashTimer -= deltaTime
+        when {
+            dashing > 0f -> { dashing -= deltaTime; velocityX = dir * 620f; jumpZ = 0f }
+            windup > 0f -> {
+                windup -= deltaTime; velocityX = 0f; jumpZ = 0f
+                if (windup <= 0f) { dashing = 0.45f; dir = sign(dx) }
+            }
+            else -> {
+                facingRight = dx > 0f
+                velocityX = if (abs(dx) > 160f) sign(dx) * 110f else 0f
+                if (abs(velocityX) > 1f) { hopPhase += deltaTime * 10f; jumpZ = -abs(sin(hopPhase.toDouble())).toFloat() * 8f } else jumpZ = 0f
+                if (dashTimer <= 0f && abs(dx) < 700f) { windup = 0.45f; dashTimer = 2.5f }
+            }
+        }
+        super.update(deltaTime, playerX, playerY)
+        if (dashing > 0f) facingRight = dir > 0f
+    }
+
+    override fun draw(canvas: Canvas) {
+        // 돌진 직전엔 몸을 웅크리며 떤다
+        if (windup > 0f) jumpZ = sin(animTime * 60f) * 3f
+        drawSprite(canvas, SpriteManager.pirateCat)
+        drawHpBar(canvas)
+    }
+}
+
 // ============ 새끼 고양이 (대표님 2026-09-27) ============
 /**
  * 새끼 고양이 — HP 3 (처음 6 → 대표님 정정) · 닿으면 **하트 반 칸**. 치즈냥이를 작게 줄인 모습(무늬는 치즈냥이처럼 무작위).

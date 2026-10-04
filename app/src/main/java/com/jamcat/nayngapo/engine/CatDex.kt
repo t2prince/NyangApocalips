@@ -71,6 +71,8 @@ object CatDex {
         is KittenCat -> "kitten"
         is BeeCat -> "bee"
         is FlowerCat -> "flower"
+        is BoatCat -> "boat"
+        is PirateCatBoss -> "pirate"
         is PoopCat -> "poop"
         is FlyingCat -> "flying"
         is FluffyCat -> "fluffy"

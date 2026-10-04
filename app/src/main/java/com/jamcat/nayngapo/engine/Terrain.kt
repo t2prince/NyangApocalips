@@ -71,6 +71,8 @@ object Terrain {
         28 -> Profile(Shape.DUNES, 170f, 1600f, 5f, 0.5f)
         29 -> Profile(Shape.MESA, 200f, 1300f, 6f, 0.8f)
         30 -> Profile(Shape.TERRACES, 150f, 2400f, 3f, 0.4f)
+        // 해적 (바닷가 모래밭)
+        31 -> Profile(Shape.DUNES, 70f, 1700f, 3f, 0.3f)
         else -> Profile(Shape.ROLLING, 60f + stage * 4f, 1500f, 4f, 0f)
     }
 

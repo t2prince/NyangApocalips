@@ -27,7 +27,8 @@ class GamePlayScreen(
         stageNumber <= 10 -> Theme.GRASS   // 초원: 잔디 + 나무 + 구름
         stageNumber <= 20 -> Theme.JUNGLE  // 정글: 거대한 나무 + 늘어진 덩굴
         stageNumber <= 30 -> Theme.HONEY   // 꿀: 21~30 (대표님 2026-10-04) — 벌집 바닥 + 큰 꽃 (기획10)
-        stageNumber <= 30 -> Theme.SNOW
+        stageNumber == 31 -> Theme.BEACH   // 해적: 바닷가 모래밭 + 바다, 끝에 해적선 (2026-10-04)
+        stageNumber <= 40 -> Theme.SNOW    // 32~40 빙산 (예정)
         stageNumber <= 40 -> Theme.DESERT
         else -> Theme.VOLCANO
     }
@@ -925,6 +926,18 @@ class GamePlayScreen(
         // 설원의 깊은 눈: 걸어 들어가면 허우적거린다 (뛰어넘으면 안전)
         player.inDeepSnow = !player.isJumping && !player.ridingVine &&
             level.snowPits.any { it.swallows(player.x + player.width / 2f) }
+
+        // 토네이도 함정 (31): 닿으면 하트 1 + 뒤로 날아간다 (점프로 넘으면 안전)
+        for (tt in level.tornadoTraps) {
+            tt.update(deltaTime)
+            val pcx = player.x + player.width / 2f
+            if (!player.isJumping && !player.isInvincible && tt.hits(pcx)) {
+                player.takeDamage(1)
+                player.x += if (pcx < tt.x) -260f else 260f
+                shake(0.2f, 10f)
+                hitEffects.add(HitEffect(player.x, player.y - player.height, 0.7f, "휘이잉!"))
+            }
+        }
 
         // 늪(기획3): 빠지면 5배 느려진다. 점프로 빠져나올 수 있다.
         for (swamp in level.swamps) swamp.update(deltaTime)
@@ -2013,6 +2026,8 @@ class GamePlayScreen(
         for (room in level.secretRooms) room.draw(canvas)
         for (swamp in level.swamps) swamp.draw(canvas)
         for (pool in lavaPools) drawLavaPool(canvas, pool)
+        level.pirateShipX?.let { drawPirateShip(canvas, it) }
+        for (tt in level.tornadoTraps) tt.draw(canvas)
         for (pit in level.pits) pit.draw(canvas)
         for (trap in level.traps) trap.draw(canvas)
         for (wall in level.walls) wall.draw(canvas)
@@ -2638,6 +2653,17 @@ class GamePlayScreen(
     }
 
     /** 하늘에 떠 있는 구름 — 카메라보다 아주 느리게 흘러 멀리 있어 보인다 */
+    // ===== 31 해적: 해적선 (모래밭에 얹힌 커다란 배, 보스 뒤 배경) =====
+    private val shipDst = RectF()
+    private fun drawPirateShip(canvas: Canvas, sx: Float) {
+        val bmp = SpriteManager.pirateShip
+        val h = 560f
+        val w = bmp.width * h / bmp.height
+        val gy = Terrain.groundY(sx)
+        shipDst.set(sx - w / 2f, gy + 60f - h, sx + w / 2f, gy + 60f)
+        canvas.drawBitmap(bmp, null, shipDst, null)
+    }
+
     // ===== 꿀 스테이지 (기획10) =====
     private val stemPaint = Paint().apply { color = Color.rgb(96, 170, 80); strokeWidth = 14f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
     private val petalPaint = Paint().apply { isAntiAlias = true }

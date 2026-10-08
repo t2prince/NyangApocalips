@@ -2,6 +2,7 @@ package com.jamcat.nayngapo.screen
 
 import android.graphics.*
 import android.view.MotionEvent
+import com.jamcat.nayngapo.engine.GameProgress
 import com.jamcat.nayngapo.engine.GameView
 import com.jamcat.nayngapo.engine.SpriteManager
 
@@ -27,7 +28,8 @@ class LoadingScreen(private val gameView: GameView) : Screen {
         timer += deltaTime
         if (timer >= DURATION && !done) {
             done = true
-            gameView.showTitle()   // 스토리 화면은 없앴다 (대표님 2026-10-04) — 로딩 뒤 바로 타이틀
+            // 스토리는 게임을 처음 켰을 때 한 번만 (대표님 2026-10-08). 그 뒤로는 로딩 → 바로 타이틀
+            if (GameProgress.storySeen) gameView.showTitle() else gameView.showStory()
         }
     }
 

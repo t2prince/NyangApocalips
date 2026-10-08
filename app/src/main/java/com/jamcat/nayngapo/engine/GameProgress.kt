@@ -33,6 +33,7 @@ object GameProgress {
     private const val KEY_KILLS = "stat_kills"
     private const val KEY_THIEF_KILLS = "stat_thief_kills"
     private const val KEY_HUMANS_RESCUED = "stat_humans_rescued"
+    private const val KEY_STORY_SEEN = "story_seen"
     private const val KEY_MISSIONS_CLAIMED = "missions_claimed"
     private const val KEY_STAGE20_NO_DEATH = "stat_stage20_no_death"
     private const val KEY_BGM = "setting_bgm"
@@ -96,6 +97,16 @@ object GameProgress {
     var rubyDebt = 0
         private set
     /** 누적 처치 수 (미션용, 2026-09-20) */
+    /** 스토리 화면을 이미 봤는가 — 게임을 처음 켰을 때 한 번만 나온다 (대표님 2026-10-08) */
+    var storySeen = false
+        private set
+
+    fun markStorySeen() {
+        if (storySeen) return
+        storySeen = true
+        prefs?.edit()?.putBoolean(KEY_STORY_SEEN, true)?.apply()
+    }
+
     /** 지금까지 구한 인간 수 — 한 명마다 상점 천막 하나가 열린다 (대표님 2026-09-27). 이 기록은 2026-09-27 부터 센다 */
     var humansRescued = 0
         private set
@@ -161,6 +172,7 @@ object GameProgress {
         totalKills = prefs?.getInt(KEY_KILLS, 0) ?: 0
         thiefKills = prefs?.getInt(KEY_THIEF_KILLS, 0) ?: 0
         humansRescued = prefs?.getInt(KEY_HUMANS_RESCUED, 0) ?: 0
+        storySeen = prefs?.getBoolean(KEY_STORY_SEEN, false) ?: false
         bgmEnabled = prefs?.getBoolean(KEY_BGM, true) ?: true
         sfxEnabled = prefs?.getBoolean(KEY_SFX, true) ?: true
         shakeEnabled = prefs?.getBoolean(KEY_SHAKE, true) ?: true

@@ -55,9 +55,8 @@ class ShopScreen(private val gameView: GameView) : Screen {
         returnX = null
         player.facingRight = true
         // 땅 스테이지와 같이 날아냥이는 빼고, 인간 뒤에 줄지어 선다
-        val party = com.jamcat.nayngapo.engine.CatTeam.party.filter {
-            it.kind != com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING && it.kind != com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT
-        }
+        // 배냥이도 상점 마을을 걸어 다니고 모든 가게에 갈 수 있다 (대표님 2026-10-09). 날아냥이는 여전히 하늘 전용
+        val party = com.jamcat.nayngapo.engine.CatTeam.party.filter { it.kind != com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING }
         for ((i, cat) in party.withIndex()) {
             allies.add(
                 com.jamcat.nayngapo.entity.AllyCat(

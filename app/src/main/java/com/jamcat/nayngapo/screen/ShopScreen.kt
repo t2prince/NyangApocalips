@@ -35,7 +35,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     // 버튼 구성은 스테이지와 똑같이 (대표님 2026-09-27): 배운 고양이 기술·인간 기술 버튼, 팀 지시, 필살기, 멈추기·나가기
     private val catSkills = com.jamcat.nayngapo.engine.CatSkills.all
-        .filter { com.jamcat.nayngapo.engine.CatSkills.isLearned(it.id) }.take(3)
+        .filter { com.jamcat.nayngapo.engine.CatSkills.isActive(it.id) }.take(com.jamcat.nayngapo.ui.TouchControls.SKILL_SLOTS)
     private val humanSkills = com.jamcat.nayngapo.engine.HumanSkills.all
         .filter { com.jamcat.nayngapo.engine.HumanSkills.isLearned(it.id) }.take(com.jamcat.nayngapo.ui.TouchControls.HUMAN_SKILL_SLOTS)
     private var order = com.jamcat.nayngapo.entity.AllyOrder.FOLLOW

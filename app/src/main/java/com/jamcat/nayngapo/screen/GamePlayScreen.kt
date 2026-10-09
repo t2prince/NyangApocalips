@@ -123,11 +123,11 @@ class GamePlayScreen(
     /** 덩굴 아래에 처음 섰을 때 한 번만 알려 준다 */
     private var vineHintShown = false
 
-    /** 이 스테이지에서 쓸 수 있는 고양이 기술 (배운 것만, 최대 3개) */
+    /** 이 스테이지에서 쓸 수 있는 고양이 기술 (배우고 켜 둔 것만, 최대 4개 — 묭묭 진화로 4칸) */
     private val battleSkills =
         com.jamcat.nayngapo.engine.CatSkills.all
-            .filter { com.jamcat.nayngapo.engine.CatSkills.isLearned(it.id) }
-            .take(3)
+            .filter { com.jamcat.nayngapo.engine.CatSkills.isActive(it.id) }   // 배우고 켜 둔 기술만
+            .take(com.jamcat.nayngapo.ui.TouchControls.SKILL_SLOTS)
 
     /** 기술별 남은 쿨타임 (스테이지를 시작할 때는 모두 준비 완료) */
     private val skillCooldowns = FloatArray(battleSkills.size)
@@ -2268,7 +2268,7 @@ class GamePlayScreen(
         if (skyShader == null) {
             val top = when (theme) {
                 Theme.JUNGLE -> Color.rgb(64, 152, 192)     // 축축하고 무성한 정글 하늘
-                Theme.HONEY -> Color.rgb(96, 178, 236)      // 맑은 꽃밭 하늘
+                Theme.HONEY -> Color.rgb(120, 62, 10)       // 어두운 벌꿀빛 하늘 (대표님 2026-10-09)
                 Theme.SNOW -> Color.rgb(120, 175, 215)      // 창백하고 차가운 하늘
                 Theme.DESERT -> Color.rgb(86, 168, 224)     // 쨍한 사막 하늘
                 Theme.BEACH -> Color.rgb(70, 176, 232)      // 맑은 바닷가 하늘
@@ -2277,7 +2277,7 @@ class GamePlayScreen(
             }
             val bottom = when (theme) {
                 Theme.JUNGLE -> Color.rgb(215, 238, 224)    // 옅은 물안개
-                Theme.HONEY -> Color.rgb(255, 236, 190)     // 지평선의 꿀빛
+                Theme.HONEY -> Color.rgb(214, 138, 30)      // 지평선은 조금 밝은 꿀빛
                 Theme.SNOW -> Color.rgb(226, 240, 250)
                 Theme.DESERT -> Color.rgb(250, 226, 170)    // 지평선의 모래 먼지
                 Theme.BEACH -> Color.rgb(214, 244, 252)

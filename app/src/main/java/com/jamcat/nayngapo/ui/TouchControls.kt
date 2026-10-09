@@ -578,7 +578,7 @@ class TouchControls {
         const val ORDER_PULSE_TIME = 0.2f
 
         /** 화면에 놓을 기술 버튼 칸 수 */
-        const val SKILL_SLOTS = 3
+        const val SKILL_SLOTS = 4   // 묭묭 진화 추가로 4칸 (2026-10-09)
 
         /** 인간 기술 버튼 칸 수 */
         const val HUMAN_SKILL_SLOTS = 5   // 각성 추가로 5칸 (2026-10-09)

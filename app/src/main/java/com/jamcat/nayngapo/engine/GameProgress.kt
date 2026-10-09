@@ -34,6 +34,7 @@ object GameProgress {
     private const val KEY_THIEF_KILLS = "stat_thief_kills"
     private const val KEY_HUMANS_RESCUED = "stat_humans_rescued"
     private const val KEY_STORY_SEEN = "story_seen"
+    private const val KEY_DUMMY_LEVEL = "dummy_level"
     private const val KEY_MISSIONS_CLAIMED = "missions_claimed"
     private const val KEY_STAGE20_NO_DEATH = "stat_stage20_no_death"
     private const val KEY_BGM = "setting_bgm"
@@ -100,6 +101,23 @@ object GameProgress {
     /** 스토리 화면을 이미 봤는가 — 게임을 처음 켰을 때 한 번만 나온다 (대표님 2026-10-08) */
     var storySeen = false
         private set
+
+    /**
+     * 투기장 가짜 냥이 Lv (대표님 2026-10-09): 루비 10개로 Lv업, Lv업 할 때마다 가짜 냥이가 두 배로 딴딴해진다.
+     * 최대 Lv·더 딴딴하면 훈련 효과(공격력 +3)도 두 배는 Claude 판단.
+     */
+    var dummyLevel = 1
+        private set
+    const val DUMMY_LEVEL_PRICE = 10
+    const val DUMMY_LEVEL_MAX = 6
+
+    fun levelUpDummy(): Boolean {
+        if (dummyLevel >= DUMMY_LEVEL_MAX) return false
+        if (!spendRubies(DUMMY_LEVEL_PRICE)) return false
+        dummyLevel++
+        prefs?.edit()?.putInt(KEY_DUMMY_LEVEL, dummyLevel)?.apply()
+        return true
+    }
 
     fun markStorySeen() {
         if (storySeen) return
@@ -173,6 +191,7 @@ object GameProgress {
         thiefKills = prefs?.getInt(KEY_THIEF_KILLS, 0) ?: 0
         humansRescued = prefs?.getInt(KEY_HUMANS_RESCUED, 0) ?: 0
         storySeen = prefs?.getBoolean(KEY_STORY_SEEN, false) ?: false
+        dummyLevel = (prefs?.getInt(KEY_DUMMY_LEVEL, 1) ?: 1).coerceIn(1, DUMMY_LEVEL_MAX)
         bgmEnabled = prefs?.getBoolean(KEY_BGM, true) ?: true
         sfxEnabled = prefs?.getBoolean(KEY_SFX, true) ?: true
         shakeEnabled = prefs?.getBoolean(KEY_SHAKE, true) ?: true

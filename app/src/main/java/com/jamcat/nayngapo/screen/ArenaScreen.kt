@@ -15,6 +15,9 @@ import kotlin.math.sin
  * **30초 때릴 때마다 공격력 +3** (CatTeam.arenaTrain, 영구). 조작 없이 지켜보다가 '나가기'로 상점 마을(투기장 앞)로.
  * (한 대 간격 0.9초·무료·횟수 제한 없음·나가면 채우던 30초는 처음부터는 Claude 판단)
  *
+ * **Lv 버튼** (대표님 2026-10-09): 루비 10개로 가짜 냥이 Lv업 — Lv업 할 때마다 가짜 냥이가 **두 배로 딴딴해진다**
+ * (딴딴함 = 100 × 2^(Lv-1), 다 깎이면 부서졌다가 다시 선다). 더 딴딴한 가짜 냥이를 때리면 30초마다 오르는 공격력도 두 배
+ * (+3 × 2^(Lv-1)) · 최대 Lv 6 은 Claude 판단.
  * **'냥이끼리 싸우기' 버튼** (대표님 2026-10-09): 데려온 내 냥이 두 마리를 골라 서로 싸우게 한다.
  * 번갈아 한 대씩 때리고(공격력만큼), 체력(레벨 체력 + HP 수술)이 먼저 0이 되는 쪽이 진다.
  * 연습 시합이라 진 냥이가 다치거나 무덤이 되지는 않고 보상도 없다, 싸우는 동안 가짜 냥이 훈련 시간은 멈춘다 (Claude 판단).
@@ -30,6 +33,14 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
 
     /** 이번 30초에서 흐른 시간 · 이번에 늘어난 공격력 */
     private var trained = 0f
+    /** 가짜 냥이 Lv · 딴딴함 — Lv업마다 두 배 */
+    private val dummyLevel: Int get() = com.jamcat.nayngapo.engine.GameProgress.dummyLevel
+    private val dummyMax: Int get() = 100 shl (dummyLevel - 1)
+    private val trainGain: Int get() = CatTeam.ARENA_ATTACK shl (dummyLevel - 1)
+    private var dummyHp = 100 shl (com.jamcat.nayngapo.engine.GameProgress.dummyLevel - 1)
+    /** 부서졌다 다시 서기까지 남은 시간 */
+    private var broken = 0f
+    private val lvBtn = RectF()
     private var gained = 0
     private var timer = 0f
 
@@ -142,22 +153,29 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
         trained += deltaTime
         if (trained >= CatTeam.ARENA_SECONDS) {
             trained -= CatTeam.ARENA_SECONDS
-            if (CatTeam.arenaTrain(cat.id)) {
-                gained += CatTeam.ARENA_ATTACK
-                pops.add(Pop(0f, 2.0f, "공격력 +${CatTeam.ARENA_ATTACK}!", true))
+            val gain = trainGain
+            if (CatTeam.arenaTrain(cat.id, gain)) {
+                gained += gain
+                pops.add(Pop(0f, 2.0f, "공격력 +$gain!", true))
             }
         }
+        // 부서진 가짜 냥이는 1초 뒤 다시 선다 (딴딴함 가득)
+        if (broken > 0f) { broken -= deltaTime; if (broken <= 0f) dummyHp = dummyMax }
         // 한 대씩 때린다
         if (lunge < 0f) {
             hitWait -= deltaTime
-            if (hitWait <= 0f) { lunge = 0f; struck = false }
+            if (hitWait <= 0f && broken <= 0f) { lunge = 0f; struck = false }
         } else {
             lunge += deltaTime / LUNGE_TIME
             if (!struck && lunge >= 0.5f) {
                 struck = true
-                wobble = 1f
+                // 딴딴할수록 덜 흔들린다
+                wobble = 1f / (1f + (dummyLevel - 1) * 0.35f)
                 SoundManager.playAttack()
-                pops.add(Pop(0f, 0.8f, "퍽! ${CatTeam.totalAttackOf(cat)}", false))
+                val power = CatTeam.totalAttackOf(cat)
+                dummyHp = (dummyHp - power).coerceAtLeast(0)
+                pops.add(Pop(0f, 0.8f, "퍽! $power", false))
+                if (dummyHp <= 0) { broken = 1f; pops.add(Pop(0f, 1.0f, "와장창!", false)) }
             }
             if (lunge >= 1f) { lunge = -1f; hitWait = HIT_INTERVAL - LUNGE_TIME }
         }
@@ -210,10 +228,22 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
         rect.set(dx - dw * 0.45f, floorY - 12f, dx + dw * 0.45f, floorY + 14f)
         canvas.drawOval(rect, shadowPaint)
         canvas.save()
-        canvas.rotate(sin(timer * 22f) * wobble * 14f, dx, floorY)
+        if (broken > 0f) canvas.rotate(70f * (1f - broken).coerceIn(0f, 1f).let { 1f - (1f - it) * (1f - it) } + 20f, dx, floorY)   // 부서져 넘어진다
+        else canvas.rotate(sin(timer * 22f) * wobble * 14f, dx, floorY)
         rect.set(dx - dw / 2f, floorY - dh, dx + dw / 2f, floorY)
         canvas.drawBitmap(dummy, null, rect, null)
         canvas.restore()
+        // 가짜 냥이 Lv · 딴딴함 막대
+        val hbw = dw * 0.8f; val hbx = dx - hbw / 2f; val hby = floorY - dh - h * 0.06f
+        text.textSize = h * 0.036f; text.textAlign = Paint.Align.CENTER
+        canvas.drawText("가짜 냥이 Lv $dummyLevel · 딴딴함 $dummyHp/$dummyMax", dx, hby - h * 0.015f, text)
+        text.textAlign = Paint.Align.LEFT
+        rect.set(hbx, hby, hbx + hbw, hby + h * 0.03f)
+        canvas.drawRoundRect(rect, 10f, 10f, barBack)
+        rect.set(hbx, hby, hbx + hbw * dummyHp / dummyMax.toFloat(), hby + h * 0.03f)
+        canvas.drawRoundRect(rect, 10f, 10f, strawBar)
+        rect.set(hbx, hby, hbx + hbw, hby + h * 0.03f)
+        canvas.drawRoundRect(rect, 10f, 10f, ink)
 
         // 냥이: 가짜 냥이 쪽으로 뛰어들었다 돌아온다
         val ch = h * 0.24f; val cw = sprite.width * ch / sprite.height
@@ -256,11 +286,12 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
         rect.set(bx, by, bx + bw, by + bh)
         canvas.drawRoundRect(rect, bh / 2f, bh / 2f, ink)
         text.textSize = h * 0.038f; text.textAlign = Paint.Align.CENTER
-        canvas.drawText("다음 공격력 +${CatTeam.ARENA_ATTACK}까지 ${left}초", w / 2f, by - h * 0.02f, text)
+        canvas.drawText("다음 공격력 +${trainGain}까지 ${left}초", w / 2f, by - h * 0.02f, text)
         text.textAlign = Paint.Align.LEFT
 
         drawExit(canvas, w, h)
         drawDuelButton(canvas, w, h)
+        drawLvButton(canvas, w, h)
         drawNotice(canvas, w, h)
     }
 
@@ -272,6 +303,31 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
         text.textAlign = Paint.Align.LEFT
     }
     private val duelBtnPaint = Paint().apply { color = Color.rgb(255, 214, 120); isAntiAlias = true }
+    private val strawBar = Paint().apply { color = Color.rgb(240, 190, 60); isAntiAlias = true }
+    private val lvBtnPaint = Paint().apply { color = Color.rgb(160, 220, 255); isAntiAlias = true }
+
+    /** 가짜 냥이 Lv업 버튼 (루비 10) — 냥이끼리 싸우기 버튼 아래 */
+    private fun drawLvButton(canvas: Canvas, w: Float, h: Float) {
+        lvBtn.set(duelBtn.left, duelBtn.bottom + 24f, duelBtn.right, duelBtn.bottom + 120f)
+        canvas.drawRoundRect(lvBtn, 48f, 48f, lvBtnPaint); canvas.drawRoundRect(lvBtn, 48f, 48f, ink)
+        text.textSize = 38f; text.textAlign = Paint.Align.CENTER
+        val gp = com.jamcat.nayngapo.engine.GameProgress
+        val label = if (dummyLevel >= gp.DUMMY_LEVEL_MAX) "Lv $dummyLevel (최대)" else "Lv 업 ▲  루비 ${gp.DUMMY_LEVEL_PRICE}"
+        canvas.drawText(label, lvBtn.centerX(), lvBtn.centerY() + 13f, text)
+        text.textAlign = Paint.Align.LEFT
+    }
+
+    private fun tapLvButton() {
+        val gp = com.jamcat.nayngapo.engine.GameProgress
+        when {
+            dummyLevel >= gp.DUMMY_LEVEL_MAX -> { noticeText = "가짜 냥이가 이미 최대 Lv 이에요"; noticeTimer = 2f }
+            gp.levelUpDummy() -> {
+                dummyHp = dummyMax; broken = 0f
+                noticeText = "가짜 냥이 Lv $dummyLevel! 두 배로 딴딴해졌다냥 (루비 ${gp.rubies}개 남음)"; noticeTimer = 2.2f
+            }
+            else -> { noticeText = "루비가 ${gp.DUMMY_LEVEL_PRICE}개 있어야 Lv업 할 수 있어요 (지금 ${gp.rubies}개)"; noticeTimer = 2.2f }
+        }
+    }
 
     private fun drawNotice(canvas: Canvas, w: Float, h: Float) {
         if (noticeTimer <= 0f) return
@@ -385,7 +441,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
             rect.set(exitRect.left - 30f, exitRect.top - 30f, exitRect.right + 30f, exitRect.bottom + 30f)
             if (rect.contains(px, py)) { gameView.showShop(); return true }
             when (mode) {
-                Mode.TRAIN -> if (duelBtn.contains(px, py)) tapDuelButton()
+                Mode.TRAIN -> if (duelBtn.contains(px, py)) tapDuelButton() else if (lvBtn.contains(px, py)) tapLvButton()
                 Mode.PICK -> {
                     val k = pickRects.indexOfFirst { it.contains(px, py) }
                     if (k >= 0) {

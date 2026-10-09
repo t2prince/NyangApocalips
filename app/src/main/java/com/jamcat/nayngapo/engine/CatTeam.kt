@@ -549,10 +549,10 @@ object CatTeam {
     const val ARENA_SECONDS = 30f
     const val ARENA_ATTACK = 3
 
-    fun arenaTrain(catId: Int): Boolean {
+    fun arenaTrain(catId: Int, amount: Int = ARENA_ATTACK): Boolean {
         val c = cat(catId) ?: return false
         if (c.gone) return false
-        c.attackBonus += ARENA_ATTACK
+        c.attackBonus += amount
         save()
         return true
     }

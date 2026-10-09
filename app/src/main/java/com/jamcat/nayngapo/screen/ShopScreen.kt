@@ -390,7 +390,17 @@ class ShopScreen(private val gameView: GameView) : Screen {
         if (input.moveLeft) dirX -= 1f
         if (input.moveRight) dirX += 1f
         player.setMovement(dirX, 0f)
-        robotRide?.update(deltaTime)
+        robotRide?.let { rr ->
+            rr.update(deltaTime)
+            // 상점 마을에서도 위(▲)를 누르고 있으면 발에서 불을 뿜으며 난다
+            rr.thrusting = touchControls.inputState.moveUp
+            if (rr.thrusting) {
+                if (!player.isJumping) { player.isJumping = true; player.jumpVelocity = 0f }
+                player.jumpVelocity = (player.jumpVelocity - com.jamcat.nayngapo.entity.RobotRide.THRUST * deltaTime)
+                    .coerceAtLeast(-com.jamcat.nayngapo.entity.RobotRide.MAX_RISE_SPEED)
+                if (-player.jumpZ > com.jamcat.nayngapo.entity.RobotRide.MAX_FLY_HEIGHT) player.jumpVelocity = player.jumpVelocity.coerceAtLeast(0f)
+            }
+        }
         if (input.jump || input.moveUp) { player.jump(); input.jump = false }
         if (input.attack) { if (player.performAttack()) SoundManager.playAttack(); input.attack = false }
         player.update(deltaTime)

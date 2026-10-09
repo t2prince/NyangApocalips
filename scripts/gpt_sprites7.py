@@ -36,6 +36,11 @@ ITEMS = {
     'robot_side': ('robot_side', 460),  # 11번 로봇 상점 로봇 옆모습 (2026-10-09)
     'jamcat_logo': ('jamcat_logo', 520),  # 시작 잼캣 로고 엠블럼 (2026-10-09)
     'gacha_machine': ('gacha_machine', 520),  # 집 앞 뽑기 기계 (2026-10-10)
+    # 로봇 부품 — 팔·다리가 움직이고 주먹을 쏜다 (2026-10-10). 관절 자리는 RobotRide 의 상수
+    'robot_p_body': ('robot_p_body', 320),
+    'robot_p_arm': ('robot_p_arm', 240),
+    'robot_p_fist': ('robot_p_fist', 160),
+    'robot_p_leg': ('robot_p_leg', 280),
     # 집 안 가구 (2026-10-09 「집에 가구들도 있어」)
     'furn_sofa': ('furn_sofa', 300),
     'furn_shelf': ('furn_shelf', 400),

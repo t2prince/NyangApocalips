@@ -62,6 +62,12 @@ object SpriteManager {
     var gunSide: Bitmap? = null
     /** 로봇 옆모습 (오른쪽을 본다, 맨 위가 열린 조종석) */
     var robotSide: Bitmap? = null
+    /** 로봇 앞 주먹 (주먹 발사 탄) — 로봇 그림에서 주먹 자리를 잘라 쓴다 */
+    var robotFist: Bitmap? = null
+    /** 로봇 부품 (GPT robot_p_*) — 팔·다리를 따로 움직인다 (2026-10-10). 없으면 통그림(robotSide) */
+    var robotBody: Bitmap? = null
+    var robotArm: Bitmap? = null
+    var robotLeg: Bitmap? = null
     /** 집 앞 뽑기 기계 */
     var gachaMachine: Bitmap? = null
     lateinit var catIdleRed: List<Bitmap>
@@ -213,6 +219,13 @@ object SpriteManager {
         res.getIdentifier("car_shop", "drawable", context.packageName).let { if (it != 0) carShop = BitmapFactory.decodeResource(res, it) }
         res.getIdentifier("gun_side", "drawable", context.packageName).let { if (it != 0) gunSide = BitmapFactory.decodeResource(res, it) }
         res.getIdentifier("robot_side", "drawable", context.packageName).let { if (it != 0) robotSide = BitmapFactory.decodeResource(res, it) }
+        fun opt(name: String) = res.getIdentifier(name, "drawable", context.packageName).takeIf { it != 0 }?.let { BitmapFactory.decodeResource(res, it) }
+        robotBody = opt("robot_p_body"); robotArm = opt("robot_p_arm"); robotLeg = opt("robot_p_leg")
+        opt("robot_p_fist")?.let { robotFist = it }
+        if (robotFist == null) robotSide?.let { r ->   // 주먹 자리: 그림 가로 75~100%, 세로 32~62% (robot_side 586×460 에서 잰 값)
+            val x0 = (r.width * 0.75f).toInt(); val y0 = (r.height * 0.32f).toInt()
+            robotFist = Bitmap.createBitmap(r, x0, y0, r.width - x0, (r.height * 0.62f).toInt() - y0)
+        }
         res.getIdentifier("gacha_machine", "drawable", context.packageName).let { if (it != 0) gachaMachine = BitmapFactory.decodeResource(res, it) }
         furniture = listOf("sofa", "shelf", "table", "lamp", "catbeds", "plant", "fireplace").mapNotNull { n ->
             val id = res.getIdentifier("furn_$n", "drawable", context.packageName)

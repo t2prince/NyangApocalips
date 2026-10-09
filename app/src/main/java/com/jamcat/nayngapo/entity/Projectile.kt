@@ -42,7 +42,9 @@ class Projectile(
     /** 용암 덩이 — 주황냥이가 포물선으로 던진다 (대표님 2026-09-27). 땅에 닿으면 화면이 용암 웅덩이를 남긴다 */
     val isLava: Boolean = false,
     /** 꽃가루 — 꽃냥이가 뿜는다. 맞으면 숨이 막힌다 (대표님 2026-09-27) */
-    val isPollen: Boolean = false
+    val isPollen: Boolean = false,
+    /** 그림으로 날아가는 탄 — 로봇 주먹 발사 (2026-10-10). 바라보는 쪽(velocityX 부호)으로 그린다 */
+    val sprite: android.graphics.Bitmap? = null
 ) {
     val width = radius * 2f
     val height = radius * 2f
@@ -56,6 +58,9 @@ class Projectile(
     var fuseBurnedOut = false
 
     val hitBox: RectF get() = RectF(x, y, x + width, y + height)
+    private val spriteDst = RectF()
+    private val fistFlameOuter = Paint().apply { color = android.graphics.Color.rgb(255, 140, 40); isAntiAlias = true }
+    private val fistFlameInner = Paint().apply { color = android.graphics.Color.rgb(255, 230, 90); isAntiAlias = true }
 
     private val paint = Paint().apply {
         color = tint ?: if (isPlayerOwned) Color.CYAN else Color.RED
@@ -132,6 +137,18 @@ class Projectile(
         if (!isAlive) return
         val cx = x + width / 2f
         val cy = y + height / 2f
+
+        if (sprite != null) {
+            val bmp = if (velocityX >= 0f) sprite else com.jamcat.nayngapo.engine.SpriteManager.getFlipped(sprite)
+            val sh = height * 1.3f; val sw = bmp.width * sh / bmp.height
+            spriteDst.set(cx - sw / 2f, cy - sh / 2f, cx + sw / 2f, cy + sh / 2f)
+            // 뒤로 불꽃 꼬리
+            val back = if (velocityX >= 0f) -1f else 1f
+            canvas.drawCircle(cx + back * sw * 0.55f, cy, sh * 0.22f, fistFlameOuter)
+            canvas.drawCircle(cx + back * sw * 0.48f, cy, sh * 0.13f, fistFlameInner)
+            canvas.drawBitmap(bmp, null, spriteDst, null)
+            return
+        }
 
         if (isFirework) {
             drawFirecracker(canvas, cx, cy)

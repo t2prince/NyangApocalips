@@ -149,11 +149,19 @@ class SkyStageScreen(
      * 타고 나는 날아냥이.
      * 하늘 스테이지는 날아냥이를 타는 곳이라, 아직 한 마리도 없으면 여기서 그냥 준다.
      */
-    private val mount: com.jamcat.nayngapo.engine.CatTeam.TeamCat =
-        com.jamcat.nayngapo.engine.CatTeam.flyingMount() ?: run {
+    /** 로봇을 타면(로봇 상점 '로봇 타기') 날아냥이 대신 로봇이 발에서 불을 뿜으며 난다 — 날아냥이가 필요 없다 (대표님 2026-10-10) */
+    private val useRobot = com.jamcat.nayngapo.engine.RobotCatalog.rideLevel > 0
+    private val mount: com.jamcat.nayngapo.engine.CatTeam.TeamCat? =
+        if (useRobot) null
+        else com.jamcat.nayngapo.engine.CatTeam.flyingMount() ?: run {
             mountGranted = true
             com.jamcat.nayngapo.engine.CatTeam.recruit(com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING)
         }
+    private val mountName: String get() = mount?.name ?: "로봇 Lv ${GameProgress.robotLevel}"
+    private val flamePath = Path()
+    private val flameOuter = Paint().apply { color = Color.rgb(255, 130, 30); isAntiAlias = true }
+    private val flameInner = Paint().apply { color = Color.rgb(255, 236, 110); isAntiAlias = true }
+    private val robotDst = RectF()
 
     private inner class Rider {
         /** 로비에서 고른 인간 */
@@ -188,7 +196,7 @@ class SkyStageScreen(
             if (invincible > 0f) return
             // 타고 있는 날아냥이가 갑옷을 입었으면 등에 탄 사람도 덜 다친다
             val taken =
-                if (mount.hasArmor)
+                if (mount?.hasArmor == true)
                     Math.round(amount * com.jamcat.nayngapo.engine.CatTeam.ARMOR_DAMAGE_FACTOR)
                         .coerceAtLeast(1)
                 else amount
@@ -203,7 +211,9 @@ class SkyStageScreen(
             if (falling < 0f && invincible > 0f && ((invincible * 12).toInt() % 2 == 0)) return   // 무적 깜빡임
             val bob = if (falling >= 0f) 0f else sin((time * 5f).toDouble()).toFloat() * 7f
             if (falling >= 0f) { canvas.save(); canvas.rotate(fallSpin.coerceAtMost(75f) * (if (facingRight) 1f else -1f), x, y) }
-            val mountBmp = if (mount.hasArmor) SpriteManager.flyingCatAllyArmor else SpriteManager.flyingCatAlly
+            val robot = SpriteManager.robotSide
+            if (useRobot && robot != null) { drawOnRobot(canvas, robot, bob); if (falling >= 0f) canvas.restore(); return }
+            val mountBmp = if (mount?.hasArmor == true) SpriteManager.flyingCatAllyArmor else SpriteManager.flyingCatAlly
             val cat = if (facingRight) mountBmp else SpriteManager.getFlipped(mountBmp)
             val rider = SpriteManager.playerIdle[((time * 6).toInt()) % SpriteManager.playerIdle.size]
             val riderBmp = if (facingRight) rider else SpriteManager.getFlipped(rider)
@@ -217,6 +227,30 @@ class SkyStageScreen(
             com.jamcat.nayngapo.ui.drawHero(canvas, riderBmp, riderDst, hero, facingRight, time)
             canvas.drawBitmap(cat, x - cat.width / 2f, catTop + bodyH - cat.height, bitmapPaint)
             if (falling >= 0f) canvas.restore()
+        }
+
+        /** 로봇을 타고 난다: 조종석에 앉은 인간(테두리 아래는 잘라 그림) + 로봇 + 두 발 불꽃 */
+        private fun drawOnRobot(canvas: Canvas, robot: android.graphics.Bitmap, bob: Float) {
+            val rh = 170f; val rw = robot.width * rh / robot.height
+            val bmp = if (facingRight) robot else SpriteManager.getFlipped(robot)
+            robotDst.set(x - rw / 2f, y + bob - rh * 0.55f, x + rw / 2f, y + bob + rh * 0.45f)
+            for (fxr in floatArrayOf(0.30f, 0.66f)) {
+                val fx = if (facingRight) robotDst.left + rw * fxr else robotDst.right - rw * fxr
+                val len = 40f + kotlin.math.abs(sin(time * 30f + fxr * 7f)) * 34f
+                flamePath.reset(); flamePath.moveTo(fx - 20f, robotDst.bottom - 5f); flamePath.lineTo(fx + 20f, robotDst.bottom - 5f); flamePath.lineTo(fx, robotDst.bottom + len); flamePath.close()
+                canvas.drawPath(flamePath, flameOuter)
+                flamePath.reset(); flamePath.moveTo(fx - 10f, robotDst.bottom - 5f); flamePath.lineTo(fx + 10f, robotDst.bottom - 5f); flamePath.lineTo(fx, robotDst.bottom + len * 0.6f); flamePath.close()
+                canvas.drawPath(flamePath, flameInner)
+            }
+            val rider = SpriteManager.playerIdle[0]
+            val riderBmp = if (facingRight) rider else SpriteManager.getFlipped(rider)
+            val hw = riderBmp.width * 0.62f; val hh = riderBmp.height * 0.62f
+            val rimY = robotDst.top + rh * 0.16f
+            riderDst.set(x - hw / 2f, rimY - hh * 0.45f, x + hw / 2f, rimY + hh * 0.55f)
+            canvas.save(); canvas.clipRect(-1e6f, -1e6f, 1e6f, rimY)
+            com.jamcat.nayngapo.ui.drawHero(canvas, riderBmp, riderDst, hero, facingRight, time)
+            canvas.restore()
+            canvas.drawBitmap(bmp, null, robotDst, bitmapPaint)
         }
     }
 
@@ -408,7 +442,7 @@ class SkyStageScreen(
     }
     private val evolveDst = RectF()
     private val cloudAllies: List<CloudAlly> =
-        com.jamcat.nayngapo.engine.CatTeam.party.filter { it.id != mount.id }.mapIndexed { i, c -> CloudAlly(c, i) }
+        com.jamcat.nayngapo.engine.CatTeam.party.filter { it.id != mount?.id }.mapIndexed { i, c -> CloudAlly(c, i) }
 
     private fun allySpriteFor(cat: com.jamcat.nayngapo.engine.CatTeam.TeamCat): Bitmap {
         val armor = cat.hasArmor
@@ -785,10 +819,10 @@ class SkyStageScreen(
     /** 탑승한 날아냥이 사망 — 영구 사망(무덤)으로 기록하고 추락 연출을 시작한다 */
     private fun startFalling() {
         falling = 0f; fallVy = -120f; fallSpin = 0f
-        com.jamcat.nayngapo.engine.CatTeam.markDead(mount.id, stageNumber)
+        mount?.let { com.jamcat.nayngapo.engine.CatTeam.markDead(it.id, stageNumber) }   // 로봇은 무덤이 되지 않는다
         touchControls.releaseAll()
         SoundManager.playCatDie()
-        effects.add(Effect(player.x, player.y - 120f, 2.2f, "${mount.name}이(가) 쓰러졌다!"))
+        effects.add(Effect(player.x, player.y - 120f, 2.2f, if (mount != null) "${mount.name}이(가) 쓰러졌다!" else "로봇이 고장 났다!"))
         for (a in cloudAllies) a.loseCloud()
     }
 
@@ -805,7 +839,7 @@ class SkyStageScreen(
 
     private fun drawHud(canvas: Canvas, w: Float, h: Float) {
         // 땅과 같은 패널 구성: STAGE·SCORE·LEVEL / 목숨·구출·필살기·루비 / 하트 / CLEARED
-        hud.allyOrderLabel = "탑승 ${mount.name}" + if (mount.hasArmor) " · 갑옷" else ""
+        hud.allyOrderLabel = "탑승 $mountName" + if (mount?.hasArmor == true) " · 갑옷" else ""
         hud.draw(canvas, com.jamcat.nayngapo.ui.HUD.Data(
             stage = stageNumber, score = score, level = 1 + defeated / 10, lives = 1, rescueCount = rescued,
             specialFill = (1f - rocketCooldown / (Constants.SPECIAL_COOLDOWN * 0.5f)).coerceIn(0f, 1f),

@@ -563,6 +563,14 @@ class GamePlayScreen(
         if (gunCooldown > 0f) gunCooldown -= deltaTime   // 레이저 총 쏘는 간격
         robotRide?.let { rr ->
             rr.update(deltaTime)
+            // 위(▲)를 누르고 있으면 발에서 불을 뿜으며 날아오른다 (2026-10-10)
+            rr.thrusting = rr.riding && touchControls.inputState.moveUp
+            if (rr.thrusting) {
+                if (!player.isJumping) { player.isJumping = true; player.jumpVelocity = 0f; player.onPlatform = null }
+                player.jumpVelocity = (player.jumpVelocity - com.jamcat.nayngapo.entity.RobotRide.THRUST * deltaTime)
+                    .coerceAtLeast(-com.jamcat.nayngapo.entity.RobotRide.MAX_RISE_SPEED)
+                if (-player.jumpZ > com.jamcat.nayngapo.entity.RobotRide.MAX_FLY_HEIGHT) player.jumpVelocity = player.jumpVelocity.coerceAtLeast(0f)
+            }
             // 로봇 피가 다 닳으면 부서져 인간이 내린다
             if (player.robotJustBroke) {
                 rr.breakDown(player)
@@ -2054,7 +2062,12 @@ class GamePlayScreen(
             input.jump = false
         }
         if (input.attack) {
-            if (player.hasGun && player.gunOut && robotRide?.riding != true) fireGun()   // 총을 가졌으면 공격 버튼 = 쏘기 (2026-10-09), 로봇을 타면 로봇 주먹
+            if (robotRide?.riding == true) {
+                // 로봇: 주먹으로 치고, 앞 주먹을 발사한다 (2026-10-10)
+                if (player.performAttack()) SoundManager.playAttack()
+                robotRide.launchFist(player)?.let { level.projectiles.add(it); shake(0.08f, 5f) }
+            }
+            else if (player.hasGun && player.gunOut) fireGun()   // 총을 가졌으면 공격 버튼 = 쏘기 (2026-10-09), 로봇을 타면 로봇 주먹
             else if (player.performAttack()) {
                 SoundManager.playAttack()
                 shake(0.07f, 4f)          // 휘두르는 순간의 가벼운 반동

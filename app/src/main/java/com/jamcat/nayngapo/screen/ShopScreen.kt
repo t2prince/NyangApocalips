@@ -183,14 +183,14 @@ class ShopScreen(private val gameView: GameView) : Screen {
     // ===== 동물 병원 창 =====
     private var hospitalMode = false
     private var patient: com.jamcat.nayngapo.engine.CatTeam.TeamCat? = null
-    private val surgeryRects = List(2) { RectF() }
-    private val surgeryBtns = List(2) { RectF() }
+    private val surgeryRects = List(3) { RectF() }
+    private val surgeryBtns = List(3) { RectF() }
 
     private fun drawHospital(canvas: Canvas, w: Float, h: Float) {
         val c = patient ?: return
         val T = com.jamcat.nayngapo.engine.CatTeam
         canvas.drawRect(0f, 0f, w, h, pauseVeil)
-        panelRect.set(w * 0.24f, h * 0.16f, w * 0.76f, h * 0.84f)
+        panelRect.set(w * 0.24f, h * 0.10f, w * 0.76f, h * 0.92f)
         canvas.drawRoundRect(panelRect, 28f, 28f, panelPaint); canvas.drawRoundRect(panelRect, 28f, 28f, ink)
         panelTitle.textSize = h * 0.05f
         canvas.drawText("동물 병원 — ${c.name}", panelRect.centerX(), panelRect.top + h * 0.08f, panelTitle)
@@ -210,10 +210,11 @@ class ShopScreen(private val gameView: GameView) : Screen {
         val rows = listOf(
             Triple("중성화 수술", "빨라진다 (+${(T.SURGERY_SPEED * 100).toInt()}%)", c.surgeries >= T.SURGERY_MAX),
             Triple("HP 수술", "피가 ${T.HP_SURGERY_HP} 늘어난다 (${c.hpSurgeries}/${T.HP_SURGERY_MAX})", c.hpSurgeries >= T.HP_SURGERY_MAX),
+            Triple("달래기", "3번 하면 공격력 +${T.SOOTHE_ATTACK} (${c.soothes}/${T.SOOTHE_NEED})", c.soothes >= T.SOOTHE_NEED),
         )
         for ((k, row) in rows.withIndex()) {
             val r = surgeryRects[k]
-            r.set(panelRect.left + w * 0.03f, panelRect.top + h * (0.49f + k * 0.15f), panelRect.right - w * 0.03f, panelRect.top + h * (0.62f + k * 0.15f))
+            r.set(panelRect.left + w * 0.03f, panelRect.top + h * (0.47f + k * 0.11f), panelRect.right - w * 0.03f, panelRect.top + h * (0.565f + k * 0.11f))
             canvas.drawRoundRect(r, 18f, 18f, if (row.third) learnedPaint else rowPaint); canvas.drawRoundRect(r, 18f, 18f, ink)
             rowName.textSize = r.height() * 0.32f
             canvas.drawText(row.first, r.left + 20f, r.top + r.height() * 0.42f, rowName)
@@ -248,6 +249,15 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 c.hpSurgeries >= T.HP_SURGERY_MAX -> showNotice("${c.name}은(는) HP 수술을 다 받았어요")
                 GameProgress.rubies < T.SURGERY_PRICE -> showNotice("루비가 모자라요! (${T.SURGERY_PRICE}루비)")
                 T.operateHp(c.id) -> { SoundManager.playSpecial(); showNotice("HP 수술 성공! ${c.name}의 피가 ${T.HP_SURGERY_HP} 늘었다냥!") }
+            }
+            surgeryBtns[2].contains(px, py) -> when {
+                c.soothes >= T.SOOTHE_NEED -> showNotice("${c.name}은(는) 달래기를 다 받았어요")
+                GameProgress.rubies < T.SURGERY_PRICE -> showNotice("루비가 모자라요! (${T.SURGERY_PRICE}루비)")
+                T.soothe(c.id) -> {
+                    SoundManager.playSpecial()
+                    showNotice(if (c.soothes >= T.SOOTHE_NEED) "달래기 끝! ${c.name}의 공격력이 ${T.SOOTHE_ATTACK} 늘었다냥!"
+                        else "달래는 중... (${c.soothes}/${T.SOOTHE_NEED}) ${T.SOOTHE_NEED - c.soothes}번 더!")
+                }
             }
         }
     }

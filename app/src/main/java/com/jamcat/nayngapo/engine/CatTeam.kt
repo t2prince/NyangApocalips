@@ -78,6 +78,8 @@ object CatTeam {
         var surgeries: Int = 0,
         /** HP 수술 횟수 — 한 번에 체력 +HP_SURGERY_HP (2026-10-09) */
         var hpSurgeries: Int = 0,
+        /** 달래기 수술 횟수 — 3번을 다 해야 공격력 +4 (2026-10-09) */
+        var soothes: Int = 0,
         /** 치즈냥이의 털 무늬 (다른 종은 CHEESE 로 두고 무시) */
         val coat: CatCoat = CatCoat.CHEESE
     ) {
@@ -214,6 +216,7 @@ object CatTeam {
                             male = if (o.has("male")) o.optBoolean("male") else { migratedCoat = true; Math.random() < 0.5 },
                             surgeries = o.optInt("surgeries", 0).coerceIn(0, SURGERY_MAX),
                             hpSurgeries = o.optInt("hpSurgeries", 0).coerceIn(0, HP_SURGERY_MAX),
+                            soothes = o.optInt("soothes", 0).coerceIn(0, SOOTHE_NEED),
                             skills = o.optJSONArray("skills")?.let { arr -> MutableList(arr.length()) { arr.optString(it) }.toMutableSet() } ?: mutableSetOf(),
                             // 무늬 도입(2026-09-20) 전에 저장된 치즈냥이는 무늬가 없다 → 한 번 무작위로 뽑아 준다 (대표님 지시)
                             coat = if (o.has("coat")) CatCoat.of(o.optString("coat"))
@@ -277,6 +280,7 @@ object CatTeam {
                     .put("skills", JSONArray(c.skills.toList()))
                     .put("surgeries", c.surgeries)
                     .put("hpSurgeries", c.hpSurgeries)
+                    .put("soothes", c.soothes)
             )
         }
         val counts = JSONObject()
@@ -525,6 +529,21 @@ object CatTeam {
     const val SURGERY_MAX = 1
     const val HP_SURGERY_HP = 5
     const val HP_SURGERY_MAX = 5
+
+    /** 달래기 수술 (대표님 2026-10-09): 3번을 해야지만 공격력이 4 늘어난다. 값은 다른 수술과 같게(Claude 판단) */
+    const val SOOTHE_NEED = 3
+    const val SOOTHE_ATTACK = 4
+
+    /** 달래기 — 3번째에 공격력 +4 (attackBonus 에 영구로). 끝났거나 루비가 모자라면 false */
+    fun soothe(catId: Int): Boolean {
+        val c = cat(catId) ?: return false
+        if (c.gone || c.soothes >= SOOTHE_NEED) return false
+        if (!GameProgress.spendRubies(SURGERY_PRICE)) return false
+        c.soothes++
+        if (c.soothes == SOOTHE_NEED) c.attackBonus += SOOTHE_ATTACK
+        save()
+        return true
+    }
 
     /** HP 수술로 늘어난 체력 */
     fun hpBonusOf(c: TeamCat) = HP_SURGERY_HP * c.hpSurgeries

@@ -94,6 +94,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         fadeTo { StoryScreen(this, replay = true) }
     }
 
+    /** 잼캣 로고 다음: 로딩 화면 */
+    fun showLoading() {
+        currentScreen = LoadingScreen(this)
+    }
+
     fun showTitle() {
         currentScreen = TitleScreen(this)
         SoundManager.resumeBgm()   // 홈으로 돌아오면 다시 노래가 흐른다
@@ -293,7 +298,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     override fun surfaceCreated(holder: SurfaceHolder) {
         screenWidth = width
         screenHeight = height
-        currentScreen = LoadingScreen(this)   // 로딩 화면 → (처음 한 번만 스토리) → 타이틀
+        currentScreen = LogoScreen(this)   // 잼캣 로고 → 로딩 화면 → (처음 한 번만 스토리) → 시작 화면 (대표님 2026-10-09)
 
         gameThread = GameThread(holder, this)
         gameThread?.running = true

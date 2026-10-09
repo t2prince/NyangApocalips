@@ -34,6 +34,7 @@ ITEMS = {
     'car_yellow': ('car_yellow', 240),
     'gun_side': ('gun_side', 120),      # 무기점 레이저 총 옆모습 — 인간 손·자동차에 단다 (2026-10-09)
     'robot_side': ('robot_side', 460),  # 11번 로봇 상점 로봇 옆모습 (2026-10-09)
+    'jamcat_logo': ('jamcat_logo', 520),  # 시작 잼캣 로고 엠블럼 (2026-10-09)
     # 집 안 가구 (2026-10-09 「집에 가구들도 있어」)
     'furn_sofa': ('furn_sofa', 300),
     'furn_shelf': ('furn_shelf', 400),

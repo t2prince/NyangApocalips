@@ -108,15 +108,12 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     /** 성능 로그용 — 지금 화면 이름 */
     fun currentScreenName(): String = currentScreen?.javaClass?.simpleName ?: "-"
 
-    /**
-     * 홈 = 상점 마을 (대표님 2026-10-09 「홈 화면 없애고 상점 마을을 홈 화면으로」).
-     * 예전 로비(LobbyScreen)로 가던 곳은 모두 상점 마을로 간다. 로비에만 있던 것(기술·인간 바꾸기·미션·출격)은 상점 마을 '메뉴'에.
-     */
     fun showLobby() {
         // 스테이지에서 '나가기'로 돌아올 때도 스테이지 진입과 같은 페이드로 넘어간다.
+        // (즉시 교체하면 그리는 중인 게임 스레드와 겹쳐 한 프레임이 깨져 보인다)
         fadeTo {
             SoundManager.resumeBgm()
-            ShopScreen(this)
+            LobbyScreen(this)
         }
     }
 

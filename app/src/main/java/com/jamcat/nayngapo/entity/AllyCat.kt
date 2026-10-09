@@ -72,6 +72,9 @@ class AllyCat(
     fun takeDamage(amount: Int) {
         if (isDead || hitCooldown > 0f) return
         hitCooldown = 0.35f
+        // 묭묭 진화: 방어력 50 — 받는 피해에서 50을 뺀다 (0이면 막아 낸다)
+        val amount = if (evolved) (amount - EVOLVE_POWER).coerceAtLeast(0) else amount
+        if (amount <= 0) return
         // 갑옷을 입었으면 피해가 크게 줄어든다 (그래도 최소 1은 들어온다)
         val taken =
             if (armored) Math.round(amount * com.jamcat.nayngapo.engine.CatTeam.ARMOR_DAMAGE_FACTOR)
@@ -126,10 +129,24 @@ class AllyCat(
     private val attackRange = if (isSpitter) 520f else 110f
     /** 레벨만큼 세진다 (그린냥이는 뱉는 슬라임, 나머지는 할퀴기) */
     private val damageBonus = com.jamcat.nayngapo.engine.CatTeam.damageBonusFor(level)
-    private val attackDamage = (if (isGunner) 5 else if (isSpitter) 10 else 5) + damageBonus + attackBonus
+    private val baseAttackDamage = (if (isGunner) 5 else if (isSpitter) 10 else 5) + damageBonus + attackBonus
+    private val attackDamage: Int get() = if (evolved) maxOf(baseAttackDamage, EVOLVE_POWER) else baseAttackDamage
 
-    /** 달려들어 할퀴는 피해량 — 화면 쪽에서 적에게 적용한다 */
-    val meleeDamage = 5 + damageBonus + attackBonus
+    /** 달려들어 할퀴는 피해량 — 화면 쪽에서 적에게 적용한다 (묭묭 진화 중엔 최소 50) */
+    private val baseMeleeDamage = 5 + damageBonus + attackBonus
+    val meleeDamage: Int get() = if (evolved) maxOf(baseMeleeDamage, EVOLVE_POWER) else baseMeleeDamage
+
+    /** 고양이 기술 '묭묭 진화' 남은 시간 (2026-10-09) — 엄청 커지고 공격력 50·방어력 50 */
+    var evolveTimer = 0f
+    /** 진화한 뒤 흐른 시간 (커지는 연출용) */
+    private var evolveAge = 0f
+    val evolved: Boolean get() = evolveTimer > 0f
+
+    fun evolve(duration: Float) {
+        if (isDead) return
+        if (!evolved) evolveAge = 0f
+        evolveTimer = duration
+    }
     private var attackCooldown = 0f
 
     /** 지금 받은 지시 (기본은 인간 곁을 지키는 '따라와') */
@@ -172,6 +189,7 @@ class AllyCat(
         pendingProjectiles.clear()
         if (hitCooldown > 0f) hitCooldown -= deltaTime
         if (castTimer > 0f) castTimer -= deltaTime
+        if (evolveTimer > 0f) { evolveTimer -= deltaTime; evolveAge += deltaTime }
         if (isDead) { death.update(deltaTime); return }
         if (attackCooldown > 0f) attackCooldown -= deltaTime
 
@@ -290,7 +308,14 @@ class AllyCat(
         val base = spriteFor(kind)
         // 원안 스프라이트는 오른쪽을 본다 — 왼쪽을 볼 때만 뒤집는다 (머리 방향 = 이동 방향)
         val bmp = if (facingRight) base else SpriteManager.getFlipped(base)
-        canvas.drawBitmap(bmp, cx - bmp.width / 2f, drawY - bmp.height + 8f, null)
+        if (evolved) {
+            // 묭묭 진화: 0.6초에 걸쳐 쑥 커지고(살짝 넘쳤다 돌아옴) 발끝을 그대로 둔 채 엄청 크게 그린다
+            val g = (evolveAge / 0.6f).coerceAtMost(1f)
+            val s = 1f + (EVOLVE_SCALE - 1f) * g + 0.25f * kotlin.math.sin(g * Math.PI.toFloat())
+            val bw = bmp.width * s; val bh = bmp.height * s
+            scratch.set(cx - bw / 2f, drawY - bh + 8f * s, cx + bw / 2f, drawY + 8f * s)
+            canvas.drawBitmap(bmp, null, scratch, evolvePaint)
+        } else canvas.drawBitmap(bmp, cx - bmp.width / 2f, drawY - bmp.height + 8f, null)
 
         // 기술을 쓰는 동안 주위에 노란 반짝임 여섯 개
         if (castTimer > 0f) {
@@ -343,7 +368,11 @@ class AllyCat(
         }
     }
 
-    private companion object {
+    companion object {
+        /** 묭묭 진화: 공격력·방어력 50, 크기 2.2배 (Claude 판단) */
+        const val EVOLVE_POWER = 50
+        const val EVOLVE_SCALE = 2.2f
+        private val evolvePaint = Paint().apply { isFilterBitmap = true; isAntiAlias = true }
         /** 날아냥이가 땅에서 떠 있는 높이 */
         const val HOVER_LIFT = -18f
 

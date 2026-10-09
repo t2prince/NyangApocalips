@@ -1290,6 +1290,16 @@ class GamePlayScreen(
         hitEffects.add(HitEffect(caster.x, caster.y - caster.height - 40f, 1.1f, skill.name + "!"))
 
         when (skill.id) {
+            "evolve" -> {
+                // 묭묭 진화: 전장의 출전 냥이 모두가 55분 동안 엄청 커진다 (공격력 50·방어력 50)
+                for (ally in level.allies) if (!ally.isDead) {
+                    ally.evolve(skill.cooldown)
+                    hitEffects.add(HitEffect(ally.x, ally.y - ally.height - 70f, 1.3f, "묭묭!"))
+                }
+                SoundManager.playSpecial()
+                shake(0.3f, 12f)
+            }
+
             "rapid_fire" -> {
                 // 발바닥 탄 여섯 발을 0.1초 간격으로 — 매 발 그 냥이의 지금 자리에서 나간다
                 for (i in 0 until 6) pendingShots.add(PendingShot(i * 0.1f, caster, aimDir, skill.power, i))

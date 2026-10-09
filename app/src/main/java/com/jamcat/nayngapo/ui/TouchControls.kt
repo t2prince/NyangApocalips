@@ -405,7 +405,7 @@ class TouchControls {
             )
             canvas.drawArc(cooldownArcRect, -90f, 360f * filled, false, cooldownArcPaint)
             canvas.drawText(
-                kotlin.math.ceil(cool).toInt().toString(), cx, cy + 20f, cooldownTextPaint
+                coolLabel(cool), cx, cy + 20f, cooldownTextPaint
             )
         }
     }
@@ -566,6 +566,10 @@ class TouchControls {
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD); isAntiAlias = true
         setShadowLayer(3f, 0f, 1f, Color.argb(160, 0, 0, 0))
     }
+
+    /** 남은 쿨타임 글자: 1분이 넘으면 '55분'처럼 분으로 (묭묭 진화는 55분) */
+    private fun coolLabel(cool: Float): String =
+        if (cool > 60f) "${kotlin.math.ceil(cool / 60f).toInt()}분" else kotlin.math.ceil(cool).toInt().toString()
 
     companion object {
         val ACCENT = Color.rgb(255, 205, 84)

@@ -43,6 +43,13 @@ object CatSkills : SkillBook {
             "출전한 냥이가 하늘에서 젤리를 내리게 한다 (공격력 10)",
             power = 10, cooldown = 10f
         ),
+        // 대표님 2026-10-09: 이름 묭묭 진화 · 크기가 엄청 커짐 · 커지는 시간 55분 · 공격력 50 · 방어력 50 · 4루비
+        // (크기 2.2배·쿨타임 = 지속 시간·'50이 된다'를 '최소 50'으로 읽은 것·방어력 = 받는 피해 -50 은 Claude 판단)
+        Skill(
+            "evolve", "묭묭 진화", 4,
+            "출전한 냥이들이 엄청 커진다 (55분) · 공격력 50 · 방어력 50",
+            power = 50, cooldown = 55 * 60f
+        ),
     )
 
     fun byId(id: String): Skill? = all.firstOrNull { it.id == id }

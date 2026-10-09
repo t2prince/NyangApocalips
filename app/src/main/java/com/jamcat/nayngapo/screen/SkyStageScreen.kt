@@ -353,7 +353,10 @@ class SkyStageScreen(
         var x = 0f; var y = 0f; var facingRight = true
         private var bobPhase = order * 1.3f
         /** 땅에서와 같은 공격력 (5 + 레벨 보너스 + Lv업 보너스) */
-        private val shotDamage = 5 + com.jamcat.nayngapo.engine.CatTeam.damageBonusFor(cat.level) + cat.attackBonus
+        private val baseShotDamage = 5 + com.jamcat.nayngapo.engine.CatTeam.damageBonusFor(cat.level) + cat.attackBonus
+        /** 묭묭 진화 중이면 하늘에서도 커지고 공격력 최소 50 (대표님 2026-10-09 「하늘 스테이지에서도 묭묭 진화가 돼」) */
+        private val evolved: Boolean get() = com.jamcat.nayngapo.engine.CatTeam.evolveSecondsLeft > 0f
+        private val shotDamage: Int get() = if (evolved) maxOf(baseShotDamage, com.jamcat.nayngapo.entity.AllyCat.EVOLVE_POWER) else baseShotDamage
         private var shotTimer = 0.6f + 0.25f * order   // 서로 박자를 어긋나게
         /** 사거리 안 적을 보면 알아서 쏜다 (1.1초마다) */
         fun tryShoot(deltaTime: Float) {
@@ -394,10 +397,16 @@ class SkyStageScreen(
             // 구름: 냥이 발밑 (탑승 냥이가 쓰러지면 구름도 사라진다)
             if (!cloudGone) drawCloud(canvas, x, cy + bodyH * 0.42f, 34f, skyCloudPaint)
             if (cloudGone) { canvas.save(); canvas.rotate(120f * (vy / 800f).coerceIn(0f, 1.5f), x, cy) }
-            canvas.drawBitmap(bmp, x - bmp.width / 2f, cy + bodyH * 0.45f - bmp.height, bitmapPaint)
+            if (evolved) {
+                val sc = com.jamcat.nayngapo.entity.AllyCat.EVOLVE_SCALE
+                val foot = cy + bodyH * 0.45f
+                evolveDst.set(x - bmp.width * sc / 2f, foot - bmp.height * sc, x + bmp.width * sc / 2f, foot)
+                canvas.drawBitmap(bmp, null, evolveDst, bitmapPaint)
+            } else canvas.drawBitmap(bmp, x - bmp.width / 2f, cy + bodyH * 0.45f - bmp.height, bitmapPaint)
             if (cloudGone) canvas.restore()
         }
     }
+    private val evolveDst = RectF()
     private val cloudAllies: List<CloudAlly> =
         com.jamcat.nayngapo.engine.CatTeam.party.filter { it.id != mount.id }.mapIndexed { i, c -> CloudAlly(c, i) }
 

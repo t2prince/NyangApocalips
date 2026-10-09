@@ -210,6 +210,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         fadeTo { ArenaScreen(this, catId) }
     }
 
+    /** 뽑기 가게 (상점 마을 집 앞) — 나오면 상점 마을 기계 앞 */
+    fun showGacha() {
+        fadeTo { GachaScreen(this) }
+    }
+
     /** 로봇 상점 (상점 마을 11번 천막) — 나오면 상점 마을 그 천막 앞 */
     fun showRobotShop() {
         fadeTo { RobotShopScreen(this) }

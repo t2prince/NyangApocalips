@@ -325,6 +325,8 @@ class ShopScreen(private val gameView: GameView) : Screen {
     private var nearTower = false
     /** 집 뒤(왼쪽)의 돈쟁이 아저씨 앞에 서 있는가 — 루비 환전 (대표님 2026-10-09) */
     private var nearMoney = false
+    /** 집 앞 뽑기 기계 앞에 서 있는가 (대표님 2026-10-10) */
+    private var nearGacha = false
     private val towerRect = RectF()
 
     // ===== 그림 도구 =====
@@ -405,7 +407,8 @@ class ShopScreen(private val gameView: GameView) : Screen {
         // 인간이 서 있는 천막
         val pcx = player.x + player.width / 2f
         nearTent = (0 until TENT_COUNT).firstOrNull { abs(pcx - tentX(it)) < TENT_W * 0.42f } ?: -1
-        nearTower = abs(pcx - towerX) < 240f
+        nearTower = abs(pcx - towerX) < 160f
+        nearGacha = abs(pcx - GACHA_X) < 80f
         nearMoney = abs(pcx - MONEY_X) < 170f
         nearGate = abs(pcx - stageGateX) < 220f
         nearCarShop = abs(pcx - carShopX) < 260f
@@ -477,6 +480,12 @@ class ShopScreen(private val gameView: GameView) : Screen {
             canvas.drawLine(sx - r, sy, sx + r, sy, sparkle); canvas.drawLine(sx, sy - r, sx, sy + r, sparkle)
         }
         drawMoneyMan(canvas, MONEY_X, groundY)
+        // 집 앞 뽑기 기계
+        SpriteManager.gachaMachine?.let { bmp ->
+            val mh = 230f; val mw = bmp.width * mh / bmp.height
+            rect.set(GACHA_X - mw / 2f, groundY + 16f - mh, GACHA_X + mw / 2f, groundY + 16f)
+            canvas.drawBitmap(bmp, null, rect, null)
+        }
         drawStageGate(canvas, stageGateX, groundY)
         // 맨 끝 자동차 매장 + 간판 글씨 + 앞에 세워 둔 차들
         SpriteManager.carShop?.let { bmp ->
@@ -571,6 +580,19 @@ class ShopScreen(private val gameView: GameView) : Screen {
             bubbleText.textSize = 44f
             val bw = bubbleText.measureText(label) + 60f
             val by = groundY - SIGN_TOP - 70f + sin(timer * 4f) * 6f
+            enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
+            canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
+            canvas.drawRoundRect(enterRect, 38f, 38f, ink)
+            canvas.drawText(label, bx, enterRect.centerY() + 15f, bubbleText)
+        }
+
+        // 뽑기 기계 앞: 말풍선
+        if (nearGacha) {
+            val bx = GACHA_X - cameraX
+            val label = "▼ 뽑기 하기 (루비 ${GachaScreen.PRICE})"
+            bubbleText.textSize = 44f
+            val bw = bubbleText.measureText(label) + 60f
+            val by = groundY - 300f + sin(timer * 4f) * 6f
             enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
             canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
             canvas.drawRoundRect(enterRect, 38f, 38f, ink)
@@ -1005,6 +1027,9 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 touchControls.releaseAll(); returnX = player.x; gameView.showStageMap(); return true   // 숫자 칸 대신 스테이지 지도 (2026-10-09)
             }
             // 집은 '집 들어가기' 말풍선을 눌러야만 들어간다 — 집 그림을 눌러서는 안 들어간다 (대표님 2026-10-09)
+            if (nearGacha && !enterRect.isEmpty && enterRect.contains(px, py)) {
+                touchControls.releaseAll(); returnX = player.x; gameView.showGacha(); return true
+            }
             if (nearMoney && !enterRect.isEmpty && enterRect.contains(px, py)) {
                 touchControls.releaseAll(); returnX = player.x; gameView.showRubyShop(fromShop = true); return true
             }
@@ -1083,7 +1108,9 @@ class ShopScreen(private val gameView: GameView) : Screen {
         private const val SIGN_H = 260f
         private const val HOUSE_X = 880f
         private const val HOUSE_H = 520f
-        private const val START_X = 1200f
+        private const val START_X = 1240f
+        /** 집 앞 뽑기 기계 자리 (집 오른쪽 앞) */
+        private const val GACHA_X = HOUSE_X + 250f
         /** 집 뒤(왼쪽)의 돈쟁이 아저씨 — 금박 천막 가운데 x, 아저씨는 천막 오른쪽 앞 */
         private const val MONEY_TENT_X = 300f
         private const val MONEY_X = MONEY_TENT_X + 184f   // 천막 폭(460)의 40% 오른쪽

@@ -24,6 +24,7 @@ import kotlin.math.sin
  * 조작·버튼 구성은 스테이지와 똑같다(패드·공격·점프·필살기·기술·지시·멈추기·나가기, 기술은 여기선 안 써진다). 구한 인간 수는 GameProgress.humansRescued.
  * 2번 천막은 고양이 기술(데려온 냥이 1마리에게 가르친다). 3번~ 천막의 물건은 아직 — 열린 천막 안은 '준비 중'.
  * (천막 6개·간격·색·고양이 상점을 1번에 둔 것은 Claude 임시 판단)
+ * 맨 앞(왼쪽 끝)에는 집이 있고 집 안에 캣타워 — '들어가기'로 고양이 관리 (2026-10-09).
  */
 class ShopScreen(private val gameView: GameView) : Screen {
 
@@ -283,9 +284,12 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     private fun tentX(i: Int) = FIRST_TENT_X + i * TENT_GAP
 
-    /** 상점가 끝의 캣타워 — 들어가면 고양이 관리 (대표님 2026-10-09) */
-    private val towerX = FIRST_TENT_X + (TENT_COUNT - 1) * TENT_GAP + 720f
-    private val worldWidth = towerX + 600f
+    /**
+     * 상점 마을 맨 앞(왼쪽 끝)의 집 — 안에 캣타워가 있고, 앞에서 '들어가기'를 누르면 캣타워(고양이 관리)로 (대표님 2026-10-09).
+     * (전에는 상점가 끝에 캣타워가 바로 서 있었다)
+     */
+    private val towerX = HOUSE_X
+    private val worldWidth = FIRST_TENT_X + (TENT_COUNT - 1) * TENT_GAP + 600f
     private var nearTower = false
     private val towerRect = RectF()
 
@@ -366,7 +370,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         // 인간이 서 있는 천막
         val pcx = player.x + player.width / 2f
         nearTent = (0 until TENT_COUNT).firstOrNull { abs(pcx - tentX(it)) < TENT_W * 0.42f } ?: -1
-        nearTower = abs(pcx - towerX) < 200f
+        nearTower = abs(pcx - towerX) < 240f
     }
 
     override fun draw(canvas: Canvas) {
@@ -419,9 +423,9 @@ class ShopScreen(private val gameView: GameView) : Screen {
             if (cx + TENT_W < cameraX - 50f || cx - TENT_W > cameraX + w + 50f) continue
             drawOwner(canvas, i, cx + TENT_W * 0.40f, groundY)
         }
-        // 상점가 끝의 커다란 캣타워
-        SpriteManager.shopIcons["cat_tower"]?.let { bmp ->
-            val th = 560f; val tw = bmp.width * th / bmp.height
+        // 맨 앞의 집 (안에 캣타워)
+        SpriteManager.catHouse.let { bmp ->
+            val th = HOUSE_H; val tw = bmp.width * th / bmp.height
             towerRect.set(towerX - tw / 2f, groundY + 20f - th, towerX + tw / 2f, groundY + 20f)
             canvas.drawBitmap(bmp, null, towerRect, null)
         }
@@ -461,13 +465,13 @@ class ShopScreen(private val gameView: GameView) : Screen {
             }
         }
 
-        // 캣타워 앞: '고양이 관리' 말풍선
+        // 집 앞: '들어가기' 말풍선 → 집 안의 캣타워
         if (nearTower) {
             val bx = towerX - cameraX
-            val label = "▼ 캣타워"
+            val label = "▼ 집 들어가기 (캣타워)"
             bubbleText.textSize = 44f
             val bw = bubbleText.measureText(label) + 60f
-            val by = groundY - 620f + sin(timer * 4f) * 6f
+            val by = groundY - HOUSE_H - 50f + sin(timer * 4f) * 6f
             enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
             canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
             canvas.drawRoundRect(enterRect, 38f, 38f, ink)
@@ -788,10 +792,13 @@ class ShopScreen(private val gameView: GameView) : Screen {
             HOSPITAL_TENT to listOf("동물 병원이에요!", "수술하면 더 빨라져요~", "냥이를 데려오세요!"),
         )
         private val DEFAULT_ADS = listOf("어서 오세요!", "곧 좋은 물건 들어와요~")
-        private const val START_X = 160f
+        /** 맨 앞 집의 가운데 x · 그림 높이 — 인간은 집 앞(오른쪽)에서 시작한다 */
+        private const val HOUSE_X = 380f
+        private const val HOUSE_H = 520f
+        private const val START_X = 700f
         /** 가게 화면에 들어갈 때의 인간 자리 — 돌아오면 거기서 시작 */
         private var returnX: Float? = null
-        private const val FIRST_TENT_X = 900f
+        private const val FIRST_TENT_X = 1300f
         private const val TENT_GAP = 760f
         private const val TENT_W = 460f
         private const val TENT_H = 520f

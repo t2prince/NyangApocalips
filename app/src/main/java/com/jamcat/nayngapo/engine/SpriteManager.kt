@@ -47,6 +47,8 @@ object SpriteManager {
     lateinit var pirateCat: Bitmap
     lateinit var boatCat: Bitmap
     lateinit var pirateShip: Bitmap
+    /** 상점 마을 맨 앞의 집 (안에 캣타워) */
+    lateinit var catHouse: Bitmap
     lateinit var catIdleRed: List<Bitmap>
     lateinit var catIdleOrange: List<Bitmap>
     lateinit var catIdleYellow: List<Bitmap>
@@ -183,6 +185,7 @@ object SpriteManager {
         pirateCat = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_pirate), 1.06f)
         boatCat = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_boat), 1.06f)
         pirateShip = BitmapFactory.decodeResource(res, R.drawable.pirate_ship)
+        catHouse = BitmapFactory.decodeResource(res, R.drawable.cat_house)
         // 무늬별 배냥이 (적: cat_boat_<무늬>, 내 편: cat_boat_<무늬>_ally — 치즈 적은 cat_boat)
         coatBoatEnemy[CatCoat.CHEESE] = boatCat
         coatBoatEnemy[CatCoat.WHITE] = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_boat_white), 1.06f)

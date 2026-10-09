@@ -2162,7 +2162,9 @@ class GamePlayScreen(
             carRide?.let { cr -> if (!cr.riding) drawables.add(Drawable(cr.parkedY - 1f) { cr.drawParked(canvas) }) }
             drawables.add(Drawable(player.y) {
                 if (isSea) drawSeaMount(canvas)
+                carRide?.beginSeat(canvas, player) ?: canvas.save()
                 player.draw(canvas)
+                canvas.restore()
                 carRide?.drawRiding(canvas, player)   // 차는 인간 앞 — 앉은 다리를 가린다
             })
         }

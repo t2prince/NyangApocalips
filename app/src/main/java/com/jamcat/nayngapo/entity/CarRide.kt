@@ -39,7 +39,16 @@ class CarRide(val car: CarCatalog.Car) {
         p.rideLift = 0f
     }
 
-    /** 탄 차: 바퀴가 땅에 닿게, 바라보는 쪽으로 — 인간 앞에 그려 앉은 다리를 가린다 */
+    /**
+     * 인간은 차에 **앉아 있다** (대표님 2026-10-09): 앉은 그림이 따로 없어서, 인간을 차 속으로 내려 앉히고
+     * 차 문 줄 아래(다리)는 잘라 그린다 — 문 위로 윗몸만 보인다. 화면이 인간을 그리기 전에 부른다(끝나면 restore).
+     */
+    fun beginSeat(canvas: Canvas, p: Player) {
+        canvas.save()
+        if (riding) canvas.clipRect(-1e6f, -1e6f, 1e6f, p.y + p.jumpZ + 14f - DRAW_H * DOOR_LINE)
+    }
+
+    /** 탄 차: 바퀴가 땅에 닿게, 바라보는 쪽으로 — 인간 앞에 그린다 */
     fun drawRiding(canvas: Canvas, p: Player) {
         if (!riding) return
         place(p.x + p.width / 2f, p.y + p.jumpZ, p.facingRight)?.let { canvas.drawBitmap(it, null, dst, null) }
@@ -79,7 +88,10 @@ class CarRide(val car: CarCatalog.Car) {
     companion object {
         /** 차 그림 높이 · 인간이 앉는 만큼 들어 올림 · 다시 탈 수 있는 거리 */
         const val DRAW_H = 120f
-        const val RIDE_LIFT = 46f
+        /** 앉으면 인간을 이만큼 내린다(음수) — 엉덩이가 차 자리에 오게 */
+        const val RIDE_LIFT = -40f
+        /** 차 그림 위에서부터 문 줄까지 (높이 비율) — 이 아래 인간 다리는 안 그린다 */
+        const val DOOR_LINE = 0.55f
         const val NEAR = 200f
     }
 }

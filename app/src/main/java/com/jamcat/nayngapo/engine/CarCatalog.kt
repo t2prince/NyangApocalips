@@ -9,9 +9,10 @@ object CarCatalog {
     data class Car(val id: String, val name: String, val price: Int, val speedMul: Float)
 
     val cars = listOf(
-        Car("car_red", "빨간 오픈카", 100, 1.3f),
-        Car("car_blue", "파란 지프", 200, 1.5f),
-        Car("car_yellow", "노란 스포츠카", 300, 1.8f),
+        // 자동차는 빠르다 (대표님 2026-10-09) — 걷기의 2·2.5·3배
+        Car("car_red", "빨간 오픈카", 100, 2.0f),
+        Car("car_blue", "파란 지프", 200, 2.5f),
+        Car("car_yellow", "노란 스포츠카", 300, 3.0f),
     )
 
     fun owned(id: String) = GameProgress.itemCount(id) > 0

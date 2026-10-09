@@ -490,7 +490,9 @@ class ShopScreen(private val gameView: GameView) : Screen {
         }
         carRide?.drawParked(canvas)
         for (ally in allies) ally.draw(canvas)
+        carRide?.beginSeat(canvas, player) ?: canvas.save()
         player.draw(canvas)
+        canvas.restore()
         carRide?.drawRiding(canvas, player)
         canvas.restore()
         towerRect.offset(-cameraX, 0f)

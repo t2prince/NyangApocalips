@@ -136,7 +136,7 @@ class GamePlayScreen(
     private val humanBattleSkills =
         com.jamcat.nayngapo.engine.HumanSkills.all
             .filter { com.jamcat.nayngapo.engine.HumanSkills.isLearned(it.id) }
-            .take(4)   // 인간 기술 버튼 4칸 (TouchControls.HUMAN_SKILL_SLOTS)
+            .take(com.jamcat.nayngapo.ui.TouchControls.HUMAN_SKILL_SLOTS)   // 인간 기술 버튼 칸 수만큼
 
     /** 인간 기술별 남은 쿨타임 (시작할 때는 모두 준비 완료) */
     private val humanSkillCooldowns = FloatArray(humanBattleSkills.size)
@@ -220,6 +220,8 @@ class GamePlayScreen(
     /** 주황냥이 용암 덩이가 떨어진 자리의 끓는 웅덩이 — 밟으면 하트 1 (대표님 2026-09-27, 2.5초·폭은 Claude 판단) */
     private class LavaPool(val x: Float, val y: Float) { var t = 0f }
     private val lavaPools = mutableListOf<LavaPool>()
+    /** '막았다!' 글자가 너무 자주 뜨지 않게 */
+    private var blockFx = 0f
     private val lavaPoolPaint = Paint().apply { color = Color.rgb(255, 110, 20); isAntiAlias = true }
     private val lavaPoolCrust = Paint().apply { color = Color.rgb(120, 30, 20); isAntiAlias = true }
     private val lavaPoolGlow = Paint().apply { color = Color.rgb(255, 225, 90); isAntiAlias = true }
@@ -821,6 +823,11 @@ class GamePlayScreen(
                         }
                         continue
                     }
+                    // 각성 방어력: 공격력이 방어력 이하인 적은 막는다
+                    if (enemy.attackPower <= player.defense) {
+                        if (blockFx <= 0f) { hitEffects.add(HitEffect(player.x, player.y - player.height, 0.5f, "막았다!")); blockFx = 0.5f }
+                        break
+                    }
                     if (enemy.halfHeart) player.takeHalfDamage()      // 새끼 고양이: 하트 반 칸
                     else player.takeDamage(enemy.contactDamage)   // 잡몹 1, 보스 3 (기획4)
                     shake(0.18f, 11f)   // 피격: 크게 흔들림
@@ -869,6 +876,12 @@ class GamePlayScreen(
         if (!player.isInvincible && !player.isJumping) {
             for (proj in level.projectiles) {
                 if (!proj.isPlayerOwned && proj.isAlive && RectF.intersects(playerBox, proj.hitBox)) {
+                    // 각성 방어력: 쏜 냥이 공격력이 방어력 이하면 막는다
+                    if (proj.damage <= player.defense) {
+                        proj.isAlive = false
+                        if (blockFx <= 0f) { hitEffects.add(HitEffect(player.x, player.y - player.height, 0.5f, "막았다!")); blockFx = 0.5f }
+                        continue
+                    }
                     // 적 탄에 스치면 하트 1. 노랑냥이 번개만 2 (대표님 2026-09-24 — 총냥이 총알은 2가 아니다)
                     player.takeDamage(if (proj.isLightning) 2 else 1)
                     proj.isAlive = false
@@ -926,6 +939,8 @@ class GamePlayScreen(
         // 설원의 깊은 눈: 걸어 들어가면 허우적거린다 (뛰어넘으면 안전)
         player.inDeepSnow = !player.isJumping && !player.ridingVine &&
             level.snowPits.any { it.swallows(player.x + player.width / 2f) }
+
+        if (blockFx > 0f) blockFx -= deltaTime
 
         // 토네이도 함정 (31): 닿으면 하트 1 + 뒤로 날아간다 (점프로 넘으면 안전)
         for (tt in level.tornadoTraps) {
@@ -1314,6 +1329,14 @@ class GamePlayScreen(
         humanSkillCooldowns[index] = skill.cooldown
 
         when (skill.id) {
+            "awaken" -> {
+                // 각성: 10초 동안 공격력 +15 · 방어력 +15 (몸에 금빛 오라)
+                player.awakenTimer = com.jamcat.nayngapo.entity.Player.AWAKEN_TIME
+                SoundManager.playSpecial()
+                shake(0.2f, 8f)
+                hitEffects.add(HitEffect(player.x, player.y - player.height - 40f, 1.2f, "각성!"))
+            }
+
             "missile" -> {
                 // 어깨 높이에서 앞으로 쏘아 올린다 — 날아가며 화면 안의 가장 가까운 적을 쫓는다
                 val dir = if (player.facingRight) 1f else -1f

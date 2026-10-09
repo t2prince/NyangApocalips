@@ -18,6 +18,10 @@ class Player(var x: Float, var y: Float) {
     var maxHp = 5
     var lives = Constants.MAX_LIVES
     var attackPower = 10
+    /** 인간 기술 '각성' 남은 시간 — 그동안 공격력 +AWAKEN_BONUS, 방어력 +AWAKEN_BONUS (2026-10-09) */
+    var awakenTimer = 0f
+    /** 지금 방어력: 이 값 이하 공격력의 적 공격은 막는다 (각성 중에만 생긴다) */
+    val defense: Int get() = if (awakenTimer > 0f) AWAKEN_BONUS else 0
     var specialPower = 20
     var specialCooldown = 0f   // 0 이하면 필살기 사용 가능
     var level = 1
@@ -125,6 +129,8 @@ class Player(var x: Float, var y: Float) {
     private val impactPaint = Paint().apply {
         color = Color.rgb(255, 255, 200); isAntiAlias = true; style = Paint.Style.FILL
     }
+    private val auraPaint = Paint().apply { color = Color.rgb(255, 214, 60); isAntiAlias = true }
+    private val auraRect = RectF()
     private val shadowPaint = Paint().apply {
         color = Color.argb(60, 0, 0, 0); isAntiAlias = true
     }
@@ -132,6 +138,7 @@ class Player(var x: Float, var y: Float) {
     fun update(deltaTime: Float) {
         if (isDead) return
         if (chokeTimer > 0f) chokeTimer -= deltaTime
+        if (awakenTimer > 0f) awakenTimer -= deltaTime
 
         // 덩굴에 매달린 동안은 위치를 덩굴이 정한다 (화면 쪽에서 매 프레임 넣어 준다)
         if (!ridingVine) {
@@ -289,6 +296,15 @@ class Player(var x: Float, var y: Float) {
             return
         }
 
+        // 각성 중: 몸 둘레에 금빛 오라가 일렁인다
+        if (awakenTimer > 0f) {
+            val pulse = (kotlin.math.sin(awakenTimer * 12f) * 0.5f + 0.5f)
+            val fade = (awakenTimer / 0.5f).coerceAtMost(1f)
+            auraPaint.alpha = ((90 + 70 * pulse) * fade).toInt()
+            auraRect.set(cx - 52f - pulse * 6f, drawY - height - 30f - pulse * 8f, cx + 52f + pulse * 6f, drawY + 8f)
+            canvas.drawOval(auraRect, auraPaint)
+        }
+
         // ===== 평소 동작: GPT가 그린 졸라맨 스프라이트로 그린다 =====
         drawSprite(canvas, cx, drawY, dir)
     }
@@ -342,7 +358,10 @@ class Player(var x: Float, var y: Float) {
     }
 
 
-    private companion object {
+    companion object {
+        /** 각성: 공격력·방어력 증가량 (대표님 2026-10-09) · 지속 시간 10초 (Claude 판단) */
+        const val AWAKEN_BONUS = 15
+        const val AWAKEN_TIME = 10f
         /** 눈에 완전히 파묻히는 깊이 (몸 전체가 잠긴다) */
         const val SNOW_SINK_MAX = 155f
 
@@ -576,7 +595,7 @@ class Player(var x: Float, var y: Float) {
         isJumpAttacking -> (attackPower * 1.5f).toInt()
         comboStep == 2 -> (attackPower * 1.4f).toInt()   // 킥 마무리
         else -> attackPower
-    }
+    } + (if (awakenTimer > 0f) AWAKEN_BONUS else 0)   // 각성: 공격력 +15
 
     fun getAttackHitBox(): RectF? {
         // 내려찍기 낙하 중: 몸 주변(발밑 포함)에 닿는 적을 그대로 밟는다
@@ -640,7 +659,7 @@ class Player(var x: Float, var y: Float) {
     fun needsRespawn(): Boolean = hp <= 0 && lives > 0
 
     fun respawn(startX: Float, startY: Float) {
-        x = startX; y = startY; hp = maxHp; halfLost = false
+        x = startX; y = startY; hp = maxHp; halfLost = false; awakenTimer = 0f
         velocityX = 0f; jumpZ = 0f; jumpVelocity = 0f
         isJumping = false; isAttacking = false
         stompPhase = StompPhase.NONE; stompTimer = 0f; shockwavePending = false

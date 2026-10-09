@@ -37,7 +37,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
     private val catSkills = com.jamcat.nayngapo.engine.CatSkills.all
         .filter { com.jamcat.nayngapo.engine.CatSkills.isLearned(it.id) }.take(3)
     private val humanSkills = com.jamcat.nayngapo.engine.HumanSkills.all
-        .filter { com.jamcat.nayngapo.engine.HumanSkills.isLearned(it.id) }.take(4)
+        .filter { com.jamcat.nayngapo.engine.HumanSkills.isLearned(it.id) }.take(com.jamcat.nayngapo.ui.TouchControls.HUMAN_SKILL_SLOTS)
     private var order = com.jamcat.nayngapo.entity.AllyOrder.FOLLOW
     private var noticeText = ""
     private var noticeTimer = 0f

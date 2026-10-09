@@ -567,7 +567,7 @@ class TouchControls {
         setShadowLayer(3f, 0f, 1f, Color.argb(160, 0, 0, 0))
     }
 
-    private companion object {
+    companion object {
         val ACCENT = Color.rgb(255, 205, 84)
 
         /** 지시를 바꿨을 때 버튼이 커졌다 돌아오는 시간 */
@@ -577,7 +577,7 @@ class TouchControls {
         const val SKILL_SLOTS = 3
 
         /** 인간 기술 버튼 칸 수 */
-        const val HUMAN_SKILL_SLOTS = 4
+        const val HUMAN_SKILL_SLOTS = 5   // 각성 추가로 5칸 (2026-10-09)
 
         /** 기술 버튼 반지름 (지름 96px) */
         const val SKILL_RADIUS = 48f

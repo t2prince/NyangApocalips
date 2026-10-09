@@ -30,6 +30,12 @@ object HumanSkills : SkillBook {
             "땅에서 길고 뾰족한 돌이 솟는다 (공격력 55)",
             power = 55, cooldown = 8f
         ),
+        // 대표님 2026-10-09: 이름 각성 · 공격력 15 증가 · 방어력 15 증가 · 500루비 (지속 10초·쿨타임 30초는 Claude 판단)
+        CatSkills.Skill(
+            "awaken", "각성", 500,
+            "10초 동안 공격력 +15 · 방어력 +15 (공격력 15 이하인 적의 공격을 막는다)",
+            power = 15, cooldown = 30f
+        ),
     )
 
     fun byId(id: String): CatSkills.Skill? = all.firstOrNull { it.id == id }

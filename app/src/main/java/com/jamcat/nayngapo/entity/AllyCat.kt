@@ -38,7 +38,9 @@ class AllyCat(
     /** 치즈냥이(NORMAL)의 털 무늬 — 다른 종은 무시 */
     val coat: com.jamcat.nayngapo.engine.CatCoat = com.jamcat.nayngapo.engine.CatCoat.CHEESE,
     /** 동물 병원 수술로 빨라진 배율 (2026-10-09) */
-    val speedMul: Float = 1f
+    val speedMul: Float = 1f,
+    /** HP 수술로 늘어난 체력 */
+    val hpBonus: Int = 0
 ) : Crowdable {
 
     enum class Kind {
@@ -60,7 +62,7 @@ class AllyCat(
 
     // 아군도 무적이 아니다 — 맞으면 체력이 깎이고 쓰러진다.
     // 레벨만큼 단단해지고, 잘 돌본 냥이는 여기서 한 번 더 늘어난다.
-    val maxHp = Math.round(
+    val maxHp = hpBonus + Math.round(
         com.jamcat.nayngapo.engine.CatTeam.maxHpFor(level) * hpMultiplier
     ).coerceAtLeast(1)
     var hp = maxHp

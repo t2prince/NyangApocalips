@@ -74,8 +74,10 @@ object CatTeam {
         val male: Boolean = Math.random() < 0.5,
         /** 이 냥이가 상점 마을 '고양이 기술' 천막에서 배운 기술 id들 (데려온 냥이 1마리만 배운다, 2026-10-09) */
         val skills: MutableSet<String> = mutableSetOf(),
-        /** 동물 병원에서 받은 수술 횟수 — 한 번에 SURGERY_SPEED 만큼 빨라진다 (2026-10-09) */
+        /** 중성화 수술을 받았나(0/1) — 빨라진다. 중성화한 냥이는 새끼를 낳지 않는다 (2026-10-09) */
         var surgeries: Int = 0,
+        /** HP 수술 횟수 — 한 번에 체력 +HP_SURGERY_HP (2026-10-09) */
+        var hpSurgeries: Int = 0,
         /** 치즈냥이의 털 무늬 (다른 종은 CHEESE 로 두고 무시) */
         val coat: CatCoat = CatCoat.CHEESE
     ) {
@@ -211,6 +213,7 @@ object CatTeam {
                             // 성별 도입 전 냥이는 한 번 무작위로 정해 바로 저장한다
                             male = if (o.has("male")) o.optBoolean("male") else { migratedCoat = true; Math.random() < 0.5 },
                             surgeries = o.optInt("surgeries", 0).coerceIn(0, SURGERY_MAX),
+                            hpSurgeries = o.optInt("hpSurgeries", 0).coerceIn(0, HP_SURGERY_MAX),
                             skills = o.optJSONArray("skills")?.let { arr -> MutableList(arr.length()) { arr.optString(it) }.toMutableSet() } ?: mutableSetOf(),
                             // 무늬 도입(2026-09-20) 전에 저장된 치즈냥이는 무늬가 없다 → 한 번 무작위로 뽑아 준다 (대표님 지시)
                             coat = if (o.has("coat")) CatCoat.of(o.optString("coat"))
@@ -273,6 +276,7 @@ object CatTeam {
                     .put("male", c.male)
                     .put("skills", JSONArray(c.skills.toList()))
                     .put("surgeries", c.surgeries)
+                    .put("hpSurgeries", c.hpSurgeries)
             )
         }
         val counts = JSONObject()
@@ -339,8 +343,9 @@ object CatTeam {
     /** 살아 있는 냥이 둘을 골라 새끼를 낳는다. 둘이 안 되면 null */
     private fun breed(): TeamCat? {
         // 수컷과 암컷이 한 마리씩 있어야 새끼를 낳는다 (성별 2026-10-09)
-        val males = living.filter { it.male }
-        val females = living.filter { !it.male }
+        // 중성화한 냥이는 새끼를 낳지 않는다
+        val males = living.filter { it.male && it.surgeries == 0 }
+        val females = living.filter { !it.male && it.surgeries == 0 }
         if (males.isEmpty() || females.isEmpty()) return null
         val a = males.random()
         val b = females.random()
@@ -513,10 +518,26 @@ object CatTeam {
     fun cat(id: Int): TeamCat? = roster.firstOrNull { it.id == id }
 
     // ===== 동물 병원 (상점가 6번 천막, 대표님 2026-10-09 「루비를 내고 수술하면 고양이가 더 빨라져」) =====
-    /** 수술 값(대표님 57)·한 번에 빨라지는 몫·최대 횟수(Claude 판단) */
+    /** 수술 종류 (대표님 2026-10-09): 중성화 수술 = 빨라진다 · HP 수술 = 피가 5 늘어난다. 값은 57루비(대표님).
+     *  중성화는 한 번만·+20%, HP 수술은 최대 5번 — Claude 판단 */
     const val SURGERY_PRICE = 57   // 대표님 2026-10-09 「루비는 57」
     const val SURGERY_SPEED = 0.2f
-    const val SURGERY_MAX = 3
+    const val SURGERY_MAX = 1
+    const val HP_SURGERY_HP = 5
+    const val HP_SURGERY_MAX = 5
+
+    /** HP 수술로 늘어난 체력 */
+    fun hpBonusOf(c: TeamCat) = HP_SURGERY_HP * c.hpSurgeries
+
+    /** HP 수술 — 체력 +5 */
+    fun operateHp(catId: Int): Boolean {
+        val c = cat(catId) ?: return false
+        if (c.gone || c.hpSurgeries >= HP_SURGERY_MAX) return false
+        if (!GameProgress.spendRubies(SURGERY_PRICE)) return false
+        c.hpSurgeries++
+        save()
+        return true
+    }
 
     /** 이 냥이의 이동 속도 배율 (수술 한 번에 +20%) */
     fun speedMultiplier(c: TeamCat) = 1f + SURGERY_SPEED * c.surgeries

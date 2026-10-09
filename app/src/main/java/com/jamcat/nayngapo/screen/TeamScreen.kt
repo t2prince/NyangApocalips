@@ -393,7 +393,7 @@ class TeamScreen(private val gameView: GameView) : Screen {
             cat.isDead -> "스테이지 ${cat.diedAtStage}에서 잠들다"
             cat.hasLeft -> "배고파서 떠났다..."
             else -> {
-                val base = CatTeam.maxHpFor(cat.level)
+                val base = CatTeam.maxHpFor(cat.level) + CatTeam.hpBonusOf(cat)   // HP 수술 몫 포함
                 val bonus = Math.round(base * CatTeam.careMultiplier(cat)) - base
                 (if (cat.male) "♂ " else "♀ ") + "Lv ${cat.level} · 체력 $base" + if (bonus > 0) " (+$bonus)" else ""
             }

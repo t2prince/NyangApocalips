@@ -50,7 +50,9 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     init {
         Terrain.stage = Terrain.SHOP            // 상점 마을은 평평한 초원
-        player = Player(START_X, Constants.GROUND_Y)
+        // 천막(가게)에서 나오면 그 가게 앞에 서 있다 (대표님 2026-10-09) — 로비에서 들어오면 처음 자리
+        player = Player(returnX ?: START_X, Constants.GROUND_Y)
+        returnX = null
         player.facingRight = true
         // 땅 스테이지와 같이 날아냥이는 빼고, 인간 뒤에 줄지어 선다
         val party = com.jamcat.nayngapo.engine.CatTeam.party.filter {
@@ -62,7 +64,8 @@ class ShopScreen(private val gameView: GameView) : Screen {
                     (START_X - 90f - 70f * i).coerceAtLeast(20f), Constants.GROUND_Y,
                     cat.kind, level = cat.level, teamId = cat.id,
                     armored = cat.hasArmor, attackBonus = cat.attackBonus, coat = cat.coat,
-                    speedMul = com.jamcat.nayngapo.engine.CatTeam.speedMultiplier(cat)
+                    speedMul = com.jamcat.nayngapo.engine.CatTeam.speedMultiplier(cat),
+                    hpBonus = com.jamcat.nayngapo.engine.CatTeam.hpBonusOf(cat)
                 )   // 상점 마을에서는 기술이 무효 — 그전에 묭묭 진화를 썼어도 보통 크기 (대표님 2026-10-09)
             )
         }
@@ -180,7 +183,8 @@ class ShopScreen(private val gameView: GameView) : Screen {
     // ===== 동물 병원 창 =====
     private var hospitalMode = false
     private var patient: com.jamcat.nayngapo.engine.CatTeam.TeamCat? = null
-    private val operateRect = RectF()
+    private val surgeryRects = List(2) { RectF() }
+    private val surgeryBtns = List(2) { RectF() }
 
     private fun drawHospital(canvas: Canvas, w: Float, h: Float) {
         val c = patient ?: return
@@ -199,34 +203,52 @@ class ShopScreen(private val gameView: GameView) : Screen {
             rect.set(panelRect.centerX() - bmp.width * s / 2f, panelRect.top + h * 0.12f, panelRect.centerX() + bmp.width * s / 2f, panelRect.top + h * 0.12f + bmp.height * s)
             canvas.drawBitmap(bmp, null, rect, null)
         }
+        // 수술 두 가지: 중성화(빨라진다, 1번) · HP 수술(체력 +5, 최대 5번) — 각 57루비
         rowDesc.textAlign = Paint.Align.CENTER
-        rowDesc.textSize = h * 0.034f
-        val pct = (T.SURGERY_SPEED * 100).toInt()
-        canvas.drawText("수술하면 더 빨라져요 (한 번에 +$pct%, 최대 ${T.SURGERY_MAX}번)", panelRect.centerX(), panelRect.top + h * 0.47f, rowDesc)
-        canvas.drawText("지금 빠르기 +${(T.SURGERY_SPEED * 100 * c.surgeries).toInt()}%  ·  수술 ${c.surgeries}/${T.SURGERY_MAX}  ·  보유 루비 ${GameProgress.rubies}", panelRect.centerX(), panelRect.top + h * 0.53f, rowDesc)
-        rowDesc.textAlign = Paint.Align.LEFT
-        val full = c.surgeries >= T.SURGERY_MAX
-        operateRect.set(panelRect.centerX() - w * 0.12f, panelRect.bottom - h * 0.2f, panelRect.centerX() + w * 0.12f, panelRect.bottom - h * 0.07f)
-        canvas.drawRoundRect(operateRect, 24f, 24f, if (full) learnedPaint else bubblePaint); canvas.drawRoundRect(operateRect, 24f, 24f, ink)
-        bubbleText.textSize = operateRect.height() * 0.38f
-        if (full) canvas.drawText("더 빨라질 수 없어요", operateRect.centerX(), operateRect.centerY() + operateRect.height() * 0.13f, bubbleText)
-        else {
-            val label = "${T.SURGERY_PRICE} 수술하기"
-            val lw = bubbleText.measureText(label)
-            drawRubyIcon(canvas, operateRect.centerX() - lw / 2f - operateRect.height() * 0.2f, operateRect.centerY(), operateRect.height() * 0.17f, gemPaint)
-            canvas.drawText(label, operateRect.centerX() + operateRect.height() * 0.1f, operateRect.centerY() + operateRect.height() * 0.13f, bubbleText)
+        rowDesc.textSize = h * 0.03f
+        canvas.drawText("보유 루비 ${GameProgress.rubies}", panelRect.centerX(), panelRect.top + h * 0.45f, rowDesc)
+        val rows = listOf(
+            Triple("중성화 수술", "빨라진다 (+${(T.SURGERY_SPEED * 100).toInt()}%)", c.surgeries >= T.SURGERY_MAX),
+            Triple("HP 수술", "피가 ${T.HP_SURGERY_HP} 늘어난다 (${c.hpSurgeries}/${T.HP_SURGERY_MAX})", c.hpSurgeries >= T.HP_SURGERY_MAX),
+        )
+        for ((k, row) in rows.withIndex()) {
+            val r = surgeryRects[k]
+            r.set(panelRect.left + w * 0.03f, panelRect.top + h * (0.49f + k * 0.15f), panelRect.right - w * 0.03f, panelRect.top + h * (0.62f + k * 0.15f))
+            canvas.drawRoundRect(r, 18f, 18f, if (row.third) learnedPaint else rowPaint); canvas.drawRoundRect(r, 18f, 18f, ink)
+            rowName.textSize = r.height() * 0.32f
+            canvas.drawText(row.first, r.left + 20f, r.top + r.height() * 0.42f, rowName)
+            rowDesc.textAlign = Paint.Align.LEFT; rowDesc.textSize = r.height() * 0.24f
+            canvas.drawText(row.second, r.left + 20f, r.top + r.height() * 0.8f, rowDesc)
+            val btn = surgeryBtns[k]
+            btn.set(r.right - w * 0.15f, r.top + r.height() * 0.15f, r.right - 12f, r.bottom - r.height() * 0.15f)
+            canvas.drawRoundRect(btn, 20f, 20f, if (row.third) learnedPaint else bubblePaint); canvas.drawRoundRect(btn, 20f, 20f, ink)
+            bubbleText.textSize = btn.height() * 0.4f
+            if (row.third) canvas.drawText("다 했어요", btn.centerX(), btn.centerY() + btn.height() * 0.14f, bubbleText)
+            else {
+                val label = "${T.SURGERY_PRICE} 수술"
+                val lw = bubbleText.measureText(label)
+                drawRubyIcon(canvas, btn.centerX() - lw / 2f - btn.height() * 0.18f, btn.centerY(), btn.height() * 0.16f, gemPaint)
+                canvas.drawText(label, btn.centerX() + btn.height() * 0.1f, btn.centerY() + btn.height() * 0.14f, bubbleText)
+            }
         }
+        rowDesc.textAlign = Paint.Align.LEFT
     }
 
     private fun tapHospital(px: Float, py: Float) {
         val c = patient ?: return
         val T = com.jamcat.nayngapo.engine.CatTeam
         if (closeRect.contains(px, py) || !panelRect.contains(px, py)) { patient = null; return }
-        if (!operateRect.contains(px, py)) return
         when {
-            c.surgeries >= T.SURGERY_MAX -> showNotice("${c.name}은(는) 이미 가장 빨라요")
-            GameProgress.rubies < T.SURGERY_PRICE -> showNotice("루비가 모자라요! (${T.SURGERY_PRICE}루비)")
-            T.operate(c.id) -> { SoundManager.playSpecial(); showNotice("수술 성공! ${c.name}이(가) 더 빨라졌다냥!") }
+            surgeryBtns[0].contains(px, py) -> when {
+                c.surgeries >= T.SURGERY_MAX -> showNotice("${c.name}은(는) 이미 중성화 수술을 받았어요")
+                GameProgress.rubies < T.SURGERY_PRICE -> showNotice("루비가 모자라요! (${T.SURGERY_PRICE}루비)")
+                T.operate(c.id) -> { SoundManager.playSpecial(); showNotice("중성화 수술 성공! ${c.name}이(가) 더 빨라졌다냥!") }
+            }
+            surgeryBtns[1].contains(px, py) -> when {
+                c.hpSurgeries >= T.HP_SURGERY_MAX -> showNotice("${c.name}은(는) HP 수술을 다 받았어요")
+                GameProgress.rubies < T.SURGERY_PRICE -> showNotice("루비가 모자라요! (${T.SURGERY_PRICE}루비)")
+                T.operateHp(c.id) -> { SoundManager.playSpecial(); showNotice("HP 수술 성공! ${c.name}의 피가 ${T.HP_SURGERY_HP} 늘었다냥!") }
+            }
         }
     }
 
@@ -630,6 +652,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     private fun enterTent(i: Int) {
         touchControls.releaseAll()
+        returnX = player.x   // 가게 화면에서 돌아오면 여기(가게 앞)부터
         when (i) {
             CAT_SHOP_TENT -> gameView.showCatShop(fromTent = true)
             CAT_SKILL_TENT -> {
@@ -729,6 +752,8 @@ class ShopScreen(private val gameView: GameView) : Screen {
         )
         private val DEFAULT_ADS = listOf("어서 오세요!", "곧 좋은 물건 들어와요~")
         private const val START_X = 160f
+        /** 가게 화면에 들어갈 때의 인간 자리 — 돌아오면 거기서 시작 */
+        private var returnX: Float? = null
         private const val FIRST_TENT_X = 900f
         private const val TENT_GAP = 760f
         private const val TENT_W = 460f

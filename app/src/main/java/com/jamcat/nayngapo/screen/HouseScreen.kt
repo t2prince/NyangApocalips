@@ -69,7 +69,7 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
             followers.add(com.jamcat.nayngapo.entity.AllyCat(
                 (player.x - 90f - 70f * i).coerceAtLeast(20f), Constants.GROUND_Y,
                 c.kind, level = c.level, teamId = c.id, armored = c.hasArmor, attackBonus = c.attackBonus, coat = c.coat,
-                speedMul = CatTeam.speedMultiplier(c), hpBonus = CatTeam.hpBonusOf(c)))
+                speedMul = CatTeam.speedMultiplier(c), hpBonus = CatTeam.hpBonusOf(c), kitten = c.isKitten))
         }
     }
 
@@ -215,7 +215,8 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
         val moving = r.wait <= 0f
         val bmp = if (r.dir > 0f) r.sprite else SpriteManager.getFlipped(r.sprite)
         val hop = if (moving) abs(sin(r.phase * 10f)) * 8f else 0f
-        val cw = bmp.width.toFloat(); val ch = bmp.height.toFloat()
+        val k = if (r.cat.isKitten) com.jamcat.nayngapo.entity.AllyCat.KITTEN_SCALE else 1f   // 새끼는 작게
+        val cw = bmp.width * k; val ch = bmp.height * k
         rect.set(r.x - cw * 0.4f, gy - 8f, r.x + cw * 0.4f, gy + 8f)
         canvas.drawOval(rect, shadowPaint)
         rect.set(r.x - cw / 2f, gy - ch - hop, r.x + cw / 2f, gy - hop)

@@ -40,7 +40,9 @@ class AllyCat(
     /** 동물 병원 수술로 빨라진 배율 (2026-10-09) */
     val speedMul: Float = 1f,
     /** HP 수술로 늘어난 체력 */
-    val hpBonus: Int = 0
+    val hpBonus: Int = 0,
+    /** 새끼 냥이 — 적 새끼 고양이처럼 작게(0.6배) 그린다 (대표님 2026-10-09 「같은편 새끼냥이가 다른 편이랑 똑같아야」) */
+    val kitten: Boolean = false
 ) : Crowdable {
 
     enum class Kind {
@@ -55,6 +57,8 @@ class AllyCat(
 
     /** 날아냥이는 땅 위에서도 살짝 떠서 다닌다 */
     private val hovers = kind == Kind.FLYING
+    /** 그림 크기 배율 (새끼면 작게) */
+    private val sizeMul = if (kitten) KITTEN_SCALE else 1f
 
     override val width = 80f
     override var crowdTimer = 0f
@@ -315,7 +319,7 @@ class AllyCat(
         val drawY = y + jumpZ + windLift + hopOffset + castLift + climbOffset
 
         if (isDead) {
-            death.draw(canvas, spriteFor(kind), facingRight, cx, y + jumpZ + windLift, if (evolved) EVOLVE_SCALE else 1f)
+            death.draw(canvas, spriteFor(kind), facingRight, cx, y + jumpZ + windLift, (if (evolved) EVOLVE_SCALE else 1f) * sizeMul)
             return
         }
 
@@ -329,9 +333,13 @@ class AllyCat(
         if (evolved) {
             // 묭묭 진화: 0.6초에 걸쳐 쑥 커지고(살짝 넘쳤다 돌아옴) 발끝을 그대로 둔 채 엄청 크게 그린다
             val g = (evolveAge / 0.6f).coerceAtMost(1f)
-            val s = 1f + (EVOLVE_SCALE - 1f) * g + 0.25f * kotlin.math.sin(g * Math.PI.toFloat())
+            val s = (1f + (EVOLVE_SCALE - 1f) * g + 0.25f * kotlin.math.sin(g * Math.PI.toFloat())) * sizeMul
             val bw = bmp.width * s; val bh = bmp.height * s
             scratch.set(cx - bw / 2f, drawY - bh + 8f * s, cx + bw / 2f, drawY + 8f * s)
+            canvas.drawBitmap(bmp, null, scratch, evolvePaint)
+        } else if (kitten) {
+            val bw = bmp.width * KITTEN_SCALE; val bh = bmp.height * KITTEN_SCALE
+            scratch.set(cx - bw / 2f, drawY - bh + 8f * KITTEN_SCALE, cx + bw / 2f, drawY + 8f * KITTEN_SCALE)
             canvas.drawBitmap(bmp, null, scratch, evolvePaint)
         } else canvas.drawBitmap(bmp, cx - bmp.width / 2f, drawY - bmp.height + 8f, null)
 
@@ -354,14 +362,14 @@ class AllyCat(
         // 체력이 깎이면 머리 위에 게이지가 보인다
         if (hp < maxHp) {
             val barW = width
-            val barY = drawY - height - 30f
+            val barY = drawY - height * sizeMul - 30f
             canvas.drawRect(cx - barW / 2f, barY, cx + barW / 2f, barY + 7f, hpBgPaint)
             canvas.drawRect(cx - barW / 2f, barY,
                 cx - barW / 2f + barW * (hp / maxHp.toFloat()), barY + 7f, hpFgPaint)
         }
 
         // 아군 표식: 머리 위 하트 (적과 구분)
-        val my = drawY - height - 14f
+        val my = drawY - height * sizeMul - 14f
         val path = Path().apply {
             moveTo(cx, my + 8f)
             cubicTo(cx - 14f, my - 4f, cx - 6f, my - 14f, cx, my - 6f)
@@ -390,6 +398,8 @@ class AllyCat(
         /** 묭묭 진화: 공격력·방어력 50, 크기 2.2배 (Claude 판단) */
         const val EVOLVE_POWER = 50
         const val EVOLVE_SCALE = 2.2f
+        /** 새끼 냥이 크기 — 적 새끼 고양이(KittenCat)와 같은 0.6배 */
+        const val KITTEN_SCALE = 0.6f
         private val evolvePaint = Paint().apply { isFilterBitmap = true; isAntiAlias = true }
         /** 날아냥이가 땅에서 떠 있는 높이 */
         const val HOVER_LIFT = -18f

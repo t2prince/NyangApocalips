@@ -65,7 +65,8 @@ class ShopScreen(private val gameView: GameView) : Screen {
                     cat.kind, level = cat.level, teamId = cat.id,
                     armored = cat.hasArmor, attackBonus = cat.attackBonus, coat = cat.coat,
                     speedMul = com.jamcat.nayngapo.engine.CatTeam.speedMultiplier(cat),
-                    hpBonus = com.jamcat.nayngapo.engine.CatTeam.hpBonusOf(cat)
+                    hpBonus = com.jamcat.nayngapo.engine.CatTeam.hpBonusOf(cat),
+                    kitten = cat.isKitten
                 )   // 상점 마을에서는 기술이 무효 — 그전에 묭묭 진화를 썼어도 보통 크기 (대표님 2026-10-09)
             )
         }

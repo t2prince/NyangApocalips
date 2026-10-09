@@ -293,7 +293,8 @@ class GamePlayScreen(
                     attackBonus = cat.attackBonus,
                     coat = cat.coat,
                     speedMul = com.jamcat.nayngapo.engine.CatTeam.speedMultiplier(cat),
-                    hpBonus = com.jamcat.nayngapo.engine.CatTeam.hpBonusOf(cat)
+                    hpBonus = com.jamcat.nayngapo.engine.CatTeam.hpBonusOf(cat),
+                    kitten = cat.isKitten
                 ).also { it.evolve(com.jamcat.nayngapo.engine.CatTeam.evolveSecondsLeft, grown = true) }   // 묭묭 진화 중이면 큰 채로
             )
         }

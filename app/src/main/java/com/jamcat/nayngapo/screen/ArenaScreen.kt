@@ -291,7 +291,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
         canvas.drawRoundRect(rect, 10f, 10f, ink)
 
         // 냥이: 가짜 냥이 쪽으로 뛰어들었다 돌아온다
-        val ch = h * 0.24f; val cw = sprite.width * ch / sprite.height
+        val ch = h * 0.24f * (if (c.isKitten) com.jamcat.nayngapo.entity.AllyCat.KITTEN_SCALE else 1f); val cw = sprite.width * ch / sprite.height   // 새끼는 작게
         val reach = if (lunge >= 0f) sin(lunge * PI.toFloat()) else 0f
         val catCx = w * 0.30f + reach * (dx - dw * 0.35f - cw / 2f - w * 0.30f)
         val hop = reach * h * 0.05f
@@ -459,8 +459,9 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
 
     /** 냥이끼리 싸우기: 차례가 된 냥이가 상대 쪽으로 뛰어들어 때린다 (2~3마리) */
     private fun drawDuel(canvas: Canvas, w: Float, h: Float, floorY: Float) {
-        val ch = h * (if (fighters.size >= 3) 0.20f else 0.24f)
+        val chBase = h * (if (fighters.size >= 3) 0.20f else 0.24f)
         for (f in fighters) {
+            val ch = chBase * (if (f.cat.isKitten) com.jamcat.nayngapo.entity.AllyCat.KITTEN_SCALE else 1f)   // 새끼는 작게
             val home = w * f.home
             val tgt = f.target
             // 때리러 갈 때는 상대 쪽을 보고, 그 밖엔 가운데를 본다
@@ -497,7 +498,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
         for (p in pops) {
             popPaint.textSize = h * 0.06f; popPaint.color = Color.WHITE
             popPaint.alpha = (p.life.coerceAtMost(0.5f) / 0.5f * 255).toInt()
-            canvas.drawText(p.text, w * p.x, floorY - ch - h * 0.17f + p.y, popPaint)
+            canvas.drawText(p.text, w * p.x, floorY - chBase - h * 0.17f + p.y, popPaint)
         }
         againBtn.setEmpty(); backBtn.setEmpty()
         val win = winner ?: return

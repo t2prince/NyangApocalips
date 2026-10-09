@@ -53,7 +53,9 @@ class ShopScreen(private val gameView: GameView) : Screen {
         player = Player(START_X, Constants.GROUND_Y)
         player.facingRight = true
         // 땅 스테이지와 같이 날아냥이는 빼고, 인간 뒤에 줄지어 선다
-        val party = com.jamcat.nayngapo.engine.CatTeam.party.filter { it.kind != com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING }
+        val party = com.jamcat.nayngapo.engine.CatTeam.party.filter {
+            it.kind != com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING && it.kind != com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT
+        }
         for ((i, cat) in party.withIndex()) {
             allies.add(
                 com.jamcat.nayngapo.entity.AllyCat(

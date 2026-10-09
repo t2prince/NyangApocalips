@@ -465,6 +465,15 @@ class LobbyScreen(private val gameView: GameView) : Screen {
                 showNotice("날아냥이가 잠들어 있다냥! 고양이 관리에서 부활 약을 먹여야 하늘에 갈 수 있다")
                 noticeTimer = 2.8f
             }
+            // 31 해적 바다: 맨몸으로는 못 들어간다 — 30에서 구한 배냥이를 타야 한다 (2026-10-09)
+            stage == 31 && CatTeam.boatDead() -> {
+                showNotice("배냥이가 잠들어 있다냥! 고양이 관리에서 부활 약을 먹여야 바다에 나갈 수 있다")
+                noticeTimer = 2.8f
+            }
+            stage == 31 && CatTeam.boatMount() == null -> {
+                showNotice("바다라서 맨몸으로는 못 간다냥! 30스테이지에서 배냥이를 구해 오자")
+                noticeTimer = 2.8f
+            }
             // 하늘 스테이지는 들어가면 날아냥이를 그냥 준다 (따로 구해 올 필요가 없다)
             else -> gameView.startStage(stage)
         }

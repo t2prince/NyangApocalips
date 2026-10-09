@@ -33,6 +33,12 @@ class GamePlayScreen(
         else -> Theme.VOLCANO
     }
 
+    /** 31 해적 바다 (2026-10-09): 바닥이 모두 물 — 인간은 30에서 구한 배냥이를 타고 다닌다. 목숨 1, 쓰러지면 배냥이는 무덤 */
+    private val isSea = stageNumber == 31
+    private val seaMount: com.jamcat.nayngapo.engine.CatTeam.TeamCat? =
+        if (isSea) com.jamcat.nayngapo.engine.CatTeam.boatMount() else null
+    private var seaMountMarked = false
+
     /** 이 시간을 넘겨 겹쳐 있으면 서로 밀어낸다(초) */
     private val CROWD_LIMIT = 4f
 
@@ -261,12 +267,16 @@ class GamePlayScreen(
 
     init {
         camera.forwardOnly = true   // 플랫포머식: 카메라가 뒤로 돌아가지 않는다
+        if (isSea) { player.lives = 1; player.rideLift = SEA_RIDE_LIFT }
         showWaveText("STAGE $stageNumber - START!")
 
         // 관리 화면에서 출전으로 골라 둔 팀 냥이들이 플레이어 뒤에 줄지어 함께 출발한다.
         // 여기서 쓰러져도 명단에서 사라지지는 않는다 (이번 판만 못 싸운다).
         // 날아냥이는 하늘 스테이지에만 있다 (대표님 2026-09-20) — 땅에는 데려오지 않는다
-        val groundParty = com.jamcat.nayngapo.engine.CatTeam.party.filter { it.kind != com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING }
+        // 배냥이도 바다(31)에서 인간이 타는 냥이라 함께 걷지 않는다 (2026-10-09)
+        val groundParty = com.jamcat.nayngapo.engine.CatTeam.party.filter {
+            it.kind != com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING && it.kind != com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT
+        }
         for ((i, cat) in groundParty.withIndex()) {
             level.allies.add(
                 com.jamcat.nayngapo.entity.AllyCat(
@@ -299,6 +309,8 @@ class GamePlayScreen(
         private const val LAVA_POOL_TIME = 2.5f
         private const val LAVA_POOL_HALF = 55f
         /** 꽃가루에 숨이 막혀 느려지는 시간 (Claude 판단) */
+        /** 배냥이 위에 올라탄 인간을 그만큼 위로 그린다 (Claude 판단) */
+        private const val SEA_RIDE_LIFT = 58f
         private const val CHOKE_TIME = 1.5f
         /** 젤리 발바닥 반지름 */
         const val JELLY_R = 22f
@@ -353,6 +365,8 @@ class GamePlayScreen(
         }
 
         if (player.isDead) {
+            // 바다에서 쓰러지면 타고 있던 배냥이도 물에 빠져 무덤이 된다 (날아냥이처럼)
+            if (isSea && !seaMountMarked) { seaMountMarked = true; seaMount?.let { com.jamcat.nayngapo.engine.CatTeam.markDead(it.id, stageNumber) } }
             gameView.showGameOver(player.score)
             return
         }
@@ -2114,9 +2128,19 @@ class GamePlayScreen(
             drawables.add(Drawable(grave.second) { drawGrave(canvas, grave.first, grave.second) })
         }
 
-        // Player
+        // Player (바다에서는 배냥이를 타고)
         if (!player.isDead) {
-            drawables.add(Drawable(player.y) { player.draw(canvas) })
+            drawables.add(Drawable(player.y) {
+                if (isSea) drawSeaMount(canvas)
+                player.draw(canvas)
+            })
+        }
+        // 바다: 배가 없는 냥이들은 작은 뗏목 위에 서 있다
+        if (isSea) {
+            for (enemy in level.enemies) if (!enemy.isDead && enemy !is com.jamcat.nayngapo.entity.BoatCat && enemy.isTangible)
+                drawables.add(Drawable(enemy.y - 0.5f) { drawRaft(canvas, enemy.x + enemy.width / 2f, enemy.y, enemy.width) })
+            for (ally in level.allies) if (!ally.isDead)
+                drawables.add(Drawable(ally.y - 0.5f) { drawRaft(canvas, ally.x + ally.width / 2f, ally.y, ally.width) })
         }
 
         // Sort by y (top to bottom)
@@ -2704,6 +2728,53 @@ class GamePlayScreen(
     }
 
     /** 하늘에 떠 있는 구름 — 카메라보다 아주 느리게 흘러 멀리 있어 보인다 */
+    // ===== 31 해적 바다: 물 바닥 · 인간이 탄 배냥이 · 뗏목 =====
+    private val seaWater = Paint().apply { color = Color.rgb(46, 128, 196) }
+    private val seaDeep = Paint().apply { color = Color.rgb(30, 96, 160) }
+    private val seaFoam = Paint().apply { color = Color.argb(220, 230, 246, 255); strokeWidth = 5f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    private val raftPaint = Paint().apply { color = Color.rgb(150, 96, 52); isAntiAlias = true }
+    private val raftInk = Paint().apply { color = Color.rgb(60, 36, 20); style = Paint.Style.STROKE; strokeWidth = 3f; isAntiAlias = true }
+    private val mountDst = RectF()
+
+    /** 화면 아래를 채우는 바다 — 물결이 카메라를 따라 흐른다 */
+    private fun drawSeaFloor(canvas: Canvas) {
+        val sw = gameView.screenWidth.toFloat(); val sh = gameView.screenHeight.toFloat()
+        val top = Constants.GROUND_Y - 18f
+        canvas.drawRect(0f, top, sw, sh, seaWater)
+        canvas.drawRect(0f, top + 70f, sw, sh, seaDeep)
+        val drift = camera.x % 120f
+        var x = -drift - 120f
+        while (x < sw + 120f) {
+            val y = top + 6f + kotlin.math.sin((x + camera.x) * 0.02f + elapsed * 2f) * 5f
+            canvas.drawLine(x, y, x + 60f, y + 3f, seaFoam)
+            canvas.drawLine(x + 40f, y + 46f, x + 90f, y + 48f, seaFoam)
+            x += 120f
+        }
+    }
+
+    /** 인간이 탄 배냥이: 인간 발밑에 무늬 그대로의 배냥이(내 편)를 그린다 */
+    private fun drawSeaMount(canvas: Canvas) {
+        val m = seaMount ?: return
+        val base = m.coat.boatAlly
+        val bmp = if (player.facingRight) base else SpriteManager.getFlipped(base)
+        val s = 1.35f
+        val cx = player.x + player.width / 2f
+        val bob = kotlin.math.sin(elapsed * 3f) * 3f
+        val foot = player.y + player.jumpZ + 22f + bob
+        mountDst.set(cx - bmp.width * s / 2f, foot - bmp.height * s, cx + bmp.width * s / 2f, foot)
+        canvas.drawBitmap(bmp, null, mountDst, null)
+    }
+
+    /** 물 위의 작은 뗏목 (배가 없는 냥이용) */
+    private fun drawRaft(canvas: Canvas, cx: Float, y: Float, w: Float) {
+        val hw = w * 0.7f
+        mountDst.set(cx - hw, y - 6f, cx + hw, y + 16f)
+        canvas.drawRoundRect(mountDst, 8f, 8f, raftPaint)
+        canvas.drawRoundRect(mountDst, 8f, 8f, raftInk)
+        var k = cx - hw + hw / 3f
+        while (k < cx + hw) { canvas.drawLine(k, y - 6f, k, y + 16f, raftInk); k += hw / 1.5f }
+    }
+
     // ===== 31 해적: 해적선 (모래밭에 얹힌 커다란 배, 보스 뒤 배경) =====
     private val shipDst = RectF()
     private fun drawPirateShip(canvas: Canvas, sx: Float) {
@@ -3012,6 +3083,7 @@ class GamePlayScreen(
 
     /** 만화풍 잔디+흙 스트립을 세로 슬라이스로 잘라 울퉁불퉁한 지형 표면을 따라 깐다 */
     private fun drawFloor(canvas: Canvas) {
+        if (isSea) { drawSeaFloor(canvas); return }   // 31 해적: 바닥이 모두 물
         val sw = gameView.screenWidth.toFloat()
         val sh = gameView.screenHeight.toFloat()
         val grassOverlap = 42f                 // 표면(잔디/눈/모래)이 지면 기준선 위로 솟는 높이

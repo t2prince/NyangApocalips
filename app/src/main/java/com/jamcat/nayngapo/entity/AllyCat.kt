@@ -44,7 +44,9 @@ class AllyCat(
         /** 날아냥이 — 11스테이지(하늘)에서 타고 다니려면 먼저 구해야 한다 */
         FLYING,
         /** 총냥이 — 등에 달린 총으로 보라색 총알을 쏜다 (대표님 2026-09-20 「총냥이도 자기 팀이 될 수 있어」) */
-        GUN
+        GUN,
+        /** 배냥이 — 31 해적 바다에서 인간이 타고 다닌다 (30스테이지에서 구한다, 2026-10-09). 무늬별 그림 */
+        BOAT
     }
 
     /** 날아냥이는 땅 위에서도 살짝 떠서 다닌다 */
@@ -391,5 +393,6 @@ class AllyCat(
         Kind.NORMAL -> if (armored) coat.allyArmor else coat.ally
         Kind.FLYING -> if (armored) SpriteManager.flyingCatAllyArmor else SpriteManager.flyingCatAlly   // 아군은 꼬리가 얇다
         Kind.GUN -> if (armored) SpriteManager.gunCatAllyArmor else SpriteManager.gunCatAlly
+        Kind.BOAT -> coat.boatAlly
     }
 }

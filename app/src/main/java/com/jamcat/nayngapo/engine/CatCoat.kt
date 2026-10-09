@@ -29,6 +29,9 @@ enum class CatCoat(val label: String) {
     val attack: List<Bitmap> get() = SpriteManager.coatAttack[this] ?: SpriteManager.catAttack
     /** 갑옷 입은 아군 정지 그림 / 대기(춤) 스트립 — scripts/make_armor_sprites.py */
     val allyArmor: Bitmap get() = SpriteManager.coatAllyArmor[this] ?: ally
+    /** 배냥이 (무늬별, GPT 그림 2026-10-09) — 적·내 편 */
+    val boatEnemy: Bitmap get() = SpriteManager.coatBoatEnemy[this] ?: SpriteManager.boatCat
+    val boatAlly: Bitmap get() = SpriteManager.coatBoatAlly[this] ?: SpriteManager.coatBoatAlly[CatCoat.CHEESE] ?: ally
     val idleArmor: List<Bitmap> get() = SpriteManager.coatIdleArmor[this] ?: idle
 
     companion object {

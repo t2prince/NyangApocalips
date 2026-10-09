@@ -85,6 +85,7 @@ class Prison(
                 AllyCat.Kind.GREEN -> SpriteManager.greenCatAlly
                 AllyCat.Kind.BLUE -> SpriteManager.blueCatAlly
                 AllyCat.Kind.GUN -> SpriteManager.gunCatAlly
+                AllyCat.Kind.BOAT -> catCoat.boatAlly
                 else -> catCoat.ally
             }
             srcRect.set(0, 0, bmp.width, bmp.height)

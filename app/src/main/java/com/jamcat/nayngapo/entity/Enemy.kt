@@ -986,6 +986,10 @@ class FlowerCat(x: Float, y: Float) : Enemy(x, y, 15, 10) {
  * 배가 출렁이며 다가오고, 한 번 들이받으면 뒤로 물러났다가 다시 온다. 속도·물러나는 시간은 Claude 판단.
  */
 class BoatCat(x: Float, y: Float) : Enemy(x, y, 20, 5) {
+    /** 배냥이 종류 = 무늬 (하양이·턱시도·삼색이·고등어·치즈, 대표님 2026-10-09) — 무작위 */
+    val coat: com.jamcat.nayngapo.engine.CatCoat = listOf(
+        com.jamcat.nayngapo.engine.CatCoat.CHEESE, com.jamcat.nayngapo.engine.CatCoat.WHITE, com.jamcat.nayngapo.engine.CatCoat.CALICO,
+        com.jamcat.nayngapo.engine.CatCoat.TUXEDO, com.jamcat.nayngapo.engine.CatCoat.MACKEREL).random()
     override val width = 110f
     override val height = 90f
     private var rock = (Math.random() * 6.0).toFloat()
@@ -1008,7 +1012,7 @@ class BoatCat(x: Float, y: Float) : Enemy(x, y, 20, 5) {
     }
 
     override fun draw(canvas: Canvas) {
-        drawSprite(canvas, SpriteManager.boatCat)
+        drawSprite(canvas, coat.boatEnemy)
         drawHpBar(canvas)
     }
 }

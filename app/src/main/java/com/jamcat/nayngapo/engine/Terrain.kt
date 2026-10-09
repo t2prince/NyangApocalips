@@ -72,7 +72,7 @@ object Terrain {
         29 -> Profile(Shape.MESA, 200f, 1300f, 6f, 0.8f)
         30 -> Profile(Shape.TERRACES, 150f, 2400f, 3f, 0.4f)
         // 해적 (바닷가 모래밭)
-        31 -> Profile(Shape.DUNES, 70f, 1700f, 3f, 0.3f)
+        31 -> Profile(Shape.FLAT, 0f, 1700f, 0f, 0f)        // 바다 — 물은 평평하다 (2026-10-09)
         else -> Profile(Shape.ROLLING, 60f + stage * 4f, 1500f, 4f, 0f)
     }
 

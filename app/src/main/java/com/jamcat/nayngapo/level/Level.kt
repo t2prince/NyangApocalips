@@ -151,7 +151,7 @@ class Level(val stageNumber: Int) {
                 })
         }
         // 늪(기획3): 2스테이지부터 하나, 7스테이지부터 둘 (함정은 과하지 않게)
-        val swampCount = if (stageNumber < 2) 0 else (1 + (stageNumber - 2) / 5).coerceAtMost(if (stageNumber == 20 || stageNumber in 21..30) 1 else 2)   // 꿀 지역도 1개   // 20 은 「함정이 너무 많아」(2026-10-04)로 1개
+        val swampCount = if (stageNumber < 2) 0 else (1 + (stageNumber - 2) / 5).coerceAtMost(if (stageNumber == 31) 0 else if (stageNumber == 20 || stageNumber in 21..30) 1 else 2)   // 꿀 지역도 1개, 31 바다는 없음   // 20 은 「함정이 너무 많아」(2026-10-04)로 1개
 
         // 해머냥이는 모루냥이가 나오는 스테이지에만, 1~3마리 무작위로 섞인다 (대표님 2026-09-20)
         val mobs = plan.mobs.toMutableMap()
@@ -214,7 +214,7 @@ class Level(val stageNumber: Int) {
 
         // ===== 낭떠러지: 3스테이지부터, 그룹 사이 빈 구간 중 함정이 없는 곳에 (대표님 2026-09-20 「슈퍼마리오처럼 낭떠러지」) =====
         // 폭 160~215 는 점프 사거리(약 300) 안이라 뛰어넘을 수 있다. 냥이들도 hazardAhead 로 뛰어넘는다.
-        val chasmCount = if (stageNumber < 3) 0 else (1 + (stageNumber - 3) / 4).coerceAtMost(if (stageNumber == 20) 2 else if (stageNumber in 21..30) 3 else 5)   // 꿀 지역 최대 3 (Claude 판단)   // 20 은 5 → 2 (2026-10-04)
+        val chasmCount = if (stageNumber < 3) 0 else (1 + (stageNumber - 3) / 4).coerceAtMost(if (stageNumber == 31) 0 else if (stageNumber == 20) 2 else if (stageNumber in 21..30) 3 else 5)   // 꿀 지역 최대 3 (Claude 판단), 31 바다는 없음   // 20 은 5 → 2 (2026-10-04)
         val chasmFreeGaps = gapCenters.filter { gc -> hazardX.none { kotlin.math.abs(it - gc) < 500f } }
         repeat(chasmCount) { i ->
             if (chasmFreeGaps.isEmpty()) return@repeat
@@ -248,6 +248,12 @@ class Level(val stageNumber: Int) {
             // 함정 위에 겹치면 옆으로 비켜 놓는다
             while (hazardX.any { px > it - 220f && px < it + 500f }) px += 340f
             prisons.add(Prison(px, Terrain.groundY(px), kind))
+        }
+        // 30: 바다(31)에 나가려면 배냥이가 있어야 한다 — 배냥이가 갇힌 감옥을 하나 꼭 둔다 (2026-10-09)
+        if (stageNumber == 30) {
+            var px = bossBaseX - 600f
+            while (hazardX.any { px > it - 220f && px < it + 500f }) px -= 340f
+            prisons.add(Prison(px, Terrain.groundY(px), Prison.Kind.CAT, catKind = AllyCat.Kind.BOAT))
         }
 
         // ===== 31 해적: 토네이도 함정을 빈 구간에, 해적선은 보스 자리 뒤에 =====

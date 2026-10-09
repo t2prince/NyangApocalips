@@ -150,6 +150,11 @@ object CatTeam {
     /** 날아냥이를 한 마리라도 데리고 있는가 (11스테이지 입장 조건) */
     fun hasFlyingCat() = flyingMount() != null
 
+    /** 31 해적 바다에서 타는 배냥이 (30스테이지에서 구한다, 2026-10-09) */
+    fun boatMount(): TeamCat? = roster.firstOrNull { it.kind == AllyCat.Kind.BOAT && !it.gone }
+    /** 배냥이가 죽어 무덤에 있고 살아 있는 배냥이가 없다 */
+    fun boatDead(): Boolean = boatMount() == null && roster.any { it.kind == AllyCat.Kind.BOAT && it.isDead }
+
     /** 날아냥이가 죽어 무덤에 있고 살아 있는 날아냥이가 없다 — 이러면 하늘 스테이지에 못 간다 (대표님 2026-10-04 「날아냥이가 죽으면 하늘 스테이지를 깰 수 없어」) */
     fun flyingDead(): Boolean = flyingMount() == null && roster.any { it.kind == AllyCat.Kind.FLYING && it.isDead }
 
@@ -498,6 +503,7 @@ object CatTeam {
         AllyCat.Kind.NORMAL -> "치즈냥이"
         AllyCat.Kind.FLYING -> "날아냥이"
         AllyCat.Kind.GUN -> "총냥이"
+        AllyCat.Kind.BOAT -> "배냥이"
     }
 
     fun cat(id: Int): TeamCat? = roster.firstOrNull { it.id == id }

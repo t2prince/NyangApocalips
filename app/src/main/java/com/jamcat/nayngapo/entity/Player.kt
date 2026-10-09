@@ -79,6 +79,8 @@ class Player(var x: Float, var y: Float) {
     var inDeepSnow = false
     /** 늪에 빠져 있는지 — 5배 느려지지만 점프로 빠져나올 수 있다 */
     var inSwamp = false
+    /** 31 해적 바다: 배냥이 위에 올라탄 만큼 그림을 위로 (2026-10-09) */
+    var rideLift = 0f
     /** 꽃가루에 숨이 막혀 느려진 남은 시간 (꽃냥이, 2026-09-27) */
     var chokeTimer = 0f
     /** 눈에 잠긴 깊이 (0 = 평지, 최대치면 몸이 완전히 파묻힌다) */
@@ -270,7 +272,7 @@ class Player(var x: Float, var y: Float) {
         if (isDead) return
         if (isInvincible && ((invincibilityTimer * 8).toInt() % 2 == 0)) return
 
-        val drawY = y + jumpZ + snowSink       // 눈에 잠긴 만큼 아래로 내려간다
+        val drawY = y + jumpZ + snowSink - rideLift       // 눈에 잠긴 만큼 아래로, 배냥이를 타면 그만큼 위로
         val cx = x + width / 2f
         val dir = if (facingRight) 1f else -1f   // 바라보는 방향(+1 오른쪽, -1 왼쪽)
 
@@ -537,7 +539,7 @@ class Player(var x: Float, var y: Float) {
         val front = if (row[0] >= row[2]) 0 else 2
         val fx = if (facingRight) row[front] else 1f - row[front]
         val fy = row[front + 1]
-        val drawY = y + jumpZ + snowSink
+        val drawY = y + jumpZ + snowSink - rideLift
         val sw = bmp.width * hero.scale
         val sh = bmp.height * hero.scale
         val left = x + width / 2f - sw / 2f

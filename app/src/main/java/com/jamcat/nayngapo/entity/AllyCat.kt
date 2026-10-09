@@ -36,7 +36,9 @@ class AllyCat(
     /** 'Lv업' 아이템으로 영구히 올린 공격력 */
     val attackBonus: Int = 0,
     /** 치즈냥이(NORMAL)의 털 무늬 — 다른 종은 무시 */
-    val coat: com.jamcat.nayngapo.engine.CatCoat = com.jamcat.nayngapo.engine.CatCoat.CHEESE
+    val coat: com.jamcat.nayngapo.engine.CatCoat = com.jamcat.nayngapo.engine.CatCoat.CHEESE,
+    /** 동물 병원 수술로 빨라진 배율 (2026-10-09) */
+    val speedMul: Float = 1f
 ) : Crowdable {
 
     enum class Kind {
@@ -127,7 +129,7 @@ class AllyCat(
     private val isGunner = kind == Kind.GUN
     /** 원거리 (그린냥이 슬라임 / 총냥이 총알) */
     private val isSpitter = kind == Kind.GREEN || isGunner
-    private val moveSpeed = if (isSpitter) 250f else 300f
+    private val moveSpeed = (if (isSpitter) 250f else 300f) * speedMul
     private val attackRange = if (isSpitter) 520f else 110f
     /** 레벨만큼 세진다 (그린냥이는 뱉는 슬라임, 나머지는 할퀴기) */
     private val damageBonus = com.jamcat.nayngapo.engine.CatTeam.damageBonusFor(level)

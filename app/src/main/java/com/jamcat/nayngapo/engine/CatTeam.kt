@@ -74,6 +74,8 @@ object CatTeam {
         val male: Boolean = Math.random() < 0.5,
         /** 이 냥이가 상점 마을 '고양이 기술' 천막에서 배운 기술 id들 (데려온 냥이 1마리만 배운다, 2026-10-09) */
         val skills: MutableSet<String> = mutableSetOf(),
+        /** 동물 병원에서 받은 수술 횟수 — 한 번에 SURGERY_SPEED 만큼 빨라진다 (2026-10-09) */
+        var surgeries: Int = 0,
         /** 치즈냥이의 털 무늬 (다른 종은 CHEESE 로 두고 무시) */
         val coat: CatCoat = CatCoat.CHEESE
     ) {
@@ -208,6 +210,7 @@ object CatTeam {
                             parents = o.optString("parents", ""),
                             // 성별 도입 전 냥이는 한 번 무작위로 정해 바로 저장한다
                             male = if (o.has("male")) o.optBoolean("male") else { migratedCoat = true; Math.random() < 0.5 },
+                            surgeries = o.optInt("surgeries", 0).coerceIn(0, SURGERY_MAX),
                             skills = o.optJSONArray("skills")?.let { arr -> MutableList(arr.length()) { arr.optString(it) }.toMutableSet() } ?: mutableSetOf(),
                             // 무늬 도입(2026-09-20) 전에 저장된 치즈냥이는 무늬가 없다 → 한 번 무작위로 뽑아 준다 (대표님 지시)
                             coat = if (o.has("coat")) CatCoat.of(o.optString("coat"))
@@ -269,6 +272,7 @@ object CatTeam {
                     .put("parents", c.parents)
                     .put("male", c.male)
                     .put("skills", JSONArray(c.skills.toList()))
+                    .put("surgeries", c.surgeries)
             )
         }
         val counts = JSONObject()
@@ -507,6 +511,25 @@ object CatTeam {
     }
 
     fun cat(id: Int): TeamCat? = roster.firstOrNull { it.id == id }
+
+    // ===== 동물 병원 (상점가 6번 천막, 대표님 2026-10-09 「루비를 내고 수술하면 고양이가 더 빨라져」) =====
+    /** 수술 값(대표님 57)·한 번에 빨라지는 몫·최대 횟수(Claude 판단) */
+    const val SURGERY_PRICE = 57   // 대표님 2026-10-09 「루비는 57」
+    const val SURGERY_SPEED = 0.2f
+    const val SURGERY_MAX = 3
+
+    /** 이 냥이의 이동 속도 배율 (수술 한 번에 +20%) */
+    fun speedMultiplier(c: TeamCat) = 1f + SURGERY_SPEED * c.surgeries
+
+    /** 수술 — 루비를 내고 그 냥이가 빨라진다. 이미 최대거나 루비가 모자라면 false */
+    fun operate(catId: Int): Boolean {
+        val c = cat(catId) ?: return false
+        if (c.gone || c.surgeries >= SURGERY_MAX) return false
+        if (!GameProgress.spendRubies(SURGERY_PRICE)) return false
+        c.surgeries++
+        save()
+        return true
+    }
 
     /** 이 냥이에게 기술을 가르친다 — 루비를 내고 그 냥이만 배운다. 이미 배웠거나 루비가 모자라면 false */
     fun teachSkill(catId: Int, skillId: String): Boolean {

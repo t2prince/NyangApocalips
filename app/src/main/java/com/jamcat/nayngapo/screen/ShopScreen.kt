@@ -61,7 +61,8 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 com.jamcat.nayngapo.entity.AllyCat(
                     (START_X - 90f - 70f * i).coerceAtLeast(20f), Constants.GROUND_Y,
                     cat.kind, level = cat.level, teamId = cat.id,
-                    armored = cat.hasArmor, attackBonus = cat.attackBonus, coat = cat.coat
+                    armored = cat.hasArmor, attackBonus = cat.attackBonus, coat = cat.coat,
+                    speedMul = com.jamcat.nayngapo.engine.CatTeam.speedMultiplier(cat)
                 ).also { it.evolve(com.jamcat.nayngapo.engine.CatTeam.evolveSecondsLeft, grown = true) }   // 상점 마을에서도 거대하게
             )
         }
@@ -144,7 +145,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         panelRect.set(w * 0.2f, h * 0.18f, w * 0.8f, h * 0.82f)
         canvas.drawRoundRect(panelRect, 28f, 28f, panelPaint); canvas.drawRoundRect(panelRect, 28f, 28f, ink)
         panelTitle.textSize = h * 0.05f
-        canvas.drawText("누구에게 기술을 가르칠까요? (1마리)", panelRect.centerX(), panelRect.top + h * 0.08f, panelTitle)
+        canvas.drawText(if (hospitalMode) "누구를 수술할까요? (1마리)" else "누구에게 기술을 가르칠까요? (1마리)", panelRect.centerX(), panelRect.top + h * 0.08f, panelTitle)
         val n = list.size.coerceAtMost(3)
         val cw = (panelRect.width() - w * 0.04f) / n
         for (k in 0 until n) {
@@ -167,9 +168,66 @@ class ShopScreen(private val gameView: GameView) : Screen {
     private fun tapChooser(px: Float, py: Float) {
         val list = choosing ?: return
         for (k in 0 until list.size.coerceAtMost(3)) {
-            if (chooseRects[k].contains(px, py)) { choosing = null; skillStudent = list[k]; return }
+            if (chooseRects[k].contains(px, py)) {
+                choosing = null
+                if (hospitalMode) patient = list[k] else skillStudent = list[k]
+                return
+            }
         }
         if (!panelRect.contains(px, py)) choosing = null
+    }
+
+    // ===== 동물 병원 창 =====
+    private var hospitalMode = false
+    private var patient: com.jamcat.nayngapo.engine.CatTeam.TeamCat? = null
+    private val operateRect = RectF()
+
+    private fun drawHospital(canvas: Canvas, w: Float, h: Float) {
+        val c = patient ?: return
+        val T = com.jamcat.nayngapo.engine.CatTeam
+        canvas.drawRect(0f, 0f, w, h, pauseVeil)
+        panelRect.set(w * 0.24f, h * 0.16f, w * 0.76f, h * 0.84f)
+        canvas.drawRoundRect(panelRect, 28f, 28f, panelPaint); canvas.drawRoundRect(panelRect, 28f, 28f, ink)
+        panelTitle.textSize = h * 0.05f
+        canvas.drawText("동물 병원 — ${c.name}", panelRect.centerX(), panelRect.top + h * 0.08f, panelTitle)
+        closeRect.set(panelRect.right - h * 0.09f, panelRect.top + h * 0.02f, panelRect.right - h * 0.02f, panelRect.top + h * 0.09f)
+        canvas.drawRoundRect(closeRect, 16f, 16f, rowPaint); canvas.drawRoundRect(closeRect, 16f, 16f, ink)
+        canvas.drawLine(closeRect.left + 14f, closeRect.top + 14f, closeRect.right - 14f, closeRect.bottom - 14f, ink)
+        canvas.drawLine(closeRect.right - 14f, closeRect.top + 14f, closeRect.left + 14f, closeRect.bottom - 14f, ink)
+        allies.firstOrNull { it.teamId == c.id }?.spriteNow()?.let { bmp ->
+            val s = (h * 0.26f / bmp.height)
+            rect.set(panelRect.centerX() - bmp.width * s / 2f, panelRect.top + h * 0.12f, panelRect.centerX() + bmp.width * s / 2f, panelRect.top + h * 0.12f + bmp.height * s)
+            canvas.drawBitmap(bmp, null, rect, null)
+        }
+        rowDesc.textAlign = Paint.Align.CENTER
+        rowDesc.textSize = h * 0.034f
+        val pct = (T.SURGERY_SPEED * 100).toInt()
+        canvas.drawText("수술하면 더 빨라져요 (한 번에 +$pct%, 최대 ${T.SURGERY_MAX}번)", panelRect.centerX(), panelRect.top + h * 0.47f, rowDesc)
+        canvas.drawText("지금 빠르기 +${(T.SURGERY_SPEED * 100 * c.surgeries).toInt()}%  ·  수술 ${c.surgeries}/${T.SURGERY_MAX}  ·  보유 루비 ${GameProgress.rubies}", panelRect.centerX(), panelRect.top + h * 0.53f, rowDesc)
+        rowDesc.textAlign = Paint.Align.LEFT
+        val full = c.surgeries >= T.SURGERY_MAX
+        operateRect.set(panelRect.centerX() - w * 0.12f, panelRect.bottom - h * 0.2f, panelRect.centerX() + w * 0.12f, panelRect.bottom - h * 0.07f)
+        canvas.drawRoundRect(operateRect, 24f, 24f, if (full) learnedPaint else bubblePaint); canvas.drawRoundRect(operateRect, 24f, 24f, ink)
+        bubbleText.textSize = operateRect.height() * 0.38f
+        if (full) canvas.drawText("더 빨라질 수 없어요", operateRect.centerX(), operateRect.centerY() + operateRect.height() * 0.13f, bubbleText)
+        else {
+            val label = "${T.SURGERY_PRICE} 수술하기"
+            val lw = bubbleText.measureText(label)
+            drawRubyIcon(canvas, operateRect.centerX() - lw / 2f - operateRect.height() * 0.2f, operateRect.centerY(), operateRect.height() * 0.17f, gemPaint)
+            canvas.drawText(label, operateRect.centerX() + operateRect.height() * 0.1f, operateRect.centerY() + operateRect.height() * 0.13f, bubbleText)
+        }
+    }
+
+    private fun tapHospital(px: Float, py: Float) {
+        val c = patient ?: return
+        val T = com.jamcat.nayngapo.engine.CatTeam
+        if (closeRect.contains(px, py) || !panelRect.contains(px, py)) { patient = null; return }
+        if (!operateRect.contains(px, py)) return
+        when {
+            c.surgeries >= T.SURGERY_MAX -> showNotice("${c.name}은(는) 이미 가장 빨라요")
+            GameProgress.rubies < T.SURGERY_PRICE -> showNotice("루비가 모자라요! (${T.SURGERY_PRICE}루비)")
+            T.operate(c.id) -> { SoundManager.playSpecial(); showNotice("수술 성공! ${c.name}이(가) 더 빨라졌다냥!") }
+        }
     }
 
     private fun tapSkillPanel(px: Float, py: Float) {
@@ -224,7 +282,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     override fun update(deltaTime: Float) {
         if (paused) return
-        if (skillStudent != null || choosing != null) { if (noticeTimer > 0f) noticeTimer -= deltaTime; return }   // 창이 떠 있는 동안은 멈춘다
+        if (skillStudent != null || choosing != null || patient != null) { if (noticeTimer > 0f) noticeTimer -= deltaTime; return }   // 창이 떠 있는 동안은 멈춘다
         timer += deltaTime
         if (noticeTimer > 0f) noticeTimer -= deltaTime
 
@@ -382,6 +440,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
             return
         }
         drawSkillPanel(canvas, w, h)
+        drawHospital(canvas, w, h)
         drawChooser(canvas, w, h)
         if (noticeTimer > 0f) {
             noticeTextPaint.textSize = 42f
@@ -574,11 +633,21 @@ class ShopScreen(private val gameView: GameView) : Screen {
         when (i) {
             CAT_SHOP_TENT -> gameView.showCatShop(fromTent = true)
             CAT_SKILL_TENT -> {
+                hospitalMode = false
                 // 데려온 냥이 1마리만 배운다 — 2마리 이상 데려왔으면 먼저 하나를 고른다 (2026-10-09)
                 val brought = allies.mapNotNull { a -> a.teamId?.let { com.jamcat.nayngapo.engine.CatTeam.cat(it) } }.filter { !it.gone }
                 when {
                     brought.isEmpty() -> showNotice("냥이를 데려와야 기술을 가르쳐 줄 수 있어요! (고양이 관리에서 출전)")
                     brought.size == 1 -> skillStudent = brought[0]
+                    else -> choosing = brought
+                }
+            }
+            HOSPITAL_TENT -> {
+                val brought = allies.mapNotNull { a -> a.teamId?.let { com.jamcat.nayngapo.engine.CatTeam.cat(it) } }.filter { !it.gone }
+                hospitalMode = true
+                when {
+                    brought.isEmpty() -> { hospitalMode = false; showNotice("냥이를 데려와야 수술할 수 있어요! (고양이 관리에서 출전)") }
+                    brought.size == 1 -> patient = brought[0]
                     else -> choosing = brought
                 }
             }
@@ -597,6 +666,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
             val px = event.getX(idx); val py = event.getY(idx)
             if (choosing != null) { tapChooser(px, py); return true }
             if (skillStudent != null) { tapSkillPanel(px, py); return true }   // 기술 창이 떠 있으면 창만 누른다
+            if (patient != null) { tapHospital(px, py); return true }
             if (kotlin.math.hypot(px - PAUSE_BTN_X, py - MENU_BTN_Y) < MENU_HIT_R) {
                 paused = !paused; touchControls.releaseAll(); return true
             }
@@ -625,6 +695,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
     override fun onBack(): Boolean {
         if (choosing != null) { choosing = null; return true }
         if (skillStudent != null) { skillStudent = null; return true }   // 기술 창부터 닫는다
+        if (patient != null) { patient = null; return true }
         touchControls.releaseAll()
         if (!paused) paused = true else gameView.showLobby()
         return true
@@ -642,8 +713,10 @@ class ShopScreen(private val gameView: GameView) : Screen {
         const val CAT_SHOP_TENT = 0
         /** 고양이 상점 옆 천막 = 고양이 기술 (대표님 2026-10-09: 냥이를 데려오면 가격을 말하고 그 냥이 1마리만 가르친다) */
         const val CAT_SKILL_TENT = 1
+        /** 6번 천막 = 동물 병원 (대표님 2026-10-09: 루비를 내고 수술하면 고양이가 더 빨라진다) */
+        const val HOSPITAL_TENT = 5
         private val TENT_NAMES: List<String?> = List(TENT_COUNT) {
-            when (it) { CAT_SHOP_TENT -> "고양이 상점"; CAT_SKILL_TENT -> "고양이 기술"; else -> com.jamcat.nayngapo.engine.ShopCatalog.tentShops[it]?.first }
+            when (it) { CAT_SHOP_TENT -> "고양이 상점"; CAT_SKILL_TENT -> "고양이 기술"; HOSPITAL_TENT -> "동물 병원"; else -> com.jamcat.nayngapo.engine.ShopCatalog.tentShops[it]?.first }
         }
         /** 가게 주인의 광고 문구 (Claude 판단 — 대표님이 정하면 바꾼다) */
         private val TENT_ADS: Map<Int, List<String>> = mapOf(
@@ -652,7 +725,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
             2 to listOf("어서 오세요!", "갓 구운 연어 있어요~", "고양이 케이크 팝니다!"),
             3 to listOf("장난감 들어왔어요!", "레이저 포인터 인기 최고~", "깃털 막대 살랑살랑!"),
             4 to listOf("어서 오세요!", "푹신한 방석·캣타워~", "빗으로 뽀송뽀송!"),
-            5 to listOf("냥이 약국이에요!", "부활 약 있어요~", "튼튼한 갑옷!"),
+            HOSPITAL_TENT to listOf("동물 병원이에요!", "수술하면 더 빨라져요~", "냥이를 데려오세요!"),
         )
         private val DEFAULT_ADS = listOf("어서 오세요!", "곧 좋은 물건 들어와요~")
         private const val START_X = 160f

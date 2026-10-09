@@ -48,12 +48,14 @@ class CarRide(val car: CarCatalog.Car) {
         if (abandoned) com.jamcat.nayngapo.engine.GameProgress.clearAbandonedCar()   // 방치차를 되찾았다
         abandoned = false
         riding = true
+        p.seatedInCar = true
         p.carSpeedMul = car.speedMul
         p.rideLift = RIDE_LIFT
     }
 
     private fun dismount(p: Player) {
         riding = false
+        p.seatedInCar = false
         parkedX = p.x + p.width / 2f
         parkedRight = p.facingRight
         p.carSpeedMul = 1f

@@ -81,6 +81,8 @@ class Player(var x: Float, var y: Float) {
     var inSwamp = false
     /** 31 해적 바다: 배냥이 위에 올라탄 만큼 그림을 위로 (2026-10-09) */
     var rideLift = 0f
+    /** 자동차에 앉아 있다 — 인간이 차에 고정되어 걷기·대기·공격 동작 없이 한 자세로 그린다 (대표님 2026-10-09) */
+    var seatedInCar = false
     /** 꽃가루에 숨이 막혀 느려진 남은 시간 (꽃냥이, 2026-09-27) */
     var chokeTimer = 0f
     /** 눈에 잠긴 깊이 (0 = 평지, 최대치면 몸이 완전히 파묻힌다) */
@@ -337,6 +339,7 @@ class Player(var x: Float, var y: Float) {
         var striking = false
 
         val frame: Bitmap = when {
+            seatedInCar -> SpriteManager.playerIdle[0]   // 차에 고정: 늘 같은 자세 (공격 판정은 그대로)
             isAttacking && isJumpAttacking -> { striking = true; attackFrame(SpriteManager.playerJumpKick) }
             isAttacking && comboStep == 2 -> { striking = true; strikeHigh = true; attackFrame(SpriteManager.playerKick) }
             isAttacking && comboStep == 1 -> { striking = true; attackFrame(SpriteManager.playerCross) }

@@ -290,13 +290,13 @@ class StageClearScreen(
         if (event.actionMasked == MotionEvent.ACTION_DOWN && timer > 1.2f &&
             buttonRect.contains(event.x, event.y)
         ) {
-            gameView.showLobby()
+            gameView.leaveStage()
         }
         return true
     }
 
     override fun onBack(): Boolean {
-        gameView.showLobby()
+        gameView.leaveStage()
         return true
     }
 

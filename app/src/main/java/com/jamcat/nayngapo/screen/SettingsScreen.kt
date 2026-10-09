@@ -13,7 +13,7 @@ import kotlin.math.min
  * 전부 지우고 처음 상태로 되돌린다 (밸런스 테스트용).
  * 실수로 눌러 날리지 않도록, 3초 안에 한 번 더 눌러야 실제로 지운다 (팀 화면의 '보내주기'와 같은 방식).
  */
-class SettingsScreen(private val gameView: GameView) : Screen {
+class SettingsScreen(private val gameView: GameView, private val fromShop: Boolean = false) : Screen {
 
     private val infoPanel = RectF()
     /** 설정 토글 (배경음·효과음·화면 흔들림) */
@@ -195,7 +195,7 @@ class SettingsScreen(private val gameView: GameView) : Screen {
             MotionEvent.ACTION_UP -> {
                 if (backRect.contains(event.x, event.y)) {
                     resetPressed = false
-                    gameView.showLobby()
+                    if (fromShop) gameView.showShop() else gameView.showLobby()
                     return true
                 }
                 if (resetPressed && resetRect.contains(event.x, event.y)) doReset()
@@ -234,7 +234,7 @@ class SettingsScreen(private val gameView: GameView) : Screen {
     }
 
     override fun onBack(): Boolean {
-        gameView.showLobby()
+        if (fromShop) gameView.showShop() else gameView.showLobby()
         return true
     }
 }

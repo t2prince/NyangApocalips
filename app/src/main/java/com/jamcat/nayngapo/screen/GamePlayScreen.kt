@@ -3208,7 +3208,7 @@ class GamePlayScreen(
             }
             if (hypot(px - EXIT_BTN_X, py - MENU_BTN_Y) < MENU_HIT_R) {
                 touchControls.releaseAll()
-                gameView.showLobby()   // 스테이지에서 나가 로비로 돌아간다
+                gameView.leaveStage()   // 스테이지에서 나가 로비로 돌아간다
                 return true
             }
         }
@@ -3223,7 +3223,7 @@ class GamePlayScreen(
             touchControls.releaseAll()
         } else {
             touchControls.releaseAll()
-            gameView.showLobby()
+            gameView.leaveStage()
         }
         return true
     }

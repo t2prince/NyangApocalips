@@ -119,7 +119,28 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     }
 
     /** 스테이지 진입: 페이드 아웃/인으로 바로 시작한다 (11~20은 날개냥이를 타는 하늘 스테이지) */
-    fun startStage(stageNumber: Int) {
+    /** 상점 마을 끝 '스테이지 깨기'에서 들어간 스테이지면, 끝나고(깨거나 지거나 나가면) 상점 마을로 돌아간다 (대표님 2026-10-09) */
+    var stageFromShop = false
+
+    /** 스테이지가 끝났을 때 돌아갈 곳 — 상점에서 들어왔으면 상점 마을, 아니면 로비 */
+    fun leaveStage() {
+        if (stageFromShop) { stageFromShop = false; showShop() } else showLobby()
+    }
+
+    /** 못 들어가는 스테이지면 그 까닭(안내 문구), 들어갈 수 있으면 null — 로비 지도와 상점 '스테이지 깨기'가 같이 쓴다 */
+    fun stageBlockReason(stage: Int): String? = when {
+        !GameProgress.hasData(stage) -> "준비 중입니다"
+        stage > GameProgress.unlockedStage -> "아직 잠겨 있다냥!"
+        // 날아냥이가 죽었으면 하늘 스테이지에 못 간다 — 부활 약으로 깨워야 한다
+        GameProgress.isSkyStage(stage) && CatTeam.flyingDead() -> "날아냥이가 잠들어 있다냥! 캣타워에서 부활 약을 먹여야 하늘에 갈 수 있다"
+        // 31 해적 바다: 맨몸으로는 못 들어간다 — 30에서 구한 배냥이를 타야 한다 (2026-10-09)
+        stage == 31 && CatTeam.boatDead() -> "배냥이가 잠들어 있다냥! 캣타워에서 부활 약을 먹여야 바다에 나갈 수 있다"
+        stage == 31 && CatTeam.boatMount() == null -> "바다라서 맨몸으로는 못 간다냥! 30스테이지에서 배냥이를 구해 오자"
+        else -> null
+    }
+
+    fun startStage(stageNumber: Int, fromShop: Boolean = false) {
+        stageFromShop = fromShop
         fadeTo {
             if (GameProgress.isSkyStage(stageNumber)) SkyStageScreen(this, stageNumber)
             else GamePlayScreen(this, stageNumber)
@@ -184,8 +205,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     }
 
     /** 설정: 데이터 리셋 등 */
-    fun showSettings() {
-        fadeTo { SettingsScreen(this) }
+    /** fromShop: 상점 마을 오른쪽 위 설정 버튼에서 왔으면 닫을 때 상점 마을로 */
+    fun showSettings(fromShop: Boolean = false) {
+        fadeTo { SettingsScreen(this, fromShop) }
     }
 
     /** 저장 데이터를 전부 지우고 처음 상태로 (설정 화면의 '데이터 리셋') */

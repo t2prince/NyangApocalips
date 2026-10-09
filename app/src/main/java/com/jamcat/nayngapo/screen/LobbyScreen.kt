@@ -457,26 +457,12 @@ class LobbyScreen(private val gameView: GameView) : Screen {
 
     /** 스테이지 진입: 아직 만들지 않은 스테이지는 안내만 띄운다 */
     private fun enterStage(stage: Int) {
-        when {
-            !GameProgress.hasData(stage) -> showNotice("준비 중입니다")
-            stage > GameProgress.unlockedStage -> showNotice("아직 잠겨 있다냥!")
-            // 날아냥이가 죽었으면 하늘 스테이지에 못 간다 — 부활 약으로 깨워야 한다
-            GameProgress.isSkyStage(stage) && CatTeam.flyingDead() -> {
-                showNotice("날아냥이가 잠들어 있다냥! 캣타워에서 부활 약을 먹여야 하늘에 갈 수 있다")
-                noticeTimer = 2.8f
-            }
-            // 31 해적 바다: 맨몸으로는 못 들어간다 — 30에서 구한 배냥이를 타야 한다 (2026-10-09)
-            stage == 31 && CatTeam.boatDead() -> {
-                showNotice("배냥이가 잠들어 있다냥! 캣타워에서 부활 약을 먹여야 바다에 나갈 수 있다")
-                noticeTimer = 2.8f
-            }
-            stage == 31 && CatTeam.boatMount() == null -> {
-                showNotice("바다라서 맨몸으로는 못 간다냥! 30스테이지에서 배냥이를 구해 오자")
-                noticeTimer = 2.8f
-            }
-            // 하늘 스테이지는 들어가면 날아냥이를 그냥 준다 (따로 구해 올 필요가 없다)
-            else -> gameView.startStage(stage)
-        }
+        // 못 가는 까닭(잠김·날아냥이/배냥이 무덤 등)은 GameView.stageBlockReason 에 모아 두었다 — 상점 '스테이지 깨기'와 같다
+        val why = gameView.stageBlockReason(stage)
+        if (why != null) {
+            showNotice(why)
+            if (why.length > 20) noticeTimer = 2.8f
+        } else gameView.startStage(stage)   // 하늘 스테이지는 들어가면 날아냥이를 그냥 준다
     }
 
     private fun onSlotSelected(slot: Slot) {

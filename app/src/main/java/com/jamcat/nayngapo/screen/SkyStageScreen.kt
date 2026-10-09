@@ -829,7 +829,7 @@ class SkyStageScreen(
             val idx = event.actionIndex
             when (com.jamcat.nayngapo.ui.MenuButtons.hitTest(event.getX(idx), event.getY(idx))) {
                 com.jamcat.nayngapo.ui.MenuButtons.Hit.PAUSE -> { paused = !paused; touchControls.releaseAll(); return true }
-                com.jamcat.nayngapo.ui.MenuButtons.Hit.EXIT -> { touchControls.releaseAll(); gameView.showLobby(); return true }
+                com.jamcat.nayngapo.ui.MenuButtons.Hit.EXIT -> { touchControls.releaseAll(); gameView.leaveStage(); return true }
                 null -> {}
             }
         }
@@ -842,7 +842,7 @@ class SkyStageScreen(
             paused = true
             touchControls.releaseAll()
         } else {
-            gameView.showLobby()
+            gameView.leaveStage()
         }
         return true
     }

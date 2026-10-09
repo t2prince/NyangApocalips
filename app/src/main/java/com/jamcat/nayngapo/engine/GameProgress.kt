@@ -104,12 +104,12 @@ object GameProgress {
 
     /**
      * 투기장 가짜 냥이 Lv (대표님 2026-10-09): 루비 10개로 Lv업, Lv업 할 때마다 가짜 냥이가 두 배로 딴딴해진다.
-     * 최대 Lv·더 딴딴하면 훈련 효과(공격력 +3)도 두 배는 Claude 판단.
+     * 최대 Lv 1,000,000,000 (대표님 2026-10-09).
      */
     var dummyLevel = 1
         private set
     const val DUMMY_LEVEL_PRICE = 10
-    const val DUMMY_LEVEL_MAX = 6
+    const val DUMMY_LEVEL_MAX = 1_000_000_000
 
     fun levelUpDummy(): Boolean {
         if (dummyLevel >= DUMMY_LEVEL_MAX) return false

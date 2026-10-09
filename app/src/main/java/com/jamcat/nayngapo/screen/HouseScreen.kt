@@ -16,6 +16,7 @@ import kotlin.math.sin
  * 집 안 — 상점 마을 맨 앞 집에서 '집 들어가기'로 들어온다 (대표님 2026-10-09).
  * **집 안에서도 걸어 다닌다**(패드·점프). 1층: 왼쪽 문(밖으로) · 가운데 캣타워(누르면 캣타워 = 고양이 관리) · 오른쪽 계단(위층).
  * **위층에는 내 냥이들이 있는 만큼 다 있고, 머리 위에 이름이 적혀 있다.** 냥이들은 제자리에서 어슬렁거린다.
+ * **출전 중인 냥이는 위층에 없고, 대신 집 안에서 인간 뒤를 졸졸 따라다닌다** (대표님 2026-10-09).
  * **집 안에는 가구들도 있다**(2026-10-09, GPT 그림 furn_*): 1층 책장·소파·스탠드·식탁·벽난로·화분, 위층 냥이 침대·소파·스탠드·책장·화분.
  * (방 크기·배치·벽지 색·어슬렁거림·가구 고르기는 Claude 판단, 벽·바닥·문·계단은 코드로 그렸다)
  */
@@ -36,6 +37,9 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
 
     private val worldWidth: Float
 
+    /** 출전 중인 냥이 — 인간 뒤를 졸졸 따라다닌다 */
+    private val followers = mutableListOf<com.jamcat.nayngapo.entity.AllyCat>()
+
     /** 문·캣타워·계단 — 앞에 서면 머리 위에 말풍선이 뜨고 눌러야 쓴다 */
     private class Spot(val x: Float, val label: String, val action: () -> Unit)
     private val spots = mutableListOf<Spot>()
@@ -49,7 +53,7 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
             spots.add(Spot(TOWER_X, "▼ 캣타워") { returnX = player.x; returnFloor = 0; gameView.showTeam(fromHouse = true) })
             spots.add(Spot(STAIRS_X, "▲ 위층 올라가기") { gameView.showHouse(1, UP_STAIRS_X) })
         } else {
-            val cats = CatTeam.cats.filter { !it.gone }
+            val cats = CatTeam.cats.filter { !it.gone && it !in CatTeam.party }   // 출전 중인 냥이는 위층에 없다
             worldWidth = maxOf(GROUND_W, 420f + cats.size * CAT_GAP + 520f)
             for ((i, c) in cats.withIndex()) {
                 val sprite = com.jamcat.nayngapo.entity.AllyCat(0f, 0f, c.kind, level = c.level, teamId = c.id,
@@ -61,6 +65,12 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
         }
         player = Player(startX ?: (DOOR_X + 220f), Constants.GROUND_Y)
         player.facingRight = true
+        for ((i, c) in CatTeam.party.withIndex()) {
+            followers.add(com.jamcat.nayngapo.entity.AllyCat(
+                (player.x - 90f - 70f * i).coerceAtLeast(20f), Constants.GROUND_Y,
+                c.kind, level = c.level, teamId = c.id, armored = c.hasArmor, attackBonus = c.attackBonus, coat = c.coat,
+                speedMul = CatTeam.speedMultiplier(c), hpBonus = CatTeam.hpBonusOf(c)))
+        }
     }
 
     override fun update(deltaTime: Float) {
@@ -82,6 +92,10 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
         if (input.attack) { player.performAttack(); input.attack = false }
         player.update(deltaTime)
         player.x = player.x.coerceIn(40f, worldWidth - player.width - 40f)
+        for (f in followers) {
+            f.update(deltaTime, player.x, player.y, emptyList())
+            f.x = f.x.coerceIn(10f, worldWidth - f.width - 10f)
+        }
 
         // 냥이들은 제 자리 근처를 천천히 오가다 멈췄다 한다
         for (r in residents) {
@@ -166,6 +180,7 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
             drawStairsDown(canvas, UP_STAIRS_X, gy)
             for (r in residents) drawResident(canvas, r, gy)
         }
+        for (f in followers) f.draw(canvas)
         player.draw(canvas)
         canvas.restore()
 
@@ -182,7 +197,7 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
         }
 
         // 위 가운데: 어느 층인지
-        val info = if (floor == 0) "집 · 1층" else "집 · 위층 — 냥이 ${residents.size}마리"
+        val info = if (floor == 0) "집 · 1층" else "집 · 위층 — 냥이 ${residents.size}마리 (출전 중인 냥이는 따라다녀요)"
         val iw = hudText.measureText(info) + 60f
         rect.set(w / 2f - iw / 2f, 24f, w / 2f + iw / 2f, 92f)
         canvas.drawRoundRect(rect, 34f, 34f, hudBg)

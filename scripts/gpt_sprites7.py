@@ -3,7 +3,7 @@
 (Plan/cat_sprites6 는 예전 시트라 건드리지 않는다 — cat_sprites.py 를 거기에 돌리면 기존 냥이들이 덮어써진다)
 사용법: python scripts/gpt_sprites7.py
 """
-import os, sys
+import glob, os, sys
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -129,3 +129,18 @@ for name, (plain, res, strip) in ARMOR.items():
             out.alpha_composite(fr, (i * fw + (fw - w2) // 2, fh - h2 - BOB[i] - 2))
         out.save(os.path.join(DST, strip + '.png'))
         print(strip, out.size)
+
+
+# ===== 인간 가게 물건 아이콘 (GPT, 2026-10-09 「인간이 가는 상점도 몇 개 만들어 줘」) =====
+# Plan/shop_icons/shop_h_*.png → 다른 상점 아이콘과 같은 448×448 투명 칸 가운데에 (여백 24)
+ICON = 448
+for p in sorted(glob.glob(os.path.join('Plan/shop_icons', 'shop_h_*.png'))):
+    img = strip_background(Image.open(p))
+    img = img.crop(img.getbbox())
+    s = (ICON - 48) / max(img.width, img.height)
+    img = img.resize((max(1, round(img.width * s)), max(1, round(img.height * s))), Image.LANCZOS)
+    out = Image.new('RGBA', (ICON, ICON), (0, 0, 0, 0))
+    out.alpha_composite(img, ((ICON - img.width) // 2, (ICON - img.height) // 2))
+    name = os.path.basename(p)
+    out.save(os.path.join(DST, name))
+    print(name[:-4], out.size)

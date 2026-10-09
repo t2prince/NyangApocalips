@@ -17,8 +17,9 @@ import kotlin.math.sin
  * (한 대 간격 0.9초·무료·횟수 제한 없음·나가면 채우던 30초는 처음부터는 Claude 판단)
  *
  * **Lv 버튼** (대표님 2026-10-09): 루비 10개로 가짜 냥이 Lv업 — Lv업 할 때마다 가짜 냥이가 **두 배로 딴딴해진다**
- * (딴딴함 = 100 × 2^(Lv-1), 다 깎이면 부서졌다가 다시 선다). 더 딴딴한 가짜 냥이를 때리면 30초마다 오르는 공격력도 두 배
- * (+3 × 2^(Lv-1)) · 최대 Lv 6 은 Claude 판단.
+ * (딴딴함 = 100 × 2^(Lv-1), 다 깎이면 부서졌다가 다시 선다). **최대 Lv 1,000,000,000**(대표님 2026-10-09).
+ * 딴딴함이 너무 커지면 숫자를 억·조·지수로 줄여 보여 주고, 끝없이 크면 '무한'. 30초마다 오르는 공격력은 Lv 와 상관없이 +3.
+ * 재료는 Lv1 밀짚 → 나무 → 돌 → 철 → 금 → Lv6 이상 다이아.
  * **쓰는 값** (대표님 2026-10-09): 루비 1개를 내면 1분 쓸 수 있다. 남은 시간이 있을 때만 훈련·싸움이 흘러가고, 다 쓰면 멈춘다.
  * 남은 시간은 투기장을 나갔다 와도 남는다(앱을 끄면 사라짐) — Claude 판단.
  * **'냥이끼리 싸우기' 버튼** (대표님 2026-10-09): 데려온 내 냥이 두 마리를 골라 서로 싸우게 한다.
@@ -38,9 +39,20 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
     private var trained = 0f
     /** 가짜 냥이 Lv · 딴딴함 — Lv업마다 두 배 */
     private val dummyLevel: Int get() = com.jamcat.nayngapo.engine.GameProgress.dummyLevel
-    private val dummyMax: Int get() = 100 shl (dummyLevel - 1)
-    private val trainGain: Int get() = CatTeam.ARENA_ATTACK shl (dummyLevel - 1)
-    private var dummyHp = 100 shl (com.jamcat.nayngapo.engine.GameProgress.dummyLevel - 1)
+    private val dummyMax: Double get() = 100.0 * Math.pow(2.0, (dummyLevel - 1).toDouble())
+    private val trainGain: Int get() = CatTeam.ARENA_ATTACK
+    private var dummyHp = 100.0 * Math.pow(2.0, (com.jamcat.nayngapo.engine.GameProgress.dummyLevel - 1).toDouble())
+
+    /** 큰 수를 짧게 (억·조·지수, 끝없으면 '무한') */
+    private val material: String get() = MATERIALS[dummyLevel.coerceIn(1, MATERIALS.size) - 1]
+
+    private fun big(v: Double): String = when {
+        v.isInfinite() -> "무한"
+        v >= 1e16 -> "%.1e".format(v)
+        v >= 1e12 -> "%.1f조".format(v / 1e12)
+        v >= 1e8 -> "%.1f억".format(v / 1e8)
+        else -> "%,d".format(v.toLong())
+    }
     /** 부서졌다 다시 서기까지 남은 시간 */
     private var broken = 0f
     private val lvBtn = RectF()
@@ -203,9 +215,9 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
                 wobble = 1f / (1f + (dummyLevel - 1) * 0.35f)
                 SoundManager.playAttack()
                 val power = CatTeam.totalAttackOf(cat)
-                dummyHp = (dummyHp - power).coerceAtLeast(0)
+                dummyHp = (dummyHp - power).coerceAtLeast(0.0)
                 pops.add(Pop(0f, 0.8f, "퍽! $power", false))
-                if (dummyHp <= 0) { broken = 1f; pops.add(Pop(0f, 1.0f, "와장창!", false)) }
+                if (dummyHp <= 0.0) { broken = 1f; pops.add(Pop(0f, 1.0f, "와장창!", false)) }
             }
             if (lunge >= 1f) { lunge = -1f; hitWait = HIT_INTERVAL - LUNGE_TIME }
         }
@@ -253,7 +265,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
 
         // 밀짚 가짜 냥이: 받침을 축으로 맞으면 흔들린다
         // Lv 마다 재료가 바뀐다: 밀짚 → 나무 → 돌 → 철 → 금 → 다이아 (2026-10-09)
-        val dummy = SpriteManager.dummyByLevel.getOrElse(dummyLevel - 1) { SpriteManager.strawCat }
+        val dummy = SpriteManager.dummyByLevel.getOrElse(dummyLevel.coerceAtMost(SpriteManager.dummyByLevel.size) - 1) { SpriteManager.strawCat }
         val dh = h * 0.42f; val dw = dummy.width * dh / dummy.height
         val dx = w * 0.64f
         rect.set(dx - dw * 0.45f, floorY - 12f, dx + dw * 0.45f, floorY + 14f)
@@ -267,11 +279,12 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
         // 가짜 냥이 Lv · 딴딴함 막대
         val hbw = dw * 0.8f; val hbx = dx - hbw / 2f; val hby = floorY - dh - h * 0.06f
         text.textSize = h * 0.036f; text.textAlign = Paint.Align.CENTER
-        canvas.drawText("${MATERIALS.getOrElse(dummyLevel - 1) { "" }} 냥이 Lv $dummyLevel · 딴딴함 $dummyHp/$dummyMax", dx, hby - h * 0.015f, text)
+        canvas.drawText("$material 냥이 Lv ${"%,d".format(dummyLevel)} · 딴딴함 ${big(dummyHp)}/${big(dummyMax)}", dx, hby - h * 0.015f, text)
         text.textAlign = Paint.Align.LEFT
         rect.set(hbx, hby, hbx + hbw, hby + h * 0.03f)
         canvas.drawRoundRect(rect, 10f, 10f, barBack)
-        rect.set(hbx, hby, hbx + hbw * dummyHp / dummyMax.toFloat(), hby + h * 0.03f)
+        val ratio = if (dummyMax.isInfinite()) (if (dummyHp > 0.0) 1f else 0f) else (dummyHp / dummyMax).toFloat()
+        rect.set(hbx, hby, hbx + hbw * ratio.coerceIn(0f, 1f), hby + h * 0.03f)
         canvas.drawRoundRect(rect, 10f, 10f, strawBar)
         rect.set(hbx, hby, hbx + hbw, hby + h * 0.03f)
         canvas.drawRoundRect(rect, 10f, 10f, ink)
@@ -344,7 +357,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
         canvas.drawRoundRect(lvBtn, 48f, 48f, lvBtnPaint); canvas.drawRoundRect(lvBtn, 48f, 48f, ink)
         text.textSize = 38f; text.textAlign = Paint.Align.CENTER
         val gp = com.jamcat.nayngapo.engine.GameProgress
-        val label = if (dummyLevel >= gp.DUMMY_LEVEL_MAX) "Lv $dummyLevel (최대)" else "Lv 업 ▲  루비 ${gp.DUMMY_LEVEL_PRICE}"
+        val label = if (dummyLevel >= gp.DUMMY_LEVEL_MAX) "Lv ${"%,d".format(dummyLevel)} (최대)" else "Lv 업 ▲  루비 ${gp.DUMMY_LEVEL_PRICE}"
         canvas.drawText(label, lvBtn.centerX(), lvBtn.centerY() + 13f, text)
         text.textAlign = Paint.Align.LEFT
     }
@@ -383,7 +396,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
             dummyLevel >= gp.DUMMY_LEVEL_MAX -> { noticeText = "가짜 냥이가 이미 최대 Lv 이에요"; noticeTimer = 2f }
             gp.levelUpDummy() -> {
                 dummyHp = dummyMax; broken = 0f
-                noticeText = "${MATERIALS.getOrElse(dummyLevel - 1) { "" }} 냥이로 바뀌었다! Lv $dummyLevel · 두 배로 딴딴 (루비 ${gp.rubies}개 남음)"; noticeTimer = 2.2f
+                noticeText = "$material 냥이 Lv ${"%,d".format(dummyLevel)}! 두 배로 딴딴해졌다냥 (루비 ${gp.rubies}개 남음)"; noticeTimer = 2.2f
             }
             else -> { noticeText = "루비가 ${gp.DUMMY_LEVEL_PRICE}개 있어야 Lv업 할 수 있어요 (지금 ${gp.rubies}개)"; noticeTimer = 2.2f }
         }

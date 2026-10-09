@@ -38,6 +38,7 @@ class GamePlayScreen(
     private val seaMount: com.jamcat.nayngapo.engine.CatTeam.TeamCat? =
         if (isSea) com.jamcat.nayngapo.engine.CatTeam.boatMount() else null
     private var seaMountMarked = false
+    private var boatHintShown = false
 
     /** 이 시간을 넘겨 겹쳐 있으면 서로 밀어낸다(초) */
     private val CROWD_LIMIT = 4f
@@ -925,6 +926,12 @@ class GamePlayScreen(
 
         // 클리어 판정: 필드의 냥이를 전부 무찌르면 스테이지 클리어
         // 곧바로 넘어가지 않고 3초 동안 여운을 준 뒤 페이드로 결과 화면에 간다
+        // 30: 냥이를 다 잡았는데 배냥이를 아직 안 구했으면 한 번 알려 준다
+        if (stageNumber == 30 && !boatHintShown && level.enemies.all { it.isDead || it is com.jamcat.nayngapo.entity.MudCat } &&
+            level.prisons.any { it.catKind == com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT && !it.isOpen }) {
+            boatHintShown = true
+            showWaveText("앞에 갇힌 배냥이를 구하자!")
+        }
         if (level.stageCleared && clearTimer < 0f) {
             clearTimer = STAGE_CLEAR_DELAY
             GameProgress.onStageCleared(stageNumber)

@@ -6,6 +6,9 @@ import com.jamcat.nayngapo.entity.*
 
 /** 31 해적선 갑판 — 배 그림(pirate_ship.png 1200×760을 높이 560으로, 바닥은 물 아래 60)의 갑판 줄. 배 가운데 x 기준 */
 const val SHIP_DRAW_H = 560f
+/** 냥이 감옥 수 = 표의 수 × 2 + 2 (2026-10-10) */
+private const val CAT_PRISON_MUL = 2
+private const val CAT_PRISON_EXTRA = 2
 private const val SHIP_DECK_BACK = 200f    // 뱃머리 쪽(왼쪽) 갑판 끝
 private const val SHIP_DECK_FRONT = 400f   // 고물 쪽(오른쪽) 갑판 끝
 private const val SHIP_DECK_RISE = 90f     // 물 위로 갑판 높이 (점프 최고 200 이라 한 번에 오른다)
@@ -249,7 +252,8 @@ class Level(val stageNumber: Int) {
         // ===== 감옥: 기획5의 구출 표 (인간/고양이 감옥을 번갈아 배치) =====
         val prisonKinds = mutableListOf<Prison.Kind>()
         repeat(plan.humans) { prisonKinds.add(Prison.Kind.HUMAN) }
-        repeat(plan.cats) { prisonKinds.add(Prison.Kind.CAT) }
+        // 냥이 감옥을 많이 (대표님 2026-10-10 「냥이 감옥을 많이 넣어 줘」): 표의 마릿수 × 2 + 2 (배율은 Claude 판단)
+        repeat(plan.cats * CAT_PRISON_MUL + CAT_PRISON_EXTRA) { prisonKinds.add(Prison.Kind.CAT) }
         prisonKinds.shuffle()
         for ((i, kind) in prisonKinds.withIndex()) {
             var px = pathStart + (i + 1) * (bossBaseX - pathStart) / (prisonKinds.size + 1).toFloat()

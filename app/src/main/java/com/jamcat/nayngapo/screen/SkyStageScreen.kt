@@ -453,6 +453,7 @@ class SkyStageScreen(
             com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING -> if (armor) SpriteManager.flyingCatAllyArmor else SpriteManager.flyingCatAlly
             com.jamcat.nayngapo.entity.AllyCat.Kind.GUN -> if (armor) SpriteManager.gunCatAllyArmor else SpriteManager.gunCatAlly
             com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT -> cat.coat.boatAlly
+            else -> com.jamcat.nayngapo.entity.AllyCat.extraSprite(cat.kind) ?: cat.coat.ally
         }
     }
     /** 갑옷 그림은 위로 길어서 발 위치는 맨몸 높이로 잡는다 */
@@ -463,6 +464,7 @@ class SkyStageScreen(
         com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING -> SpriteManager.flyingCatAlly.height.toFloat()
         com.jamcat.nayngapo.entity.AllyCat.Kind.GUN -> SpriteManager.gunCatAlly.height.toFloat()
         com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT -> cat.coat.boatAlly.height.toFloat()
+        else -> (com.jamcat.nayngapo.entity.AllyCat.extraSprite(cat.kind) ?: cat.coat.ally).height.toFloat()
     }
 
     // ===== 상태 =====

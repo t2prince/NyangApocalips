@@ -1068,6 +1068,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         AllyCat.Kind.FLYING -> SpriteManager.flyingCatAlly
         AllyCat.Kind.GUN -> SpriteManager.gunCatAlly
         AllyCat.Kind.BOAT -> cat.coat.boatAlly
+        else -> AllyCat.extraSprite(cat.kind) ?: cat.coat.ally
     }
 
     /** 갑옷을 입은 냥이는 갑옷 입은 그림(원안 Cats/cat_armor.jpeg) */
@@ -1080,6 +1081,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
             AllyCat.Kind.FLYING -> if (armor) SpriteManager.flyingCatAllyArmor else SpriteManager.flyingCatAlly
             AllyCat.Kind.GUN -> if (armor) SpriteManager.gunCatAllyArmor else SpriteManager.gunCatAlly
             AllyCat.Kind.BOAT -> cat.coat.boatAlly
+            else -> AllyCat.extraSprite(cat.kind) ?: cat.coat.ally   // 새로 팀이 된 냥이들은 그 냥이 그림 (갑옷 그림 없음)
         }
     }
 

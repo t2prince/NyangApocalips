@@ -255,7 +255,11 @@ class Level(val stageNumber: Int) {
             var px = pathStart + (i + 1) * (bossBaseX - pathStart) / (prisonKinds.size + 1).toFloat()
             // 함정 위에 겹치면 옆으로 비켜 놓는다
             while (hazardX.any { px > it - 220f && px < it + 500f }) px += 340f
-            prisons.add(Prison(px, Terrain.groundY(px), kind))
+            // 냥이 감옥: 70%는 이 스테이지에 나오는 냥이 중 하나가 갇혀 있다 — 모든 냥이를 구출해 우리 팀으로 (보스 빼고, 2026-10-10).
+            // 나머지 30%는 예전처럼(새끼+엄마 또는 구할 때 무작위). 비율은 Claude 판단
+            val catKind = if (kind == Prison.Kind.CAT && Math.random() < 0.7)
+                enemies.filter { !it.isBoss && it !is BoatCat }.randomOrNull()?.let { AllyCat.kindForEnemy(it) } else null
+            prisons.add(Prison(px, Terrain.groundY(px), kind, catKind = catKind))
         }
         // 30: 바다(31)에 나가려면 배냥이가 있어야 한다 — 배냥이가 갇힌 감옥을 하나 꼭 둔다 (2026-10-09)
         if (stageNumber == 30) {

@@ -521,6 +521,20 @@ object CatTeam {
         AllyCat.Kind.FLYING -> "날아냥이"
         AllyCat.Kind.GUN -> "총냥이"
         AllyCat.Kind.BOAT -> "배냥이"
+        AllyCat.Kind.HAMMER -> "해머냥이"
+        AllyCat.Kind.THIEF -> "도둑냥이"
+        AllyCat.Kind.LASER -> "레이저냥이"
+        AllyCat.Kind.RED -> "빨강냥이"
+        AllyCat.Kind.ORANGE -> "주황냥이"
+        AllyCat.Kind.YELLOW -> "노랑냥이"
+        AllyCat.Kind.BEE -> "벌냥이"
+        AllyCat.Kind.FLOWER -> "꽃냥이"
+        AllyCat.Kind.MUD -> "머드냥이"
+        AllyCat.Kind.HONEY -> "꿀냥이"
+        AllyCat.Kind.FLUFFY -> "털뭉냥이"
+        AllyCat.Kind.ANVIL -> "모루냥이"
+        AllyCat.Kind.POOP -> "똥냥이"
+        AllyCat.Kind.VINE -> "덩굴냥이"
     }
 
     fun cat(id: Int): TeamCat? = roster.firstOrNull { it.id == id }

@@ -52,7 +52,10 @@ class AllyCat(
         /** 총냥이 — 등에 달린 총으로 보라색 총알을 쏜다 (대표님 2026-09-20 「총냥이도 자기 팀이 될 수 있어」) */
         GUN,
         /** 배냥이 — 31 해적 바다에서 인간이 타고 다닌다 (30스테이지에서 구한다, 2026-10-09). 무늬별 그림 */
-        BOAT
+        BOAT,
+        // ===== 모든 냥이가 우리 팀이 될 수 있다 (보스만 빼고, 구출·채집통 — 대표님 2026-10-10) =====
+        // 우리 팀 그림이 따로 없어서 그 냥이(적) 그림을 그대로 쓰고, 싸우는 법은 치즈냥이처럼 가까이 가서 친다 (Claude 판단)
+        HAMMER, THIEF, LASER, RED, ORANGE, YELLOW, BEE, FLOWER, MUD, HONEY, FLUFFY, ANVIL, POOP, VINE
     }
 
     /** 날아냥이는 땅 위에서도 살짝 떠서 다닌다 */
@@ -404,6 +407,48 @@ class AllyCat(
     }
 
     companion object {
+        /** 새로 우리 팀이 된 냥이들의 그림 = 그 냥이(적) 그림 (해머냥이는 무늬 그림) */
+        fun extraSprite(kind: Kind): android.graphics.Bitmap? = when (kind) {
+            Kind.THIEF -> SpriteManager.thiefCat
+            Kind.LASER -> SpriteManager.laserIdle.firstOrNull()
+            Kind.RED -> SpriteManager.redCatEvil
+            Kind.ORANGE -> SpriteManager.orangeCatEvil
+            Kind.YELLOW -> SpriteManager.yellowCatEvil
+            Kind.BEE -> SpriteManager.beeCat
+            Kind.FLOWER -> SpriteManager.flowerCat
+            Kind.MUD -> SpriteManager.mudCatEvil
+            Kind.HONEY -> SpriteManager.honeyCat
+            Kind.FLUFFY -> SpriteManager.fluffyCat
+            Kind.ANVIL -> SpriteManager.anvilCat
+            Kind.POOP -> SpriteManager.poopCat
+            Kind.VINE -> SpriteManager.vineCat
+            else -> null
+        }
+
+        /** 적 냥이 → 우리 팀이 될 때의 종류 (보스는 null) */
+        fun kindForEnemy(e: Enemy): Kind? = when (e) {
+            is GreenCat -> Kind.GREEN
+            is BlueCat -> Kind.BLUE
+            is FlyingCat -> Kind.FLYING
+            is GunCat -> Kind.GUN
+            is BoatCat -> Kind.BOAT
+            is HammerCat -> Kind.HAMMER
+            is ThiefCat -> Kind.THIEF
+            is LaserCat -> Kind.LASER
+            is RedCat -> Kind.RED
+            is OrangeCat -> Kind.ORANGE
+            is YellowCat -> Kind.YELLOW
+            is BeeCat -> Kind.BEE
+            is FlowerCat -> Kind.FLOWER
+            is HoneyCat -> Kind.HONEY
+            is MudCat -> Kind.MUD
+            is FluffyCat -> Kind.FLUFFY
+            is AnvilCat -> Kind.ANVIL
+            is PoopCat -> Kind.POOP
+            is VineCat -> Kind.VINE
+            else -> if (e.isBoss) null else Kind.NORMAL   // 치즈냥이·새끼 고양이 등
+        }
+
         /** 묭묭 진화: 공격력·방어력 50, 크기 2.2배 (Claude 판단) */
         const val EVOLVE_POWER = 50
         const val EVOLVE_SCALE = 2.2f
@@ -425,5 +470,6 @@ class AllyCat(
         Kind.FLYING -> if (armored) SpriteManager.flyingCatAllyArmor else SpriteManager.flyingCatAlly   // 아군은 꼬리가 얇다
         Kind.GUN -> if (armored) SpriteManager.gunCatAllyArmor else SpriteManager.gunCatAlly
         Kind.BOAT -> coat.boatAlly
+        else -> extraSprite(kind) ?: coat.ally
     }
 }

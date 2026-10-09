@@ -3359,7 +3359,7 @@ class GamePlayScreen(
     /**
      * 인간이 때린(주먹·총알·로켓 펀치) 냥이를 채집통에 잡는다 — 채집통 하나에 한 마리, 보스는 못 잡는다.
      * 잡힌 냥이는 쓰러지는 모습 없이 사라지고 내 팀(캣타워)에 들어오며, 이 스테이지에서도 바로 같이 싸운다.
-     * 우리 팀 그림이 없는 종(벌냥이·해머냥이 등)은 치즈냥이(무늬 무작위)로 들어온다 (Claude 판단).
+     * 모든 냥이가 그 모습 그대로 우리 팀이 된다 (벌냥이·해머냥이 … 대표님 2026-10-10 「모든 냥이는 우리 팀이 될 수 있어, 보스만 빼고」).
      */
     private fun tryCapture(enemy: com.jamcat.nayngapo.entity.Enemy): Boolean {
         if (!bringBugbox || enemy.isDead || enemy.isBoss) return false
@@ -3370,14 +3370,7 @@ class GamePlayScreen(
             is com.jamcat.nayngapo.entity.BoatCat -> enemy.coat
             else -> com.jamcat.nayngapo.engine.CatCoat.randomForEnemy()
         }
-        val kind = when (enemy) {
-            is com.jamcat.nayngapo.entity.GreenCat -> com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN
-            is com.jamcat.nayngapo.entity.BlueCat -> com.jamcat.nayngapo.entity.AllyCat.Kind.BLUE
-            is com.jamcat.nayngapo.entity.FlyingCat -> com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING
-            is com.jamcat.nayngapo.entity.GunCat -> com.jamcat.nayngapo.entity.AllyCat.Kind.GUN
-            is com.jamcat.nayngapo.entity.BoatCat -> com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT
-            else -> com.jamcat.nayngapo.entity.AllyCat.Kind.NORMAL
-        }
+        val kind = com.jamcat.nayngapo.entity.AllyCat.kindForEnemy(enemy) ?: return false   // 모든 냥이가 그 모습 그대로 우리 팀 (보스 빼고, 2026-10-10)
         enemy.capture()
         level.onEnemyDefeated()
         val cat = com.jamcat.nayngapo.engine.CatTeam.recruit(kind, coat, isKitten = enemy is com.jamcat.nayngapo.entity.KittenCat)

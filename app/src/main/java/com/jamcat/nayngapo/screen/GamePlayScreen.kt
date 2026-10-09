@@ -1918,7 +1918,7 @@ class GamePlayScreen(
             hitEffects.add(
                 HitEffect(
                     prison.x, prison.y - prison.height, 1.6f,
-                    "${recruited.name} 구출! 고양이 관리에서 출전시켜 주세요"
+                    "${recruited.name} 구출! 캣타워에서 출전시켜 주세요"
                 )
             )
         } else {

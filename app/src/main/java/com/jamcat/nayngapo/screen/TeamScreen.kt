@@ -289,7 +289,7 @@ class TeamScreen(private val gameView: GameView, private val fromShop: Boolean =
 
     private fun drawHeader(canvas: Canvas, w: Float, h: Float) {
         titlePaint.textSize = h * 0.058f
-        canvas.drawText("고양이 관리", w / 2f, h * 0.058f, titlePaint)
+        canvas.drawText("캣타워", w / 2f, h * 0.058f, titlePaint)
 
         partyCountPaint.textSize = h * 0.036f
         canvas.drawText(

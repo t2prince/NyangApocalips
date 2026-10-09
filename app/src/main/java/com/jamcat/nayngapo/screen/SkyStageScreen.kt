@@ -520,7 +520,7 @@ class SkyStageScreen(
         spawnEnemies()
         if (mountGranted) {
             effects.add(
-                Effect(player.x, player.y - 120f, 2.4f, "날아냥이가 함께한다! (고양이 관리에 합류)")
+                Effect(player.x, player.y - 120f, 2.4f, "날아냥이가 함께한다! (캣타워에 합류)")
             )
         }
     }
@@ -578,7 +578,7 @@ class SkyStageScreen(
             val kind = prison.catKind ?: com.jamcat.nayngapo.entity.AllyCat.Kind.NORMAL
             val cat = CatTeam.recruit(kind, prison.catCoat)
             effects.add(
-                Effect(prison.x, prison.y - 70f, 1.8f, "${cat.name} 구출! 고양이 관리에서 출전시켜 주세요")
+                Effect(prison.x, prison.y - 70f, 1.8f, "${cat.name} 구출! 캣타워에서 출전시켜 주세요")
             )
         }
     }

@@ -455,7 +455,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         // 캣타워 앞: '고양이 관리' 말풍선
         if (nearTower) {
             val bx = towerX - cameraX
-            val label = "▼ 고양이 관리"
+            val label = "▼ 캣타워"
             bubbleText.textSize = 44f
             val bw = bubbleText.measureText(label) + 60f
             val by = groundY - 620f + sin(timer * 4f) * 6f
@@ -685,7 +685,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 // 데려온 냥이 1마리만 배운다 — 2마리 이상 데려왔으면 먼저 하나를 고른다 (2026-10-09)
                 val brought = allies.mapNotNull { a -> a.teamId?.let { com.jamcat.nayngapo.engine.CatTeam.cat(it) } }.filter { !it.gone }
                 when {
-                    brought.isEmpty() -> showNotice("냥이를 데려와야 기술을 가르쳐 줄 수 있어요! (고양이 관리에서 출전)")
+                    brought.isEmpty() -> showNotice("냥이를 데려와야 기술을 가르쳐 줄 수 있어요! (캣타워에서 출전)")
                     brought.size == 1 -> skillStudent = brought[0]
                     else -> choosing = brought
                 }
@@ -694,7 +694,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 val brought = allies.mapNotNull { a -> a.teamId?.let { com.jamcat.nayngapo.engine.CatTeam.cat(it) } }.filter { !it.gone }
                 hospitalMode = true
                 when {
-                    brought.isEmpty() -> { hospitalMode = false; showNotice("냥이를 데려와야 수술할 수 있어요! (고양이 관리에서 출전)") }
+                    brought.isEmpty() -> { hospitalMode = false; showNotice("냥이를 데려와야 수술할 수 있어요! (캣타워에서 출전)") }
                     brought.size == 1 -> patient = brought[0]
                     else -> choosing = brought
                 }

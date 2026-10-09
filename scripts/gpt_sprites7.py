@@ -42,6 +42,7 @@ ITEMS = {
     'robot_p_fist': ('robot_p_fist', 160),
     'robot_p_leg': ('robot_p_leg', 280),
     'hskill_robot_wing': ('hskill_robot_wing', 256),  # 로봇 기술 '날개' 버튼 (2026-10-10)
+    'treadmill': ('treadmill', 420),   # 13번 고양이 체력 훈련장 러닝머신 (2026-10-10)
     # 집 안 가구 (2026-10-09 「집에 가구들도 있어」)
     'furn_sofa': ('furn_sofa', 300),
     'furn_shelf': ('furn_shelf', 400),

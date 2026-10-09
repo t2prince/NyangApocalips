@@ -163,6 +163,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         val title = when (chooseFor) {
             ChooseFor.HOSPITAL -> "누구를 수술할까요? (1마리)"
             ChooseFor.ARENA -> "누가 싸울까요? (1마리)"
+            ChooseFor.TRAINING -> "누가 체력 훈련을 할까요? (1마리)"
             ChooseFor.SKILL -> "누구에게 기술을 가르칠까요? (1마리)"
         }
         canvas.drawText(title, panelRect.centerX(), panelRect.top + h * 0.08f, panelTitle)
@@ -193,6 +194,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 when (chooseFor) {
                     ChooseFor.HOSPITAL -> patient = list[k]
                     ChooseFor.ARENA -> gameView.showArena(list[k].id)
+                    ChooseFor.TRAINING -> gameView.showHpTraining(list[k].id)
                     ChooseFor.SKILL -> skillStudent = list[k]
                 }
                 return
@@ -203,7 +205,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     // ===== 동물 병원 창 =====
     /** 고르기 창이 무엇을 위해 떠 있는가 */
-    private enum class ChooseFor { SKILL, HOSPITAL, ARENA }
+    private enum class ChooseFor { SKILL, HOSPITAL, ARENA, TRAINING }
     private var chooseFor = ChooseFor.SKILL
     private var patient: com.jamcat.nayngapo.engine.CatTeam.TeamCat? = null
     private val surgeryRects = List(3) { RectF() }
@@ -982,6 +984,16 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 }
             }
             ROBOT_TENT -> gameView.showRobotShop()
+            TRAINING_TENT -> {
+                // 체력 훈련장 (대표님 2026-10-10): 데려온 냥이 하나가 러닝머신을 달린다 — 1마리면 바로
+                val brought = allies.mapNotNull { a -> a.teamId?.let { com.jamcat.nayngapo.engine.CatTeam.cat(it) } }.filter { !it.gone }
+                chooseFor = ChooseFor.TRAINING
+                when {
+                    brought.isEmpty() -> showNotice("냥이를 데려와야 체력 훈련을 할 수 있어요! (캣타워에서 출전)")
+                    brought.size == 1 -> gameView.showHpTraining(brought[0].id)
+                    else -> choosing = brought
+                }
+            }
             ARENA_TENT -> {
                 // 투기장 (대표님 2026-10-09): 싸울 냥이를 고르면 밀짚 가짜 냥이와 싸운다 — 1마리면 바로
                 val brought = allies.mapNotNull { a -> a.teamId?.let { com.jamcat.nayngapo.engine.CatTeam.cat(it) } }.filter { !it.gone }
@@ -1075,7 +1087,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     companion object {
         /** 천막 수 — 대표님이 정할 때까지 임시 6개 (Claude 판단) */
-        const val TENT_COUNT = 12
+        const val TENT_COUNT = 13
         private const val MENU_BTN_R = 46f
         private const val MENU_HIT_R = 60f
         private const val MENU_BTN_Y = 118f
@@ -1091,8 +1103,10 @@ class ShopScreen(private val gameView: GameView) : Screen {
         const val ARENA_TENT = 6
         /** 11번 천막 = 로봇 상점 (대표님 2026-10-09) */
         const val ROBOT_TENT = 10
+        /** 13번 천막 = 고양이 체력 훈련장 (대표님 2026-10-10) */
+        const val TRAINING_TENT = 12
         private val TENT_NAMES: List<String?> = List(TENT_COUNT) {
-            when (it) { CAT_SHOP_TENT -> "고양이 상점"; CAT_SKILL_TENT -> "고양이 기술"; HOSPITAL_TENT -> "동물 병원"; ARENA_TENT -> "투기장"; ROBOT_TENT -> "로봇 상점"; else -> com.jamcat.nayngapo.engine.ShopCatalog.tentShops[it]?.first }
+            when (it) { CAT_SHOP_TENT -> "고양이 상점"; CAT_SKILL_TENT -> "고양이 기술"; HOSPITAL_TENT -> "동물 병원"; ARENA_TENT -> "투기장"; ROBOT_TENT -> "로봇 상점"; TRAINING_TENT -> "체력 훈련장"; else -> com.jamcat.nayngapo.engine.ShopCatalog.tentShops[it]?.first }
         }
         /** 가게 주인의 광고 문구 (Claude 판단 — 대표님이 정하면 바꾼다) */
         private val TENT_ADS: Map<Int, List<String>> = mapOf(
@@ -1108,6 +1122,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
             9 to listOf("약국이에요!", "생명 물약 팔아요~", "하트 물약 하나 어때요?"),
             ROBOT_TENT to listOf("로봇 팔아요!", "피 100 · 공격 50!", "Lv 올리면 두 배!"),
             11 to listOf("채집통 있어요!", "튼튼한 채집통~", "무엇을 담을까요?"),
+            TRAINING_TENT to listOf("체력 훈련장이에요!", "달리면 체력이 쑥쑥~", "30초마다 체력 +5!"),
         )
         private val DEFAULT_ADS = listOf("어서 오세요!", "곧 좋은 물건 들어와요~")
         /** 맨 앞 집의 가운데 x · 그림 높이 — 인간은 집 앞(오른쪽)에서 시작한다 */

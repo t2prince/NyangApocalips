@@ -80,6 +80,8 @@ object CatTeam {
         var hpSurgeries: Int = 0,
         /** 달래기 수술 횟수 — 3번을 다 해야 공격력 +4 (2026-10-09) */
         var soothes: Int = 0,
+        /** 체력 훈련장에서 늘린 체력 (대표님 2026-10-10 「고양이 체력 훈련장」) */
+        var hpTraining: Int = 0,
         /** 치즈냥이의 털 무늬 (다른 종은 CHEESE 로 두고 무시) */
         val coat: CatCoat = CatCoat.CHEESE
     ) {
@@ -217,6 +219,7 @@ object CatTeam {
                             surgeries = o.optInt("surgeries", 0).coerceIn(0, SURGERY_MAX),
                             hpSurgeries = o.optInt("hpSurgeries", 0).coerceIn(0, HP_SURGERY_MAX),
                             soothes = o.optInt("soothes", 0).coerceIn(0, SOOTHE_NEED),
+                            hpTraining = o.optInt("hpTraining", 0).coerceAtLeast(0),
                             skills = o.optJSONArray("skills")?.let { arr -> MutableList(arr.length()) { arr.optString(it) }.toMutableSet() } ?: mutableSetOf(),
                             // 무늬 도입(2026-09-20) 전에 저장된 치즈냥이는 무늬가 없다 → 한 번 무작위로 뽑아 준다 (대표님 지시)
                             coat = if (o.has("coat")) CatCoat.of(o.optString("coat"))
@@ -281,6 +284,7 @@ object CatTeam {
                     .put("surgeries", c.surgeries)
                     .put("hpSurgeries", c.hpSurgeries)
                     .put("soothes", c.soothes)
+                    .put("hpTraining", c.hpTraining)
             )
         }
         val counts = JSONObject()
@@ -559,7 +563,19 @@ object CatTeam {
     }
 
     /** HP 수술로 늘어난 체력 */
-    fun hpBonusOf(c: TeamCat) = HP_SURGERY_HP * c.hpSurgeries
+    fun hpBonusOf(c: TeamCat) = HP_SURGERY_HP * c.hpSurgeries + c.hpTraining
+
+    /** 체력 훈련장: 러닝머신을 30초 달릴 때마다 체력 +5 (영구, 값·끝 없음은 Claude 판단) */
+    const val HP_TRAIN_SECONDS = 30f
+    const val HP_TRAIN_GAIN = 5
+
+    fun trainHp(catId: Int): Boolean {
+        val c = cat(catId) ?: return false
+        if (c.gone) return false
+        c.hpTraining = (c.hpTraining + HP_TRAIN_GAIN).coerceAtMost(1_000_000)
+        save()
+        return true
+    }
 
     /** HP 수술 — 체력 +5 */
     fun operateHp(catId: Int): Boolean {

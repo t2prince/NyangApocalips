@@ -302,6 +302,8 @@ class ShopScreen(private val gameView: GameView) : Screen {
     private val towerX = HOUSE_X
     private val worldWidth = FIRST_TENT_X + (TENT_COUNT - 1) * TENT_GAP + 600f
     private var nearTower = false
+    /** 집 뒤(왼쪽)의 돈쟁이 아저씨 앞에 서 있는가 — 루비 환전 (대표님 2026-10-09) */
+    private var nearMoney = false
     private val towerRect = RectF()
 
     // ===== 그림 도구 =====
@@ -382,6 +384,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         val pcx = player.x + player.width / 2f
         nearTent = (0 until TENT_COUNT).firstOrNull { abs(pcx - tentX(it)) < TENT_W * 0.42f } ?: -1
         nearTower = abs(pcx - towerX) < 240f
+        nearMoney = abs(pcx - MONEY_X) < 170f
     }
 
     override fun draw(canvas: Canvas) {
@@ -440,6 +443,16 @@ class ShopScreen(private val gameView: GameView) : Screen {
             towerRect.set(towerX - tw / 2f, groundY + 20f - th, towerX + tw / 2f, groundY + 20f)
             canvas.drawBitmap(bmp, null, towerRect, null)
         }
+        // 돈쟁이 아저씨의 금박 천막 + 반짝임, 아저씨는 천막 오른쪽 앞에
+        drawTent(canvas, 0, MONEY_TENT_X, groundY, TENT_W, TENT_H, true, GOLD_TENT, "루비 환전소")
+        for (k in 0 until 6) {
+            val tw = ((timer * 1.3f + k * 0.37f) % 1f)
+            val sx = MONEY_TENT_X - TENT_W * 0.4f + ((k * 97) % 100) / 100f * TENT_W * 0.8f
+            val sy = groundY - TENT_H * (0.2f + ((k * 53) % 100) / 100f * 0.75f)
+            val r = 14f * sin(tw * Math.PI.toFloat())
+            canvas.drawLine(sx - r, sy, sx + r, sy, sparkle); canvas.drawLine(sx, sy - r, sx, sy + r, sparkle)
+        }
+        drawMoneyMan(canvas, MONEY_X, groundY)
         for (ally in allies) ally.draw(canvas)
         player.draw(canvas)
         canvas.restore()
@@ -483,6 +496,19 @@ class ShopScreen(private val gameView: GameView) : Screen {
             bubbleText.textSize = 44f
             val bw = bubbleText.measureText(label) + 60f
             val by = groundY - HOUSE_H - 50f + sin(timer * 4f) * 6f
+            enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
+            canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
+            canvas.drawRoundRect(enterRect, 38f, 38f, ink)
+            canvas.drawText(label, bx, enterRect.centerY() + 15f, bubbleText)
+        }
+
+        // 돈쟁이 아저씨 앞: '루비 환전' 말풍선
+        if (nearMoney) {
+            val bx = MONEY_X - cameraX
+            val label = "▼ 루비 환전"
+            bubbleText.textSize = 44f
+            val bw = bubbleText.measureText(label) + 60f
+            val by = groundY - 330f + sin(timer * 4f) * 6f
             enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
             canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
             canvas.drawRoundRect(enterRect, 38f, 38f, ink)
@@ -595,9 +621,70 @@ class ShopScreen(private val gameView: GameView) : Screen {
         canvas.drawText(text, x, by - 25f * pop + 11f, adText)
     }
 
+    /**
+     * 돈쟁이 아저씨 (대표님 2026-10-09): 집 뒤(왼쪽)에 서서 루비를 환전해 준다 — 금테 선글라스·콧수염.
+     * **금박 천막**을 가지고 있고 그 앞에 서 있다 (대표님 2026-10-09).
+     * 몸은 가게 주인처럼 인간 그림(검은 양복 색). 선글라스·콧수염은 **머리와 같이 움직이게** 프레임마다 잰 머리 자리(MONEY_HEAD)에 얹는다.
+     */
+    private val goldRim = Paint().apply { color = Color.rgb(230, 180, 40); style = Paint.Style.STROKE; strokeWidth = 4f; isAntiAlias = true }
+    private val darkLens = Paint().apply { color = Color.rgb(30, 30, 36); isAntiAlias = true }
+    private val sparkle = Paint().apply { color = Color.WHITE; strokeWidth = 4f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    private val mustache = Paint().apply { color = Color.rgb(60, 40, 28); isAntiAlias = true }
+    private fun drawMoneyMan(canvas: Canvas, x: Float, groundY: Float) {
+        val frames = SpriteManager.playerIdle
+        val fi = (timer * 7f).toInt() % frames.size
+        val bmp = frames[fi]      // 오른쪽(집·손님 쪽)을 본다
+        val sh = 200f
+        val sw = sh * bmp.width / bmp.height
+        ownerDst.set(x - sw / 2f, groundY - sh + 10f, x + sw / 2f, groundY + 10f)
+        rect.set(x - 26f, groundY - 6f, x + 26f, groundY + 8f)
+        canvas.drawOval(rect, shadowPaint)
+        canvas.drawBitmap(bmp, null, ownerDst, com.jamcat.nayngapo.ui.heroTintPaint(Color.rgb(44, 44, 58)))
+        val head = MONEY_HEAD[fi % MONEY_HEAD.size]
+        val hx = ownerDst.left + sw * head[0]
+        val hy = ownerDst.top + sh * head[1]
+        val hr = sw * 0.18f
+        // 금테 선글라스: 동그란 검은 알 두 개 + 금테 + 다리
+        for (c in floatArrayOf(-0.08f, 0.58f)) {
+            val lx = hx + hr * c
+            rect.set(lx - hr * 0.32f, hy - hr * 0.36f, lx + hr * 0.32f, hy + hr * 0.14f)
+            canvas.drawOval(rect, darkLens); canvas.drawOval(rect, goldRim)
+        }
+        canvas.drawLine(hx + hr * 0.24f, hy - hr * 0.16f, hx + hr * 0.26f, hy - hr * 0.16f, goldRim)
+        canvas.drawLine(hx - hr * 0.40f, hy - hr * 0.16f, hx - hr * 0.95f, hy - hr * 0.26f, goldRim)
+        // 콧수염: 양 끝이 말려 올라간 가는 갈색 수염
+        path.reset()
+        val mx = hx + hr * 0.30f; val my = hy + hr * 0.40f
+        path.moveTo(mx, my - hr * 0.06f)
+        path.quadTo(mx + hr * 0.30f, my - hr * 0.08f, mx + hr * 0.55f, my - hr * 0.24f)
+        path.quadTo(mx + hr * 0.42f, my + hr * 0.06f, mx, my + hr * 0.06f)
+        path.quadTo(mx - hr * 0.42f, my + hr * 0.06f, mx - hr * 0.55f, my - hr * 0.24f)
+        path.quadTo(mx - hr * 0.30f, my - hr * 0.08f, mx, my - hr * 0.06f)
+        path.close()
+        canvas.drawPath(path, mustache)
+
+        // 광고 말풍선 (가게 주인처럼 2.5초마다 바꿔 외친다)
+        val ads = MONEY_ADS
+        val phase = timer / 2.5f + 0.5f
+        val text = ads[phase.toInt() % ads.size]
+        val pop = 1f + 0.08f * (1f - ((phase % 1f) * 6f).coerceAtMost(1f))
+        adText.textSize = 30f * pop
+        val bw = adText.measureText(text) + 36f
+        val by = groundY - sh - 30f
+        rect.set(x - bw / 2f, by - 50f * pop, x + bw / 2f, by)
+        canvas.drawRoundRect(rect, 22f, 22f, adBubble)
+        canvas.drawRoundRect(rect, 22f, 22f, ink)
+        path.reset()
+        path.moveTo(x - 12f, by - 2f); path.lineTo(x + 4f, by + 20f); path.lineTo(x + 14f, by - 2f); path.close()
+        canvas.drawPath(path, adBubble)
+        canvas.drawText(text, x, by - 25f * pop + 11f, adText)
+    }
+
     /** 천막 하나: 줄무늬 지붕 + 깃발 + 이름 팻말 + 문(닫힘: 여민 천과 끈 매듭 / 열림: 걷어 묶은 천과 안쪽 팻말) */
-    private fun drawTent(canvas: Canvas, i: Int, cx: Float, baseY: Float, tw: Float, th: Float, open: Boolean) {
-        val (c1, c2) = TENT_COLORS[i % TENT_COLORS.size]
+    /** colors·name 을 주면 그 색·이름으로 (돈쟁이 아저씨의 금박 천막) */
+    private fun drawTent(canvas: Canvas, i: Int, cx: Float, baseY: Float, tw: Float, th: Float, open: Boolean,
+                         colors: Pair<Int, Int>? = null, name: String? = null) {
+        val (c1, c2) = colors ?: TENT_COLORS[i % TENT_COLORS.size]
         val left = cx - tw / 2f; val right = cx + tw / 2f
         val eaveY = baseY - th * 0.52f
         val topY = baseY - th
@@ -691,7 +778,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
         // 이름 팻말 (처마 위)
         signText.textSize = 34f
-        val label = tentName(i)
+        val label = name ?: tentName(i)
         val lw = signText.measureText(label) + 36f
         rect.set(cx - lw / 2f, eaveY - th * 0.13f - 54f, cx + lw / 2f, eaveY - th * 0.13f)
         canvas.drawRoundRect(rect, 10f, 10f, signPaint)
@@ -757,6 +844,9 @@ class ShopScreen(private val gameView: GameView) : Screen {
             }
             if (paused) return true
             // 집은 '집 들어가기' 말풍선을 눌러야만 들어간다 — 집 그림을 눌러서는 안 들어간다 (대표님 2026-10-09)
+            if (nearMoney && !enterRect.isEmpty && enterRect.contains(px, py)) {
+                touchControls.releaseAll(); returnX = player.x; gameView.showRubyShop(fromShop = true); return true
+            }
             if (nearTower && !enterRect.isEmpty && enterRect.contains(px, py)) {
                 touchControls.releaseAll(); returnX = player.x; gameView.showHouse(); return true
             }
@@ -821,12 +911,24 @@ class ShopScreen(private val gameView: GameView) : Screen {
         )
         private val DEFAULT_ADS = listOf("어서 오세요!", "곧 좋은 물건 들어와요~")
         /** 맨 앞 집의 가운데 x · 그림 높이 — 인간은 집 앞(오른쪽)에서 시작한다 */
-        private const val HOUSE_X = 380f
+        private const val HOUSE_X = 880f
         private const val HOUSE_H = 520f
-        private const val START_X = 700f
+        private const val START_X = 1200f
+        /** 집 뒤(왼쪽)의 돈쟁이 아저씨 — 금박 천막 가운데 x, 아저씨는 천막 오른쪽 앞 */
+        private const val MONEY_TENT_X = 300f
+        private const val MONEY_X = MONEY_TENT_X + 184f   // 천막 폭(460)의 40% 오른쪽
+        /** 금박 천막 색: 금빛 지붕 · 연한 금빛 벽 */
+        private val GOLD_TENT = Color.rgb(228, 176, 30) to Color.rgb(252, 236, 170)
+        /** 인간 대기 프레임마다 머리 가운데 (프레임 안 비율) — player_idle 그림에서 잰 값, 선글라스·수염이 머리를 따라간다 */
+        private val MONEY_HEAD = arrayOf(
+            floatArrayOf(0.448f, 0.236f), floatArrayOf(0.323f, 0.241f), floatArrayOf(0.292f, 0.317f),
+            floatArrayOf(0.615f, 0.256f), floatArrayOf(0.495f, 0.211f), floatArrayOf(0.359f, 0.322f),
+            floatArrayOf(0.281f, 0.261f),
+        )
+        private val MONEY_ADS = listOf("루비 바꿔 드려요~", "점수를 루비로!", "돈 되는 건 다 바꿔 줘요")
         /** 가게 화면에 들어갈 때의 인간 자리 — 돌아오면 거기서 시작 */
         private var returnX: Float? = null
-        private const val FIRST_TENT_X = 1300f
+        private const val FIRST_TENT_X = 1800f
         private const val TENT_GAP = 760f
         private const val TENT_W = 460f
         private const val TENT_H = 520f

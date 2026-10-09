@@ -13,7 +13,7 @@ import kotlin.random.Random
  * 루비 상점. 그동안 쌓아온 점수를 루비로 바꿔 준다 (500점 = 1루비).
  * 도감·고양이 상점과 같은 도화지 손그림 톤.
  */
-class RubyShopScreen(private val gameView: GameView) : Screen {
+class RubyShopScreen(private val gameView: GameView, private val fromShop: Boolean = false) : Screen {
 
     /** 환전 버튼 한 개 */
     private class ExchangeButton(val label: String, val amount: () -> Int)
@@ -227,7 +227,7 @@ class RubyShopScreen(private val gameView: GameView) : Screen {
             MotionEvent.ACTION_UP -> {
                 if (backRect.contains(event.x, event.y)) {
                     pressedIndex = -1
-                    gameView.showLobby()
+                    if (fromShop) gameView.showShop() else gameView.showLobby()
                     return true
                 }
                 val hit = buttonRects.indexOfFirst { it.contains(event.x, event.y) }
@@ -274,7 +274,7 @@ class RubyShopScreen(private val gameView: GameView) : Screen {
     }
 
     override fun onBack(): Boolean {
-        gameView.showLobby()
+        if (fromShop) gameView.showShop() else gameView.showLobby()
         return true
     }
 }

@@ -173,8 +173,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     }
 
     /** 루비 상점: 쌓아온 점수를 루비로 바꾼다 */
-    fun showRubyShop() {
-        fadeTo { RubyShopScreen(this) }
+    /** fromShop: 상점 마을 집 뒤 돈쟁이 아저씨에게서 왔으면 닫을 때 상점 마을(아저씨 앞)로 */
+    fun showRubyShop(fromShop: Boolean = false) {
+        fadeTo { RubyShopScreen(this, fromShop) }
     }
 
     /** 미션: 해내면 루비를 받는다 */

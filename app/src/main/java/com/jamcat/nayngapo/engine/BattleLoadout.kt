@@ -11,6 +11,8 @@ object BattleLoadout {
     /** 생명 물약 · 하트 물약을 이번에 마실지 (고르면 스테이지를 시작할 때 하나씩) */
     var lifePotion = true
     var heartPotion = true
+    /** 채집통을 가져갈지 — 가져가면 스테이지에서 냥이를 때려 내 팀으로 잡는다 (보스 빼고, 한 마리에 하나) */
+    var bugbox = true
     /** 레이저 총을 들고 갈지 */
     var gun = true
     /** 무엇을 타고 갈지 (없는 건 걷기로) */

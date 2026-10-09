@@ -27,6 +27,14 @@ abstract class Enemy(
     /** 마지막으로 그린 스프라이트 — 사망 모션에서 뒤집어 재사용한다 */
     protected var lastSprite: Bitmap? = null
 
+    /** 채집통에 잡혔다 (대표님 2026-10-10) — 쓰러지는 모습 없이 사라지고 내 팀 냥이가 된다 */
+    var captured = false
+        private set
+    fun capture() { if (!isDead) { isDead = true; captured = true } }
+
+    /** 보스인가 — 보스는 채집통으로 못 잡는다 (보스 클래스는 이름이 …Boss) */
+    val isBoss: Boolean get() = this::class.java.simpleName.endsWith("Boss")
+
     /** 체력이 다했을 때 호출: 사망 상태로 바꾸고 사망 모션을 시작한다 */
     protected fun die() {
         if (isDead) return

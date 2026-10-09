@@ -25,6 +25,7 @@ class BattlePrepScreen(private val gameView: GameView, private val stage: Int) :
         Item("h_life", "생명 물약", "목숨 +1"),
         Item("h_heal", "하트 물약", "하트 +2"),
         Item("h_gun", "레이저 총", "총알을 쏜다"),
+        Item("h_bugbox", "채집통", "냥이를 잡는다"),
     )
     private val itemRects = items.map { RectF() }
     private val rideRects = Ride.values().map { RectF() }
@@ -48,6 +49,7 @@ class BattlePrepScreen(private val gameView: GameView, private val stage: Int) :
     private fun selected(id: String) = when (id) {
         "h_life" -> BattleLoadout.lifePotion
         "h_heal" -> BattleLoadout.heartPotion
+        "h_bugbox" -> BattleLoadout.bugbox
         else -> BattleLoadout.gun
     }
     private fun usable(id: String) = owned(id) && !(isSea && id == "h_life")
@@ -66,7 +68,7 @@ class BattlePrepScreen(private val gameView: GameView, private val stage: Int) :
         canvas.drawText("전투 때 쓸 아이템을 고르세요", w / 2f, h * 0.17f, title)
 
         // 아이템 카드 세 장
-        val cw = w * 0.22f; val gap = (w - cw * items.size) / (items.size + 1)
+        val cw = w * 0.19f; val gap = (w - cw * items.size) / (items.size + 1)
         val top = h * 0.22f; val bottom = h * 0.56f
         for ((i, it) in items.withIndex()) {
             val r = itemRects[i]
@@ -149,6 +151,7 @@ class BattlePrepScreen(private val gameView: GameView, private val stage: Int) :
                 !owned(id) -> notice("${items[i].name}이(가) 없어요 · 상점에서 사요")
                 id == "h_life" -> BattleLoadout.lifePotion = !BattleLoadout.lifePotion
                 id == "h_heal" -> BattleLoadout.heartPotion = !BattleLoadout.heartPotion
+                id == "h_bugbox" -> BattleLoadout.bugbox = !BattleLoadout.bugbox
                 else -> BattleLoadout.gun = !BattleLoadout.gun
             }
             return true

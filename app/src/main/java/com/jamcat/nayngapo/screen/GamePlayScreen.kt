@@ -872,7 +872,7 @@ class GamePlayScreen(
         if (attackBox != null) {
             for (enemy in level.enemies) {
                 if (!enemy.isDead && RectF.intersects(attackBox, enemy.hitBox)) {
-                    damageEnemy(enemy, player.getCurrentAttackPower())
+                    if (!tryCapture(enemy)) damageEnemy(enemy, player.getCurrentAttackPower())
                     player.triggerHitSpark()
                 }
             }
@@ -945,7 +945,7 @@ class GamePlayScreen(
                         // 미사일은 닿은 자리에서 터져 주변까지 휩쓴다
                         explodeMissile(proj.x + proj.width / 2f, proj.y + proj.height / 2f, proj.damage)
                     } else {
-                        damageEnemy(enemy, proj.damage)
+                        if (!tryCapture(enemy)) damageEnemy(enemy, proj.damage)
                         // 돌은 맞고 부서진다
                         if (proj.isStone) chipStone(proj.x + proj.width / 2f, proj.y + proj.height / 2f)
                     }
@@ -2222,7 +2222,7 @@ class GamePlayScreen(
         for (enemy in level.enemies) {
             if (!enemy.isDead) {
                 drawables.add(Drawable(enemy.y) { enemy.draw(canvas) })
-            } else if (enemy.isDying) {
+            } else if (enemy.isDying && !enemy.captured) {
                 drawables.add(Drawable(enemy.y) { enemy.drawDeath(canvas) })
             }
         }
@@ -3349,6 +3349,47 @@ class GamePlayScreen(
             leaveCar()
             gameView.leaveStage()
         }
+        return true
+    }
+
+    // ===== 채집통 (12번 채집 가게, 대표님 2026-10-10 「채집통을 가지고 스테이지에 가서 냥이를 때리면 자기 팀 냥이가 돼, 보스만 빼고」) =====
+    /** 출전 준비에서 채집통을 가져가기로 했는가 */
+    private val bringBugbox = com.jamcat.nayngapo.engine.BattleLoadout.bugbox
+
+    /**
+     * 인간이 때린(주먹·총알·로켓 펀치) 냥이를 채집통에 잡는다 — 채집통 하나에 한 마리, 보스는 못 잡는다.
+     * 잡힌 냥이는 쓰러지는 모습 없이 사라지고 내 팀(캣타워)에 들어오며, 이 스테이지에서도 바로 같이 싸운다.
+     * 우리 팀 그림이 없는 종(벌냥이·해머냥이 등)은 치즈냥이(무늬 무작위)로 들어온다 (Claude 판단).
+     */
+    private fun tryCapture(enemy: com.jamcat.nayngapo.entity.Enemy): Boolean {
+        if (!bringBugbox || enemy.isDead || enemy.isBoss) return false
+        if (!GameProgress.consumeItem("h_bugbox")) return false
+        val coat = when (enemy) {
+            is com.jamcat.nayngapo.entity.NormalCat -> enemy.coat
+            is com.jamcat.nayngapo.entity.KittenCat -> enemy.coat
+            is com.jamcat.nayngapo.entity.BoatCat -> enemy.coat
+            else -> com.jamcat.nayngapo.engine.CatCoat.randomForEnemy()
+        }
+        val kind = when (enemy) {
+            is com.jamcat.nayngapo.entity.GreenCat -> com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN
+            is com.jamcat.nayngapo.entity.BlueCat -> com.jamcat.nayngapo.entity.AllyCat.Kind.BLUE
+            is com.jamcat.nayngapo.entity.FlyingCat -> com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING
+            is com.jamcat.nayngapo.entity.GunCat -> com.jamcat.nayngapo.entity.AllyCat.Kind.GUN
+            is com.jamcat.nayngapo.entity.BoatCat -> com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT
+            else -> com.jamcat.nayngapo.entity.AllyCat.Kind.NORMAL
+        }
+        enemy.capture()
+        level.onEnemyDefeated()
+        val cat = com.jamcat.nayngapo.engine.CatTeam.recruit(kind, coat, isKitten = enemy is com.jamcat.nayngapo.entity.KittenCat)
+        // 땅에서 걷는 냥이면 이 스테이지에서도 바로 같이 싸운다
+        if (kind != com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING && kind != com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT && !isSea) {
+            level.allies.add(com.jamcat.nayngapo.entity.AllyCat(
+                enemy.x, Constants.GROUND_Y, cat.kind, level = cat.level, teamId = cat.id, coat = cat.coat, kitten = cat.isKitten))
+        }
+        SoundManager.playCatHit()
+        shake(0.12f, 6f)
+        val left = GameProgress.itemCount("h_bugbox")
+        hitEffects.add(HitEffect(enemy.x, enemy.y - enemy.height - 40f, 1.6f, "채집! ${cat.name} 우리 팀 (채집통 ${left}개 남음)"))
         return true
     }
 

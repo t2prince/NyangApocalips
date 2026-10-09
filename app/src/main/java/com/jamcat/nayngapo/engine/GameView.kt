@@ -157,6 +157,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         fadeTo { CatShopScreen(this, fromTent, title, ids) }
     }
 
+    /** 투기장 (상점 마을 7번 천막): 고른 냥이가 밀짚 가짜 냥이와 싸운다 — 나오면 상점 마을(천막 앞) */
+    fun showArena(catId: Int) {
+        fadeTo { ArenaScreen(this, catId) }
+    }
+
     /** 상점: 평평한 초원 위 천막 상점들 — 인간을 한 명 구할 때마다 천막 하나가 열린다 */
     fun showShop() {
         fadeTo { ShopScreen(this) }

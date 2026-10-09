@@ -545,6 +545,18 @@ object CatTeam {
         return true
     }
 
+    /** 투기장 (대표님 2026-10-09): 밀짚 가짜 냥이를 30초 때릴 때마다 공격력 +3 (attackBonus 에 영구로, 무료·끝 없음은 Claude 판단) */
+    const val ARENA_SECONDS = 30f
+    const val ARENA_ATTACK = 3
+
+    fun arenaTrain(catId: Int): Boolean {
+        val c = cat(catId) ?: return false
+        if (c.gone) return false
+        c.attackBonus += ARENA_ATTACK
+        save()
+        return true
+    }
+
     /** HP 수술로 늘어난 체력 */
     fun hpBonusOf(c: TeamCat) = HP_SURGERY_HP * c.hpSurgeries
 

@@ -148,7 +148,12 @@ class ShopScreen(private val gameView: GameView) : Screen {
         panelRect.set(w * 0.2f, h * 0.18f, w * 0.8f, h * 0.82f)
         canvas.drawRoundRect(panelRect, 28f, 28f, panelPaint); canvas.drawRoundRect(panelRect, 28f, 28f, ink)
         panelTitle.textSize = h * 0.05f
-        canvas.drawText(if (hospitalMode) "누구를 수술할까요? (1마리)" else "누구에게 기술을 가르칠까요? (1마리)", panelRect.centerX(), panelRect.top + h * 0.08f, panelTitle)
+        val title = when (chooseFor) {
+            ChooseFor.HOSPITAL -> "누구를 수술할까요? (1마리)"
+            ChooseFor.ARENA -> "누가 싸울까요? (1마리)"
+            ChooseFor.SKILL -> "누구에게 기술을 가르칠까요? (1마리)"
+        }
+        canvas.drawText(title, panelRect.centerX(), panelRect.top + h * 0.08f, panelTitle)
         val n = list.size.coerceAtMost(3)
         val cw = (panelRect.width() - w * 0.04f) / n
         for (k in 0 until n) {
@@ -173,7 +178,11 @@ class ShopScreen(private val gameView: GameView) : Screen {
         for (k in 0 until list.size.coerceAtMost(3)) {
             if (chooseRects[k].contains(px, py)) {
                 choosing = null
-                if (hospitalMode) patient = list[k] else skillStudent = list[k]
+                when (chooseFor) {
+                    ChooseFor.HOSPITAL -> patient = list[k]
+                    ChooseFor.ARENA -> gameView.showArena(list[k].id)
+                    ChooseFor.SKILL -> skillStudent = list[k]
+                }
                 return
             }
         }
@@ -181,7 +190,9 @@ class ShopScreen(private val gameView: GameView) : Screen {
     }
 
     // ===== 동물 병원 창 =====
-    private var hospitalMode = false
+    /** 고르기 창이 무엇을 위해 떠 있는가 */
+    private enum class ChooseFor { SKILL, HOSPITAL, ARENA }
+    private var chooseFor = ChooseFor.SKILL
     private var patient: com.jamcat.nayngapo.engine.CatTeam.TeamCat? = null
     private val surgeryRects = List(3) { RectF() }
     private val surgeryBtns = List(3) { RectF() }
@@ -694,7 +705,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         when (i) {
             CAT_SHOP_TENT -> gameView.showCatShop(fromTent = true)
             CAT_SKILL_TENT -> {
-                hospitalMode = false
+                chooseFor = ChooseFor.SKILL
                 // 데려온 냥이 1마리만 배운다 — 2마리 이상 데려왔으면 먼저 하나를 고른다 (2026-10-09)
                 val brought = allies.mapNotNull { a -> a.teamId?.let { com.jamcat.nayngapo.engine.CatTeam.cat(it) } }.filter { !it.gone }
                 when {
@@ -705,10 +716,20 @@ class ShopScreen(private val gameView: GameView) : Screen {
             }
             HOSPITAL_TENT -> {
                 val brought = allies.mapNotNull { a -> a.teamId?.let { com.jamcat.nayngapo.engine.CatTeam.cat(it) } }.filter { !it.gone }
-                hospitalMode = true
+                chooseFor = ChooseFor.HOSPITAL
                 when {
-                    brought.isEmpty() -> { hospitalMode = false; showNotice("냥이를 데려와야 수술할 수 있어요! (캣타워에서 출전)") }
+                    brought.isEmpty() -> showNotice("냥이를 데려와야 수술할 수 있어요! (캣타워에서 출전)")
                     brought.size == 1 -> patient = brought[0]
+                    else -> choosing = brought
+                }
+            }
+            ARENA_TENT -> {
+                // 투기장 (대표님 2026-10-09): 싸울 냥이를 고르면 밀짚 가짜 냥이와 싸운다 — 1마리면 바로
+                val brought = allies.mapNotNull { a -> a.teamId?.let { com.jamcat.nayngapo.engine.CatTeam.cat(it) } }.filter { !it.gone }
+                chooseFor = ChooseFor.ARENA
+                when {
+                    brought.isEmpty() -> showNotice("냥이를 데려와야 투기장에서 싸울 수 있어요! (캣타워에서 출전)")
+                    brought.size == 1 -> gameView.showArena(brought[0].id)
                     else -> choosing = brought
                 }
             }
@@ -735,7 +756,8 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 touchControls.releaseAll(); gameView.showLobby(); return true
             }
             if (paused) return true
-            if (nearTower && (towerRect.contains(px, py) || (!enterRect.isEmpty && enterRect.contains(px, py)))) {
+            // 집은 '집 들어가기' 말풍선을 눌러야만 들어간다 — 집 그림을 눌러서는 안 들어간다 (대표님 2026-10-09)
+            if (nearTower && !enterRect.isEmpty && enterRect.contains(px, py)) {
                 touchControls.releaseAll(); returnX = player.x; gameView.showTeam(fromShop = true); return true
             }
             if (!enterRect.isEmpty && enterRect.contains(px, py) && nearTent in 0 until openCount) {
@@ -767,7 +789,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     companion object {
         /** 천막 수 — 대표님이 정할 때까지 임시 6개 (Claude 판단) */
-        const val TENT_COUNT = 6
+        const val TENT_COUNT = 7
         private const val MENU_BTN_R = 46f
         private const val MENU_HIT_R = 60f
         private const val MENU_BTN_Y = 118f
@@ -779,8 +801,10 @@ class ShopScreen(private val gameView: GameView) : Screen {
         const val CAT_SKILL_TENT = 1
         /** 6번 천막 = 동물 병원 (대표님 2026-10-09: 루비를 내고 수술하면 고양이가 더 빨라진다) */
         const val HOSPITAL_TENT = 5
+        /** 7번 천막 = 투기장 (대표님 2026-10-09: 고른 냥이가 밀짚 가짜 냥이를 때리고, 30초마다 공격력 +3) */
+        const val ARENA_TENT = 6
         private val TENT_NAMES: List<String?> = List(TENT_COUNT) {
-            when (it) { CAT_SHOP_TENT -> "고양이 상점"; CAT_SKILL_TENT -> "고양이 기술"; HOSPITAL_TENT -> "동물 병원"; else -> com.jamcat.nayngapo.engine.ShopCatalog.tentShops[it]?.first }
+            when (it) { CAT_SHOP_TENT -> "고양이 상점"; CAT_SKILL_TENT -> "고양이 기술"; HOSPITAL_TENT -> "동물 병원"; ARENA_TENT -> "투기장"; else -> com.jamcat.nayngapo.engine.ShopCatalog.tentShops[it]?.first }
         }
         /** 가게 주인의 광고 문구 (Claude 판단 — 대표님이 정하면 바꾼다) */
         private val TENT_ADS: Map<Int, List<String>> = mapOf(
@@ -790,6 +814,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
             3 to listOf("장난감 들어왔어요!", "레이저 포인터 인기 최고~", "깃털 막대 살랑살랑!"),
             4 to listOf("어서 오세요!", "푹신한 방석·캣타워~", "빗으로 뽀송뽀송!"),
             HOSPITAL_TENT to listOf("동물 병원이에요!", "수술하면 더 빨라져요~", "냥이를 데려오세요!"),
+            ARENA_TENT to listOf("투기장이에요!", "가짜 냥이를 때려 봐요~", "30초마다 공격력 +3!"),
         )
         private val DEFAULT_ADS = listOf("어서 오세요!", "곧 좋은 물건 들어와요~")
         /** 맨 앞 집의 가운데 x · 그림 높이 — 인간은 집 앞(오른쪽)에서 시작한다 */

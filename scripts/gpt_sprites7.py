@@ -19,7 +19,8 @@ ITEMS = {
     'boat_cat': ('cat_boat', 92),
     'honey_cat': ('cat_honey', 86),     # 꿀냥이 (꿀 늪, 2026-10-09)
     'pirate_ship': ('pirate_ship', 760),
-    'cat_house': ('cat_house', 600),    # 상점 마을 맨 앞의 집 — 안에 캣타워 (2026-10-09)
+    'cat_house': ('cat_house', 600),
+    'straw_cat': ('straw_cat', 360),    # 투기장 밀짚 가짜 냥이 (2026-10-09)    # 상점 마을 맨 앞의 집 — 안에 캣타워 (2026-10-09)
 }
 
 def clear_ship_pockets(img):

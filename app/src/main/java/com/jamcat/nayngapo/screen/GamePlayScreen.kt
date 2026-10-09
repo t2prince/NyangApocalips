@@ -829,7 +829,8 @@ class GamePlayScreen(
             if (proj.y + proj.height >= ground) {
                 proj.isAlive = false
                 // 낭떠러지 위에 떨어지면 웅덩이 없이 그냥 떨어져 사라진다
-                if (level.chasms.none { lx > it.x && lx < it.x + it.width }) lavaPools.add(LavaPool(lx, ground))
+                // 우리 팀 주황냥이가 던진 용암은 웅덩이를 남기지 않는다 (인간이 밟아 다치지 않게)
+                if (!proj.isPlayerOwned && level.chasms.none { lx > it.x && lx < it.x + it.width }) lavaPools.add(LavaPool(lx, ground))
                 repeat(5) { i ->
                     val ang = (-Math.PI * (0.15 + 0.7 * i / 4.0)).toFloat()
                     val v = 140f + Math.random().toFloat() * 120f

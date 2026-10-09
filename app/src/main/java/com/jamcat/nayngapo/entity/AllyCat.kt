@@ -138,14 +138,23 @@ class AllyCat(
 
     // 그린냥이만 슬라임을 뱉고, 파랑·일반 냥이는 달려들어 할퀸다
     private val isGunner = kind == Kind.GUN
-    /** 원거리 (그린냥이 슬라임 / 총냥이 총알) */
-    private val isSpitter = kind == Kind.GREEN || isGunner
+    /**
+     * 적이었다가 우리 팀이 된 냥이도 공격은 적일 때와 같다 (대표님 2026-10-10 「같은 팀 된 고양이도 공격은 같아」):
+     * 빨강 불 뿜기 · 주황 용암 던지기 · 노랑 번개 · 레이저 · 꽃가루 · 벌 침 · 똥 던지기는 멀리서, 해머·모루는 세게 내려친다(2배·3배).
+     * 나머지(도둑·털뭉·머드·꿀·덩굴)는 할퀴기. 피해량은 우리 팀 공격력 기준(배율은 Claude 판단).
+     */
+    private val ranged = kind in setOf(Kind.RED, Kind.ORANGE, Kind.YELLOW, Kind.LASER, Kind.FLOWER, Kind.BEE, Kind.POOP)
+    /** 원거리 (그린냥이 슬라임 / 총냥이 총알 / 위의 원거리 냥이들) */
+    private val isSpitter = kind == Kind.GREEN || isGunner || ranged
     private val moveSpeed = (if (isSpitter) 250f else 300f) * speedMul
     private val attackRange = if (isSpitter) 520f else 110f
     /** 레벨만큼 세진다 (그린냥이는 뱉는 슬라임, 나머지는 할퀴기) */
     private val damageBonus = com.jamcat.nayngapo.engine.CatTeam.damageBonusFor(level)
     private val baseAttackDamage = (if (isGunner) 5 else if (isSpitter) 10 else 5) + damageBonus + attackBonus
-    private val attackDamage: Int get() = if (evolved) maxOf(baseAttackDamage, EVOLVE_POWER) else baseAttackDamage
+    private val attackDamage: Int get() {
+        val d = if (evolved) maxOf(baseAttackDamage, EVOLVE_POWER) else baseAttackDamage
+        return when (kind) { Kind.HAMMER -> d * 2; Kind.ANVIL -> d * 3; else -> d }   // 해머로 쾅, 모루로 쿵
+    }
 
     /** 달려들어 할퀴는 피해량 — 화면 쪽에서 적에게 적용한다 (묭묭 진화 중엔 최소 50) */
     private val baseMeleeDamage = 5 + damageBonus + attackBonus
@@ -244,12 +253,13 @@ class AllyCat(
             }
 
             if (attackCooldown <= 0f && abs(dx) < attackRange) {
-                attackCooldown = if (isSpitter) 1.4f else 0.7f
+                attackCooldown = if (isSpitter) 1.4f else if (kind == Kind.ANVIL) 1.2f else 0.7f
                 if (!isSpitter) {
-                    pendingMeleeTarget = target          // 달려들어 할퀸다
+                    pendingMeleeTarget = target          // 달려들어 할퀸다 (해머·모루는 내려친다)
                 } else {
                     val dir = if (facingRight) 1f else -1f
-                    if (isGunner) {
+                    if (ranged) shootLikeEnemy(dir, target)
+                    else if (isGunner) {
                         pendingProjectiles.add(          // 등의 총에서 보라색 총알
                             Projectile(x + width / 2f + dir * 34f, y - height * 0.84f, 620f * dir, 0f,
                                 attackDamage, true, tint = Color.rgb(170, 70, 220), radius = 5f)
@@ -311,6 +321,38 @@ class AllyCat(
             hopVelocity += 1800f * deltaTime
             hopOffset += hopVelocity * deltaTime
             if (hopOffset >= 0f) { hopOffset = 0f; hopVelocity = 0f }
+        }
+    }
+
+    /** 적일 때와 같은 원거리 공격 (우리 편 탄) */
+    private fun shootLikeEnemy(dir: Float, target: Enemy) {
+        val cx = x + width / 2f
+        val mouthY = y - height * 0.5f
+        val d = attackDamage
+        when (kind) {
+            Kind.RED -> repeat(4) { i ->      // 불을 뿜는다: 불꽃 네 덩이가 퍼지며 짧게 날아간다
+                pendingProjectiles.add(Projectile(cx + dir * 30f, mouthY, dir * (360f + i * 30f), (i - 1.5f) * 50f, d, true,
+                    tint = Color.rgb(255, 140, 30), radius = 12f, fuse = 0.55f, isFlame = true))
+            }
+            Kind.ORANGE -> pendingProjectiles.add(Projectile(cx, mouthY - 20f, dir * 430f, -560f, d, true,   // 용암을 포물선으로 던진다
+                tint = Color.rgb(255, 110, 20), radius = 14f, gravity = 1100f, isLava = true))
+            Kind.YELLOW -> {                    // 번개: 노린 냥이 머리 위 하늘에서 내리꽂는다
+                val tx = target.x + target.width / 2f
+                val top = target.y - 620f
+                pendingProjectiles.add(Projectile(tx - 10f, top + 20f, 0f, 3400f, d, true,
+                    tint = Color.rgb(255, 214, 40), radius = 10f, isLightning = true, boltTopY = top))
+            }
+            Kind.LASER -> pendingProjectiles.add(Projectile(cx, mouthY, dir * 800f, 0f, d * 2, true,   // 레이저 (세다)
+                tint = Color.rgb(92, 208, 108), radius = 9f))
+            Kind.FLOWER -> repeat(3) {          // 꽃가루를 뿜는다
+                pendingProjectiles.add(Projectile(cx + dir * 30f, mouthY, dir * (300f + Math.random().toFloat() * 120f),
+                    60f + (Math.random().toFloat() - 0.5f) * 180f, d, true, tint = Color.rgb(250, 220, 80), radius = 9f, fuse = 0.8f, isPollen = true))
+            }
+            Kind.BEE -> pendingProjectiles.add(Projectile(cx + dir * 30f, mouthY + 10f, dir * 720f, 0f, d, true,   // 침을 쏜다
+                tint = Color.rgb(40, 34, 30), radius = 5f))
+            Kind.POOP -> pendingProjectiles.add(Projectile(cx, mouthY - 20f, dir * 400f, -420f, d, true,   // 똥을 던진다
+                tint = Color.rgb(130, 86, 50), radius = 12f, gravity = 1000f))
+            else -> Unit
         }
     }
 

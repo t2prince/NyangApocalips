@@ -272,7 +272,7 @@ class HammerCat(x: Float, y: Float) : Enemy(x, y, 10, 3) {
     private var hopPhase = (Math.random() * Math.PI).toFloat()
     private var swing = 0f                 // 0보다 크면 내려치는 중 (SWING_TIME 에서 0으로)
     /** 기본은 흑백 얼룩이(절반). 나머지는 삼색이·고등어·턱시도·하양이 (대표님 2026-09-20) */
-    private val coat = if (Math.random() < 0.5) com.jamcat.nayngapo.engine.CatCoat.BICOLOR
+    val coat = if (Math.random() < 0.5) com.jamcat.nayngapo.engine.CatCoat.BICOLOR
                        else HAMMER_COATS[(Math.random() * HAMMER_COATS.size).toInt().coerceIn(0, HAMMER_COATS.size - 1)]
 
     init { pickNewDirection() }

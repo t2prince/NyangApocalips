@@ -408,7 +408,8 @@ class AllyCat(
 
     companion object {
         /** 새로 우리 팀이 된 냥이들의 그림 = 그 냥이(적) 그림 (해머냥이는 무늬 그림) */
-        fun extraSprite(kind: Kind): android.graphics.Bitmap? = when (kind) {
+        fun extraSprite(kind: Kind, coat: com.jamcat.nayngapo.engine.CatCoat = com.jamcat.nayngapo.engine.CatCoat.CHEESE): android.graphics.Bitmap? = when (kind) {
+            Kind.HAMMER -> hammerSprite(coat)   // 해머냥이는 다 해머를 들고 있다 (대표님 2026-10-10)
             Kind.THIEF -> SpriteManager.thiefCat
             Kind.LASER -> SpriteManager.laserIdle.firstOrNull()
             Kind.RED -> SpriteManager.redCatEvil
@@ -423,6 +424,38 @@ class AllyCat(
             Kind.POOP -> SpriteManager.poopCat
             Kind.VINE -> SpriteManager.vineCat
             else -> null
+        }
+
+        private val hammerCache = HashMap<com.jamcat.nayngapo.engine.CatCoat, android.graphics.Bitmap>()
+        /**
+         * 해머를 든 해머냥이 그림 (무늬별로 한 번 만들어 둔다): 무늬 그림 + 얼굴 앞에서 앞발로 세워 든 망치(흰 앞발, 앞으로 12° 기울임).
+         * 망치 모양은 적 해머냥이와 같다. 얼굴을 가리지 않게 몸 앞쪽 아래에서 쥔다. 냥이 발은 그림 아래·가운데 그대로.
+         */
+        fun hammerSprite(coat: com.jamcat.nayngapo.engine.CatCoat): android.graphics.Bitmap = hammerCache.getOrPut(coat) {
+            val cat = coat.ally
+            val padX = (cat.width * 0.32f).toInt(); val padTop = (cat.height * 0.05f).toInt()
+            val out = android.graphics.Bitmap.createBitmap(cat.width + padX * 2, cat.height + padTop, android.graphics.Bitmap.Config.ARGB_8888)
+            val c = Canvas(out)
+            c.drawBitmap(cat, padX.toFloat(), padTop.toFloat(), null)
+            val handX = padX + cat.width / 2f + cat.width * 0.47f
+            val baseY = padTop + cat.height * 0.80f
+            val len = cat.height * 0.62f
+            val handle = android.graphics.Paint().apply { color = android.graphics.Color.rgb(150, 100, 60); isAntiAlias = true }
+            val head = android.graphics.Paint().apply { color = android.graphics.Color.rgb(120, 124, 134); isAntiAlias = true }
+            val edge = android.graphics.Paint().apply {
+                color = android.graphics.Color.rgb(40, 40, 48); isAntiAlias = true; style = android.graphics.Paint.Style.STROKE; strokeWidth = 2.5f
+            }
+            c.save(); c.translate(handX, baseY); c.rotate(12f)
+            c.drawRoundRect(-3f, -len, 3f, 0f, 3f, 3f, handle); c.drawRoundRect(-3f, -len, 3f, 0f, 3f, 3f, edge)
+            val hw = cat.width * 0.30f; val hh = cat.height * 0.18f
+            val r = android.graphics.RectF(-hw * 0.35f, -len - hh * 0.5f, hw * 0.65f, -len + hh * 0.5f)
+            c.drawRoundRect(r, 3f, 3f, head); c.drawRoundRect(r, 3f, 3f, edge)
+            c.restore()
+            // 손잡이를 쥔 흰 앞발
+            val paw = android.graphics.Paint().apply { color = android.graphics.Color.WHITE; isAntiAlias = true }
+            c.drawOval(handX - 7f, baseY - 6f, handX + 7f, baseY + 6f, paw)
+            c.drawOval(handX - 7f, baseY - 6f, handX + 7f, baseY + 6f, edge)
+            out
         }
 
         /** 적 냥이 → 우리 팀이 될 때의 종류 (보스는 null) */
@@ -470,6 +503,6 @@ class AllyCat(
         Kind.FLYING -> if (armored) SpriteManager.flyingCatAllyArmor else SpriteManager.flyingCatAlly   // 아군은 꼬리가 얇다
         Kind.GUN -> if (armored) SpriteManager.gunCatAllyArmor else SpriteManager.gunCatAlly
         Kind.BOAT -> coat.boatAlly
-        else -> extraSprite(kind) ?: coat.ally
+        else -> extraSprite(kind, coat) ?: coat.ally
     }
 }

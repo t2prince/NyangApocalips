@@ -3368,6 +3368,7 @@ class GamePlayScreen(
             is com.jamcat.nayngapo.entity.NormalCat -> enemy.coat
             is com.jamcat.nayngapo.entity.KittenCat -> enemy.coat
             is com.jamcat.nayngapo.entity.BoatCat -> enemy.coat
+            is com.jamcat.nayngapo.entity.HammerCat -> enemy.coat   // 잡힌 해머냥이도 그 무늬 그대로 (해머를 든 채)
             else -> com.jamcat.nayngapo.engine.CatCoat.randomForEnemy()
         }
         val kind = com.jamcat.nayngapo.entity.AllyCat.kindForEnemy(enemy) ?: return false   // 모든 냥이가 그 모습 그대로 우리 팀 (보스 빼고, 2026-10-10)

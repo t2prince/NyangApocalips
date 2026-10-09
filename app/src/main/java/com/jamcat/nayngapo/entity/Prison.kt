@@ -87,7 +87,7 @@ class Prison(
                 AllyCat.Kind.GUN -> SpriteManager.gunCatAlly
                 AllyCat.Kind.BOAT -> catCoat.boatAlly
                 AllyCat.Kind.NORMAL -> catCoat.ally
-                else -> catKind?.let { AllyCat.extraSprite(it) } ?: catCoat.ally   // 모든 냥이가 갇혀 있을 수 있다 (2026-10-10)
+                else -> catKind?.let { AllyCat.extraSprite(it, catCoat) } ?: catCoat.ally   // 모든 냥이가 갇혀 있을 수 있다 (2026-10-10)
             }
             srcRect.set(0, 0, bmp.width, bmp.height)
             if (holdsKitten) {

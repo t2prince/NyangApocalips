@@ -274,7 +274,11 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     private fun tentX(i: Int) = FIRST_TENT_X + i * TENT_GAP
 
-    private val worldWidth = FIRST_TENT_X + (TENT_COUNT - 1) * TENT_GAP + 700f
+    /** 상점가 끝의 캣타워 — 들어가면 고양이 관리 (대표님 2026-10-09) */
+    private val towerX = FIRST_TENT_X + (TENT_COUNT - 1) * TENT_GAP + 720f
+    private val worldWidth = towerX + 600f
+    private var nearTower = false
+    private val towerRect = RectF()
 
     // ===== 그림 도구 =====
     private val skyPaint = Paint()
@@ -353,6 +357,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         // 인간이 서 있는 천막
         val pcx = player.x + player.width / 2f
         nearTent = (0 until TENT_COUNT).firstOrNull { abs(pcx - tentX(it)) < TENT_W * 0.42f } ?: -1
+        nearTower = abs(pcx - towerX) < 200f
     }
 
     override fun draw(canvas: Canvas) {
@@ -405,9 +410,16 @@ class ShopScreen(private val gameView: GameView) : Screen {
             if (cx + TENT_W < cameraX - 50f || cx - TENT_W > cameraX + w + 50f) continue
             drawOwner(canvas, i, cx + TENT_W * 0.40f, groundY)
         }
+        // 상점가 끝의 커다란 캣타워
+        SpriteManager.shopIcons["cat_tower"]?.let { bmp ->
+            val th = 560f; val tw = bmp.width * th / bmp.height
+            towerRect.set(towerX - tw / 2f, groundY + 20f - th, towerX + tw / 2f, groundY + 20f)
+            canvas.drawBitmap(bmp, null, towerRect, null)
+        }
         for (ally in allies) ally.draw(canvas)
         player.draw(canvas)
         canvas.restore()
+        towerRect.offset(-cameraX, 0f)
 
         for (i in 0 until TENT_COUNT) {
             val cx = tentX(i) - cameraX
@@ -438,6 +450,19 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 canvas.drawRoundRect(rect, 30f, 30f, ink)
                 canvas.drawText(label, bx, rect.centerY() + 12f, bubbleText)
             }
+        }
+
+        // 캣타워 앞: '고양이 관리' 말풍선
+        if (nearTower) {
+            val bx = towerX - cameraX
+            val label = "▼ 고양이 관리"
+            bubbleText.textSize = 44f
+            val bw = bubbleText.measureText(label) + 60f
+            val by = groundY - 620f + sin(timer * 4f) * 6f
+            enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
+            canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
+            canvas.drawRoundRect(enterRect, 38f, 38f, ink)
+            canvas.drawText(label, bx, enterRect.centerY() + 15f, bubbleText)
         }
 
         // 위 가운데: 구한 인간 · 열린 가게
@@ -697,6 +722,9 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 touchControls.releaseAll(); gameView.showLobby(); return true
             }
             if (paused) return true
+            if (nearTower && (towerRect.contains(px, py) || (!enterRect.isEmpty && enterRect.contains(px, py)))) {
+                touchControls.releaseAll(); returnX = player.x; gameView.showTeam(fromShop = true); return true
+            }
             if (!enterRect.isEmpty && enterRect.contains(px, py) && nearTent in 0 until openCount) {
                 enterTent(nearTent); return true
             }

@@ -142,8 +142,9 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     }
 
     /** 고양이 관리: 내 팀 냥이를 돌보는 곳 (도감은 여기서 따로 들어간다) */
-    fun showTeam() {
-        fadeTo { TeamScreen(this) }
+    /** fromShop: 상점 마을 끝 캣타워로 들어왔으면 닫을 때 상점 마을(캣타워 앞)로 돌아간다 */
+    fun showTeam(fromShop: Boolean = false) {
+        fadeTo { TeamScreen(this, fromShop) }
     }
 
     /** 고양이 도감 (기획1) */

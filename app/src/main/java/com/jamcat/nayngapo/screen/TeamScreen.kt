@@ -19,7 +19,7 @@ import kotlin.math.sin
  * 큰 냥이를 누르면 쓰다듬고, 오른쪽 버튼으로 놀아주고 간식을 주고 빗질을 한다.
  * 쓰러진 냥이는 무덤이 되어 칸에 남는다.
  */
-class TeamScreen(private val gameView: GameView) : Screen {
+class TeamScreen(private val gameView: GameView, private val fromShop: Boolean = false) : Screen {
 
     private companion object {
         /** 아래 줄에 한 번에 보이는 냥이 칸 수 */
@@ -1315,7 +1315,7 @@ class TeamScreen(private val gameView: GameView) : Screen {
 
     private fun close() {
         CatTeam.markSeen()
-        gameView.showLobby()
+        if (fromShop) gameView.showShop() else gameView.showLobby()
     }
 
     override fun onBack(): Boolean {

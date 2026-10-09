@@ -126,7 +126,10 @@ class GamePlayScreen(
     /** 이 스테이지에서 쓸 수 있는 고양이 기술 (배우고 켜 둔 것만, 최대 4개 — 묭묭 진화로 4칸) */
     private val battleSkills =
         com.jamcat.nayngapo.engine.CatSkills.all
-            .filter { com.jamcat.nayngapo.engine.CatSkills.isActive(it.id) }   // 배우고 켜 둔 기술만
+            .filter { sk ->
+                com.jamcat.nayngapo.engine.CatSkills.isActive(sk.id) ||   // 로비에서 배우고 켜 둔 기술
+                    com.jamcat.nayngapo.engine.CatTeam.party.any { sk.id in it.skills }   // 출전 냥이가 천막에서 배운 기술
+            }
             .take(com.jamcat.nayngapo.ui.TouchControls.SKILL_SLOTS)
 
     /** 기술별 남은 쿨타임 (스테이지를 시작할 때는 모두 준비 완료) */
@@ -1265,8 +1268,11 @@ class GamePlayScreen(
         val skill = battleSkills[index]
 
         val playerCx = player.x + player.width / 2f
+        // 로비에서 배운(모두가 쓰는) 기술이 아니면, 그 기술을 배운 냥이만 쓴다 (천막에서 1마리만 배운다)
+        val global = com.jamcat.nayngapo.engine.CatSkills.isActive(skill.id)
         val caster = level.allies
             .filter { !it.isDead }
+            .filter { a -> global || a.teamId?.let { id -> com.jamcat.nayngapo.engine.CatTeam.cat(id)?.skills?.contains(skill.id) } == true }
             .minByOrNull { kotlin.math.abs(it.x + it.width / 2f - playerCx) }
         if (caster == null) {
             hitEffects.add(
@@ -1881,8 +1887,10 @@ class GamePlayScreen(
                 com.jamcat.nayngapo.entity.AllyCat.Kind.GUN,      // 총냥이도 팀이 된다 (2026-09-20)
             )
             // 새끼 고양이가 갇혀 있었으면 그 무늬의 새끼 치즈냥이가 팀에 들어온다 (대표님 2026-09-27)
+            // 날아냥이는 「구출에 너무 안 나와, 많이(엄청 많이는 아니고)」(2026-10-09) — 무작위 냥이 감옥의 15% (Claude 판단)
             val kind = if (prison.holdsKitten) com.jamcat.nayngapo.entity.AllyCat.Kind.NORMAL
-                else prison.catKind ?: randomKinds[(Math.random() * randomKinds.size).toInt()]
+                else prison.catKind ?: if (Math.random() < 0.15) com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING
+                else randomKinds[(Math.random() * randomKinds.size).toInt()]
             // 구한 냥이는 팀 명단에만 올라간다 — 바로 싸우지 않고, 관리 화면에서 출전을 켜 줘야 한다
             val recruited = if (prison.holdsKitten) {
                 // 새끼는 엄마(암컷)와 같이 갇혀 있다 — 둘 다 팀에 들어온다 (2026-10-09)

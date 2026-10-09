@@ -72,6 +72,8 @@ object CatTeam {
         val parents: String = "",
         /** 성별 — true 수컷 ♂, false 암컷 ♀ (대표님 2026-10-09). 구출·출생 때 무작위 */
         val male: Boolean = Math.random() < 0.5,
+        /** 이 냥이가 상점 마을 '고양이 기술' 천막에서 배운 기술 id들 (데려온 냥이 1마리만 배운다, 2026-10-09) */
+        val skills: MutableSet<String> = mutableSetOf(),
         /** 치즈냥이의 털 무늬 (다른 종은 CHEESE 로 두고 무시) */
         val coat: CatCoat = CatCoat.CHEESE
     ) {
@@ -201,6 +203,7 @@ object CatTeam {
                             parents = o.optString("parents", ""),
                             // 성별 도입 전 냥이는 한 번 무작위로 정해 바로 저장한다
                             male = if (o.has("male")) o.optBoolean("male") else { migratedCoat = true; Math.random() < 0.5 },
+                            skills = o.optJSONArray("skills")?.let { arr -> MutableList(arr.length()) { arr.optString(it) }.toMutableSet() } ?: mutableSetOf(),
                             // 무늬 도입(2026-09-20) 전에 저장된 치즈냥이는 무늬가 없다 → 한 번 무작위로 뽑아 준다 (대표님 지시)
                             coat = if (o.has("coat")) CatCoat.of(o.optString("coat"))
                                    else if (kind == AllyCat.Kind.NORMAL) { migratedCoat = true; CatCoat.random() }
@@ -260,6 +263,7 @@ object CatTeam {
                     .put("isKitten", c.isKitten)
                     .put("parents", c.parents)
                     .put("male", c.male)
+                    .put("skills", JSONArray(c.skills.toList()))
             )
         }
         val counts = JSONObject()
@@ -497,6 +501,17 @@ object CatTeam {
     }
 
     fun cat(id: Int): TeamCat? = roster.firstOrNull { it.id == id }
+
+    /** 이 냥이에게 기술을 가르친다 — 루비를 내고 그 냥이만 배운다. 이미 배웠거나 루비가 모자라면 false */
+    fun teachSkill(catId: Int, skillId: String): Boolean {
+        val c = cat(catId) ?: return false
+        val skill = CatSkills.byId(skillId) ?: return false
+        if (c.gone || skillId in c.skills) return false
+        if (!GameProgress.spendRubies(skill.price)) return false
+        c.skills.add(skillId)
+        save()
+        return true
+    }
 
     /** 출전 명단에 넣고 빼기 — 3마리를 넘기려 하면 false */
     fun setInParty(id: Int, on: Boolean): Boolean {

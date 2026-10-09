@@ -352,6 +352,12 @@ object SpriteManager {
             else BitmapFactory.decodeResource(res, resId)?.let { skill.id to it }
         }.toMap()
 
+        // 로봇 기술 버튼 (로봇을 타면 인간 기술 줄에 나온다, 2026-10-10)
+        val robotIcons = mutableMapOf<String, Bitmap>()
+        robotFist?.let { robotIcons["robot_rocket"] = it }
+        opt("hskill_robot_wing")?.let { robotIcons["robot_wing"] = it }
+        humanSkillIcons = humanSkillIcons + robotIcons
+
         initialized = true
     }
 

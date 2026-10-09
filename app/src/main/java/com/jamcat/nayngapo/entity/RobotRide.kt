@@ -45,6 +45,33 @@ class RobotRide(val level: Int) {
 
     /** 발에서 불을 뿜으며 나는 중 (대표님 2026-10-10 「로봇을 타고 있으면 발에서 불이 나오면서 날 수 있어」) — 화면이 매 프레임 넣어 준다 */
     var thrusting = false
+    /** 날개 기술을 켰는가 — 켜면 공중에 떠서 날고(▲▼로 높이), 끄면 내려온다 (대표님 2026-10-10 「이름: 날개, 특성: 하늘을 난다」) */
+    var wings = false
+    /** 날고 있는 높이 · 목표 높이 */
+    var flyHeight = 0f
+        private set
+    private var flyTarget = 0f
+    /** 필살기 '팔 회전' 남은 시간 (팔이 빙글빙글 돈다) */
+    var spinLeft = 0f
+        private set
+
+    /** 날개를 켜고 끈다 */
+    fun toggleWings() { wings = !wings; flyTarget = if (wings) HOVER_HEIGHT else 0f }
+
+    /** 날기: ▲▼로 목표 높이를 바꾸고 천천히 따라간다. 땅에 닿으면 0 */
+    fun updateFlight(deltaTime: Float, up: Boolean, down: Boolean) {
+        if (wings) {
+            if (up) flyTarget = (flyTarget + 360f * deltaTime).coerceAtMost(MAX_FLY_HEIGHT)
+            if (down) flyTarget = (flyTarget - 360f * deltaTime).coerceAtLeast(60f)
+        }
+        flyHeight += (flyTarget - flyHeight) * (deltaTime * 4f).coerceAtMost(1f)
+        if (!wings && flyHeight < 2f) flyHeight = 0f
+        thrusting = flyHeight > 4f
+    }
+
+    /** 필살기 시작 — 1초 동안 팔이 돈다 */
+    fun startSpin() { spinLeft = SPIN_TIME }
+
     /** 발사한 주먹이 돌아오기까지 남은 시간 — 그동안 팔 끝에 주먹이 없다 */
     var fistAway = 0f
         private set
@@ -52,10 +79,11 @@ class RobotRide(val level: Int) {
     fun update(deltaTime: Float) {
         anim += deltaTime
         if (fistAway > 0f) fistAway -= deltaTime
+        if (spinLeft > 0f) spinLeft -= deltaTime
     }
 
     /** 주먹 발사 (대표님 2026-10-10 「로봇이 주먹 발사」): 앞 주먹이 불꽃 꼬리를 달고 날아가 로봇 공격력만큼 때린다. 0.8초 뒤 다시 생긴다 */
-    fun launchFist(p: Player): Projectile? {
+    fun launchFist(p: Player, damage: Int = attack): Projectile? {
         if (!riding || fistAway > 0f) return null
         val fist = SpriteManager.robotFist ?: return null
         fistAway = FIST_RELOAD
@@ -64,7 +92,7 @@ class RobotRide(val level: Int) {
         val r = 28f
         val fx = if (wristX != 0f) wristX else dst.centerX() + dir * dst.width() * 0.42f
         val fy = if (wristY != 0f) wristY else dst.top + DRAW_H * 0.47f
-        return Projectile(fx - r, fy - r, dir * FIST_SPEED, 0f, attack, true, radius = r, sprite = fist)
+        return Projectile(fx - r, fy - r, dir * FIST_SPEED, 0f, damage, true, radius = r, sprite = fist)
     }
 
     /** 조종석 테두리 아래로는 인간을 안 그린다 (화면이 인간을 그리기 전에 부르고, 끝나면 restore) */
@@ -171,12 +199,21 @@ class RobotRide(val level: Int) {
         if (!p.facingRight) canvas.scale(-1f, 1f, cx, 0f)
         // 뒤 다리 · 뒤 팔 (조금 어둡게) → 몸통 → 앞 다리 → 앞 팔 · 주먹
         drawLimb(canvas, leg, LEG_H, LEG_PX, LEG_PY, bx(HIP_BACK_X), by(HIP_Y), legBase + swing * 18f, backPaint)
-        drawLimb(canvas, arm, ARM_H, ARM_PX, ARM_PY, bx(SHOULDER_BACK_X), by(SHOULDER_BACK_Y), 12f - swing * 14f, backPaint)
+        // 필살기: 두 팔이 어깨를 축으로 빙글빙글 (한 바퀴 0.25초)
+        val spin = if (spinLeft > 0f) anim * 1440f else Float.NaN
+        drawLimb(canvas, arm, ARM_H, ARM_PX, ARM_PY, bx(SHOULDER_BACK_X), by(SHOULDER_BACK_Y), if (spin.isNaN()) 12f - swing * 14f else spin + 180f, backPaint)
+        // 날개를 켜면 등 뒤에 쇠 날개가 펼쳐지고 살짝 퍼덕인다
+        if (wings) SpriteManager.humanSkillIcons["robot_wing"]?.let { wb ->
+            val wh = BODY_H * 0.9f; val ww = wb.width * wh / wb.height
+            val flap = sin(anim * 10f) * 4f
+            partDst.set(bx(0.2f) - ww / 2f, by(0.05f) - wh * 0.35f + flap, bx(0.2f) + ww / 2f, by(0.05f) + wh * 0.65f + flap)
+            canvas.drawBitmap(wb, null, partDst, partPaint)
+        }
         partDst.set(bl, top, bl + bw, top + BODY_H)
         canvas.drawBitmap(body, null, partDst, partPaint)
         drawLimb(canvas, leg, LEG_H, LEG_PX, LEG_PY, bx(HIP_FRONT_X), by(HIP_Y), legBase - swing * 18f, partPaint)
         // 앞 팔: 평소엔 앞으로 내밀고(-70°) 걸으면 살짝 흔들리고, 칠 때는 곧게 내지른다(-95°)
-        val armAngle = if (atk) -95f else -70f + swing * 8f
+        val armAngle = if (!spin.isNaN()) spin else if (atk) -95f else -70f + swing * 8f
         val sx = bx(SHOULDER_FRONT_X); val sy = by(SHOULDER_FRONT_Y)
         drawLimb(canvas, arm, ARM_H, ARM_PX, ARM_PY, sx, sy, armAngle, partPaint)
         // 손목 = 어깨에서 팔 길이만큼, 팔 방향으로
@@ -228,5 +265,11 @@ class RobotRide(val level: Int) {
         const val THRUST = 2600f
         const val MAX_RISE_SPEED = 520f
         const val MAX_FLY_HEIGHT = 480f
+        /** 날개를 켜면 떠 있는 높이 · 필살기 팔 회전 시간·범위·공격력 · 로켓 펀치 공격력 (대표님: 로켓 펀치 42, 필살기 99) */
+        const val HOVER_HEIGHT = 300f
+        const val SPIN_TIME = 1.0f
+        const val SPIN_RANGE = 260f
+        const val SPIN_POWER = 99
+        const val ROCKET_POWER = 42
     }
 }

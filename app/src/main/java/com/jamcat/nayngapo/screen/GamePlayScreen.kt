@@ -162,6 +162,16 @@ class GamePlayScreen(
     /** 인간 기술별 남은 쿨타임 (시작할 때는 모두 준비 완료) */
     private val humanSkillCooldowns = FloatArray(humanBattleSkills.size)
 
+    /**
+     * 로봇을 타면 생기는 기술 (대표님 2026-10-10): 로켓 펀치(공격력 42) · 날개(하늘을 난다). 필살기는 SP 버튼 '팔 회전'(공격력 99).
+     * 그냥 때리기(공격 버튼)도 그대로 — 로봇 주먹. 인간 기술 줄 자리에 대신 나온다. 쿨타임은 Claude 판단.
+     */
+    private val robotSkills = listOf(
+        com.jamcat.nayngapo.engine.CatSkills.Skill("robot_rocket", "로켓 펀치", 0, "주먹을 쏜다", com.jamcat.nayngapo.entity.RobotRide.ROCKET_POWER, 1.2f),
+        com.jamcat.nayngapo.engine.CatSkills.Skill("robot_wing", "날개", 0, "하늘을 난다", 0, 0.4f),
+    )
+    private val robotSkillCooldowns = FloatArray(robotSkills.size)
+
     // ===== 파이어 펀치 =====
     /** 주먹이 아직 적에게 닿지 않았다 (타격 프레임에서 한 번 때린다) */
     private var firePunchPending = false
@@ -416,8 +426,14 @@ class GamePlayScreen(
         for (i in humanSkillCooldowns.indices) {
             if (humanSkillCooldowns[i] > 0f) humanSkillCooldowns[i] -= deltaTime
         }
-        touchControls.humanSkills = humanBattleSkills
-        touchControls.humanSkillCooldowns = humanSkillCooldowns
+        for (i in robotSkillCooldowns.indices) if (robotSkillCooldowns[i] > 0f) robotSkillCooldowns[i] -= deltaTime
+        if (robotRide?.riding == true) {
+            touchControls.humanSkills = robotSkills
+            touchControls.humanSkillCooldowns = robotSkillCooldowns
+        } else {
+            touchControls.humanSkills = humanBattleSkills
+            touchControls.humanSkillCooldowns = humanSkillCooldowns
+        }
 
         updateFirePunch(deltaTime)
         updateBurning(deltaTime)
@@ -563,14 +579,8 @@ class GamePlayScreen(
         if (gunCooldown > 0f) gunCooldown -= deltaTime   // 레이저 총 쏘는 간격
         robotRide?.let { rr ->
             rr.update(deltaTime)
-            // 위(▲)를 누르고 있으면 발에서 불을 뿜으며 날아오른다 (2026-10-10)
-            rr.thrusting = rr.riding && touchControls.inputState.moveUp
-            if (rr.thrusting) {
-                if (!player.isJumping) { player.isJumping = true; player.jumpVelocity = 0f; player.onPlatform = null }
-                player.jumpVelocity = (player.jumpVelocity - com.jamcat.nayngapo.entity.RobotRide.THRUST * deltaTime)
-                    .coerceAtLeast(-com.jamcat.nayngapo.entity.RobotRide.MAX_RISE_SPEED)
-                if (-player.jumpZ > com.jamcat.nayngapo.entity.RobotRide.MAX_FLY_HEIGHT) player.jumpVelocity = player.jumpVelocity.coerceAtLeast(0f)
-            }
+            // 날개 기술: 켜면 발에서 불을 뿜으며 떠서 날고(▲▼ 높이), 끄면 내려온다 (2026-10-10)
+            if (rr.riding) rr.updateFlight(deltaTime, touchControls.inputState.moveUp, touchControls.inputState.moveDown)
             // 로봇 피가 다 닳으면 부서져 인간이 내린다
             if (player.robotJustBroke) {
                 rr.breakDown(player)
@@ -581,6 +591,15 @@ class GamePlayScreen(
 
         // Update player
         player.update(deltaTime)
+        robotRide?.let { rr ->
+            // 날고 있으면 높이를 날개가 정한다 (점프·중력 대신)
+            if (rr.riding && rr.flyHeight > 0f) {
+                player.isJumping = true; player.jumpVelocity = 0f; player.onPlatform = null
+                player.jumpZ = -rr.flyHeight
+            } else if (rr.riding && !rr.wings && player.isJumping && player.jumpVelocity == 0f && player.jumpZ < 0f && rr.flyHeight == 0f) {
+                player.jumpVelocity = 1f   // 날개를 끄면 땅으로 떨어진다
+            }
+        }
 
         // 덩굴로 다가가는 중: 누른 자리에서 덩굴 끝까지 0.18초 동안 미끄러져 간다
         vineGrabTarget?.let { vine ->
@@ -2000,7 +2019,7 @@ class GamePlayScreen(
         // 인간 기술 쓰기 (인간이 직접 쓴다 — 냥이가 없어도 된다)
         input.useHumanSkill?.let { id ->
             input.useHumanSkill = null
-            useHumanSkill(id)
+            if (robotRide?.riding == true) useRobotSkill(id) else useHumanSkill(id)
         }
 
         // 고양이 기술 쓰기
@@ -2063,9 +2082,8 @@ class GamePlayScreen(
         }
         if (input.attack) {
             if (robotRide?.riding == true) {
-                // 로봇: 주먹으로 치고, 앞 주먹을 발사한다 (2026-10-10)
+                // 로봇: 그냥 때리기 — 로봇 주먹 (주먹 발사는 '로켓 펀치' 기술)
                 if (player.performAttack()) SoundManager.playAttack()
-                robotRide.launchFist(player)?.let { level.projectiles.add(it); shake(0.08f, 5f) }
             }
             else if (player.hasGun && player.gunOut) fireGun()   // 총을 가졌으면 공격 버튼 = 쏘기 (2026-10-09), 로봇을 타면 로봇 주먹
             else if (player.performAttack()) {
@@ -2073,6 +2091,23 @@ class GamePlayScreen(
                 shake(0.07f, 4f)          // 휘두르는 순간의 가벼운 반동
             }
             input.attack = false
+        }
+        if (input.special && robotRide?.riding == true) {
+            // 로봇 필살기: 팔이 회전하며 둘레의 적을 모두 친다 (공격력 99)
+            if (player.specialCooldown <= 0f) {
+                player.specialCooldown = Constants.SPECIAL_COOLDOWN
+                robotRide.startSpin()
+                val cx = player.x + player.width / 2f
+                for (enemy in level.enemies) {
+                    if (enemy.isDead) continue
+                    if (kotlin.math.abs(enemy.x + enemy.width / 2f - cx) <= com.jamcat.nayngapo.entity.RobotRide.SPIN_RANGE)
+                        damageEnemy(enemy, com.jamcat.nayngapo.entity.RobotRide.SPIN_POWER)
+                }
+                SoundManager.playSpecial()
+                shake(0.4f, 10f)
+                hitEffects.add(HitEffect(player.x, player.y - player.height - 80f, 0.9f, "팔 회전!"))
+            }
+            input.special = false
         }
         if (input.special) {
             if (stageNumber == 10) {
@@ -3315,6 +3350,25 @@ class GamePlayScreen(
             gameView.leaveStage()
         }
         return true
+    }
+
+    /** 로봇 기술 (로켓 펀치 · 날개) */
+    private fun useRobotSkill(id: String) {
+        val rr = robotRide ?: return
+        val index = robotSkills.indexOfFirst { it.id == id }
+        if (index < 0 || robotSkillCooldowns[index] > 0f) return
+        when (id) {
+            "robot_rocket" -> rr.launchFist(player, com.jamcat.nayngapo.entity.RobotRide.ROCKET_POWER)?.let {
+                robotSkillCooldowns[index] = robotSkills[index].cooldown
+                level.projectiles.add(it); shake(0.1f, 6f); SoundManager.playSpecial()
+                hitEffects.add(HitEffect(player.x, player.y - player.height - 80f, 0.7f, "로켓 펀치!"))
+            }
+            "robot_wing" -> {
+                robotSkillCooldowns[index] = robotSkills[index].cooldown
+                rr.toggleWings()
+                hitEffects.add(HitEffect(player.x, player.y - player.height - 80f, 0.7f, if (rr.wings) "날개! 하늘을 난다" else "날개 접기"))
+            }
+        }
     }
 
     // ===== 레이저 총 (무기점, 2026-10-09) — 들고 쏘거나, 차를 타면 차에 단 총으로 쏜다. 빠르기·간격은 Claude 판단 =====

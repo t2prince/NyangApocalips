@@ -239,9 +239,12 @@ object GameProgress {
         claimedMissions.addAll(prefs?.getStringSet(KEY_MISSIONS_CLAIMED, emptySet()) ?: emptySet())
         bankScore = prefs?.getInt(KEY_BANK_SCORE, 0) ?: 0
         inventory.clear()
-        for (item in ShopCatalog.items) {
-            val count = prefs?.getInt(KEY_ITEM_PREFIX + item.id, 0) ?: 0
-            if (count > 0) inventory[item.id] = count
+        // 저장된 물건을 모두 읽는다 — 상점 목록(ShopCatalog)에 없는 자동차(car_*) 같은 것도 (2026-10-09 「빌드하면 자동차가 없어지는 버그」:
+        // 예전엔 ShopCatalog.items 만 읽어서 앱을 다시 켜면 산 차가 사라졌다. 저장은 되어 있었으므로 이제 다시 보인다)
+        for ((key, value) in prefs?.all.orEmpty()) {
+            if (!key.startsWith(KEY_ITEM_PREFIX)) continue
+            val count = (value as? Int) ?: continue
+            if (count > 0) inventory[key.removePrefix(KEY_ITEM_PREFIX)] = count
         }
 
         // 팀 냥이 명단·고양이 기술도 같은 저장소를 쓴다

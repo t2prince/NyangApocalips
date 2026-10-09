@@ -50,7 +50,10 @@ class ShopScreen(private val gameView: GameView) : Screen {
     private val allies = mutableListOf<com.jamcat.nayngapo.entity.AllyCat>()
 
     /** 자동차 매장에서 고른 차 (없으면 걸어 다닌다) — 차를 누르면 내리고 탄다 */
-    private val carRide = com.jamcat.nayngapo.engine.CarCatalog.availableIn(null)?.let { com.jamcat.nayngapo.entity.CarRide(it) }   // 방치차면 그 스테이지에 가야 탄다
+    /** 로봇 상점에서 '로봇 타기'를 켰으면 상점 마을에서도 로봇을 타고 다닌다 (대표님 2026-10-09) — 차보다 먼저 */
+    private val robotRide = com.jamcat.nayngapo.engine.RobotCatalog.rideLevel.takeIf { it > 0 }?.let { com.jamcat.nayngapo.entity.RobotRide(it) }
+    private val carRide = if (robotRide != null) null
+        else com.jamcat.nayngapo.engine.CarCatalog.availableIn(null)?.let { com.jamcat.nayngapo.entity.CarRide(it) }   // 방치차면 그 스테이지에 가야 탄다
 
     init {
         Terrain.stage = Terrain.SHOP            // 상점 마을은 평평한 초원
@@ -59,6 +62,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         returnX = null
         player.facingRight = true
         // 상점 마을에서도 고른 자동차를 타고 다닌다 (대표님 2026-10-09)
+        robotRide?.mount(player)
         carRide?.mount(player)
         // 땅 스테이지와 같이 날아냥이는 빼고, 인간 뒤에 줄지어 선다
         // 배냥이도 상점 마을을 걸어 다니고 모든 가게에 갈 수 있다 (대표님 2026-10-09). 날아냥이는 여전히 하늘 전용
@@ -385,6 +389,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         if (input.moveLeft) dirX -= 1f
         if (input.moveRight) dirX += 1f
         player.setMovement(dirX, 0f)
+        robotRide?.update(deltaTime)
         if (input.jump || input.moveUp) { player.jump(); input.jump = false }
         if (input.attack) { if (player.performAttack()) SoundManager.playAttack(); input.attack = false }
         player.update(deltaTime)
@@ -491,10 +496,15 @@ class ShopScreen(private val gameView: GameView) : Screen {
         }
         carRide?.drawParked(canvas)
         for (ally in allies) ally.draw(canvas)
-        carRide?.beginSeat(canvas, player) ?: canvas.save()
+        when {
+            robotRide != null -> robotRide.beginSeat(canvas, player)
+            carRide != null -> carRide.beginSeat(canvas, player)
+            else -> canvas.save()
+        }
         player.draw(canvas)
         canvas.restore()
         carRide?.drawRiding(canvas, player)
+        robotRide?.drawRiding(canvas, player)   // 조종석에 앉은 인간 앞에 로봇
         canvas.restore()
         towerRect.offset(-cameraX, 0f)
 
@@ -598,7 +608,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         carRide?.drawButton(canvas)
         // 차를 스테이지에 방치해 두었으면 어디 있는지 알려 준다
         val abandonedAt = com.jamcat.nayngapo.engine.CarCatalog.abandonedStage
-        if (carRide == null && abandonedAt > 0) {
+        if (carRide == null && robotRide == null && abandonedAt > 0) {
             hudText.textSize = 32f
             val t = "🚗 차는 ${abandonedAt}스테이지에 두고 왔어요"
             val tw = hudText.measureText(t) + 40f

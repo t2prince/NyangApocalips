@@ -82,6 +82,18 @@ class LobbyScreen(private val gameView: GameView) : Screen {
         StageNode(0.399f, 0.777f), StageNode(0.369f, 0.808f), StageNode(0.325f, 0.831f),
     )
 
+    /**
+     * 지도 쪽 나누기 (대표님 2026-10-09 「128 스테이지까지」): 지도 그림 한 장에 돌 128개는 너무 빽빽해서
+     * 한 쪽에 돌 PAGE_SIZE 개(그림 속 앞쪽 32자리)씩 4쪽으로 나누고, 지도 양옆 화살표로 넘긴다. 처음엔 지금 스테이지가 있는 쪽.
+     */
+    private val PAGE_SIZE = 32
+    private val pageCount = (GameProgress.TOTAL_STAGES + PAGE_SIZE - 1) / PAGE_SIZE
+    private var mapPage = ((GameProgress.unlockedStage - 1) / PAGE_SIZE).coerceIn(0, pageCount - 1)
+    private val prevPageRect = RectF()
+    private val nextPageRect = RectF()
+    private val arrowPaint = Paint().apply { color = Color.argb(200, 40, 36, 32); isAntiAlias = true }
+    private val arrowPath = Path()
+
     private val paperPaint = Paint().apply { color = Color.rgb(252, 249, 240) }
     private val panelPaint = Paint().apply { color = Color.WHITE; isAntiAlias = true }
     private val panelPressPaint = Paint().apply { color = Color.rgb(255, 244, 200); isAntiAlias = true }
@@ -299,8 +311,9 @@ class LobbyScreen(private val gameView: GameView) : Screen {
         hereTagPaint.textSize = stoneR * 1.2f
         val current = GameProgress.unlockedStage
 
-        for (i in stageNodes.indices) {
-            val stage = i + 1
+        val onPage = (GameProgress.TOTAL_STAGES - mapPage * PAGE_SIZE).coerceAtMost(PAGE_SIZE)
+        for (i in 0 until onPage) {
+            val stage = mapPage * PAGE_SIZE + i + 1
             val cx = stoneX(i)
             val cy = stoneY(i)
 
@@ -327,11 +340,36 @@ class LobbyScreen(private val gameView: GameView) : Screen {
             }
         }
 
+        // 쪽 넘기기 화살표 (첫 쪽엔 ◀ 없음, 마지막 쪽엔 ▶ 없음)
+        val aw = mapRect.height() * 0.09f
+        prevPageRect.setEmpty(); nextPageRect.setEmpty()
+        if (mapPage > 0) {
+            prevPageRect.set(mapRect.left + 4f, mapRect.centerY() - aw, mapRect.left + 4f + aw * 1.1f, mapRect.centerY() + aw)
+            drawArrow(canvas, prevPageRect, -1f)
+        }
+        if (mapPage < pageCount - 1) {
+            nextPageRect.set(mapRect.right - 4f - aw * 1.1f, mapRect.centerY() - aw, mapRect.right - 4f, mapRect.centerY() + aw)
+            drawArrow(canvas, nextPageRect, 1f)
+        }
+
         hintPaint.textSize = h * 0.028f
         canvas.drawText(
-            "스테이지 ${GameProgress.unlockedStage} / ${GameProgress.TOTAL_STAGES}  —  돌을 누르면 출발!",
+            "지도 ${mapPage + 1}/$pageCount (${mapPage * PAGE_SIZE + 1}~${minOf(GameProgress.TOTAL_STAGES, (mapPage + 1) * PAGE_SIZE)})  ·  스테이지 ${GameProgress.unlockedStage} / ${GameProgress.TOTAL_STAGES}  —  돌을 누르면 출발!",
             rect.centerX(), rect.bottom - h * 0.012f, hintPaint
         )
+    }
+
+    /** 둥근 반투명 판 위의 삼각 화살표 */
+    private fun drawArrow(canvas: Canvas, r: RectF, dir: Float) {
+        canvas.drawRoundRect(r, r.width() * 0.4f, r.width() * 0.4f, panelPaint)
+        canvas.drawRoundRect(r, r.width() * 0.4f, r.width() * 0.4f, borderPaint)
+        val cx = r.centerX(); val cy = r.centerY(); val s = r.width() * 0.28f
+        arrowPath.reset()
+        arrowPath.moveTo(cx - dir * s * 0.6f, cy - s)
+        arrowPath.lineTo(cx + dir * s * 0.8f, cy)
+        arrowPath.lineTo(cx - dir * s * 0.6f, cy + s)
+        arrowPath.close()
+        canvas.drawPath(arrowPath, arrowPaint)
     }
 
     /** 원본 비율을 지키면서 칸 안(라벨 아래)에 가운데 정렬로 채운다 */
@@ -375,9 +413,13 @@ class LobbyScreen(private val gameView: GameView) : Screen {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> pressedId = slotAt(event.x, event.y, w, h)?.id
             MotionEvent.ACTION_UP -> {
-                // 지도 위의 돌을 먼저 본다 — 돌 하나가 스테이지 하나
+                // 지도 쪽 넘기기 화살표를 먼저, 그다음 돌 — 돌 하나가 스테이지 하나
                 val stage = stageAt(event.x, event.y)
-                if (stage != null) {
+                if (!prevPageRect.isEmpty && prevPageRect.contains(event.x, event.y)) {
+                    mapPage--
+                } else if (!nextPageRect.isEmpty && nextPageRect.contains(event.x, event.y)) {
+                    mapPage++
+                } else if (stage != null) {
                     enterStage(stage)
                 } else {
                     val hit = slotAt(event.x, event.y, w, h)
@@ -405,9 +447,10 @@ class LobbyScreen(private val gameView: GameView) : Screen {
         val touchRadius = (mapRect.height() * 0.055f).coerceAtLeast(24f)
         var best: Int? = null
         var bestDist = touchRadius
-        for (i in stageNodes.indices) {
+        val onPage = (GameProgress.TOTAL_STAGES - mapPage * PAGE_SIZE).coerceAtMost(PAGE_SIZE)
+        for (i in 0 until onPage) {
             val dist = hypot(x - stoneX(i), y - stoneY(i))
-            if (dist <= bestDist) { bestDist = dist; best = i + 1 }
+            if (dist <= bestDist) { bestDist = dist; best = mapPage * PAGE_SIZE + i + 1 }
         }
         return best
     }

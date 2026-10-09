@@ -5,7 +5,7 @@ import android.content.Context
 /** 스테이지 잠금 해제 진행도와 고양이 도감. SharedPreferences에 저장되어 앱 재시작 후에도 유지된다. */
 object GameProgress {
     /** 지도 그림에 놓인 돌(스테이지) 수 */
-    const val TOTAL_STAGES = 37
+    const val TOTAL_STAGES = 128   // 지도 돌 128개 (대표님 2026-10-09) — 데이터가 없는 곳은 '준비 중'
 
     /** 실제 스테이지 데이터가 만들어진 곳까지 — 그 뒤는 '준비 중' (1~10 초원, 11 하늘, 12~20 정글) */
     const val PLAYABLE_STAGES = 31   // 21~30 꿀 지역, 31 해적 (2026-10-04)

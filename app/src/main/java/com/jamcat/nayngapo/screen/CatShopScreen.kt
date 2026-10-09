@@ -255,6 +255,10 @@ class CatShopScreen(
             }
             return
         }
+        if (item.max > 0 && GameProgress.itemCount(item.id) >= item.max) {
+            showNotice("${item.name}은(는) ${item.max}개까지만 가질 수 있어요")
+            return
+        }
         if (GameProgress.buyItem(item.id, item.price)) {
             showNotice("${item.name} 구매!")
             SoundManager.playCatHit()   // '예에에용!' — 짧고 기분 좋은 소리

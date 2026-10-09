@@ -269,6 +269,9 @@ class GamePlayScreen(
     init {
         camera.forwardOnly = true   // 플랫포머식: 카메라가 뒤로 돌아가지 않는다
         if (isSea) { player.lives = 1; player.rideLift = SEA_RIDE_LIFT }
+        // 약국 물약: 스테이지를 시작할 때 하나씩 저절로 마신다 (바다는 목숨 1 규칙이라 생명 물약은 안 마신다)
+        if (!isSea && GameProgress.consumeItem("h_life")) player.lives += 1
+        if (GameProgress.consumeItem("h_heal")) { player.maxHp += 2; player.hp = player.maxHp }
         showWaveText("STAGE $stageNumber - START!")
 
         // 관리 화면에서 출전으로 골라 둔 팀 냥이들이 플레이어 뒤에 줄지어 함께 출발한다.

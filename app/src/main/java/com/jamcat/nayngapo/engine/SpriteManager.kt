@@ -51,6 +51,10 @@ object SpriteManager {
     lateinit var catHouse: Bitmap
     /** 투기장의 밀짚 가짜 냥이 */
     lateinit var strawCat: Bitmap
+    /** 집 안 가구 (GPT 그림 furn_*) — 이름 → 그림, 없는 그림은 빠진다 */
+    var furniture: Map<String, Bitmap> = emptyMap()
+    /** 투기장 가짜 냥이 Lv 별 그림 (0 = Lv1 밀짚, 1 나무, 2 돌, 3 철, 4 금, 5 다이아) — 없는 그림은 밀짚으로 */
+    var dummyByLevel: List<Bitmap> = emptyList()
     lateinit var catIdleRed: List<Bitmap>
     lateinit var catIdleOrange: List<Bitmap>
     lateinit var catIdleYellow: List<Bitmap>
@@ -189,6 +193,14 @@ object SpriteManager {
         pirateShip = BitmapFactory.decodeResource(res, R.drawable.pirate_ship)
         catHouse = BitmapFactory.decodeResource(res, R.drawable.cat_house)
         strawCat = BitmapFactory.decodeResource(res, R.drawable.straw_cat)
+        dummyByLevel = listOf(strawCat) + listOf("wood", "stone", "iron", "gold", "diamond").map { n ->
+            val id = res.getIdentifier("dummy_$n", "drawable", context.packageName)
+            if (id == 0) strawCat else BitmapFactory.decodeResource(res, id)
+        }
+        furniture = listOf("sofa", "shelf", "table", "lamp", "catbeds", "plant", "fireplace").mapNotNull { n ->
+            val id = res.getIdentifier("furn_$n", "drawable", context.packageName)
+            if (id == 0) null else n to BitmapFactory.decodeResource(res, id)
+        }.toMap()
         // 무늬별 배냥이 (적: cat_boat_<무늬>, 내 편: cat_boat_<무늬>_ally — 치즈 적은 cat_boat)
         coatBoatEnemy[CatCoat.CHEESE] = boatCat
         coatBoatEnemy[CatCoat.WHITE] = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_boat_white), 1.06f)

@@ -11,7 +11,9 @@ object ShopCatalog {
         val name: String,
         /** 값 (루비) */
         val price: Int,
-        val desc: String
+        val desc: String,
+        /** 가질 수 있는 최대 개수 (0 = 끝없이) */
+        val max: Int = 0
     )
 
     /** 진열 순서 그대로 (간식 → 장난감 → 살림살이). 값은 2026-10-04 에 10배로 올렸다가 2026-10-09 「싸게, 츄르 30→3」으로 원래대로 */
@@ -39,7 +41,21 @@ object ShopCatalog {
         Item("mouse_toy", "쥐 인형", 6, "태엽을 감으면 달린다"),
         Item("feather_wand", "깃털 막대", 9, "알록달록 깃털이 살랑"),
         Item("laser_pointer", "레이저 포인터", 14, "빨간 점을 쫓아 신난다"),
+        // ===== 인간이 가는 가게 (대표님 2026-10-09 「인간이 가는 상점도 몇 개 만들어 줘」 — 가게·물건·값·효과·최대 개수 Claude 판단, 그림 GPT) =====
+        // 장갑·투구·조끼는 사 두면 계속 효과(영구), 물약은 다음 땅 스테이지를 시작할 때 하나씩 저절로 마신다
+        Item("h_glove", "권투 장갑", 20, "인간 공격력 +$H_GLOVE_ATK (영구)", max = 10),
+        Item("h_gauntlet", "강철 주먹", 45, "인간 공격력 +$H_GAUNTLET_ATK (영구)", max = 5),
+        Item("h_helmet", "투구", 40, "인간 하트 +1 (영구)", max = 3),
+        Item("h_vest", "가죽 조끼", 60, "인간 하트 +1 (영구)", max = 2),
+        Item("h_life", "생명 물약", 15, "다음 스테이지 목숨 +1", max = 3),
+        Item("h_heal", "하트 물약", 10, "다음 스테이지 하트 +2", max = 3),
     )
+
+    const val H_GLOVE_ATK = 2
+    const val H_GAUNTLET_ATK = 5
+    /** 사 둔 장갑·투구·조끼만큼 인간이 세진다 (Player 가 만들어질 때 얹는다) */
+    fun humanAttackBonus() = GameProgress.itemCount("h_glove") * H_GLOVE_ATK + GameProgress.itemCount("h_gauntlet") * H_GAUNTLET_ATK
+    fun humanHeartBonus() = GameProgress.itemCount("h_helmet") + GameProgress.itemCount("h_vest")
 
     /** 처음 고양이 상점(1번 천막)에 진열하는 물건 — 예전 그대로 */
     val catShopIds: List<String> = listOf("churu", "tuna_can", "feed", "catnip", "ball", "fish_toy", "brush", "water_bowl",
@@ -50,6 +66,10 @@ object ShopCatalog {
         2 to ("간식 가게" to listOf("churu", "tuna_can", "feed", "catnip", "milk", "salmon", "cat_cake")),
         3 to ("장난감 가게" to listOf("ball", "fish_toy", "mouse_toy", "feather_wand", "laser_pointer")),
         4 to ("살림 가게" to listOf("brush", "water_bowl", "cushion", "scratcher", "litter", "cat_tower")),
+        // 8~10번 천막 = 인간이 가는 가게 (2026-10-09)
+        7 to ("무기점" to listOf("h_glove", "h_gauntlet")),
+        8 to ("갑옷점" to listOf("h_helmet", "h_vest")),
+        9 to ("약국" to listOf("h_life", "h_heal")),
     )
 
     /** 물건 값 — 안내 문구에 값을 박아 두지 말고 여기서 읽는다 */

@@ -16,7 +16,8 @@ import kotlin.math.sin
  * 집 안 — 상점 마을 맨 앞 집에서 '집 들어가기'로 들어온다 (대표님 2026-10-09).
  * **집 안에서도 걸어 다닌다**(패드·점프). 1층: 왼쪽 문(밖으로) · 가운데 캣타워(누르면 캣타워 = 고양이 관리) · 오른쪽 계단(위층).
  * **위층에는 내 냥이들이 있는 만큼 다 있고, 머리 위에 이름이 적혀 있다.** 냥이들은 제자리에서 어슬렁거린다.
- * (방 크기·배치·벽지 색·어슬렁거림은 Claude 판단, 방 안 그림은 코드로 그렸다)
+ * **집 안에는 가구들도 있다**(2026-10-09, GPT 그림 furn_*): 1층 책장·소파·스탠드·식탁·벽난로·화분, 위층 냥이 침대·소파·스탠드·책장·화분.
+ * (방 크기·배치·벽지 색·어슬렁거림·가구 고르기는 Claude 판단, 벽·바닥·문·계단은 코드로 그렸다)
  */
 class HouseScreen(private val gameView: GameView, private val floor: Int, startX: Float?) : Screen {
 
@@ -143,6 +144,15 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
         while (wx < worldWidth - 200f) {
             if (abs(wx - TOWER_X) > 260f && abs(wx - STAIRS_X) > 300f) drawWindow(canvas, wx, gy - 520f)
             wx += 760f
+        }
+        // 가구 (벽 앞, 냥이·인간보다 뒤)
+        for ((name, fx, fh) in if (floor == 0) GROUND_FURNITURE else UP_FURNITURE) {
+            if (fx > worldWidth - 150f) continue
+            val bmp = SpriteManager.furniture[name] ?: continue
+            val fw = bmp.width * fh / bmp.height
+            if (fx + fw / 2f < cameraX - 50f || fx - fw / 2f > cameraX + w + 50f) continue
+            rect.set(fx - fw / 2f, gy - 20f - fh, fx + fw / 2f, gy - 20f)
+            canvas.drawBitmap(bmp, null, rect, null)
         }
         if (floor == 0) {
             drawDoor(canvas, DOOR_X, gy)
@@ -279,10 +289,19 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
     }
 
     companion object {
-        private const val GROUND_W = 2300f
+        private const val GROUND_W = 2800f
         private const val DOOR_X = 220f
-        private const val TOWER_X = 1050f
-        private const val STAIRS_X = 1850f
+        private const val TOWER_X = 1120f
+        private const val STAIRS_X = 2400f
+        /** 가구 (이름, 가운데 x, 그림 높이) */
+        private val GROUND_FURNITURE = listOf(
+            Triple("shelf", 480f, 330f), Triple("sofa", 730f, 230f), Triple("lamp", 915f, 340f),
+            Triple("table", 1480f, 220f), Triple("fireplace", 1840f, 300f), Triple("plant", 2100f, 260f),
+        )
+        private val UP_FURNITURE = listOf(
+            Triple("catbeds", 650f, 250f), Triple("sofa", 1160f, 230f), Triple("lamp", 1400f, 340f),
+            Triple("shelf", 1720f, 330f), Triple("plant", 2020f, 260f),
+        )
         private const val UP_STAIRS_X = 200f
         private const val CAT_GAP = 190f
         private const val MENU_BTN_R = 46f

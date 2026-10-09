@@ -106,6 +106,10 @@ class Player(var x: Float, var y: Float) {
         hp = maxHp
         attackPower = Math.round(attackPower * hero.atkMul)
         specialPower = Math.round(specialPower * hero.atkMul)
+        // 인간 가게(무기점·갑옷점)에서 사 둔 물건 (2026-10-09)
+        attackPower += com.jamcat.nayngapo.engine.ShopCatalog.humanAttackBonus()
+        maxHp += com.jamcat.nayngapo.engine.ShopCatalog.humanHeartBonus()
+        hp = maxHp
     }
 
     /** 이 인간의 달리기 속도 */

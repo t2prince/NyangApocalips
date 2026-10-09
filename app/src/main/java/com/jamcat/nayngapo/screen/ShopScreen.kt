@@ -789,7 +789,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     companion object {
         /** 천막 수 — 대표님이 정할 때까지 임시 6개 (Claude 판단) */
-        const val TENT_COUNT = 7
+        const val TENT_COUNT = 10
         private const val MENU_BTN_R = 46f
         private const val MENU_HIT_R = 60f
         private const val MENU_BTN_Y = 118f
@@ -815,6 +815,9 @@ class ShopScreen(private val gameView: GameView) : Screen {
             4 to listOf("어서 오세요!", "푹신한 방석·캣타워~", "빗으로 뽀송뽀송!"),
             HOSPITAL_TENT to listOf("동물 병원이에요!", "수술하면 더 빨라져요~", "냥이를 데려오세요!"),
             ARENA_TENT to listOf("투기장이에요!", "가짜 냥이를 때려 봐요~", "30초마다 공격력 +3!"),
+            7 to listOf("무기점이에요!", "권투 장갑 있어요~", "강철 주먹으로 쾅!"),
+            8 to listOf("갑옷점이에요!", "투구 쓰면 하트 +1!", "튼튼한 가죽 조끼~"),
+            9 to listOf("약국이에요!", "생명 물약 팔아요~", "하트 물약 하나 어때요?"),
         )
         private val DEFAULT_ADS = listOf("어서 오세요!", "곧 좋은 물건 들어와요~")
         /** 맨 앞 집의 가운데 x · 그림 높이 — 인간은 집 앞(오른쪽)에서 시작한다 */

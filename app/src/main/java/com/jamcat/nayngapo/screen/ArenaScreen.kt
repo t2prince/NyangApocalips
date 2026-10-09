@@ -7,6 +7,7 @@ import com.jamcat.nayngapo.engine.GameView
 import com.jamcat.nayngapo.engine.SoundManager
 import com.jamcat.nayngapo.engine.SpriteManager
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.sin
 
 /**
@@ -18,6 +19,8 @@ import kotlin.math.sin
  * **Lv 버튼** (대표님 2026-10-09): 루비 10개로 가짜 냥이 Lv업 — Lv업 할 때마다 가짜 냥이가 **두 배로 딴딴해진다**
  * (딴딴함 = 100 × 2^(Lv-1), 다 깎이면 부서졌다가 다시 선다). 더 딴딴한 가짜 냥이를 때리면 30초마다 오르는 공격력도 두 배
  * (+3 × 2^(Lv-1)) · 최대 Lv 6 은 Claude 판단.
+ * **쓰는 값** (대표님 2026-10-09): 루비 1개를 내면 1분 쓸 수 있다. 남은 시간이 있을 때만 훈련·싸움이 흘러가고, 다 쓰면 멈춘다.
+ * 남은 시간은 투기장을 나갔다 와도 남는다(앱을 끄면 사라짐) — Claude 판단.
  * **'냥이끼리 싸우기' 버튼** (대표님 2026-10-09): 데려온 내 냥이 두 마리를 골라 서로 싸우게 한다.
  * 번갈아 한 대씩 때리고(공격력만큼), 체력(레벨 체력 + HP 수술)이 먼저 0이 되는 쪽이 진다.
  * 연습 시합이라 진 냥이가 다치거나 무덤이 되지는 않고 보상도 없다, 싸우는 동안 가짜 냥이 훈련 시간은 멈춘다 (Claude 판단).
@@ -51,7 +54,8 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
     /** 가짜 냥이 흔들림 (맞으면 1에서 줄어든다) */
     private var wobble = 0f
 
-    private class Pop(var y: Float, var life: Float, val text: String, val big: Boolean)
+    /** x: 냥이끼리 싸울 때 글씨가 뜰 자리(화면 가로 비율), 훈련 때는 쓰지 않는다 */
+    private class Pop(var y: Float, var life: Float, val text: String, val big: Boolean, val x: Float = 0f)
     private val pops = mutableListOf<Pop>()
 
     private val skyPaint = Paint()
@@ -85,12 +89,18 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
     private var noticeText = ""
     private var noticeTimer = 0f
 
-    private class Fighter(val cat: CatTeam.TeamCat, val sprite: Bitmap) {
+    /** home: 화면 가로 비율 자리 */
+    private class Fighter(val cat: CatTeam.TeamCat, val sprite: Bitmap, val home: Float) {
         val maxHp = CatTeam.maxHpFor(cat.level) + CatTeam.hpBonusOf(cat)
         var hp = maxHp
         val power = CatTeam.totalAttackOf(cat)
         var lunge = -1f
         var shake = 0f
+        /** 지금 때리러 가는 상대 */
+        var target: Fighter? = null
+        /** 쓰러진 뒤 흐른 시간 (넘어지는 모습) */
+        var downTime = 0f
+        val down: Boolean get() = hp <= 0
     }
     private var fighters: List<Fighter> = emptyList()
     private var turn = 0
@@ -104,9 +114,11 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
             armored = c.hasArmor, attackBonus = c.attackBonus, coat = c.coat).spriteNow()
     }
 
-    private fun startDuel(a: CatTeam.TeamCat, b: CatTeam.TeamCat) {
-        fighters = listOf(Fighter(a, spriteOf(a)), Fighter(b, spriteOf(b)))
-        turn = if (Math.random() < 0.5) 0 else 1
+    /** 2마리면 맞대결, 3마리면 서로 아무나 때리는 난투 (대표님 2026-10-09 「고양이 3마리가 투기장에서 싸울 수 있어」) */
+    private fun startDuel(cats: List<CatTeam.TeamCat>) {
+        val homes = if (cats.size >= 3) listOf(0.20f, 0.50f, 0.80f) else listOf(0.30f, 0.70f)
+        fighters = cats.take(3).mapIndexed { i, c -> Fighter(c, spriteOf(c), homes[i]) }
+        turn = (Math.random() * fighters.size).toInt()
         duelWait = 0.8f; winner = null; endTimer = 0f
         pops.clear()
         mode = Mode.DUEL
@@ -115,7 +127,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
     private fun tapDuelButton() {
         when {
             brought.size < 2 -> { noticeText = "냥이 2마리를 데려와야 싸울 수 있어요! (캣타워에서 출전)"; noticeTimer = 2.2f }
-            brought.size == 2 -> startDuel(brought[0], brought[1])
+            brought.size == 2 -> startDuel(brought)
             else -> { picked.clear(); mode = Mode.PICK }
         }
     }
@@ -123,31 +135,49 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
     private fun updateDuel(deltaTime: Float) {
         val it = pops.iterator()
         while (it.hasNext()) { val p = it.next(); p.life -= deltaTime; p.y -= deltaTime * 90f; if (p.life <= 0f) it.remove() }
-        for (f in fighters) if (f.shake > 0f) f.shake = (f.shake - deltaTime * 1.6f).coerceAtLeast(0f)
+        for (f in fighters) {
+            if (f.shake > 0f) f.shake = (f.shake - deltaTime * 1.6f).coerceAtLeast(0f)
+            if (f.down) f.downTime += deltaTime
+        }
         if (winner != null) { endTimer += deltaTime; return }
-        val atk = fighters[turn]; val def = fighters[1 - turn]
+        val atk = fighters[turn]
         if (atk.lunge < 0f) {
             duelWait -= deltaTime
-            if (duelWait <= 0f) atk.lunge = 0f
+            if (duelWait <= 0f) {
+                // 서 있는 상대 중 아무나 (맞대결이면 남은 하나)
+                atk.target = fighters.filter { f -> f !== atk && !f.down }.randomOrNull()
+                atk.lunge = 0f
+            }
         } else {
             val before = atk.lunge
             atk.lunge += deltaTime / LUNGE_TIME
-            if (before < 0.5f && atk.lunge >= 0.5f) {
+            val def = atk.target
+            if (def != null && before < 0.5f && atk.lunge >= 0.5f) {
                 def.hp = (def.hp - atk.power).coerceAtLeast(0)
                 def.shake = 1f
                 SoundManager.playAttack()
-                pops.add(Pop(0f, 0.8f, "-${atk.power}", turn == 0))
-                if (def.hp <= 0) winner = atk
+                pops.add(Pop(0f, 0.8f, "-${atk.power}", false, def.home))
+                val standing = fighters.filter { f -> !f.down }
+                if (standing.size == 1) winner = standing[0]
             }
-            if (atk.lunge >= 1f) { atk.lunge = -1f; duelWait = HIT_INTERVAL - LUNGE_TIME; turn = 1 - turn }
+            if (atk.lunge >= 1f) {
+                atk.lunge = -1f; duelWait = HIT_INTERVAL - LUNGE_TIME
+                // 다음 차례 = 서 있는 다음 냥이
+                var t = turn
+                do { t = (t + 1) % fighters.size } while (fighters[t].down && t != turn)
+                turn = t
+            }
         }
     }
 
     override fun update(deltaTime: Float) {
         timer += deltaTime
         if (noticeTimer > 0f) noticeTimer -= deltaTime
-        if (mode == Mode.DUEL) { updateDuel(deltaTime); return }
         if (mode == Mode.PICK) return
+        // 루비 1개 = 1분: 시간이 없으면 멈춰 있다
+        if (timeLeft <= 0f) return
+        timeLeft = (timeLeft - deltaTime).coerceAtLeast(0f)
+        if (mode == Mode.DUEL) { updateDuel(deltaTime); return }
         if (cat == null || cat.gone) return
         // 30초마다 공격력 +3 (영구)
         trained += deltaTime
@@ -209,7 +239,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
         title.textSize = h * 0.08f
         canvas.drawText("투기장", w / 2f, h * 0.13f, title)
 
-        if (mode == Mode.DUEL) { drawDuel(canvas, w, h, floorY); drawExit(canvas, w, h); drawNotice(canvas, w, h); return }
+        if (mode == Mode.DUEL) { drawDuel(canvas, w, h, floorY); drawExit(canvas, w, h); drawTime(canvas, w, h); drawNotice(canvas, w, h); return }
         if (mode == Mode.PICK) { drawPick(canvas, w, h); drawExit(canvas, w, h); return }
 
         val c = cat
@@ -222,7 +252,8 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
         }
 
         // 밀짚 가짜 냥이: 받침을 축으로 맞으면 흔들린다
-        val dummy = SpriteManager.strawCat
+        // Lv 마다 재료가 바뀐다: 밀짚 → 나무 → 돌 → 철 → 금 → 다이아 (2026-10-09)
+        val dummy = SpriteManager.dummyByLevel.getOrElse(dummyLevel - 1) { SpriteManager.strawCat }
         val dh = h * 0.42f; val dw = dummy.width * dh / dummy.height
         val dx = w * 0.64f
         rect.set(dx - dw * 0.45f, floorY - 12f, dx + dw * 0.45f, floorY + 14f)
@@ -236,7 +267,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
         // 가짜 냥이 Lv · 딴딴함 막대
         val hbw = dw * 0.8f; val hbx = dx - hbw / 2f; val hby = floorY - dh - h * 0.06f
         text.textSize = h * 0.036f; text.textAlign = Paint.Align.CENTER
-        canvas.drawText("가짜 냥이 Lv $dummyLevel · 딴딴함 $dummyHp/$dummyMax", dx, hby - h * 0.015f, text)
+        canvas.drawText("${MATERIALS.getOrElse(dummyLevel - 1) { "" }} 냥이 Lv $dummyLevel · 딴딴함 $dummyHp/$dummyMax", dx, hby - h * 0.015f, text)
         text.textAlign = Paint.Align.LEFT
         rect.set(hbx, hby, hbx + hbw, hby + h * 0.03f)
         canvas.drawRoundRect(rect, 10f, 10f, barBack)
@@ -292,6 +323,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
         drawExit(canvas, w, h)
         drawDuelButton(canvas, w, h)
         drawLvButton(canvas, w, h)
+        drawTime(canvas, w, h)
         drawNotice(canvas, w, h)
     }
 
@@ -317,13 +349,41 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
         text.textAlign = Paint.Align.LEFT
     }
 
+    // ===== 루비 1개 = 1분 =====
+    private val timeBtn = RectF()
+    private val timeBtnPaint = Paint().apply { color = Color.rgb(190, 240, 170); isAntiAlias = true }
+    private val veil = Paint().apply { color = Color.argb(120, 0, 0, 0) }
+
+    /** 위 가운데(제목 아래): 남은 시간 · '+1분 (루비 1)' 버튼. 시간이 없으면 화면을 어둡게 하고 알려 준다 */
+    private fun drawTime(canvas: Canvas, w: Float, h: Float) {
+        val sec = kotlin.math.ceil(timeLeft).toInt()
+        if (timeLeft <= 0f) {
+            canvas.drawRect(0f, 0f, w, h, veil)
+            popPaint.textSize = h * 0.06f; popPaint.color = Color.WHITE; popPaint.alpha = 255
+            canvas.drawText("루비 1개를 내면 1분 쓸 수 있어요", w / 2f, h * 0.45f, popPaint)
+        }
+        timeBtn.set(w / 2f - 300f, h * 0.17f, w / 2f + 300f, h * 0.17f + 96f)
+        canvas.drawRoundRect(timeBtn, 48f, 48f, timeBtnPaint); canvas.drawRoundRect(timeBtn, 48f, 48f, ink)
+        text.textSize = 40f; text.textAlign = Paint.Align.CENTER
+        canvas.drawText("⏱ ${sec / 60}:${"%02d".format(sec % 60)}   +1분 (루비 1)", timeBtn.centerX(), timeBtn.centerY() + 14f, text)
+        text.textAlign = Paint.Align.LEFT
+    }
+
+    private fun tapTimeButton() {
+        val gp = com.jamcat.nayngapo.engine.GameProgress
+        if (gp.spendRubies(ARENA_MINUTE_PRICE)) {
+            timeLeft += 60f
+            noticeText = "1분 늘었어요! (루비 ${gp.rubies}개 남음)"; noticeTimer = 1.8f
+        } else { noticeText = "루비가 모자라요 (1분 = 루비 $ARENA_MINUTE_PRICE)"; noticeTimer = 2f }
+    }
+
     private fun tapLvButton() {
         val gp = com.jamcat.nayngapo.engine.GameProgress
         when {
             dummyLevel >= gp.DUMMY_LEVEL_MAX -> { noticeText = "가짜 냥이가 이미 최대 Lv 이에요"; noticeTimer = 2f }
             gp.levelUpDummy() -> {
                 dummyHp = dummyMax; broken = 0f
-                noticeText = "가짜 냥이 Lv $dummyLevel! 두 배로 딴딴해졌다냥 (루비 ${gp.rubies}개 남음)"; noticeTimer = 2.2f
+                noticeText = "${MATERIALS.getOrElse(dummyLevel - 1) { "" }} 냥이로 바뀌었다! Lv $dummyLevel · 두 배로 딴딴 (루비 ${gp.rubies}개 남음)"; noticeTimer = 2.2f
             }
             else -> { noticeText = "루비가 ${gp.DUMMY_LEVEL_PRICE}개 있어야 Lv업 할 수 있어요 (지금 ${gp.rubies}개)"; noticeTimer = 2.2f }
         }
@@ -344,7 +404,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
         rect.set(w * 0.08f, h * 0.18f, w * 0.92f, h * 0.86f)
         canvas.drawRoundRect(rect, 28f, 28f, panelPaint); canvas.drawRoundRect(rect, 28f, 28f, ink)
         title.textSize = h * 0.05f
-        canvas.drawText("싸울 냥이 두 마리를 고르세요 (${picked.size}/2)", w / 2f, rect.top + h * 0.08f, title)
+        canvas.drawText("싸울 냥이를 2~3마리 고르세요 (${picked.size}/3)", w / 2f, rect.top + h * 0.08f, title)
         val n = pickRects.size
         val cw = (rect.width() - 40f) / n
         val top = rect.top + h * 0.13f; val bottom = rect.bottom - h * 0.04f
@@ -365,7 +425,17 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
             canvas.drawText("공격력 ${CatTeam.totalAttackOf(c)}", r.centerX(), r.bottom - r.height() * 0.07f, text)
             text.textAlign = Paint.Align.LEFT
         }
+        // 두 마리를 골랐으면 '싸우기 시작' (세 마리째를 고르면 바로 시작)
+        startBtn.setEmpty()
+        if (picked.size == 2) {
+            startBtn.set(w / 2f - 230f, h * 0.88f, w / 2f + 230f, h * 0.88f + 90f)
+            canvas.drawRoundRect(startBtn, 45f, 45f, duelBtnPaint); canvas.drawRoundRect(startBtn, 45f, 45f, ink)
+            text.textSize = 40f; text.textAlign = Paint.Align.CENTER
+            canvas.drawText("두 마리로 싸우기 시작", startBtn.centerX(), startBtn.centerY() + 14f, text)
+            text.textAlign = Paint.Align.LEFT
+        }
     }
+    private val startBtn = RectF()
     private val fill = Paint().apply { isAntiAlias = true }
     private val rect2 = RectF()
     private val hpBack = Paint().apply { color = Color.rgb(80, 70, 66); isAntiAlias = true }
@@ -373,29 +443,34 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
     private val againBtn = RectF()
     private val backBtn = RectF()
 
-    /** 냥이끼리 싸우기: 왼쪽 냥이는 오른쪽을, 오른쪽 냥이는 왼쪽을 보고 번갈아 뛰어들어 때린다 */
+    /** 냥이끼리 싸우기: 차례가 된 냥이가 상대 쪽으로 뛰어들어 때린다 (2~3마리) */
     private fun drawDuel(canvas: Canvas, w: Float, h: Float, floorY: Float) {
-        val ch = h * 0.24f
-        for ((i, f) in fighters.withIndex()) {
-            val base = if (i == 0) f.sprite else SpriteManager.getFlipped(f.sprite)
+        val ch = h * (if (fighters.size >= 3) 0.20f else 0.24f)
+        for (f in fighters) {
+            val home = w * f.home
+            val tgt = f.target
+            // 때리러 갈 때는 상대 쪽을 보고, 그 밖엔 가운데를 본다
+            val toward = when {
+                f.lunge >= 0f && tgt != null -> if (tgt.home > f.home) 1f else -1f
+                else -> if (f.home < 0.5f) 1f else -1f
+            }
+            val base = if (toward > 0f) f.sprite else SpriteManager.getFlipped(f.sprite)
             val cw = base.width * ch / base.height
-            val home = if (i == 0) w * 0.30f else w * 0.70f
-            val toward = if (i == 0) 1f else -1f
             val reach = if (f.lunge >= 0f) sin(f.lunge * PI.toFloat()) else 0f
-            val cx = home + toward * reach * (w * 0.40f - cw)
-            val knocked = f.hp <= 0
+            val dist = if (tgt != null) abs(tgt.home - f.home) * w - cw else 0f
+            val cx = home + toward * reach * dist.coerceAtLeast(0f)
             rect.set(cx - cw * 0.45f, floorY - 10f, cx + cw * 0.45f, floorY + 12f)
             canvas.drawOval(rect, shadowPaint)
             canvas.save()
-            if (knocked) canvas.rotate(-toward * 90f * (endTimer / 0.4f).coerceAtMost(1f), cx, floorY)
+            if (f.down) canvas.rotate(-toward * 90f * (f.downTime / 0.4f).coerceAtMost(1f), cx, floorY)
             else if (f.shake > 0f) canvas.rotate(sin(timer * 40f) * f.shake * 8f, cx, floorY)
             val hop = reach * h * 0.05f
             rect.set(cx - cw / 2f, floorY - ch - hop, cx + cw / 2f, floorY - hop)
             canvas.drawBitmap(base, null, rect, null)
             canvas.restore()
             // 이름 · 체력 막대
-            val bw = w * 0.22f; val bx = home - bw / 2f; val by = floorY - ch - h * 0.10f
-            text.textSize = h * 0.042f; text.textAlign = Paint.Align.CENTER
+            val bw = w * (if (fighters.size >= 3) 0.2f else 0.22f); val bx = home - bw / 2f; val by = floorY - ch - h * 0.10f
+            text.textSize = h * 0.038f; text.textAlign = Paint.Align.CENTER
             canvas.drawText("${f.cat.name} (공격력 ${f.power})", home, by - h * 0.02f, text)
             text.textAlign = Paint.Align.LEFT
             rect.set(bx, by, bx + bw, by + h * 0.035f)
@@ -408,8 +483,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
         for (p in pops) {
             popPaint.textSize = h * 0.06f; popPaint.color = Color.WHITE
             popPaint.alpha = (p.life.coerceAtMost(0.5f) / 0.5f * 255).toInt()
-            // big = 왼쪽 냥이가 때렸다 → 오른쪽 냥이 위에
-            canvas.drawText(p.text, if (p.big) w * 0.70f else w * 0.30f, floorY - ch - h * 0.17f + p.y, popPaint)
+            canvas.drawText(p.text, w * p.x, floorY - ch - h * 0.17f + p.y, popPaint)
         }
         againBtn.setEmpty(); backBtn.setEmpty()
         val win = winner ?: return
@@ -440,6 +514,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
             val px = event.x; val py = event.y
             rect.set(exitRect.left - 30f, exitRect.top - 30f, exitRect.right + 30f, exitRect.bottom + 30f)
             if (rect.contains(px, py)) { gameView.showShop(); return true }
+            if (mode != Mode.PICK && timeBtn.contains(px, py)) { tapTimeButton(); return true }
             when (mode) {
                 Mode.TRAIN -> if (duelBtn.contains(px, py)) tapDuelButton() else if (lvBtn.contains(px, py)) tapLvButton()
                 Mode.PICK -> {
@@ -447,11 +522,13 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
                     if (k >= 0) {
                         val c = brought[k]
                         if (c in picked) picked.remove(c) else picked.add(c)
-                        if (picked.size == 2) startDuel(picked[0], picked[1])
+                        if (picked.size == 3) startDuel(picked.toList())
+                    } else if (picked.size == 2 && startBtn.contains(px, py)) {
+                        startDuel(picked.toList())
                     }
                 }
                 Mode.DUEL -> {
-                    if (againBtn.contains(px, py)) startDuel(fighters[0].cat, fighters[1].cat)
+                    if (againBtn.contains(px, py)) startDuel(fighters.map { f -> f.cat })
                     else if (backBtn.contains(px, py)) { mode = Mode.TRAIN; pops.clear() }
                 }
             }
@@ -467,6 +544,11 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
     }
 
     companion object {
+        /** 투기장 남은 시간 (초) — 루비 1개에 60초 */
+        private var timeLeft = 0f
+        /** Lv 별 가짜 냥이 재료 이름 */
+        private val MATERIALS = listOf("밀짚", "나무", "돌", "철", "금", "다이아")
+        private const val ARENA_MINUTE_PRICE = 1
         private const val HIT_INTERVAL = 0.9f
         private const val LUNGE_TIME = 0.32f
     }

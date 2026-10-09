@@ -20,7 +20,21 @@ ITEMS = {
     'honey_cat': ('cat_honey', 86),     # 꿀냥이 (꿀 늪, 2026-10-09)
     'pirate_ship': ('pirate_ship', 760),
     'cat_house': ('cat_house', 600),
-    'straw_cat': ('straw_cat', 360),    # 투기장 밀짚 가짜 냥이 (2026-10-09)    # 상점 마을 맨 앞의 집 — 안에 캣타워 (2026-10-09)
+    'straw_cat': ('straw_cat', 360),    # 투기장 밀짚 가짜 냥이 (2026-10-09)
+    # 투기장 가짜 냥이 Lv 별 재료 (2026-10-09 「Lv업을 하면 가짜 고양이 재료가 바뀌어」) — Lv1 밀짚 → 나무 → 돌 → 철 → 금 → 다이아
+    'dummy_wood': ('dummy_wood', 360),
+    'dummy_stone': ('dummy_stone', 360),
+    'dummy_iron': ('dummy_iron', 360),
+    'dummy_gold': ('dummy_gold', 360),
+    'dummy_diamond': ('dummy_diamond', 360),
+    # 집 안 가구 (2026-10-09 「집에 가구들도 있어」)
+    'furn_sofa': ('furn_sofa', 300),
+    'furn_shelf': ('furn_shelf', 400),
+    'furn_table': ('furn_table', 300),
+    'furn_lamp': ('furn_lamp', 420),
+    'furn_catbeds': ('furn_catbeds', 320),
+    'furn_plant': ('furn_plant', 340),
+    'furn_fireplace': ('furn_fireplace', 380),
 }
 
 def clear_ship_pockets(img):

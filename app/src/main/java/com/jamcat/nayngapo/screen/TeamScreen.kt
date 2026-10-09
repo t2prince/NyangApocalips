@@ -395,7 +395,7 @@ class TeamScreen(private val gameView: GameView, private val fromShop: Boolean =
             else -> {
                 val base = CatTeam.maxHpFor(cat.level) + CatTeam.hpBonusOf(cat)   // HP 수술 몫 포함
                 val bonus = Math.round(base * CatTeam.careMultiplier(cat)) - base
-                (if (cat.male) "♂ " else "♀ ") + "Lv ${cat.level} · 체력 $base" + if (bonus > 0) " (+$bonus)" else ""
+                (if (cat.surgeries > 0) "고자 " else if (cat.male) "♂ " else "♀ ")   // 중성화하면 성 표시가 '고자' (대표님 2026-10-09) + "Lv ${cat.level} · 체력 $base" + if (bonus > 0) " (+$bonus)" else ""
             }
         }
         leftBoldPaint.textSize = h * 0.030f

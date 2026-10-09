@@ -39,7 +39,10 @@ class GamePlayScreen(
         if (isSea) com.jamcat.nayngapo.engine.CatTeam.boatMount() else null
     private var seaMountMarked = false
     /** 자동차 매장 '자동차 선택'에서 고른 차 — 땅 스테이지에서 타고 다닌다 (바다는 배냥이라 안 탄다, 2026-10-09). 차를 누르면 내리고 탄다 */
-    private val carRide = if (isSea) null else com.jamcat.nayngapo.engine.CarCatalog.availableIn(stageNumber)?.let { com.jamcat.nayngapo.entity.CarRide(it) }
+    /** 로봇 상점에서 '로봇 타기'를 켰으면 땅 스테이지에서 로봇을 타고 시작한다 (바다 빼고, 차보다 먼저 — 2026-10-09) */
+    private val robotRide = if (isSea || com.jamcat.nayngapo.engine.RobotCatalog.rideLevel == 0) null
+        else com.jamcat.nayngapo.entity.RobotRide(com.jamcat.nayngapo.engine.RobotCatalog.rideLevel)
+    private val carRide = if (isSea || robotRide != null) null else com.jamcat.nayngapo.engine.CarCatalog.availableIn(stageNumber)?.let { com.jamcat.nayngapo.entity.CarRide(it) }
     private var boatHintShown = false
 
     /** 이 시간을 넘겨 겹쳐 있으면 서로 밀어낸다(초) */
@@ -271,6 +274,7 @@ class GamePlayScreen(
     init {
         camera.forwardOnly = true   // 플랫포머식: 카메라가 뒤로 돌아가지 않는다
         if (isSea) { player.lives = 1; player.rideLift = SEA_RIDE_LIFT }
+        robotRide?.mount(player)
         carRide?.let { cr ->
             // 이 스테이지에 방치해 둔 차면 그 자리에 세워져 있고 걸어서 시작한다
             if (com.jamcat.nayngapo.engine.CarCatalog.abandonedStage == stageNumber) cr.startAbandoned(com.jamcat.nayngapo.engine.GameProgress.abandonedCarX)
@@ -551,6 +555,15 @@ class GamePlayScreen(
         // 31 해적선은 앞(왼쪽, 뱃머리 쪽)으로 나아간다 — 갑판 위의 인간·냥이도 함께 실려 간다
         if (isSea) sailPirateShip(deltaTime)
         if (gunCooldown > 0f) gunCooldown -= deltaTime   // 레이저 총 쏘는 간격
+        robotRide?.let { rr ->
+            rr.update(deltaTime)
+            // 로봇 피가 다 닳으면 부서져 인간이 내린다
+            if (player.robotJustBroke) {
+                rr.breakDown(player)
+                shake(0.3f, 12f)
+                hitEffects.add(HitEffect(player.x, player.y - player.height, 1.2f, "로봇이 부서졌다!"))
+            }
+        }
 
         // Update player
         player.update(deltaTime)
@@ -2035,7 +2048,7 @@ class GamePlayScreen(
             input.jump = false
         }
         if (input.attack) {
-            if (player.hasGun) fireGun()   // 총을 가졌으면 공격 버튼 = 쏘기 (2026-10-09)
+            if (player.hasGun && robotRide?.riding != true) fireGun()   // 총을 가졌으면 공격 버튼 = 쏘기 (2026-10-09), 로봇을 타면 로봇 주먹
             else if (player.performAttack()) {
                 SoundManager.playAttack()
                 shake(0.07f, 4f)          // 휘두르는 순간의 가벼운 반동
@@ -2175,10 +2188,15 @@ class GamePlayScreen(
             carRide?.let { cr -> if (!cr.riding) drawables.add(Drawable(cr.parkedY - 1f) { cr.drawParked(canvas) }) }
             drawables.add(Drawable(player.y) {
                 if (isSea) drawSeaMount(canvas)
-                carRide?.beginSeat(canvas, player) ?: canvas.save()
+                when {
+                    robotRide?.riding == true -> robotRide.beginSeat(canvas, player)
+                    carRide != null -> carRide.beginSeat(canvas, player)
+                    else -> canvas.save()
+                }
                 player.draw(canvas)
                 canvas.restore()
-                carRide?.drawRiding(canvas, player)   // 차는 인간 앞 — 앉은 다리를 가린다
+                carRide?.drawRiding(canvas, player)
+                robotRide?.drawRiding(canvas, player)   // 로봇은 인간 앞 — 조종석에 앉은 인간   // 차는 인간 앞 — 앉은 다리를 가린다
             })
         }
         // 바다: 배가 없는 냥이들은 작은 뗏목 위에 서 있다

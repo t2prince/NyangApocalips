@@ -83,6 +83,11 @@ class Player(var x: Float, var y: Float) {
     var rideLift = 0f
     /** 자동차에 앉아 있다 — 인간이 차에 고정되어 걷기·대기·공격 동작 없이 한 자세로 그린다 (대표님 2026-10-09) */
     var seatedInCar = false
+    /** 탄 로봇의 피 (0 = 로봇 없음/부서짐) — 로봇을 타면 맞는 피해를 로봇이 대신 받는다 (2026-10-09) */
+    var robotHp = 0
+    var robotMaxHp = 0
+    /** 로봇이 방금 부서졌다 (화면이 보고 내리게 한다) */
+    var robotJustBroke = false
     /** 무기점에서 산 레이저 총 — 들고 다니고, 차를 타면 차에 단다 (2026-10-09) */
     val hasGun: Boolean = com.jamcat.nayngapo.engine.GameProgress.itemCount("h_gun") > 0
     private val handPt = android.graphics.PointF()
@@ -662,6 +667,7 @@ class Player(var x: Float, var y: Float) {
     fun takeDamage(amount: Int) {
         // 내려찍기 중에는 슈퍼아머: 착지 임팩트까지 방해받지 않는다
         if (isInvincible || isDead || isJumping || stompPhase != StompPhase.NONE) return
+        if (robotHp > 0) { hitRobot(amount * com.jamcat.nayngapo.engine.RobotCatalog.HP_PER_HEART); return }
         hp -= amount            // 잡몹은 1, 보스는 3 (기획: 보스에 맞으면 데미지 3)
         com.jamcat.nayngapo.engine.SoundManager.playPlayerHurt()   // 맞는 순간 신음
         isInvincible = true
@@ -674,6 +680,7 @@ class Player(var x: Float, var y: Float) {
     /** 하트 반 칸 피해 — 이미 반 칸을 잃었으면 그 하트가 다 닳는다 */
     fun takeHalfDamage() {
         if (isInvincible || isDead || isJumping || stompPhase != StompPhase.NONE) return
+        if (robotHp > 0) { hitRobot(com.jamcat.nayngapo.engine.RobotCatalog.HP_PER_HEART / 2); return }
         if (halfLost) {
             halfLost = false
             takeDamage(1)
@@ -684,6 +691,15 @@ class Player(var x: Float, var y: Float) {
         isInvincible = true
         invincibilityTimer = Constants.INVINCIBILITY_DURATION
         velocityX = (if (facingRight) -1f else 1f) * 200f
+    }
+
+    /** 로봇이 대신 맞는다 — 피가 다 닳으면 부서진다 */
+    private fun hitRobot(dmg: Int) {
+        robotHp = (robotHp - dmg).coerceAtLeast(0)
+        com.jamcat.nayngapo.engine.SoundManager.playCatHit()
+        isInvincible = true
+        invincibilityTimer = Constants.INVINCIBILITY_DURATION
+        if (robotHp <= 0) robotJustBroke = true
     }
 
     /** 구덩이에 빠지면 남은 목숨과 상관없이 그대로 게임 오버 */

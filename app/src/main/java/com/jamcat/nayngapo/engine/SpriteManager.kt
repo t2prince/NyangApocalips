@@ -60,6 +60,8 @@ object SpriteManager {
     var carShop: Bitmap? = null
     /** 레이저 총 옆모습 (총구가 오른쪽) — 인간 손·자동차에 단다 */
     var gunSide: Bitmap? = null
+    /** 로봇 옆모습 (오른쪽을 본다, 맨 위가 열린 조종석) */
+    var robotSide: Bitmap? = null
     lateinit var catIdleRed: List<Bitmap>
     lateinit var catIdleOrange: List<Bitmap>
     lateinit var catIdleYellow: List<Bitmap>
@@ -208,6 +210,7 @@ object SpriteManager {
         }.toMap()
         res.getIdentifier("car_shop", "drawable", context.packageName).let { if (it != 0) carShop = BitmapFactory.decodeResource(res, it) }
         res.getIdentifier("gun_side", "drawable", context.packageName).let { if (it != 0) gunSide = BitmapFactory.decodeResource(res, it) }
+        res.getIdentifier("robot_side", "drawable", context.packageName).let { if (it != 0) robotSide = BitmapFactory.decodeResource(res, it) }
         furniture = listOf("sofa", "shelf", "table", "lamp", "catbeds", "plant", "fireplace").mapNotNull { n ->
             val id = res.getIdentifier("furn_$n", "drawable", context.packageName)
             if (id == 0) null else n to BitmapFactory.decodeResource(res, id)

@@ -36,6 +36,8 @@ object GameProgress {
     private const val KEY_STORY_SEEN = "story_seen"
     private const val KEY_DUMMY_LEVEL = "dummy_level"
     private const val KEY_SELECTED_CAR = "selected_car"
+    private const val KEY_ROBOT_LEVEL = "robot_level"
+    private const val KEY_RIDE_ROBOT = "ride_robot"
     private const val KEY_AB_CAR = "abandoned_car"
     private const val KEY_AB_STAGE = "abandoned_car_stage"
     private const val KEY_AB_X = "abandoned_car_x"
@@ -139,6 +141,27 @@ object GameProgress {
         prefs?.edit()?.remove(KEY_AB_CAR)?.remove(KEY_AB_STAGE)?.remove(KEY_AB_X)?.apply()
     }
 
+    /** 로봇 Lv (0 = 없음) · 스테이지에서 로봇을 탈지 (로봇 상점, 2026-10-09) */
+    var robotLevel = 0
+        private set
+    var rideRobot = false
+        private set
+
+    /** 로봇을 사거나 Lv 올리기 — 루비가 모자라거나 최대면 false */
+    fun upgradeRobot(): Boolean {
+        if (robotLevel >= RobotCatalog.MAX_LEVEL) return false
+        if (!spendRubies(RobotCatalog.priceOf(robotLevel + 1))) return false
+        robotLevel++
+        if (robotLevel == 1) rideRobot = true   // 사면 바로 탄다
+        prefs?.edit()?.putInt(KEY_ROBOT_LEVEL, robotLevel)?.putBoolean(KEY_RIDE_ROBOT, rideRobot)?.apply()
+        return true
+    }
+
+    fun setRideRobot(on: Boolean) {
+        rideRobot = on
+        prefs?.edit()?.putBoolean(KEY_RIDE_ROBOT, on)?.apply()
+    }
+
     fun selectCar(id: String) {
         selectedCar = id
         prefs?.edit()?.putString(KEY_SELECTED_CAR, id)?.apply()
@@ -228,6 +251,8 @@ object GameProgress {
         storySeen = prefs?.getBoolean(KEY_STORY_SEEN, false) ?: false
         dummyLevel = (prefs?.getInt(KEY_DUMMY_LEVEL, 1) ?: 1).coerceIn(1, DUMMY_LEVEL_MAX)
         selectedCar = prefs?.getString(KEY_SELECTED_CAR, "") ?: ""
+        robotLevel = (prefs?.getInt(KEY_ROBOT_LEVEL, 0) ?: 0).coerceIn(0, RobotCatalog.MAX_LEVEL)
+        rideRobot = prefs?.getBoolean(KEY_RIDE_ROBOT, false) ?: false
         abandonedCarId = prefs?.getString(KEY_AB_CAR, "") ?: ""
         abandonedCarStage = prefs?.getInt(KEY_AB_STAGE, 0) ?: 0
         abandonedCarX = prefs?.getFloat(KEY_AB_X, 0f) ?: 0f

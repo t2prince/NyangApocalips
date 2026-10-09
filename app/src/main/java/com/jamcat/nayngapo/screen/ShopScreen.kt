@@ -996,6 +996,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
                     else -> choosing = brought
                 }
             }
+            ROBOT_TENT -> gameView.showRobotShop()
             ARENA_TENT -> {
                 // 투기장 (대표님 2026-10-09): 싸울 냥이를 고르면 밀짚 가짜 냥이와 싸운다 — 1마리면 바로
                 val brought = allies.mapNotNull { a -> a.teamId?.let { com.jamcat.nayngapo.engine.CatTeam.cat(it) } }.filter { !it.gone }
@@ -1087,7 +1088,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     companion object {
         /** 천막 수 — 대표님이 정할 때까지 임시 6개 (Claude 판단) */
-        const val TENT_COUNT = 10
+        const val TENT_COUNT = 11
         private const val MENU_BTN_R = 46f
         private const val MENU_HIT_R = 60f
         private const val MENU_BTN_Y = 118f
@@ -1101,8 +1102,10 @@ class ShopScreen(private val gameView: GameView) : Screen {
         const val HOSPITAL_TENT = 5
         /** 7번 천막 = 투기장 (대표님 2026-10-09: 고른 냥이가 밀짚 가짜 냥이를 때리고, 30초마다 공격력 +3) */
         const val ARENA_TENT = 6
+        /** 11번 천막 = 로봇 상점 (대표님 2026-10-09) */
+        const val ROBOT_TENT = 10
         private val TENT_NAMES: List<String?> = List(TENT_COUNT) {
-            when (it) { CAT_SHOP_TENT -> "고양이 상점"; CAT_SKILL_TENT -> "고양이 기술"; HOSPITAL_TENT -> "동물 병원"; ARENA_TENT -> "투기장"; else -> com.jamcat.nayngapo.engine.ShopCatalog.tentShops[it]?.first }
+            when (it) { CAT_SHOP_TENT -> "고양이 상점"; CAT_SKILL_TENT -> "고양이 기술"; HOSPITAL_TENT -> "동물 병원"; ARENA_TENT -> "투기장"; ROBOT_TENT -> "로봇 상점"; else -> com.jamcat.nayngapo.engine.ShopCatalog.tentShops[it]?.first }
         }
         /** 가게 주인의 광고 문구 (Claude 판단 — 대표님이 정하면 바꾼다) */
         private val TENT_ADS: Map<Int, List<String>> = mapOf(
@@ -1116,6 +1119,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
             7 to listOf("무기점이에요!", "권투 장갑 있어요~", "강철 주먹으로 쾅!"),
             8 to listOf("갑옷점이에요!", "투구 쓰면 하트 +1!", "튼튼한 가죽 조끼~"),
             9 to listOf("약국이에요!", "생명 물약 팔아요~", "하트 물약 하나 어때요?"),
+            ROBOT_TENT to listOf("로봇 팔아요!", "피 100 · 공격 50!", "Lv 올리면 두 배!"),
         )
         private val DEFAULT_ADS = listOf("어서 오세요!", "곧 좋은 물건 들어와요~")
         /** 맨 앞 집의 가운데 x · 그림 높이 — 인간은 집 앞(오른쪽)에서 시작한다 */

@@ -92,15 +92,16 @@ BOB = [0, 2, 4, 5, 4, 2, 0]          # 칸마다 들썩임(px)
 SQUASH = [1.0, 0.985, 0.97, 0.965, 0.97, 0.985, 1.0]
 
 for name, (plain, res, strip) in ARMOR.items():
-    p = os.path.join(SRC, f'armor_{name}.png')
+    # 2026-10-09 「갑옷만 씌우고 비슷해야」: 맨몸 아군 그림을 GPT에 주고 갑옷만 씌운 armor2_*.png 를 쓴다.
+    # 몸 윤곽이 맨몸과 같으므로 가로폭(꼬리~수염)을 맨몸 그림과 똑같이 맞추면 몸집이 그대로다.
+    p = os.path.join(SRC, f'armor2_{name}.png')
     if not os.path.exists(p):
-        print('없음: armor_' + name); continue
+        print('없음: armor2_' + name); continue
     img = strip_background(Image.open(p))
     img = img.crop(img.getbbox())
     ref = Image.open(os.path.join(DST, plain + '.png'))
-    # GPT 냥이는 가로로 길쭉하다 — 높이를 맨몸 높이 + 작은 투구 만큼(×1.14)으로 맞춘다 (날아냥이도 같게)
-    th = round(ref.height * 1.14)
-    img = img.resize((max(1, round(img.width * th / img.height)), th), Image.LANCZOS)
+    rb = ref.getbbox()
+    img = img.resize((rb[2] - rb[0], max(1, round(img.height * (rb[2] - rb[0]) / img.width))), Image.LANCZOS)
     img.save(os.path.join(DST, res + '.png'))
     print(res, img.size)
     if strip:

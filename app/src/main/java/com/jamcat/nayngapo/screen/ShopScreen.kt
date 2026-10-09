@@ -356,7 +356,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     override fun update(deltaTime: Float) {
         if (paused) return
-        if (skillStudent != null || choosing != null || patient != null || pickingStage) { if (noticeTimer > 0f) noticeTimer -= deltaTime; return }   // 창이 떠 있는 동안은 멈춘다
+        if (skillStudent != null || choosing != null || patient != null || pickingStage || menuOpen) { if (noticeTimer > 0f) noticeTimer -= deltaTime; return }   // 창이 떠 있는 동안은 멈춘다
         timer += deltaTime
         if (noticeTimer > 0f) noticeTimer -= deltaTime
 
@@ -605,6 +605,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         // 왼쪽 위: 스테이지와 같은 멈추기·나가기
         drawMenuButtons(canvas)
         drawSettingsButton(canvas, w)
+        drawMenuButton(canvas, w)
         carRide?.drawButton(canvas)
         // 차를 스테이지에 방치해 두었으면 어디 있는지 알려 준다
         val abandonedAt = com.jamcat.nayngapo.engine.CarCatalog.abandonedStage
@@ -628,6 +629,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         drawHospital(canvas, w, h)
         drawChooser(canvas, w, h)
         drawStagePicker(canvas, w, h)
+        drawMenuPanel(canvas, w, h)
         if (noticeTimer > 0f) {
             noticeTextPaint.textSize = 42f
             val nw = noticeTextPaint.measureText(noticeText) + 70f
@@ -860,6 +862,64 @@ class ShopScreen(private val gameView: GameView) : Screen {
         gameView.startStage(n, fromShop = true)
     }
 
+    // ===== 메뉴 (대표님 2026-10-09 「홈 화면 없애고 상점 마을을 홈으로」 — 예전 로비에만 있던 것들) =====
+    private var menuOpen = false
+    private val menuBtnRect = RectF()
+    private val menuItems = listOf("⚔ 다음 스테이지 출격", "🧑 인간 바꾸기", "✨ 인간 기술", "🐾 고양이 기술", "📜 미션")
+    private val menuRects = menuItems.map { RectF() }
+
+    /** 설정 버튼 왼쪽: 메뉴 버튼 (줄 세 개) */
+    private fun drawMenuButton(canvas: Canvas, w: Float) {
+        val cx = w - PAUSE_BTN_X - 122f; val cy = MENU_BTN_Y
+        menuBtnRect.set(cx - MENU_BTN_R, cy - MENU_BTN_R, cx + MENU_BTN_R, cy + MENU_BTN_R)
+        canvas.drawCircle(cx, cy, MENU_BTN_R, menuBtnPaint)
+        canvas.drawCircle(cx, cy, MENU_BTN_R, menuBtnEdgePaint)
+        for (k in -1..1) canvas.drawRect(cx - 20f, cy + k * 12f - 3f, cx + 20f, cy + k * 12f + 3f, menuIconPaint)
+        canvas.drawText("메뉴", cx, cy + MENU_BTN_R + 30f, menuLabelPaint)
+    }
+
+    private fun drawMenuPanel(canvas: Canvas, w: Float, h: Float) {
+        if (!menuOpen) return
+        canvas.drawRect(0f, 0f, w, h, pauseVeil)
+        panelRect.set(w * 0.30f, h * 0.10f, w * 0.70f, h * 0.90f)
+        canvas.drawRoundRect(panelRect, 28f, 28f, panelPaint); canvas.drawRoundRect(panelRect, 28f, 28f, ink)
+        panelTitle.textSize = h * 0.05f
+        canvas.drawText("메뉴", panelRect.centerX(), panelRect.top + h * 0.075f, panelTitle)
+        val top = panelRect.top + h * 0.11f
+        val rowH = (panelRect.bottom - 30f - top) / menuItems.size
+        for ((k, label) in menuItems.withIndex()) {
+            val r = menuRects[k]
+            r.set(panelRect.left + 40f, top + k * rowH + 10f, panelRect.right - 40f, top + (k + 1) * rowH - 10f)
+            canvas.drawRoundRect(r, 30f, 30f, rowPaint); canvas.drawRoundRect(r, 30f, 30f, ink)
+            rowName.textSize = (r.height() * 0.38f).coerceAtMost(48f); rowName.textAlign = Paint.Align.CENTER
+            canvas.drawText(label, r.centerX(), r.centerY() + rowName.textSize * 0.35f, rowName)
+            rowName.textAlign = Paint.Align.LEFT
+        }
+    }
+
+    private fun tapMenuPanel(px: Float, py: Float) {
+        val k = menuRects.indexOfFirst { it.contains(px, py) }
+        if (k < 0) { if (!panelRect.contains(px, py)) menuOpen = false; return }
+        menuOpen = false
+        returnX = player.x   // 메뉴 화면에서 돌아오면 이 자리
+        when (k) {
+            0 -> {
+                // 다음에 깰 스테이지로 곧장 (예전 로비 '전투')
+                val next = GameProgress.nextBattleStage()
+                val why = next?.let { gameView.stageBlockReason(it) }
+                when {
+                    next == null -> showNotice("모든 스테이지를 깼다냥! 다음 지역은 준비 중")
+                    why != null -> showNotice(why)
+                    else -> gameView.startStage(next, fromShop = true)
+                }
+            }
+            1 -> gameView.showCharacterSelect()
+            2 -> gameView.showHumanSkills()
+            3 -> gameView.showCatSkills()
+            4 -> gameView.showMissions()
+        }
+    }
+
     /** 오른쪽 맨 위 설정 버튼 (톱니) */
     private fun drawSettingsButton(canvas: Canvas, w: Float) {
         val cx = w - PAUSE_BTN_X; val cy = MENU_BTN_Y
@@ -1037,9 +1097,13 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 paused = !paused; touchControls.releaseAll(); return true
             }
             if (kotlin.math.hypot(px - EXIT_BTN_X, py - MENU_BTN_Y) < MENU_HIT_R) {
-                touchControls.releaseAll(); gameView.showLobby(); return true
+                touchControls.releaseAll(); gameView.showTitle(); return true   // 상점 마을이 홈 — 나가면 시작 화면
             }
             if (pickingStage) { tapStagePicker(px, py); return true }
+            if (menuOpen) { tapMenuPanel(px, py); return true }
+            if (kotlin.math.hypot(px - menuBtnRect.centerX(), py - menuBtnRect.centerY()) < MENU_HIT_R) {
+                touchControls.releaseAll(); menuOpen = true; return true
+            }
             // 오른쪽 맨 위 설정 (대표님 2026-10-09) — 닫으면 상점 마을 그 자리로
             if (kotlin.math.hypot(px - settingsRect.centerX(), py - settingsRect.centerY()) < MENU_HIT_R) {
                 touchControls.releaseAll(); returnX = player.x; gameView.showSettings(fromShop = true); return true
@@ -1092,7 +1156,8 @@ class ShopScreen(private val gameView: GameView) : Screen {
         if (skillStudent != null) { skillStudent = null; return true }   // 기술 창부터 닫는다
         if (patient != null) { patient = null; return true }
         touchControls.releaseAll()
-        if (!paused) paused = true else gameView.showLobby()
+        if (menuOpen) { menuOpen = false; return true }
+        if (!paused) paused = true else gameView.showTitle()
         return true
     }
 

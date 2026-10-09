@@ -59,7 +59,10 @@ class AllyCat(
     }
 
     /** 날아냥이는 땅 위에서도 살짝 떠서 다닌다 */
-    private val hovers = kind == Kind.FLYING
+    /** 날아다니는 냥이 — 날아냥이, 그리고 적일 때 날던 벌냥이도 우리 팀이 되면 똑같이 난다 (대표님 2026-10-10) */
+    private val hovers = kind == Kind.FLYING || kind == Kind.BEE
+    /** 떠 있는 높이 (벌냥이는 적일 때처럼 높이) */
+    private val hoverHeight = if (kind == Kind.BEE) BEE_HOVER_LIFT else HOVER_LIFT
     /** 그림 크기 배율 (새끼면 작게) */
     private val sizeMul = if (kitten) KITTEN_SCALE else 1f
 
@@ -306,14 +309,14 @@ class AllyCat(
             climbOffset = if (kotlin.math.abs(climbOffset) <= step) 0f else climbOffset - kotlin.math.sign(climbOffset) * step
         }
 
-        val hoverLift = if (hovers) HOVER_LIFT else 0f
+        val hoverLift = if (hovers) hoverHeight else 0f
         if (abs(velocityX) > 1f) {
             hopPhase += deltaTime * 12f
             jumpZ = hoverLift - abs(sin(hopPhase.toDouble())).toFloat() * 14f
         } else {
             // 떠 있는 냥이는 멈춰도 제자리에서 오르내린다
             if (hovers) hopPhase += deltaTime * 4f
-            jumpZ = hoverLift - if (hovers) abs(sin(hopPhase.toDouble())).toFloat() * 6f else 0f
+            jumpZ = hoverLift - if (hovers) abs(sin(hopPhase.toDouble())).toFloat() * (if (kind == Kind.BEE) 12f else 6f) else 0f
         }
 
         // 함정을 넘는 도약
@@ -327,7 +330,7 @@ class AllyCat(
     /** 적일 때와 같은 원거리 공격 (우리 편 탄) */
     private fun shootLikeEnemy(dir: Float, target: Enemy) {
         val cx = x + width / 2f
-        val mouthY = y - height * 0.5f
+        val mouthY = y + jumpZ - height * 0.5f   // 떠 있으면 그 높이에서
         val d = attackDamage
         when (kind) {
             Kind.RED -> repeat(4) { i ->      // 불을 뿜는다: 불꽃 네 덩이가 퍼지며 짧게 날아간다
@@ -348,8 +351,12 @@ class AllyCat(
                 pendingProjectiles.add(Projectile(cx + dir * 30f, mouthY, dir * (300f + Math.random().toFloat() * 120f),
                     60f + (Math.random().toFloat() - 0.5f) * 180f, d, true, tint = Color.rgb(250, 220, 80), radius = 9f, fuse = 0.8f, isPollen = true))
             }
-            Kind.BEE -> pendingProjectiles.add(Projectile(cx + dir * 30f, mouthY + 10f, dir * 720f, 0f, d, true,   // 침을 쏜다
-                tint = Color.rgb(40, 34, 30), radius = 5f))
+            Kind.BEE -> {                       // 하늘에서 노린 냥이 쪽으로 침을 쏜다
+                val tx = target.x + target.width / 2f - cx; val ty = target.y - target.height * 0.5f - mouthY
+                val len = kotlin.math.hypot(tx, ty).coerceAtLeast(1f)
+                pendingProjectiles.add(Projectile(cx, mouthY + 10f, tx / len * 720f, ty / len * 720f, d, true,
+                    tint = Color.rgb(40, 34, 30), radius = 5f))
+            }
             Kind.POOP -> pendingProjectiles.add(Projectile(cx, mouthY - 20f, dir * 400f, -420f, d, true,   // 똥을 던진다
                 tint = Color.rgb(130, 86, 50), radius = 12f, gravity = 1000f))
             else -> Unit
@@ -532,6 +539,8 @@ class AllyCat(
         private val evolvePaint = Paint().apply { isFilterBitmap = true; isAntiAlias = true }
         /** 날아냥이가 땅에서 떠 있는 높이 */
         const val HOVER_LIFT = -18f
+        /** 우리 팀 벌냥이가 떠 있는 높이 (적 벌냥이는 210, 우리 편은 인간 머리 위쯤 — Claude 판단) */
+        const val BEE_HOVER_LIFT = -150f
 
         /** 기술을 쓰는 동작 길이 */
         const val CAST_TIME = 0.3f

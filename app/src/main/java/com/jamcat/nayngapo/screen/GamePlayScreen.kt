@@ -2774,9 +2774,14 @@ class GamePlayScreen(
         val s = 1.35f
         val cx = player.x + player.width / 2f
         val bob = kotlin.math.sin(elapsed * 3f) * 3f
-        val foot = player.y + player.jumpZ + 22f + bob
-        mountDst.set(cx - bmp.width * s / 2f, foot - bmp.height * s, cx + bmp.width * s / 2f, foot)
+        // 다리는 물에 잠겨 안 보인다 — 배 바닥이 물 위(발 높이)에 오게 그리고 그 아래는 자른다
+        val water = player.y + player.jumpZ + 10f + bob
+        val top = water - bmp.height * s * com.jamcat.nayngapo.entity.BoatCat.BOAT_HULL_BOTTOM
+        mountDst.set(cx - bmp.width * s / 2f, top, cx + bmp.width * s / 2f, top + bmp.height * s)
+        canvas.save()
+        canvas.clipRect(mountDst.left - 2f, mountDst.top - 2f, mountDst.right + 2f, water)
         canvas.drawBitmap(bmp, null, mountDst, null)
+        canvas.restore()
     }
 
     /** 물 위의 작은 뗏목 (배가 없는 냥이용) */

@@ -136,7 +136,7 @@ abstract class Enemy(
     }
 
     /** 방금 그린 스프라이트의 높이 — 체력 게이지를 머리 위로 띄우는 데 쓴다 */
-    private var lastSpriteHeight = 0f
+    protected var lastSpriteHeight = 0f
 
     /** 적 체력 게이지: 머리 위에 몸 너비만큼 표시 */
     protected fun drawHpBar(canvas: Canvas) {
@@ -986,6 +986,10 @@ class FlowerCat(x: Float, y: Float) : Enemy(x, y, 15, 10) {
  * 배가 출렁이며 다가오고, 한 번 들이받으면 뒤로 물러났다가 다시 온다. 속도·물러나는 시간은 Claude 판단.
  */
 class BoatCat(x: Float, y: Float) : Enemy(x, y, 20, 5) {
+    companion object {
+        /** 배냥이 그림에서 배 바닥 높이 (그 아래는 다리 — 물에 잠긴다) */
+        const val BOAT_HULL_BOTTOM = 0.88f
+    }
     /** 배냥이 종류 = 무늬 (하양이·턱시도·삼색이·고등어·치즈, 대표님 2026-10-09) — 무작위 */
     val coat: com.jamcat.nayngapo.engine.CatCoat = listOf(
         com.jamcat.nayngapo.engine.CatCoat.CHEESE, com.jamcat.nayngapo.engine.CatCoat.WHITE, com.jamcat.nayngapo.engine.CatCoat.CALICO,
@@ -1012,7 +1016,18 @@ class BoatCat(x: Float, y: Float) : Enemy(x, y, 20, 5) {
     }
 
     override fun draw(canvas: Canvas) {
-        drawSprite(canvas, coat.boatEnemy)
+        // 바다라 배 밑의 발은 물에 잠겨 안 보인다 (대표님 2026-10-09): 배 바닥(그림 높이의 88%)이 물 위에 오게 그리고 그 아래는 자른다
+        val base = coat.boatEnemy
+        val bmp = if (facingRight) base else SpriteManager.getFlipped(base)
+        val cx = x + width / 2f
+        val water = y + jumpZ + 6f
+        val top = water - bmp.height * BOAT_HULL_BOTTOM
+        canvas.save()
+        canvas.clipRect(cx - bmp.width / 2f - 2f, top - 4f, cx + bmp.width / 2f + 2f, water)
+        canvas.drawBitmap(bmp, cx - bmp.width / 2f, top, null)
+        canvas.restore()
+        lastSpriteHeight = bmp.height * BOAT_HULL_BOTTOM
+        lastSprite = base
         drawHpBar(canvas)
     }
 }

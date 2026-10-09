@@ -758,7 +758,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
             if (paused) return true
             // 집은 '집 들어가기' 말풍선을 눌러야만 들어간다 — 집 그림을 눌러서는 안 들어간다 (대표님 2026-10-09)
             if (nearTower && !enterRect.isEmpty && enterRect.contains(px, py)) {
-                touchControls.releaseAll(); returnX = player.x; gameView.showTeam(fromShop = true); return true
+                touchControls.releaseAll(); returnX = player.x; gameView.showHouse(); return true
             }
             if (!enterRect.isEmpty && enterRect.contains(px, py) && nearTent in 0 until openCount) {
                 enterTent(nearTent); return true

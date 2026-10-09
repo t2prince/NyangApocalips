@@ -142,9 +142,14 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     }
 
     /** 고양이 관리: 내 팀 냥이를 돌보는 곳 (도감은 여기서 따로 들어간다) */
-    /** fromShop: 상점 마을 끝 캣타워로 들어왔으면 닫을 때 상점 마을(캣타워 앞)로 돌아간다 */
-    fun showTeam(fromShop: Boolean = false) {
-        fadeTo { TeamScreen(this, fromShop) }
+    /** fromHouse: 상점 마을 집 안의 캣타워로 들어왔으면 닫을 때 집 안(캣타워 앞)으로 돌아간다 */
+    fun showTeam(fromHouse: Boolean = false) {
+        fadeTo { TeamScreen(this, fromHouse) }
+    }
+
+    /** 집 안 (상점 마을 맨 앞 집): floor 0 = 1층(캣타워·계단), 1 = 위층(내 냥이들), x 없으면 문 앞 */
+    fun showHouse(floor: Int = 0, x: Float? = null) {
+        fadeTo { HouseScreen(this, floor, x) }
     }
 
     /** 고양이 도감 (기획1) */

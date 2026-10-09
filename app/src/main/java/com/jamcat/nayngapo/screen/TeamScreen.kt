@@ -19,7 +19,7 @@ import kotlin.math.sin
  * 큰 냥이를 누르면 쓰다듬고, 오른쪽 버튼으로 놀아주고 간식을 주고 빗질을 한다.
  * 쓰러진 냥이는 무덤이 되어 칸에 남는다.
  */
-class TeamScreen(private val gameView: GameView, private val fromShop: Boolean = false) : Screen {
+class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean = false) : Screen {
 
     private companion object {
         /** 아래 줄에 한 번에 보이는 냥이 칸 수 */
@@ -395,7 +395,8 @@ class TeamScreen(private val gameView: GameView, private val fromShop: Boolean =
             else -> {
                 val base = CatTeam.maxHpFor(cat.level) + CatTeam.hpBonusOf(cat)   // HP 수술 몫 포함
                 val bonus = Math.round(base * CatTeam.careMultiplier(cat)) - base
-                (if (cat.male) "♂ " else "♀ ") + "Lv ${cat.level} · 체력 $base" + if (bonus > 0) " (+$bonus)" else ""
+                // 중성화한 냥이는 성 칸이 없다 (대표님 2026-10-09)
+                (if (cat.surgeries > 0) "" else if (cat.male) "♂ " else "♀ ") + "Lv ${cat.level} · 체력 $base" + if (bonus > 0) " (+$bonus)" else ""
             }
         }
         leftBoldPaint.textSize = h * 0.030f
@@ -1315,7 +1316,7 @@ class TeamScreen(private val gameView: GameView, private val fromShop: Boolean =
 
     private fun close() {
         CatTeam.markSeen()
-        if (fromShop) gameView.showShop() else gameView.showLobby()
+        if (fromHouse) gameView.showHouse(HouseScreen.returnFloor, HouseScreen.returnX) else gameView.showLobby()
     }
 
     override fun onBack(): Boolean {

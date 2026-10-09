@@ -55,11 +55,14 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
         } else {
             val cats = CatTeam.cats.filter { !it.gone && it !in CatTeam.party }   // 출전 중인 냥이는 위층에 없다
             worldWidth = maxOf(GROUND_W, 420f + cats.size * CAT_GAP + 520f)
-            for ((i, c) in cats.withIndex()) {
+            // 다 큰 냥이는 줄지어, 새끼 냥이들은 맨 뒤에 서로 모여 있다 (대표님 2026-10-09 「새끼 냥이들은 집에서 서로 모여 떠들어」)
+            val adults = cats.filter { !it.isKitten }; val kittens = cats.filter { it.isKitten }
+            var hx = 420f
+            for (c in adults + kittens) {
                 val sprite = com.jamcat.nayngapo.entity.AllyCat(0f, 0f, c.kind, level = c.level, teamId = c.id,
                     armored = c.hasArmor, attackBonus = c.attackBonus, coat = c.coat).spriteNow()
-                val hx = 420f + i * CAT_GAP
                 residents.add(Resident(c, sprite, hx, hx))
+                hx += if (c.isKitten) KITTEN_GAP else CAT_GAP
             }
             spots.add(Spot(UP_STAIRS_X, "▼ 아래층 내려가기") { gameView.showHouse(0, STAIRS_X - 60f) })
         }
@@ -101,9 +104,24 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
         for (r in residents) {
             r.phase += deltaTime
             if (r.wait > 0f) { r.wait -= deltaTime; continue }
+            // 새끼들은 모인 자리에서 조금만 꼼지락
+            val range = if (r.cat.isKitten) 25f else 60f
             r.x += r.dir * 60f * deltaTime
-            if (abs(r.x - r.home) > 60f) { r.x = r.home + 60f * kotlin.math.sign(r.x - r.home); r.dir = -r.dir; r.wait = 1f + (Math.random() * 2.0).toFloat() }
+            if (abs(r.x - r.home) > range) { r.x = r.home + range * kotlin.math.sign(r.x - r.home); r.dir = -r.dir; r.wait = 1f + (Math.random() * 2.0).toFloat() }
             else if (Math.random() < deltaTime * 0.3) r.wait = 1f + (Math.random() * 1.5).toFloat()
+        }
+        // 새끼 냥이 수다: 하나씩 돌아가며 '내가 ○○를 했다냥!' 하고 떠든다
+        val kittens = residents.filter { it.cat.isKitten }
+        if (kittens.size >= 1) {
+            chatTimer -= deltaTime
+            if (chatTimer <= 0f) {
+                chatTimer = CHAT_TIME
+                chatter = kittens[(kittens.indexOf(chatter) + 1) % kittens.size]
+                // 한 마리면 혼잣말, 여럿이면 번갈아 — 문구는 무작위 (그 냥이 레벨 자랑도 섞인다)
+                val c = chatter!!.cat
+                val pool = CHATS + listOf("내가 레벨 ${c.level}이 됐다냥!")
+                chatText = pool[(Math.random() * pool.size).toInt()]
+            }
         }
 
         val sw = gameView.screenWidth.toFloat()
@@ -228,7 +246,25 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
         rect.set(r.x - nw / 2f, ny - 34f, r.x + nw / 2f, ny + 8f)
         canvas.drawRoundRect(rect, 18f, 18f, nameBg)
         canvas.drawText(name, r.x, ny - 2f, namePaint)
+        // 떠드는 새끼 냥이: 이름 위 말풍선 (나타날 때 살짝 튄다)
+        if (r === chatter && chatTimer > 0.3f) {
+            val pop = 1f + 0.12f * ((chatTimer - (CHAT_TIME - 0.25f)) / 0.25f).coerceIn(0f, 1f)
+            chatPaint.textSize = 30f * pop
+            val bw = chatPaint.measureText(chatText) + 36f
+            val by = ny - 48f
+            rect.set(r.x - bw / 2f, by - 50f * pop, r.x + bw / 2f, by)
+            canvas.drawRoundRect(rect, 22f, 22f, bubblePaint)
+            canvas.drawRoundRect(rect, 22f, 22f, ink)
+            path.reset()
+            path.moveTo(r.x - 12f, by - 2f); path.lineTo(r.x + 2f, by + 18f); path.lineTo(r.x + 14f, by - 2f); path.close()
+            canvas.drawPath(path, bubblePaint)
+            canvas.drawText(chatText, r.x, by - 25f * pop + 11f, chatPaint)
+        }
     }
+    private var chatter: Resident? = null
+    private var chatText = ""
+    private var chatTimer = 0.5f
+    private val chatPaint = Paint().apply { color = Color.rgb(50, 40, 36); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
 
     private fun drawWindow(canvas: Canvas, cx: Float, top: Float) {
         rect.set(cx - 110f, top, cx + 110f, top + 200f)
@@ -320,6 +356,15 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
         )
         private const val UP_STAIRS_X = 200f
         private const val CAT_GAP = 190f
+        /** 새끼 냥이들은 다닥다닥 모여 있다 · 한 마리가 말하는 시간 */
+        private const val KITTEN_GAP = 95f
+        private const val CHAT_TIME = 2.6f
+        /** 새끼 냥이 수다 문구 (대표님 예: 「내가 __를 했다냥!」 — 채우는 말은 Claude 판단) */
+        private val CHATS = listOf(
+            "내가 쥐를 잡았다냥!", "내가 츄르를 먹었다냥!", "내가 공을 굴렸다냥!", "내가 낮잠을 잤다냥!",
+            "내가 나비를 쫓았다냥!", "내가 캣타워에 올랐다냥!", "내가 털실을 풀었다냥!", "내가 꼬리를 잡았다냥!",
+            "내가 상자에 숨었다냥!", "내가 엄마랑 놀았다냥!", "내가 생선을 훔쳤다냥!", "내가 제일 빨리 뛰었다냥!",
+        )
         private const val MENU_BTN_R = 46f
         private const val MENU_HIT_R = 60f
         private const val MENU_BTN_Y = 118f

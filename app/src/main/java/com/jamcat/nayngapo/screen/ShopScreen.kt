@@ -59,7 +59,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
                     (START_X - 90f - 70f * i).coerceAtLeast(20f), Constants.GROUND_Y,
                     cat.kind, level = cat.level, teamId = cat.id,
                     armored = cat.hasArmor, attackBonus = cat.attackBonus, coat = cat.coat
-                )
+                ).also { it.evolve(com.jamcat.nayngapo.engine.CatTeam.evolveSecondsLeft, grown = true) }   // 상점 마을에서도 거대하게
             )
         }
     }

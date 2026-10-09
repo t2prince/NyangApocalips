@@ -32,7 +32,8 @@ class CatDeathAnim {
      * @param cx         몸 가운데 x
      * @param footY      발끝 y (drawSprite 와 같은 기준)
      */
-    fun draw(canvas: Canvas, sprite: Bitmap, facingRight: Boolean, cx: Float, footY: Float) {
+    /** scale: 묭묭 진화로 커진 냥이는 큰 채로 뒤집힌다 (2026-10-09) */
+    fun draw(canvas: Canvas, sprite: Bitmap, facingRight: Boolean, cx: Float, footY: Float, scale: Float = 1f) {
         if (!isActive) return
         val t = (1f - timer / DURATION).coerceIn(0f, 1f)
         val flight = (t / FLIGHT_END).coerceAtMost(1f)          // 0~1: 떠올랐다 떨어지는 구간
@@ -47,13 +48,14 @@ class CatDeathAnim {
         val w = bmp.width.toFloat()
         val h = bmp.height.toFloat()
         val centerX = cx + drift
-        val centerY = footY + 8f - h / 2f - lift
+        val centerY = footY + 8f * scale - h * scale / 2f - lift
 
         spritePaint.alpha = alpha
         xPaint.alpha = alpha
         canvas.save()
         canvas.translate(centerX, centerY)
         canvas.rotate(angle)
+        if (scale != 1f) canvas.scale(scale, scale)
         canvas.drawBitmap(bmp, -w / 2f, -h / 2f, spritePaint)
 
         // X 눈: 원안 얼굴의 작은 점 눈 자리(머리 위쪽) 위에 겹쳐 그린다

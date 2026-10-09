@@ -142,9 +142,10 @@ class AllyCat(
     private var evolveAge = 0f
     val evolved: Boolean get() = evolveTimer > 0f
 
-    fun evolve(duration: Float) {
-        if (isDead) return
-        if (!evolved) evolveAge = 0f
+    /** grown: 이미 커진 상태로 시작(스테이지·상점 마을에 들어올 때 — 커지는 연출 없이) */
+    fun evolve(duration: Float, grown: Boolean = false) {
+        if (isDead || duration <= 0f) return
+        if (!evolved) evolveAge = if (grown) 1f else 0f
         evolveTimer = duration
     }
     private var attackCooldown = 0f
@@ -297,7 +298,7 @@ class AllyCat(
         val drawY = y + jumpZ + windLift + hopOffset + castLift
 
         if (isDead) {
-            death.draw(canvas, spriteFor(kind), facingRight, cx, y + jumpZ + windLift)
+            death.draw(canvas, spriteFor(kind), facingRight, cx, y + jumpZ + windLift, if (evolved) EVOLVE_SCALE else 1f)
             return
         }
 

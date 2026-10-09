@@ -101,6 +101,12 @@ object CatTeam {
     private var breedSeconds = 0f
     private val pendingBirthNotices = mutableListOf<String>()
 
+    /** 묭묭 진화 남은 놀이 시간(초) — 스테이지가 바뀌어도, 상점 마을에서도 이어진다 (2026-10-09 「상점에서도 거대해야」) */
+    var evolveSecondsLeft = 0f
+        private set
+    private const val KEY_EVOLVE = "team_evolve_seconds"
+    fun startEvolve(seconds: Float) { evolveSecondsLeft = seconds; save() }
+
     /** 게임을 켜 둔 채 한 시간을 보내면 줄어드는 양 (애정은 줄지 않는다) */
     private const val DECAY_FULLNESS = FULLNESS_PER_HEART   // 놀이 시간 한 시간에 하트 하나
     private const val DECAY_CLEANLINESS = 3
@@ -159,6 +165,7 @@ object CatTeam {
         nextId = prefs.getInt(KEY_NEXT_ID, 1)
         playSeconds = prefs.getInt(KEY_PLAY_SECONDS, 0).toFloat().coerceIn(0f, SECONDS_PER_HEART)
         breedSeconds = prefs.getInt(KEY_BREED_SECONDS, 0).toFloat().coerceIn(0f, BREED_EVERY)
+        evolveSecondsLeft = prefs.getInt(KEY_EVOLVE, 0).toFloat()
         pendingBirthNotices.clear()
         saveDebt = 0f
         nameCounts.clear()
@@ -263,6 +270,7 @@ object CatTeam {
             ?.putInt(KEY_NEXT_ID, nextId)
             ?.putInt(KEY_PLAY_SECONDS, playSeconds.toInt())
             ?.putInt(KEY_BREED_SECONDS, breedSeconds.toInt())
+            ?.putInt(KEY_EVOLVE, evolveSecondsLeft.toInt())
             ?.putString(KEY_NAME_COUNTS, counts.toString())
             ?.apply()
     }
@@ -286,6 +294,7 @@ object CatTeam {
             decayOnce()
             decayed = true
         }
+        if (evolveSecondsLeft > 0f) evolveSecondsLeft = (evolveSecondsLeft - dt).coerceAtLeast(0f)
         breedSeconds += dt
         while (breedSeconds >= BREED_EVERY) {
             breedSeconds -= BREED_EVERY

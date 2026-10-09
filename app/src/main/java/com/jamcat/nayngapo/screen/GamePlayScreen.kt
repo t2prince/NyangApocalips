@@ -130,7 +130,10 @@ class GamePlayScreen(
             .take(com.jamcat.nayngapo.ui.TouchControls.SKILL_SLOTS)
 
     /** 기술별 남은 쿨타임 (스테이지를 시작할 때는 모두 준비 완료) */
-    private val skillCooldowns = FloatArray(battleSkills.size)
+    private val skillCooldowns = FloatArray(battleSkills.size) { i ->
+        // 묭묭 진화가 아직 이어지는 중이면 그만큼 기다려야 다시 쓴다
+        if (battleSkills[i].id == "evolve") com.jamcat.nayngapo.engine.CatTeam.evolveSecondsLeft else 0f
+    }
 
     /** 이 스테이지에서 인간이 직접 쓸 수 있는 기술 (배운 것만, 최대 4개) */
     private val humanBattleSkills =
@@ -272,7 +275,7 @@ class GamePlayScreen(
                     armored = cat.hasArmor,
                     attackBonus = cat.attackBonus,
                     coat = cat.coat
-                )
+                ).also { it.evolve(com.jamcat.nayngapo.engine.CatTeam.evolveSecondsLeft, grown = true) }   // 묭묭 진화 중이면 큰 채로
             )
         }
     }
@@ -1292,6 +1295,7 @@ class GamePlayScreen(
         when (skill.id) {
             "evolve" -> {
                 // 묭묭 진화: 전장의 출전 냥이 모두가 55분 동안 엄청 커진다 (공격력 50·방어력 50)
+                com.jamcat.nayngapo.engine.CatTeam.startEvolve(skill.cooldown)   // 다음 스테이지·상점 마을에서도 이어진다
                 for (ally in level.allies) if (!ally.isDead) {
                     ally.evolve(skill.cooldown)
                     hitEffects.add(HitEffect(ally.x, ally.y - ally.height - 70f, 1.3f, "묭묭!"))

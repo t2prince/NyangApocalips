@@ -52,6 +52,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
     /** 자동차 매장에서 고른 차 (없으면 걸어 다닌다) — 차를 누르면 내리고 탄다 */
     /** 로봇 상점에서 '로봇 타기'를 켰으면 상점 마을에서도 로봇을 타고 다닌다 (대표님 2026-10-09) — 차보다 먼저 */
     private val robotRide = com.jamcat.nayngapo.engine.RobotCatalog.rideLevel.takeIf { it > 0 }?.let { com.jamcat.nayngapo.entity.RobotRide(it) }
+    private val gunButton = com.jamcat.nayngapo.ui.GunButton()
     private val carRide = if (robotRide != null) null
         else com.jamcat.nayngapo.engine.CarCatalog.availableIn(null)?.let { com.jamcat.nayngapo.entity.CarRide(it) }   // 방치차면 그 스테이지에 가야 탄다
 
@@ -604,6 +605,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         drawMenuButtons(canvas)
         drawSettingsButton(canvas, w)
         carRide?.drawButton(canvas)
+        gunButton.draw(canvas, player)   // '총 넣기/꺼내기' (2026-10-10)
         // 차를 스테이지에 방치해 두었으면 어디 있는지 알려 준다
         val abandonedAt = com.jamcat.nayngapo.engine.CarCatalog.abandonedStage
         if (carRide == null && robotRide == null && abandonedAt > 0) {
@@ -985,6 +987,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 touchControls.releaseAll(); returnX = player.x; gameView.showSettings(fromShop = true); return true
             }
             if (paused) return true
+            if (gunButton.tap(px, py, player)) { touchControls.releaseAll(); showNotice(if (player.gunOut) "총을 꺼냈어요" else "총을 넣었어요"); return true }
             // 자동차를 누르면 내리고 탄다 (대표님 2026-10-09)
             if (!touchControls.isControlArea(px, py, gameView.screenWidth, gameView.screenHeight)) carRide?.let { cr ->
                 val byButton = cr.tapButton(px, py, player)

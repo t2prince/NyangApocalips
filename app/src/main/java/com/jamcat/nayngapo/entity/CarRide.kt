@@ -111,7 +111,7 @@ class CarRide(val car: CarCatalog.Car) {
         if (!riding) return
         place(p.x + p.width / 2f, p.y + p.jumpZ, p.facingRight)?.let { canvas.drawBitmap(it, null, dst, null) }
         // 총을 가졌으면 차 앞쪽 위에 달려 있다 (2026-10-09 「총을 자동차에 달 수 있어」)
-        if (p.hasGun) SpriteManager.gunSide?.let { gun ->
+        if (p.hasGun && p.gunOut) SpriteManager.gunSide?.let { gun ->
             val g = if (p.facingRight) gun else SpriteManager.getFlipped(gun)
             val gh = DRAW_H * 0.36f; val gw = gun.width * gh / gun.height
             val gx = dst.centerX() + (if (p.facingRight) 1f else -1f) * dst.width() * 0.18f

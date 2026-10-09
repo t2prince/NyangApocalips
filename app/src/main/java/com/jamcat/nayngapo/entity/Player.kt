@@ -90,6 +90,8 @@ class Player(var x: Float, var y: Float) {
     var robotJustBroke = false
     /** 무기점에서 산 레이저 총 — 들고 다니고, 차를 타면 차에 단다 (2026-10-09) */
     var hasGun: Boolean = com.jamcat.nayngapo.engine.GameProgress.itemCount("h_gun") > 0   // 스테이지에서는 출전 준비에서 고른 대로
+    /** 총을 꺼내 들고 있는가 — '총 넣기'로 넣으면 손에서 사라지고 주먹으로 싸운다 (2026-10-10) */
+    var gunOut = true
     private val handPt = android.graphics.PointF()
     private val gunDst = RectF()
     /** 꽃가루에 숨이 막혀 느려진 남은 시간 (꽃냥이, 2026-09-27) */
@@ -388,7 +390,7 @@ class Player(var x: Float, var y: Float) {
         setHeroDst(bmp, cx, drawY)
         com.jamcat.nayngapo.ui.drawHero(canvas, bmp, heroDst, hero, facingRight, animTime)
         // 총을 들고 있으면 앞손에 쥔다 (차를 타면 총은 차에 달려 있다)
-        if (hasGun && !seatedInCar) drawGunInHand(canvas, bmp)
+        if (hasGun && gunOut && !seatedInCar) drawGunInHand(canvas, bmp)
 
         // 피격 이펙트: 실제로 맞췄고 타격 프레임일 때만 뻗은 팔·다리 끝에
         if (hitSparkTimer > 0f && striking && prog in 0.45f..0.80f) {

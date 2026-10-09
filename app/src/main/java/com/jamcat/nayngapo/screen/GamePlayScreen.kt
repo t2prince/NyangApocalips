@@ -2054,7 +2054,7 @@ class GamePlayScreen(
             input.jump = false
         }
         if (input.attack) {
-            if (player.hasGun && robotRide?.riding != true) fireGun()   // 총을 가졌으면 공격 버튼 = 쏘기 (2026-10-09), 로봇을 타면 로봇 주먹
+            if (player.hasGun && player.gunOut && robotRide?.riding != true) fireGun()   // 총을 가졌으면 공격 버튼 = 쏘기 (2026-10-09), 로봇을 타면 로봇 주먹
             else if (player.performAttack()) {
                 SoundManager.playAttack()
                 shake(0.07f, 4f)          // 휘두르는 순간의 가벼운 반동
@@ -2334,6 +2334,7 @@ class GamePlayScreen(
 
         // 멈추기 / 나가기 버튼
         carRide?.drawButton(canvas)   // 위쪽 '자동차 타기' 버튼 (2026-10-09)
+        gunButton.draw(canvas, player)   // 그 오른쪽 '총 넣기/꺼내기' (2026-10-10)
         drawMenuButtons(canvas, sw, sh)
 
         // Draw controls (screen space) — SP 버튼 카운트다운에 남은 쿨다운을 전달
@@ -3260,6 +3261,12 @@ class GamePlayScreen(
             }
         }
         if (paused) return true       // 멈춘 동안에는 조작이 먹지 않는다
+        // 총 넣기/꺼내기 버튼 (2026-10-10)
+        if ((action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) &&
+            gunButton.tap(event.getX(event.actionIndex), event.getY(event.actionIndex), player)) {
+            hitEffects.add(HitEffect(player.x, player.y - player.height, 0.8f, if (player.gunOut) "총을 꺼냈다!" else "총을 넣었다"))
+            return true
+        }
         // 자동차를 누르면 내리고 탄다 (대표님 2026-10-09) — 화면 좌표를 월드 좌표로 바꿔 차 그림과 맞춘다
         if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
             val cr = carRide
@@ -3299,6 +3306,7 @@ class GamePlayScreen(
 
     // ===== 레이저 총 (무기점, 2026-10-09) — 들고 쏘거나, 차를 타면 차에 단 총으로 쏜다. 빠르기·간격은 Claude 판단 =====
     private var gunCooldown = 0f
+    private val gunButton = com.jamcat.nayngapo.ui.GunButton()
     private val muzzlePt = android.graphics.PointF()
     private fun fireGun() {
         if (gunCooldown > 0f) return

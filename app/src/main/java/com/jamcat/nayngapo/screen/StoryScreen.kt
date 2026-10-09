@@ -12,7 +12,8 @@ import com.jamcat.nayngapo.engine.GameView
  * 화면을 누르면 다음 장, 마지막 장 다음은 타이틀. 오른쪽 맨 위 '건너뛰기'는 곧장 타이틀로.
  * (장면 전환 0.35초 페이드 · 한 장이 떠 있는 최소 시간 0.4초는 Claude 판단)
  */
-class StoryScreen(private val gameView: GameView) : Screen {
+/** replay: 상점 '스테이지 깨기'에서 다시 보는 중이면 끝나고 상점 마을로 */
+class StoryScreen(private val gameView: GameView, private val replay: Boolean = false) : Screen {
 
     private val pages: List<Bitmap> = listOf(R.drawable.story_1, R.drawable.story_2, R.drawable.story_3)
         .map { BitmapFactory.decodeResource(gameView.resources, it) }
@@ -71,6 +72,7 @@ class StoryScreen(private val gameView: GameView) : Screen {
     private fun finish() {
         if (done) return
         done = true
+        if (replay) { gameView.showShop(); return }
         com.jamcat.nayngapo.engine.GameProgress.markStorySeen()   // 다음부터는 안 나온다
         gameView.showTitle()
     }

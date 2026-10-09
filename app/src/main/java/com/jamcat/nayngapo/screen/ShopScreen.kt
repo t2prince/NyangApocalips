@@ -354,6 +354,8 @@ class ShopScreen(private val gameView: GameView) : Screen {
         touchControls.orderLabel = order.label
         touchControls.specialCooldown = player.specialCooldown
 
+        if (pipeMove != null) { updatePipeMove(deltaTime); return }
+        if (player.platforms.isEmpty()) player.platforms = pipes.map { it.platform }
         val input = touchControls.inputState
         // 상점 마을은 싸우는 곳이 아니라 기술은 쓰지 않는다 (누르면 알려 준다)
         if (input.useSkill != null || input.useHumanSkill != null) {
@@ -393,6 +395,12 @@ class ShopScreen(private val gameView: GameView) : Screen {
         nearTower = abs(pcx - towerX) < 240f
         nearMoney = abs(pcx - MONEY_X) < 170f
         nearGate = abs(pcx - stageGateX) < 220f
+        // 관 위에 서 있으면 '관 들어가기', 땅에서 사다리 앞이면 '지붕으로' — 이때는 다른 말풍선을 띄우지 않는다
+        val onPipe = pipeUnder()
+        pipeOffer = onPipe ?: if (player.onPlatform == null && !player.isJumping)
+            pipes.firstOrNull { abs(pcx - it.ladderX) < 60f } else null
+        pipeOfferEnter = onPipe != null
+        if (pipeOffer != null || player.onPlatform != null) { nearTent = -1; nearTower = false; nearMoney = false; nearGate = false }
     }
 
     override fun draw(canvas: Canvas) {
@@ -462,8 +470,14 @@ class ShopScreen(private val gameView: GameView) : Screen {
         }
         drawMoneyMan(canvas, MONEY_X, groundY)
         drawStageGate(canvas, stageGateX, groundY)
+        for (pp in pipes) {
+            if (pp.pipeX + 200f < cameraX || pp.ladderX - 200f > cameraX + w) continue
+            drawLadder(canvas, pp, groundY); drawPipe(canvas, pp)
+        }
         for (ally in allies) ally.draw(canvas)
         player.draw(canvas)
+        // 관에 들어가고 나올 때는 관이 인간 앞을 가린다
+        if (pipeMove == PipeMove.SINK || pipeMove == PipeMove.RISE) pipeFrom?.let { drawPipe(canvas, it) }
         canvas.restore()
         towerRect.offset(-cameraX, 0f)
 
@@ -511,13 +525,28 @@ class ShopScreen(private val gameView: GameView) : Screen {
             canvas.drawText(label, bx, enterRect.centerY() + 15f, bubbleText)
         }
 
+        // 관·사다리 말풍선
+        pipeRect.setEmpty()
+        val po = pipeOffer
+        if (po != null && pipeMove == null) {
+            val bx = (if (pipeOfferEnter) po.pipeX else po.ladderX) - cameraX
+            val label = if (pipeOfferEnter) "▼ 관 들어가기" else "▲ 지붕으로"
+            bubbleText.textSize = 44f
+            val bw = bubbleText.measureText(label) + 60f
+            val by = (if (pipeOfferEnter) po.topY - player.height - 70f else groundY - 260f) + sin(timer * 4f) * 6f
+            pipeRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
+            canvas.drawRoundRect(pipeRect, 38f, 38f, bubblePaint)
+            canvas.drawRoundRect(pipeRect, 38f, 38f, ink)
+            canvas.drawText(label, bx, pipeRect.centerY() + 15f, bubbleText)
+        }
+
         // 스테이지 깨기 앞: 말풍선
         if (nearGate) {
             val bx = stageGateX - cameraX
             val label = "▼ 스테이지 깨기"
             bubbleText.textSize = 44f
             val bw = bubbleText.measureText(label) + 60f
-            val by = groundY - 470f + sin(timer * 4f) * 6f
+            val by = groundY - SIGN_TOP - 70f + sin(timer * 4f) * 6f
             enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
             canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
             canvas.drawRoundRect(enterRect, 38f, 38f, ink)
@@ -704,36 +733,174 @@ class ShopScreen(private val gameView: GameView) : Screen {
         canvas.drawText(text, x, by - 25f * pop + 11f, adText)
     }
 
+    // ===== 건물 지붕 위의 관 (대표님 2026-10-09 「건물들 위에는 관이 있는데, 그곳으로 가면 상점의 다른 곳으로 순간이동」) =====
+    /**
+     * 건물마다 지붕에 초록 관이 하나 있다. 건물 왼쪽 사다리 앞에서 '▲ 지붕으로'를 누르면 사다리를 올라 관 위에 서고,
+     * 관 위에서 '▼ 관 들어가기'를 누르면 쑥 들어가 **오른쪽 다음 건물의 관**에서 솟아 나온다(맨 끝 다음은 맨 앞). 관에서 걸어 나가면 떨어진다.
+     * 사다리·차례대로 이어지는 것·관 그림(코드)은 Claude 판단.
+     */
+    private class Pipe(val ladderX: Float, val ladderTopY: Float, val pipeX: Float, val baseY: Float) {
+        val topY = baseY - PIPE_H
+        val platform = com.jamcat.nayngapo.entity.Platform(pipeX - PIPE_W / 2f - 12f, topY, PIPE_W + 24f)
+    }
+    private val pipes: List<Pipe> by lazy {
+        val g = Constants.GROUND_Y
+        val list = mutableListOf<Pipe>()
+        // 천막: 꼭대기 깃발 옆, 오른쪽 지붕 비탈에 박힌다
+        fun tentPipe(cx: Float) {
+            val d = TENT_W * 0.22f
+            val topY = g - TENT_H; val eaveY = g - TENT_H * 0.52f
+            val roofY = topY + (eaveY - topY) * d / (TENT_W / 2f)
+            list.add(Pipe(cx - TENT_W / 2f + 26f, eaveY, cx + d, roofY + 18f))
+        }
+        tentPipe(MONEY_TENT_X)
+        // 집: 지붕 꼭대기 가운데
+        val hb = SpriteManager.catHouse
+        val hw = hb.width * HOUSE_H / hb.height
+        list.add(Pipe(HOUSE_X - hw / 2f + 40f, g + 20f - HOUSE_H * 0.62f, HOUSE_X, g + 20f - HOUSE_H + HOUSE_H * 0.12f))
+        for (i in 0 until TENT_COUNT) tentPipe(tentX(i))
+        // 스테이지 깨기 표지판: 판 위 오른쪽
+        list.add(Pipe(stageGateX - SIGN_W / 2f - 30f, g - SIGN_TOP, stageGateX + SIGN_W * 0.25f, g - SIGN_TOP + 12f))
+        list.sortedBy { it.pipeX }
+    }
+
+    /** 사다리 오르기·관 들어가기/나오기 움직임 */
+    private enum class PipeMove { CLIMB, SINK, RISE }
+    private var pipeMove: PipeMove? = null
+    private var pipeFrom: Pipe? = null
+    private var pipeTo: Pipe? = null
+    private var pipeT = 0f
+    /** 지금 누를 수 있는 관 동작 (말풍선) */
+    private var pipeOffer: Pipe? = null
+    private var pipeOfferEnter = false
+    private val pipeRect = RectF()
+
+    private fun pipeUnder(): Pipe? = pipes.firstOrNull { player.onPlatform === it.platform }
+
+    private fun updatePipeMove(deltaTime: Float) {
+        val from = pipeFrom ?: return
+        when (pipeMove) {
+            PipeMove.CLIMB -> {
+                // 사다리를 올라(앞 60%) 관 위로 건너뛴다(뒤 40%)
+                pipeT = (pipeT + deltaTime / CLIMB_TIME).coerceAtMost(1f)
+                val g = player.y
+                if (pipeT < 0.6f) {
+                    val u = pipeT / 0.6f
+                    player.x = from.ladderX - player.width / 2f
+                    player.jumpZ = (from.ladderTopY - g) * u
+                } else {
+                    val u = (pipeT - 0.6f) / 0.4f
+                    val arc = -sin(u * Math.PI.toFloat()) * 60f
+                    player.x = (from.ladderX + (from.pipeX - from.ladderX) * u) - player.width / 2f
+                    player.jumpZ = (from.ladderTopY - g) + ((from.topY - g) - (from.ladderTopY - g)) * u + arc
+                }
+                if (pipeT >= 1f) landOnPipe(from)
+            }
+            PipeMove.SINK -> {
+                pipeT = (pipeT + deltaTime / WARP_TIME).coerceAtMost(1f)
+                player.jumpZ = (from.topY - player.y) + pipeT * (player.height + 40f)
+                if (pipeT >= 1f) {
+                    val to = pipeTo ?: from
+                    pipeFrom = to; pipeMove = PipeMove.RISE; pipeT = 0f
+                    player.x = to.pipeX - player.width / 2f
+                    // 따라오던 냥이들도 그 건물 앞(땅)으로 같이 간다
+                    for ((k, a) in allies.withIndex()) a.x = (to.ladderX - 60f - 70f * k).coerceAtLeast(20f)
+                    SoundManager.playSpecial()
+                }
+            }
+            PipeMove.RISE -> {
+                pipeT = (pipeT + deltaTime / WARP_TIME).coerceAtMost(1f)
+                player.jumpZ = (from.topY - player.y) + (1f - pipeT) * (player.height + 40f)
+                if (pipeT >= 1f) landOnPipe(from)
+            }
+            null -> Unit
+        }
+        val sw = gameView.screenWidth.toFloat()
+        cameraX = (player.x + player.width / 2f - sw * 0.4f).coerceIn(0f, (worldWidth - sw).coerceAtLeast(0f))
+    }
+
+    private fun landOnPipe(p: Pipe) {
+        pipeMove = null; pipeFrom = null; pipeTo = null
+        player.ridingVine = false
+        player.onPlatform = p.platform
+        player.isJumping = false; player.jumpVelocity = 0f
+        player.jumpZ = p.topY - player.y
+    }
+
+    private fun startClimb(p: Pipe) {
+        touchControls.releaseAll()
+        player.setMovement(0f, 0f)
+        player.ridingVine = true
+        pipeFrom = p; pipeMove = PipeMove.CLIMB; pipeT = 0f
+    }
+
+    private fun startWarp(p: Pipe) {
+        touchControls.releaseAll()
+        player.setMovement(0f, 0f)
+        player.ridingVine = true
+        player.onPlatform = null
+        val k = pipes.indexOf(p)
+        pipeFrom = p; pipeTo = pipes[(k + 1) % pipes.size]; pipeMove = PipeMove.SINK; pipeT = 0f
+        SoundManager.playSpecial()
+    }
+
+    private val pipeGreen = Paint().apply { color = Color.rgb(70, 180, 72); isAntiAlias = true }
+    private val pipeLight = Paint().apply { color = Color.rgb(140, 220, 120); isAntiAlias = true }
+    private val ladderPaint = Paint().apply { color = Color.rgb(150, 100, 56); strokeWidth = 9f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+
+    private fun drawPipe(canvas: Canvas, p: Pipe) {
+        val rimH = 34f
+        rect.set(p.pipeX - PIPE_W / 2f, p.topY + rimH, p.pipeX + PIPE_W / 2f, p.baseY)
+        canvas.drawRect(rect, pipeGreen)
+        canvas.drawRect(rect.left + 14f, rect.top, rect.left + 30f, rect.bottom, pipeLight)
+        canvas.drawRect(rect, ink)
+        rect.set(p.pipeX - PIPE_W / 2f - 12f, p.topY, p.pipeX + PIPE_W / 2f + 12f, p.topY + rimH)
+        canvas.drawRoundRect(rect, 8f, 8f, pipeGreen)
+        canvas.drawRect(rect.left + 14f, rect.top + 4f, rect.left + 30f, rect.bottom - 4f, pipeLight)
+        canvas.drawRoundRect(rect, 8f, 8f, ink)
+    }
+
+    private fun drawLadder(canvas: Canvas, p: Pipe, groundY: Float) {
+        val half = 24f
+        canvas.drawLine(p.ladderX - half, groundY, p.ladderX - half, p.ladderTopY - 20f, ladderPaint)
+        canvas.drawLine(p.ladderX + half, groundY, p.ladderX + half, p.ladderTopY - 20f, ladderPaint)
+        var y = groundY - 30f
+        while (y > p.ladderTopY) { canvas.drawLine(p.ladderX - half, y, p.ladderX + half, y, ladderPaint); y -= 48f }
+    }
+
     // ===== 상점가 끝 '스테이지 깨기' (대표님 2026-10-09) =====
     private val stonePaint = Paint().apply { color = Color.rgb(168, 168, 172); isAntiAlias = true }
     private val stoneDark = Paint().apply { color = Color.rgb(126, 126, 130); isAntiAlias = true }
-    private val gateBlack = Paint().apply { color = Color.rgb(40, 34, 48); isAntiAlias = true }
 
-    /** 돌 아치 문 + 팻말: 문 안쪽이 어둑하다 */
+    private val boardPaint = Paint().apply { color = Color.rgb(222, 170, 100); isAntiAlias = true }
+    private val boardDark = Paint().apply { color = Color.rgb(170, 112, 60); isAntiAlias = true }
+    private val boardText = Paint().apply { color = Color.rgb(60, 32, 14); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
+
+    /** '스테이지 깨기'는 큰 표지판 (대표님 2026-10-09): 나무 기둥 두 개 위에 큰 판, 글씨와 스테이지 돌 그림 */
     private fun drawStageGate(canvas: Canvas, cx: Float, groundY: Float) {
-        val gw = 360f; val gh = 420f
-        rect.set(cx - gw / 2f - 10f, groundY - 14f, cx + gw / 2f + 10f, groundY + 20f)
+        val top = groundY - SIGN_TOP; val bottom = groundY - SIGN_TOP + SIGN_H
+        rect.set(cx - SIGN_W / 2f, groundY - 14f, cx + SIGN_W / 2f, groundY + 20f)
         canvas.drawOval(rect, shadowPaint)
-        // 기둥 두 개 + 아치
         for (side in intArrayOf(-1, 1)) {
-            rect.set(cx + side * gw / 2f - 50f, groundY - gh * 0.72f, cx + side * gw / 2f + 50f, groundY)
-            canvas.drawRect(rect, stonePaint); canvas.drawRect(rect, ink)
+            rect.set(cx + side * SIGN_W * 0.32f - 18f, bottom - 10f, cx + side * SIGN_W * 0.32f + 18f, groundY)
+            canvas.drawRect(rect, boardDark); canvas.drawRect(rect, ink)
         }
-        rect.set(cx - gw / 2f - 50f, groundY - gh, cx + gw / 2f + 50f, groundY - gh * 0.44f)
-        canvas.drawArc(rect, 180f, 180f, true, stonePaint); canvas.drawArc(rect, 180f, 180f, true, ink)
-        rect.set(cx - gw / 2f + 50f, groundY - gh * 0.86f, cx + gw / 2f - 50f, groundY - gh * 0.58f)
-        canvas.drawArc(rect, 180f, 180f, true, gateBlack)
-        canvas.drawRect(cx - gw / 2f + 50f, groundY - gh * 0.72f, cx + gw / 2f - 50f, groundY, gateBlack)
-        // 돌 이음매
-        for (k in 1..3) canvas.drawLine(cx - gw / 2f - 50f, groundY - gh * 0.18f * k, cx - gw / 2f + 50f, groundY - gh * 0.18f * k, ink)
-        for (k in 1..3) canvas.drawLine(cx + gw / 2f - 50f, groundY - gh * 0.18f * k, cx + gw / 2f + 50f, groundY - gh * 0.18f * k, ink)
-        // 팻말
-        signText.textSize = 38f
-        val label = "스테이지 깨기"
-        val lw = signText.measureText(label) + 40f
-        rect.set(cx - lw / 2f, groundY - gh - 30f, cx + lw / 2f, groundY - gh + 32f)
-        canvas.drawRoundRect(rect, 10f, 10f, signPaint); canvas.drawRoundRect(rect, 10f, 10f, ink)
-        canvas.drawText(label, cx, rect.centerY() + 13f, signText)
+        rect.set(cx - SIGN_W / 2f, top, cx + SIGN_W / 2f, bottom)
+        canvas.drawRoundRect(rect, 18f, 18f, boardPaint)
+        // 판자 줄
+        for (k in 1..2) canvas.drawLine(rect.left + 10f, top + SIGN_H * k / 3f, rect.right - 10f, top + SIGN_H * k / 3f, boardDark)
+        canvas.drawRoundRect(rect, 18f, 18f, ink)
+        boardText.textSize = 64f
+        canvas.drawText("스테이지 깨기", cx, top + SIGN_H * 0.42f, boardText)
+        // 스테이지 돌 세 개 + 화살표
+        for (k in -1..1) {
+            val sx = cx + k * 70f - 30f; val sy = top + SIGN_H * 0.72f
+            canvas.drawCircle(sx, sy + 4f, 24f, stoneDark); canvas.drawCircle(sx, sy, 24f, stonePaint); canvas.drawCircle(sx, sy, 24f, ink)
+            boardText.textSize = 26f
+            canvas.drawText("${k + 2}", sx, sy + 9f, boardText)
+        }
+        boardText.textSize = 54f
+        canvas.drawText("▶", cx + 150f, top + SIGN_H * 0.72f + 18f, boardText)
     }
 
     /** 스테이지 고르기 창: 열린 스테이지(만든 것만) 돌 칸들 — 누르면 그 스테이지로 */
@@ -768,9 +935,18 @@ class ShopScreen(private val gameView: GameView) : Screen {
         }
         closeRect.set(panelRect.right - 90f, panelRect.top + 20f, panelRect.right - 20f, panelRect.top + 90f)
         canvas.drawText("✕", closeRect.centerX(), closeRect.centerY() + 18f, panelTitle)
+        // 왼쪽 위: 스토리 다시 보기 (대표님 2026-10-09 「스테이지 깨기에선 스토리를 볼 수 있어」)
+        storyRect.set(panelRect.left + 24f, panelRect.top + 20f, panelRect.left + 300f, panelRect.top + 96f)
+        canvas.drawRoundRect(storyRect, 38f, 38f, storyBtnPaint); canvas.drawRoundRect(storyRect, 38f, 38f, ink)
+        rowName.textSize = 38f; rowName.textAlign = Paint.Align.CENTER
+        canvas.drawText("📖 스토리 보기", storyRect.centerX(), storyRect.centerY() + 13f, rowName)
+        rowName.textAlign = Paint.Align.LEFT
     }
+    private val storyRect = RectF()
+    private val storyBtnPaint = Paint().apply { color = Color.rgb(255, 226, 150); isAntiAlias = true }
 
     private fun tapStagePicker(px: Float, py: Float) {
+        if (storyRect.contains(px, py)) { pickingStage = false; returnX = player.x; gameView.replayStory(); return }
         if (closeRect.contains(px, py) || !panelRect.contains(px, py)) { pickingStage = false; return }
         val n = stageCells.firstOrNull { it.second.contains(px, py) }?.first ?: return
         val why = gameView.stageBlockReason(n)
@@ -964,6 +1140,12 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 touchControls.releaseAll(); returnX = player.x; gameView.showSettings(fromShop = true); return true
             }
             if (paused) return true
+            if (pipeMove != null) return true
+            val po = pipeOffer
+            if (po != null && !pipeRect.isEmpty && pipeRect.contains(px, py)) {
+                if (pipeOfferEnter) startWarp(po) else startClimb(po)
+                return true
+            }
             if (nearGate && !enterRect.isEmpty && enterRect.contains(px, py)) {
                 touchControls.releaseAll(); pickingStage = true; return true
             }
@@ -1036,6 +1218,15 @@ class ShopScreen(private val gameView: GameView) : Screen {
         )
         private val DEFAULT_ADS = listOf("어서 오세요!", "곧 좋은 물건 들어와요~")
         /** 맨 앞 집의 가운데 x · 그림 높이 — 인간은 집 앞(오른쪽)에서 시작한다 */
+        /** 지붕 위 관 크기 · 사다리 오르기·관 드나들기 시간 (Claude 판단) */
+        private const val PIPE_W = 110f
+        private const val PIPE_H = 120f
+        private const val CLIMB_TIME = 1.0f
+        private const val WARP_TIME = 0.45f
+        /** '스테이지 깨기' 큰 표지판: 폭 · 땅에서 판 위까지 · 판 높이 */
+        private const val SIGN_W = 520f
+        private const val SIGN_TOP = 460f
+        private const val SIGN_H = 260f
         private const val HOUSE_X = 880f
         private const val HOUSE_H = 520f
         private const val START_X = 1200f

@@ -89,6 +89,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         currentScreen = StoryScreen(this)
     }
 
+    /** 상점가 끝 '스테이지 깨기'에서 스토리 다시 보기 — 끝나면 상점 마을로 (대표님 2026-10-09) */
+    fun replayStory() {
+        fadeTo { StoryScreen(this, replay = true) }
+    }
+
     fun showTitle() {
         currentScreen = TitleScreen(this)
         SoundManager.resumeBgm()   // 홈으로 돌아오면 다시 노래가 흐른다

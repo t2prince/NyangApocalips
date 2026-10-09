@@ -49,12 +49,29 @@ class ShopScreen(private val gameView: GameView) : Screen {
     /** 출전시킨 팀 냥이는 상점 마을에도 인간을 따라온다 (대표님 2026-09-27 「출전시키기를 누르면 고양이와 같이 상점에 갈 수 있어」) */
     private val allies = mutableListOf<com.jamcat.nayngapo.entity.AllyCat>()
 
+    /** 자동차 매장에서 고른 차 (없으면 걸어 다닌다) */
+    private val car = com.jamcat.nayngapo.engine.CarCatalog.selected
+    private val carDst = RectF()
+    /** 인간이 탄 차: 바퀴가 땅에 닿게, 바라보는 쪽으로 — 인간 앞에 그려 앉은 다리를 가린다 (GamePlayScreen 과 같다) */
+    private fun drawCar(canvas: Canvas) {
+        val c = car ?: return
+        val base = SpriteManager.cars[c.id] ?: return
+        val bmp = if (player.facingRight) base else SpriteManager.getFlipped(base)
+        val ch = CAR_DRAW_H; val cw = bmp.width * ch / bmp.height
+        val cx = player.x + player.width / 2f
+        val bottom = player.y + player.jumpZ + 14f
+        carDst.set(cx - cw / 2f, bottom - ch, cx + cw / 2f, bottom)
+        canvas.drawBitmap(bmp, null, carDst, null)
+    }
+
     init {
         Terrain.stage = Terrain.SHOP            // 상점 마을은 평평한 초원
         // 천막(가게)에서 나오면 그 가게 앞에 서 있다 (대표님 2026-10-09) — 로비에서 들어오면 처음 자리
         player = Player(returnX ?: START_X, Constants.GROUND_Y)
         returnX = null
         player.facingRight = true
+        // 상점 마을에서도 고른 자동차를 타고 다닌다 (대표님 2026-10-09)
+        car?.let { player.carSpeedMul = it.speedMul; player.rideLift = CAR_RIDE_LIFT }
         // 땅 스테이지와 같이 날아냥이는 빼고, 인간 뒤에 줄지어 선다
         // 배냥이도 상점 마을을 걸어 다니고 모든 가게에 갈 수 있다 (대표님 2026-10-09). 날아냥이는 여전히 하늘 전용
         val party = com.jamcat.nayngapo.engine.CatTeam.party.filter { it.kind != com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING }
@@ -485,6 +502,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         }
         for (ally in allies) ally.draw(canvas)
         player.draw(canvas)
+        drawCar(canvas)
         canvas.restore()
         towerRect.offset(-cameraX, 0f)
 
@@ -1092,6 +1110,9 @@ class ShopScreen(private val gameView: GameView) : Screen {
         private const val SIGN_W = 520f
         /** 자동차 매장 건물 그림 높이 */
         private const val CAR_SHOP_H = 440f
+        /** 탄 자동차 그림 높이 · 인간이 앉는 만큼 들어 올림 (스테이지와 같다) */
+        private const val CAR_DRAW_H = 120f
+        private const val CAR_RIDE_LIFT = 46f
         private const val SIGN_TOP = 460f
         private const val SIGN_H = 260f
         private const val HOUSE_X = 880f

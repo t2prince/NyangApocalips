@@ -27,6 +27,11 @@ ITEMS = {
     'dummy_iron': ('dummy_iron', 360),
     'dummy_gold': ('dummy_gold', 360),
     'dummy_diamond': ('dummy_diamond', 360),
+    # 자동차 매장·자동차 (2026-10-09 「맨 뒤 자동차 매장에서 자동차 팔아」)
+    'car_shop': ('car_shop', 600),
+    'car_red': ('car_red', 240),
+    'car_blue': ('car_blue', 240),
+    'car_yellow': ('car_yellow', 240),
     # 집 안 가구 (2026-10-09 「집에 가구들도 있어」)
     'furn_sofa': ('furn_sofa', 300),
     'furn_shelf': ('furn_shelf', 400),

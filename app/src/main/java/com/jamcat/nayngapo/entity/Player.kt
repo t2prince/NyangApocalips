@@ -113,7 +113,9 @@ class Player(var x: Float, var y: Float) {
     }
 
     /** 이 인간의 달리기 속도 */
-    private val moveSpeed = Constants.PLAYER_SPEED * hero.speedMul
+    /** 자동차를 타면 빨라진다 (자동차 매장에서 고른 차, 2026-10-09) */
+    var carSpeedMul = 1f
+    private val moveSpeed: Float get() = Constants.PLAYER_SPEED * hero.speedMul * carSpeedMul
 
     // 횡뷰: 발끝(y)부터 머리까지 전신 히트박스 (투사체가 몸통 높이로 날아온다)
     private val hitBoxRect = RectF()

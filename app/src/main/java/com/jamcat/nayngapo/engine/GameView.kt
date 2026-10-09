@@ -193,6 +193,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         fadeTo { ArenaScreen(this, catId) }
     }
 
+    /** 자동차 매장 (상점 마을 맨 끝) — 사고 고르기, 나오면 상점 마을 매장 앞 */
+    fun showCarShop() {
+        fadeTo { CarShopScreen(this) }
+    }
+
     /** 상점: 평평한 초원 위 천막 상점들 — 인간을 한 명 구할 때마다 천막 하나가 열린다 */
     fun showShop() {
         fadeTo { ShopScreen(this) }

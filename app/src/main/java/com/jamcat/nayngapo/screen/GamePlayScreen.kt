@@ -38,6 +38,8 @@ class GamePlayScreen(
     private val seaMount: com.jamcat.nayngapo.engine.CatTeam.TeamCat? =
         if (isSea) com.jamcat.nayngapo.engine.CatTeam.boatMount() else null
     private var seaMountMarked = false
+    /** 자동차 매장 '자동차 선택'에서 고른 차 — 땅 스테이지에서 타고 다닌다 (바다는 배냥이라 안 탄다, 2026-10-09) */
+    private val car = if (isSea) null else com.jamcat.nayngapo.engine.CarCatalog.selected
     private var boatHintShown = false
 
     /** 이 시간을 넘겨 겹쳐 있으면 서로 밀어낸다(초) */
@@ -269,6 +271,7 @@ class GamePlayScreen(
     init {
         camera.forwardOnly = true   // 플랫포머식: 카메라가 뒤로 돌아가지 않는다
         if (isSea) { player.lives = 1; player.rideLift = SEA_RIDE_LIFT }
+        car?.let { player.carSpeedMul = it.speedMul; player.rideLift = CAR_RIDE_LIFT }
         // 약국 물약: 스테이지를 시작할 때 하나씩 저절로 마신다 (바다는 목숨 1 규칙이라 생명 물약은 안 마신다)
         if (!isSea && GameProgress.consumeItem("h_life")) player.lives += 1
         if (GameProgress.consumeItem("h_heal")) { player.maxHp += 2; player.hp = player.maxHp }
@@ -318,6 +321,9 @@ class GamePlayScreen(
         /** 꽃가루에 숨이 막혀 느려지는 시간 (Claude 판단) */
         /** 배냥이 위에 올라탄 인간을 그만큼 위로 그린다 (Claude 판단) */
         private const val SEA_RIDE_LIFT = 58f
+        /** 자동차: 그림 높이 · 인간이 앉는 만큼 들어 올림 (Claude 판단) */
+        private const val CAR_DRAW_H = 120f
+        private const val CAR_RIDE_LIFT = 46f
         /** 해적선 항해 (Claude 판단) */
         private const val SHIP_SPEED = 45f
         private const val SHIP_MAX_TRAVEL = 1600f
@@ -2159,6 +2165,7 @@ class GamePlayScreen(
             drawables.add(Drawable(player.y) {
                 if (isSea) drawSeaMount(canvas)
                 player.draw(canvas)
+                drawCar(canvas)   // 차는 인간 앞 — 앉은 다리를 가린다
             })
         }
         // 바다: 배가 없는 냥이들은 작은 뗏목 위에 서 있다
@@ -2777,6 +2784,19 @@ class GamePlayScreen(
             canvas.drawLine(x + 40f, y + 46f, x + 90f, y + 48f, seaFoam)
             x += 120f
         }
+    }
+
+    /** 인간이 탄 자동차: 발 밑에 바퀴가 땅에 닿게, 바라보는 쪽으로 */
+    private val carDst = RectF()
+    private fun drawCar(canvas: Canvas) {
+        val c = car ?: return
+        val base = SpriteManager.cars[c.id] ?: return
+        val bmp = if (player.facingRight) base else SpriteManager.getFlipped(base)
+        val ch = CAR_DRAW_H; val cw = bmp.width * ch / bmp.height
+        val cx = player.x + player.width / 2f
+        val bottom = player.y + player.jumpZ + 14f
+        carDst.set(cx - cw / 2f, bottom - ch, cx + cw / 2f, bottom)
+        canvas.drawBitmap(bmp, null, carDst, null)
     }
 
     /** 인간이 탄 배냥이: 인간 발밑에 무늬 그대로의 배냥이(내 편)를 그린다 */

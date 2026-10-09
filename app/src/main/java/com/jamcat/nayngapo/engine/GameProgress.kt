@@ -35,6 +35,7 @@ object GameProgress {
     private const val KEY_HUMANS_RESCUED = "stat_humans_rescued"
     private const val KEY_STORY_SEEN = "story_seen"
     private const val KEY_DUMMY_LEVEL = "dummy_level"
+    private const val KEY_SELECTED_CAR = "selected_car"
     private const val KEY_MISSIONS_CLAIMED = "missions_claimed"
     private const val KEY_STAGE20_NO_DEATH = "stat_stage20_no_death"
     private const val KEY_BGM = "setting_bgm"
@@ -108,6 +109,15 @@ object GameProgress {
      */
     var dummyLevel = 1
         private set
+
+    /** 스테이지에서 타고 다닐 자동차 id (자동차 매장 '자동차 선택', 없으면 "") */
+    var selectedCar = ""
+        private set
+
+    fun selectCar(id: String) {
+        selectedCar = id
+        prefs?.edit()?.putString(KEY_SELECTED_CAR, id)?.apply()
+    }
     const val DUMMY_LEVEL_PRICE = 10
     const val DUMMY_LEVEL_MAX = 1_000_000_000
 
@@ -192,6 +202,7 @@ object GameProgress {
         humansRescued = prefs?.getInt(KEY_HUMANS_RESCUED, 0) ?: 0
         storySeen = prefs?.getBoolean(KEY_STORY_SEEN, false) ?: false
         dummyLevel = (prefs?.getInt(KEY_DUMMY_LEVEL, 1) ?: 1).coerceIn(1, DUMMY_LEVEL_MAX)
+        selectedCar = prefs?.getString(KEY_SELECTED_CAR, "") ?: ""
         bgmEnabled = prefs?.getBoolean(KEY_BGM, true) ?: true
         sfxEnabled = prefs?.getBoolean(KEY_SFX, true) ?: true
         shakeEnabled = prefs?.getBoolean(KEY_SHAKE, true) ?: true

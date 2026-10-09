@@ -55,6 +55,9 @@ object SpriteManager {
     var furniture: Map<String, Bitmap> = emptyMap()
     /** 투기장 가짜 냥이 Lv 별 그림 (0 = Lv1 밀짚, 1 나무, 2 돌, 3 철, 4 금, 5 다이아) — 없는 그림은 밀짚으로 */
     var dummyByLevel: List<Bitmap> = emptyList()
+    /** 자동차 그림 (id → 그림, 오른쪽을 본다) · 자동차 매장 건물 */
+    var cars: Map<String, Bitmap> = emptyMap()
+    var carShop: Bitmap? = null
     lateinit var catIdleRed: List<Bitmap>
     lateinit var catIdleOrange: List<Bitmap>
     lateinit var catIdleYellow: List<Bitmap>
@@ -197,6 +200,11 @@ object SpriteManager {
             val id = res.getIdentifier("dummy_$n", "drawable", context.packageName)
             if (id == 0) strawCat else BitmapFactory.decodeResource(res, id)
         }
+        cars = CarCatalog.cars.mapNotNull { c ->
+            val id = res.getIdentifier(c.id, "drawable", context.packageName)
+            if (id == 0) null else c.id to BitmapFactory.decodeResource(res, id)
+        }.toMap()
+        res.getIdentifier("car_shop", "drawable", context.packageName).let { if (it != 0) carShop = BitmapFactory.decodeResource(res, it) }
         furniture = listOf("sofa", "shelf", "table", "lamp", "catbeds", "plant", "fireplace").mapNotNull { n ->
             val id = res.getIdentifier("furn_$n", "drawable", context.packageName)
             if (id == 0) null else n to BitmapFactory.decodeResource(res, id)

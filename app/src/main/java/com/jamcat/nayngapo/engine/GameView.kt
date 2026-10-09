@@ -149,8 +149,15 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         else -> null
     }
 
+    /** 스테이지 출발 — 땅 스테이지는 먼저 출전 준비 화면(가져갈 아이템 고르기)을 띄운다 (2026-10-09). 하늘은 바로 */
     fun startStage(stageNumber: Int, fromShop: Boolean = false) {
         stageFromShop = fromShop
+        if (GameProgress.isSkyStage(stageNumber)) { launchStage(stageNumber); return }
+        fadeTo { BattlePrepScreen(this, stageNumber) }
+    }
+
+    /** 출전 준비를 마치고 진짜로 스테이지에 들어간다 */
+    fun launchStage(stageNumber: Int) {
         fadeTo {
             if (GameProgress.isSkyStage(stageNumber)) SkyStageScreen(this, stageNumber)
             else GamePlayScreen(this, stageNumber)

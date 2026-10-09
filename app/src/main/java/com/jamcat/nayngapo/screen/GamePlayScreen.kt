@@ -40,9 +40,12 @@ class GamePlayScreen(
     private var seaMountMarked = false
     /** 자동차 매장 '자동차 선택'에서 고른 차 — 땅 스테이지에서 타고 다닌다 (바다는 배냥이라 안 탄다, 2026-10-09). 차를 누르면 내리고 탄다 */
     /** 로봇 상점에서 '로봇 타기'를 켰으면 땅 스테이지에서 로봇을 타고 시작한다 (바다 빼고, 차보다 먼저 — 2026-10-09) */
-    private val robotRide = if (isSea || com.jamcat.nayngapo.engine.RobotCatalog.rideLevel == 0) null
-        else com.jamcat.nayngapo.entity.RobotRide(com.jamcat.nayngapo.engine.RobotCatalog.rideLevel)
-    private val carRide = if (isSea || robotRide != null) null else com.jamcat.nayngapo.engine.CarCatalog.availableIn(stageNumber)?.let { com.jamcat.nayngapo.entity.CarRide(it) }
+    /** 출전 준비에서 고른 탈 것 (2026-10-09) */
+    private val chosenRide = com.jamcat.nayngapo.engine.BattleLoadout.rideNow()
+    private val robotRide = if (isSea || chosenRide != com.jamcat.nayngapo.engine.BattleLoadout.Ride.ROBOT || !com.jamcat.nayngapo.engine.RobotCatalog.owned) null
+        else com.jamcat.nayngapo.entity.RobotRide(GameProgress.robotLevel)
+    private val carRide = if (isSea || chosenRide != com.jamcat.nayngapo.engine.BattleLoadout.Ride.CAR) null
+        else com.jamcat.nayngapo.engine.CarCatalog.availableIn(stageNumber)?.let { com.jamcat.nayngapo.entity.CarRide(it) }
     private var boatHintShown = false
 
     /** 이 시간을 넘겨 겹쳐 있으면 서로 밀어낸다(초) */
@@ -281,8 +284,11 @@ class GamePlayScreen(
             else cr.mount(player)
         }
         // 약국 물약: 스테이지를 시작할 때 하나씩 저절로 마신다 (바다는 목숨 1 규칙이라 생명 물약은 안 마신다)
-        if (!isSea && GameProgress.consumeItem("h_life")) player.lives += 1
-        if (GameProgress.consumeItem("h_heal")) { player.maxHp += 2; player.hp = player.maxHp }
+        // 출전 준비에서 고른 것만 (2026-10-09)
+        val loadout = com.jamcat.nayngapo.engine.BattleLoadout
+        if (!isSea && loadout.lifePotion && GameProgress.consumeItem("h_life")) player.lives += 1
+        if (loadout.heartPotion && GameProgress.consumeItem("h_heal")) { player.maxHp += 2; player.hp = player.maxHp }
+        player.hasGun = player.hasGun && loadout.gun
         showWaveText("STAGE $stageNumber - START!")
 
         // 관리 화면에서 출전으로 골라 둔 팀 냥이들이 플레이어 뒤에 줄지어 함께 출발한다.

@@ -89,7 +89,7 @@ class Player(var x: Float, var y: Float) {
     /** 로봇이 방금 부서졌다 (화면이 보고 내리게 한다) */
     var robotJustBroke = false
     /** 무기점에서 산 레이저 총 — 들고 다니고, 차를 타면 차에 단다 (2026-10-09) */
-    val hasGun: Boolean = com.jamcat.nayngapo.engine.GameProgress.itemCount("h_gun") > 0
+    var hasGun: Boolean = com.jamcat.nayngapo.engine.GameProgress.itemCount("h_gun") > 0   // 스테이지에서는 출전 준비에서 고른 대로
     private val handPt = android.graphics.PointF()
     private val gunDst = RectF()
     /** 꽃가루에 숨이 막혀 느려진 남은 시간 (꽃냥이, 2026-09-27) */

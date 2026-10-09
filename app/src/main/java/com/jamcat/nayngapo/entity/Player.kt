@@ -145,9 +145,17 @@ class Player(var x: Float, var y: Float) {
         // 덩굴에 매달린 동안은 위치를 덩굴이 정한다 (화면 쪽에서 매 프레임 넣어 준다)
         if (!ridingVine) {
             // 횡뷰 플랫포머: 좌우로만 이동하고 발은 항상 지형 표면 위 (수직은 jumpZ가 담당)
+            val oldX = x; val oldY = y; val oldFeet = y + jumpZ
             x += velocityX * deltaTime
             x = x.coerceIn(Constants.PLAY_AREA_LEFT + 10f, Constants.PLAY_AREA_RIGHT - width - 10f)
             y = Terrain.groundY(x + width / 2f)
+            // 해적선 갑판처럼 확 높은 턱은 걸어서 못 오른다 — 점프해서 발이 갑판보다 높을 때만 올라탄다 (대표님 2026-10-09)
+            if (oldY - y > STEP_MAX && oldFeet > y + 2f) { x = oldX; y = oldY }
+            // 높이가 확 바뀌면(갑판에 오르거나 내려오면) 발 높이를 그대로 두고 떨어지거나 착지한다
+            if (kotlin.math.abs(y - oldY) > STEP_MAX && onPlatform == null && stompPhase == StompPhase.NONE) {
+                jumpZ = oldFeet - y
+                if (jumpZ < -1f && !isJumping) { isJumping = true; jumpVelocity = 0f }
+            }
 
             val feetBefore = y + jumpZ
             if (stompPhase != StompPhase.NONE) {
@@ -361,6 +369,8 @@ class Player(var x: Float, var y: Float) {
 
 
     companion object {
+        /** 한 프레임에 이보다 높이 바뀌는 턱은 걸어서 못 오른다 (지형 언덕은 이보다 훨씬 완만하다) */
+        const val STEP_MAX = 40f
         /** 각성: 공격력·방어력 증가량 (대표님 2026-10-09) · 지속 시간 10초 (Claude 판단) */
         const val AWAKEN_BONUS = 15
         const val AWAKEN_TIME = 10f

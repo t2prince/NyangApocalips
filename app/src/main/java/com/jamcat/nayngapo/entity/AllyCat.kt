@@ -118,6 +118,7 @@ class AllyCat(
 
     // 함정·구덩이를 뛰어넘는 도약
     private var hopOffset = 0f
+    private var climbOffset = 0f
     private var hopVelocity = 0f
 
     /** 앞에 위험이 있을 때 호출 — 이미 떠 있으면 무시된다 */
@@ -271,7 +272,14 @@ class AllyCat(
             AllyOrder.HOLD -> Unit
         }
 
+        val oldY = y
         y = Terrain.groundY(x + width / 2f)
+        // 해적선 갑판처럼 높이가 확 바뀐 곳: 그림만 원래 높이에서 새 높이로 따라간다 (인간 따라 배에 오른다)
+        if (kotlin.math.abs(y - oldY) > 40f) climbOffset += oldY - y
+        if (climbOffset != 0f) {
+            val step = 700f * deltaTime
+            climbOffset = if (kotlin.math.abs(climbOffset) <= step) 0f else climbOffset - kotlin.math.sign(climbOffset) * step
+        }
 
         val hoverLift = if (hovers) HOVER_LIFT else 0f
         if (abs(velocityX) > 1f) {
@@ -304,7 +312,7 @@ class AllyCat(
         // 기술을 쓰는 순간 콩 뛰어오른다 (0.3초 동안 최대 40)
         val castLift =
             if (castTimer > 0f) -40f * sin((1f - castTimer / CAST_TIME) * Math.PI.toFloat()) else 0f
-        val drawY = y + jumpZ + windLift + hopOffset + castLift
+        val drawY = y + jumpZ + windLift + hopOffset + castLift + climbOffset
 
         if (isDead) {
             death.draw(canvas, spriteFor(kind), facingRight, cx, y + jumpZ + windLift, if (evolved) EVOLVE_SCALE else 1f)

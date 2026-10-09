@@ -4,6 +4,12 @@ import com.jamcat.nayngapo.engine.Constants
 import com.jamcat.nayngapo.engine.Terrain
 import com.jamcat.nayngapo.entity.*
 
+/** 31 해적선 갑판 — 배 그림(pirate_ship.png 1200×760을 높이 560으로, 바닥은 물 아래 60)의 갑판 줄. 배 가운데 x 기준 */
+const val SHIP_DRAW_H = 560f
+private const val SHIP_DECK_BACK = 200f    // 뱃머리 쪽(왼쪽) 갑판 끝
+private const val SHIP_DECK_FRONT = 400f   // 고물 쪽(오른쪽) 갑판 끝
+private const val SHIP_DECK_RISE = 90f     // 물 위로 갑판 높이 (점프 최고 200 이라 한 번에 오른다)
+
 /**
  * 플랫포머식 횡스크롤 스테이지: 왼쪽에서 출발해 오른쪽으로만 진행한다.
  * 냥이들은 진행 경로를 따라 구간 그룹으로 등장하고, 보스는 스테이지 맨 끝을 지킨다.
@@ -270,7 +276,20 @@ class Level(val stageNumber: Int) {
             }
         }
         // 해적선은 바다의 맨 끝 (대표님 2026-10-09) — 해적냥이가 그 앞을 지킨다
-        if (stageNumber == 31) pirateShipX = bossBaseX + 1150f
+        if (stageNumber == 31) {
+            val shipX = bossBaseX + 1150f
+            pirateShipX = shipX
+            // 갑판 = 배 그림(높이 SHIP_DRAW_H, 바닥이 물 아래 60)에서 가운데 낮은 갑판 줄 — 그림 기준 비율로 잡았다
+            Terrain.deckStage = 31
+            Terrain.deckLeft = shipX - SHIP_DECK_BACK
+            Terrain.deckRight = shipX + SHIP_DECK_FRONT
+            Terrain.deckY = Constants.GROUND_Y - SHIP_DECK_RISE
+            // 해적냥이는 해적선 위에 타고 있다 — 갑판 밖으로는 안 나온다
+            for (b in enemies.filterIsInstance<PirateCatBoss>()) {
+                b.x = shipX + 60f
+                b.deckLeft = Terrain.deckLeft; b.deckRight = Terrain.deckRight
+            }
+        }
 
         // 벌집 구조물은 뺐다 (대표님 2026-10-04 「벌집을 없애줘」) — 벌냥이는 다른 냥이처럼 표에서 바로 배치되어 날아다닌다
 

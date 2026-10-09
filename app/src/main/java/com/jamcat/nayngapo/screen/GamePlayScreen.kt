@@ -2151,9 +2151,10 @@ class GamePlayScreen(
         }
         // 바다: 배가 없는 냥이들은 작은 뗏목 위에 서 있다
         if (isSea) {
-            for (enemy in level.enemies) if (!enemy.isDead && enemy !is com.jamcat.nayngapo.entity.BoatCat && enemy.isTangible)
+            // (해적선 갑판 위에 선 냥이는 뗏목 없이)
+            for (enemy in level.enemies) if (!enemy.isDead && enemy !is com.jamcat.nayngapo.entity.BoatCat && enemy.isTangible && !Terrain.onDeck(enemy.x + enemy.width / 2f))
                 drawables.add(Drawable(enemy.y - 0.5f) { drawRaft(canvas, enemy.x + enemy.width / 2f, enemy.y, enemy.width) })
-            for (ally in level.allies) if (!ally.isDead)
+            for (ally in level.allies) if (!ally.isDead && !Terrain.onDeck(ally.x + ally.width / 2f))
                 drawables.add(Drawable(ally.y - 0.5f) { drawRaft(canvas, ally.x + ally.width / 2f, ally.y, ally.width) })
         }
 
@@ -2798,9 +2799,9 @@ class GamePlayScreen(
     private val shipDst = RectF()
     private fun drawPirateShip(canvas: Canvas, sx: Float) {
         val bmp = SpriteManager.pirateShip
-        val h = 560f
+        val h = com.jamcat.nayngapo.level.SHIP_DRAW_H
         val w = bmp.width * h / bmp.height
-        val gy = Terrain.groundY(sx)
+        val gy = Constants.GROUND_Y          // 물 높이 (갑판 위는 Terrain 이 갑판 높이를 돌려준다)
         shipDst.set(sx - w / 2f, gy + 60f - h, sx + w / 2f, gy + 60f)
         canvas.drawBitmap(bmp, null, shipDst, null)
     }

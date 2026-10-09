@@ -76,11 +76,23 @@ object Terrain {
         else -> Profile(Shape.ROLLING, 60f + stage * 4f, 1500f, 4f, 0f)
     }
 
+    /**
+     * 31 해적선 갑판 (대표님 2026-10-09 「해적냥이는 해적선에 타고 있어, 점프하면 올라탈 수 있어」).
+     * deckStage 스테이지에서 x 가 [deckLeft, deckRight] 안이면 땅 높이가 갑판(deckY)이다 — Level 이 정한다.
+     * 냥이들은 그대로 걸어 올라가고(살짝 뛰어오르는 모습), 인간은 점프로만 오른다(Player).
+     */
+    var deckStage = -1
+    var deckLeft = 0f
+    var deckRight = -1f
+    var deckY = 0f
+    fun onDeck(x: Float): Boolean = stage == deckStage && x >= deckLeft && x <= deckRight
+
     private var cachedStage = -1
     private var p = profile(1)
 
     /** 월드 x 좌표에서의 지면 표면 y (기준선 GROUND_Y에서 위로 솟는다) */
     fun groundY(x: Float): Float {
+        if (onDeck(x)) return deckY
         if (cachedStage != stage) { p = profile(stage); cachedStage = stage }
         val fade = smooth((x - START_FLAT) / START_FADE)
         val t = x / p.period + p.phase                  // 굽이 단위 좌표

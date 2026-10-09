@@ -76,7 +76,9 @@ abstract class Enemy(
         // 횡뷰 플랫포머: 좌우로만 이동, 발은 항상 지형 표면 위 (공중 연출은 jumpZ)
         x += velocityX * deltaTime
         x = x.coerceIn(Constants.PLAY_AREA_LEFT + 5f, Constants.PLAY_AREA_RIGHT - width - 5f)
+        val oldY = y
         y = Terrain.groundY(x + width / 2f)
+        updateClimb(oldY, deltaTime)
 
         // 냥이는 자기 머리(바라보는) 방향으로만 걷는다 — 이동 중에는 시선이 이동 방향을 따라간다.
         // 멈춰 있을 때만 각 냥이가 정한 시선(보통 플레이어 쪽)을 유지한다.
@@ -103,6 +105,15 @@ abstract class Enemy(
 
     // 함정·구덩이를 뛰어넘는 도약 (연출용 오프셋)
     private var hopOffset = 0f
+    /** 갑판처럼 높이가 확 바뀐 곳: 그림만 원래 높이에서 새 높이로 0.15초쯤 따라간다 */
+    protected var climbOffset = 0f
+    protected fun updateClimb(oldY: Float, deltaTime: Float) {
+        if (abs(y - oldY) > 40f) climbOffset += oldY - y
+        if (climbOffset != 0f) {
+            val step = 700f * deltaTime
+            climbOffset = if (abs(climbOffset) <= step) 0f else climbOffset - sign(climbOffset) * step
+        }
+    }
     private var hopVelocity = 0f
 
     /** 앞에 위험이 있을 때 호출 — 이미 떠 있으면 무시된다 */
@@ -119,7 +130,7 @@ abstract class Enemy(
 
     protected fun drawSprite(canvas: Canvas, sprite: Bitmap) {
         val cx = x + width / 2f
-        val drawY = y + jumpZ + windLift + hopOffset
+        val drawY = y + jumpZ + windLift + hopOffset + climbOffset
 
         // Shadow (몸 크기에 비례)
         val sw = width * 0.45f
@@ -1012,6 +1023,13 @@ class BoatCat(x: Float, y: Float) : Enemy(x, y, 20, 5) {
         facingRight = dx > 0f
         jumpZ = -abs(sin(rock.toDouble())).toFloat() * 6f
         super.update(deltaTime, playerX, playerY)
+        // 배냥이는 배라 해적선 갑판에는 못 오른다 — 뱃전 앞 물에서 멈춘다
+        if (Terrain.onDeck(x + width / 2f)) {
+            x = if (x + width / 2f < (Terrain.deckLeft + Terrain.deckRight) / 2f) Terrain.deckLeft - width / 2f - 1f
+                else Terrain.deckRight - width / 2f + 1f
+            y = Terrain.groundY(x + width / 2f)
+            climbOffset = 0f
+        }
         if (velocityX != 0f && backoff > 0f) facingRight = dx > 0f   // 물러날 때도 인간 쪽을 본다
     }
 
@@ -1045,6 +1063,9 @@ class PirateCatBoss(x: Float, y: Float) : Enemy(x, y, 40, 8) {
     private var dashing = 0f
     private var dir = 1f
     private var hopPhase = 0f
+    /** 해적선 갑판 범위 — 이 밖으로는 안 나온다 (Level 이 정한다, 대표님 2026-10-09) */
+    var deckLeft = Float.NEGATIVE_INFINITY
+    var deckRight = Float.POSITIVE_INFINITY
 
     override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
         val dx = playerX - x
@@ -1063,6 +1084,10 @@ class PirateCatBoss(x: Float, y: Float) : Enemy(x, y, 40, 8) {
             }
         }
         super.update(deltaTime, playerX, playerY)
+        if (x < deckLeft || x + width > deckRight) {
+            x = x.coerceIn(deckLeft, (deckRight - width).coerceAtLeast(deckLeft))
+            y = Terrain.groundY(x + width / 2f)
+        }
         if (dashing > 0f) facingRight = dir > 0f
     }
 

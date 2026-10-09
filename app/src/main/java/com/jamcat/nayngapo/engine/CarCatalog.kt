@@ -19,4 +19,11 @@ object CarCatalog {
 
     /** 지금 타기로 고른 차 (없거나 안 가졌으면 null) */
     val selected: Car? get() = cars.firstOrNull { it.id == GameProgress.selectedCar && owned(it.id) }
+
+    /** 고른 차가 어느 스테이지에 방치돼 있으면 그 스테이지 번호 (아니면 0) */
+    val abandonedStage: Int get() =
+        if (selected != null && GameProgress.abandonedCarId == selected?.id) GameProgress.abandonedCarStage else 0
+
+    /** 여기서 탈 수 있는 차 — 방치차는 그 스테이지에서만 (그 자리에 세워져 있다) */
+    fun availableIn(stage: Int?): Car? = selected?.takeIf { abandonedStage == 0 || abandonedStage == stage }
 }

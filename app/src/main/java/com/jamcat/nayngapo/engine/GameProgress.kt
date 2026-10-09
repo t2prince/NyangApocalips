@@ -36,6 +36,9 @@ object GameProgress {
     private const val KEY_STORY_SEEN = "story_seen"
     private const val KEY_DUMMY_LEVEL = "dummy_level"
     private const val KEY_SELECTED_CAR = "selected_car"
+    private const val KEY_AB_CAR = "abandoned_car"
+    private const val KEY_AB_STAGE = "abandoned_car_stage"
+    private const val KEY_AB_X = "abandoned_car_x"
     private const val KEY_MISSIONS_CLAIMED = "missions_claimed"
     private const val KEY_STAGE20_NO_DEATH = "stat_stage20_no_death"
     private const val KEY_BGM = "setting_bgm"
@@ -113,6 +116,28 @@ object GameProgress {
     /** 스테이지에서 타고 다닐 자동차 id (자동차 매장 '자동차 선택', 없으면 "") */
     var selectedCar = ""
         private set
+
+    /**
+     * 방치차 (대표님 2026-10-09 「스테이지에서 내리고 나간 다음 다시 들어오면 방치차가 돼」):
+     * 스테이지에서 차에서 내린 채 나가면 그 차는 그 스테이지 그 자리에 남는다. 다시 가서 타기 전까지 다른 곳에서는 못 탄다.
+     */
+    var abandonedCarId = ""
+        private set
+    var abandonedCarStage = 0
+        private set
+    var abandonedCarX = 0f
+        private set
+
+    fun abandonCar(id: String, stage: Int, x: Float) {
+        abandonedCarId = id; abandonedCarStage = stage; abandonedCarX = x
+        prefs?.edit()?.putString(KEY_AB_CAR, id)?.putInt(KEY_AB_STAGE, stage)?.putFloat(KEY_AB_X, x)?.apply()
+    }
+
+    fun clearAbandonedCar() {
+        if (abandonedCarStage == 0) return
+        abandonedCarId = ""; abandonedCarStage = 0; abandonedCarX = 0f
+        prefs?.edit()?.remove(KEY_AB_CAR)?.remove(KEY_AB_STAGE)?.remove(KEY_AB_X)?.apply()
+    }
 
     fun selectCar(id: String) {
         selectedCar = id
@@ -203,6 +228,9 @@ object GameProgress {
         storySeen = prefs?.getBoolean(KEY_STORY_SEEN, false) ?: false
         dummyLevel = (prefs?.getInt(KEY_DUMMY_LEVEL, 1) ?: 1).coerceIn(1, DUMMY_LEVEL_MAX)
         selectedCar = prefs?.getString(KEY_SELECTED_CAR, "") ?: ""
+        abandonedCarId = prefs?.getString(KEY_AB_CAR, "") ?: ""
+        abandonedCarStage = prefs?.getInt(KEY_AB_STAGE, 0) ?: 0
+        abandonedCarX = prefs?.getFloat(KEY_AB_X, 0f) ?: 0f
         bgmEnabled = prefs?.getBoolean(KEY_BGM, true) ?: true
         sfxEnabled = prefs?.getBoolean(KEY_SFX, true) ?: true
         shakeEnabled = prefs?.getBoolean(KEY_SHAKE, true) ?: true

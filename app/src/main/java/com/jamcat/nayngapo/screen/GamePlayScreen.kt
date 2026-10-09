@@ -39,7 +39,7 @@ class GamePlayScreen(
         if (isSea) com.jamcat.nayngapo.engine.CatTeam.boatMount() else null
     private var seaMountMarked = false
     /** 자동차 매장 '자동차 선택'에서 고른 차 — 땅 스테이지에서 타고 다닌다 (바다는 배냥이라 안 탄다, 2026-10-09). 차를 누르면 내리고 탄다 */
-    private val carRide = if (isSea) null else com.jamcat.nayngapo.engine.CarCatalog.selected?.let { com.jamcat.nayngapo.entity.CarRide(it) }
+    private val carRide = if (isSea) null else com.jamcat.nayngapo.engine.CarCatalog.availableIn(stageNumber)?.let { com.jamcat.nayngapo.entity.CarRide(it) }
     private var boatHintShown = false
 
     /** 이 시간을 넘겨 겹쳐 있으면 서로 밀어낸다(초) */
@@ -271,7 +271,11 @@ class GamePlayScreen(
     init {
         camera.forwardOnly = true   // 플랫포머식: 카메라가 뒤로 돌아가지 않는다
         if (isSea) { player.lives = 1; player.rideLift = SEA_RIDE_LIFT }
-        carRide?.mount(player)
+        carRide?.let { cr ->
+            // 이 스테이지에 방치해 둔 차면 그 자리에 세워져 있고 걸어서 시작한다
+            if (com.jamcat.nayngapo.engine.CarCatalog.abandonedStage == stageNumber) cr.startAbandoned(com.jamcat.nayngapo.engine.GameProgress.abandonedCarX)
+            else cr.mount(player)
+        }
         // 약국 물약: 스테이지를 시작할 때 하나씩 저절로 마신다 (바다는 목숨 1 규칙이라 생명 물약은 안 마신다)
         if (!isSea && GameProgress.consumeItem("h_life")) player.lives += 1
         if (GameProgress.consumeItem("h_heal")) { player.maxHp += 2; player.hp = player.maxHp }
@@ -382,6 +386,7 @@ class GamePlayScreen(
         if (player.isDead) {
             // 바다에서 쓰러지면 타고 있던 배냥이도 물에 빠져 무덤이 된다 (날아냥이처럼)
             if (isSea && !seaMountMarked) { seaMountMarked = true; seaMount?.let { com.jamcat.nayngapo.engine.CatTeam.markDead(it.id, stageNumber) } }
+            leaveCar()
             gameView.showGameOver(player.score)
             return
         }
@@ -957,6 +962,7 @@ class GamePlayScreen(
         if (clearTimer > 0f) {
             clearTimer -= deltaTime
             if (clearTimer <= 0f) {
+                leaveCar()
                 gameView.showStageClear(
                     stageNumber, player.score, player.rescueCount,
                     level.defeatedEnemies, level.totalEnemies, player.level
@@ -2296,6 +2302,7 @@ class GamePlayScreen(
         hud.draw(canvas, player, level, sw, sh)
 
         // 멈추기 / 나가기 버튼
+        carRide?.drawButton(canvas)   // 위쪽 '자동차 타기' 버튼 (2026-10-09)
         drawMenuButtons(canvas, sw, sh)
 
         // Draw controls (screen space) — SP 버튼 카운트다운에 남은 쿨다운을 전달
@@ -3216,6 +3223,7 @@ class GamePlayScreen(
             }
             if (hypot(px - EXIT_BTN_X, py - MENU_BTN_Y) < MENU_HIT_R) {
                 touchControls.releaseAll()
+                leaveCar()
                 gameView.leaveStage()   // 스테이지에서 나가 로비로 돌아간다
                 return true
             }
@@ -3228,7 +3236,8 @@ class GamePlayScreen(
             if (cr != null && !touchControls.isControlArea(event.getX(idx0), event.getY(idx0), gameView.screenWidth, gameView.screenHeight)) {
                 val idx = idx0
                 val wx = event.getX(idx) + camera.x; val wy = event.getY(idx) + camera.y
-                val msg = when (cr.tap(wx, wy, player)) {
+                val byButton = cr.tapButton(event.getX(idx), event.getY(idx), player)
+                val msg = when (if (byButton != com.jamcat.nayngapo.entity.CarRide.Tap.NONE) byButton else cr.tap(wx, wy, player)) {
                     com.jamcat.nayngapo.entity.CarRide.Tap.GOT_OFF -> "차에서 내렸다!"
                     com.jamcat.nayngapo.entity.CarRide.Tap.GOT_ON -> "차를 탔다!"
                     com.jamcat.nayngapo.entity.CarRide.Tap.TOO_FAR -> "차 가까이 가서 누르자"
@@ -3251,9 +3260,16 @@ class GamePlayScreen(
             touchControls.releaseAll()
         } else {
             touchControls.releaseAll()
+            leaveCar()
             gameView.leaveStage()
         }
         return true
+    }
+
+    /** 스테이지를 나갈 때 차에서 내려 있으면 그 자리에 방치차로 남긴다 (대표님 2026-10-09) */
+    private fun leaveCar() {
+        val cr = carRide ?: return
+        if (!cr.riding) GameProgress.abandonCar(cr.car.id, stageNumber, cr.parkedAt)
     }
 
     private fun hypot(dx: Float, dy: Float) =

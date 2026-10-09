@@ -50,7 +50,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
     private val allies = mutableListOf<com.jamcat.nayngapo.entity.AllyCat>()
 
     /** 자동차 매장에서 고른 차 (없으면 걸어 다닌다) — 차를 누르면 내리고 탄다 */
-    private val carRide = com.jamcat.nayngapo.engine.CarCatalog.selected?.let { com.jamcat.nayngapo.entity.CarRide(it) }
+    private val carRide = com.jamcat.nayngapo.engine.CarCatalog.availableIn(null)?.let { com.jamcat.nayngapo.entity.CarRide(it) }   // 방치차면 그 스테이지에 가야 탄다
 
     init {
         Terrain.stage = Terrain.SHOP            // 상점 마을은 평평한 초원
@@ -594,6 +594,17 @@ class ShopScreen(private val gameView: GameView) : Screen {
         // 왼쪽 위: 스테이지와 같은 멈추기·나가기
         drawMenuButtons(canvas)
         drawSettingsButton(canvas, w)
+        carRide?.drawButton(canvas)
+        // 차를 스테이지에 방치해 두었으면 어디 있는지 알려 준다
+        val abandonedAt = com.jamcat.nayngapo.engine.CarCatalog.abandonedStage
+        if (carRide == null && abandonedAt > 0) {
+            hudText.textSize = 32f
+            val t = "🚗 차는 ${abandonedAt}스테이지에 두고 왔어요"
+            val tw = hudText.measureText(t) + 40f
+            rect.set(300f, 100f, 300f + tw, 176f)   // 위 가운데 안내판(24~92) 아래
+            canvas.drawRoundRect(rect, 38f, 38f, hudBg)
+            canvas.drawText(t, rect.centerX(), rect.centerY() + 11f, hudText)
+        }
 
         if (paused) {
             canvas.drawRect(0f, 0f, w, h, pauseVeil)
@@ -1024,7 +1035,8 @@ class ShopScreen(private val gameView: GameView) : Screen {
             if (paused) return true
             // 자동차를 누르면 내리고 탄다 (대표님 2026-10-09)
             if (!touchControls.isControlArea(px, py, gameView.screenWidth, gameView.screenHeight)) carRide?.let { cr ->
-                when (cr.tap(px + cameraX, py, player)) {
+                val byButton = cr.tapButton(px, py, player)
+                when (if (byButton != com.jamcat.nayngapo.entity.CarRide.Tap.NONE) byButton else cr.tap(px + cameraX, py, player)) {
                     com.jamcat.nayngapo.entity.CarRide.Tap.GOT_OFF -> { touchControls.releaseAll(); showNotice("차에서 내렸어요"); return true }
                     com.jamcat.nayngapo.entity.CarRide.Tap.GOT_ON -> { touchControls.releaseAll(); showNotice("차를 탔어요!"); return true }
                     com.jamcat.nayngapo.entity.CarRide.Tap.TOO_FAR -> { showNotice("차 가까이 가서 누르세요"); return true }

@@ -21,11 +21,32 @@ class CarRide(val car: CarCatalog.Car) {
     private var parkedRight = true
     /** 마지막으로 그린 자리 (월드 좌표) — 누른 곳이 차인지 가린다 */
     private val dst = RectF()
+    /** 방치차는 색이 바래고 어둑하다 */
+    private val dustyPaint = android.graphics.Paint().apply {
+        colorFilter = android.graphics.ColorMatrixColorFilter(android.graphics.ColorMatrix().apply {
+            setSaturation(0.25f)
+            postConcat(android.graphics.ColorMatrix().apply { setScale(0.8f, 0.76f, 0.7f, 1f) })
+        })
+    }
     private val hit = RectF()
 
     enum class Tap { NONE, GOT_OFF, GOT_ON, TOO_FAR }
 
+    /** 방치차로 시작했는가 — 다시 타기 전까지 바랜 색, 버튼으로 부를 수 없다 */
+    var abandoned = false
+        private set
+
+    /** 방치차: 스테이지에 들어오면 그 자리에 세워져 있다 */
+    fun startAbandoned(x: Float) {
+        riding = false; abandoned = true; parkedX = x; parkedRight = true
+    }
+
+    /** 지금 세워 둔 자리 (스테이지를 나갈 때 방치차로 남긴다) */
+    val parkedAt: Float get() = parkedX
+
     fun mount(p: Player) {
+        if (abandoned) com.jamcat.nayngapo.engine.GameProgress.clearAbandonedCar()   // 방치차를 되찾았다
+        abandoned = false
         riding = true
         p.carSpeedMul = car.speedMul
         p.rideLift = RIDE_LIFT
@@ -57,7 +78,7 @@ class CarRide(val car: CarCatalog.Car) {
     /** 세워 둔 차 (인간보다 뒤에 그린다) */
     fun drawParked(canvas: Canvas) {
         if (riding) return
-        place(parkedX, Terrain.groundY(parkedX), parkedRight)?.let { canvas.drawBitmap(it, null, dst, null) }
+        place(parkedX, Terrain.groundY(parkedX), parkedRight)?.let { canvas.drawBitmap(it, null, dst, if (abandoned) dustyPaint else null) }
     }
 
     private fun place(cx: Float, feetY: Float, right: Boolean): android.graphics.Bitmap? {
@@ -85,7 +106,48 @@ class CarRide(val car: CarCatalog.Car) {
         return Tap.GOT_ON
     }
 
+    // ===== 화면 위 '자동차 타기' 버튼 (대표님 2026-10-09 「스테이지랑 상점 위에 자동차 타기가 있어」) =====
+    /** 버튼 자리 (화면 좌표) — 왼쪽 위 멈추기·나가기 버튼 오른쪽 */
+    private val btn = RectF()
+    private val btnPaint = android.graphics.Paint().apply { color = android.graphics.Color.argb(200, 255, 236, 170); isAntiAlias = true }
+    private val btnInk = android.graphics.Paint().apply {
+        color = android.graphics.Color.rgb(40, 34, 30); style = android.graphics.Paint.Style.STROKE; strokeWidth = 4f; isAntiAlias = true
+    }
+    private val btnText = android.graphics.Paint().apply {
+        color = android.graphics.Color.rgb(40, 34, 30); textSize = 36f; textAlign = android.graphics.Paint.Align.CENTER
+        typeface = android.graphics.Typeface.DEFAULT_BOLD; isAntiAlias = true
+    }
+
+    fun drawButton(canvas: Canvas) {
+        btn.set(BTN_LEFT, BTN_CY - 44f, BTN_LEFT + BTN_W, BTN_CY + 44f)
+        canvas.drawRoundRect(btn, 44f, 44f, btnPaint)
+        canvas.drawRoundRect(btn, 44f, 44f, btnInk)
+        canvas.drawText(if (riding) "🚗 내리기" else "🚗 자동차 타기", btn.centerX(), btn.centerY() + 12f, btnText)
+    }
+
+    /** 버튼을 눌렀으면 내리거나 탄다 — 버튼으로 탈 때는 어디서든 차가 인간에게 온다 */
+    fun tapButton(px: Float, py: Float, p: Player): Tap {
+        if (btn.isEmpty || !btn.contains(px, py)) return Tap.NONE
+        if (riding) {
+            if (p.isJumping) return Tap.NONE
+            dismount(p); return Tap.GOT_OFF
+        }
+        // 방치차는 걸어가서 타야 한다
+        if (abandoned && kotlin.math.abs(p.x + p.width / 2f - parkedX) > NEAR) return Tap.TOO_FAR
+        if (abandoned) { p.x = parkedX - p.width / 2f; p.facingRight = parkedRight }
+        // 방치차는 버튼으로 부를 수 없다 — 가까이 가야 탄다
+        if (abandoned) {
+            if (kotlin.math.abs(p.x + p.width / 2f - parkedX) > NEAR) return Tap.TOO_FAR
+            p.x = parkedX - p.width / 2f; p.facingRight = parkedRight
+        }
+        mount(p)
+        return Tap.GOT_ON
+    }
+
     companion object {
+        private const val BTN_LEFT = 300f
+        private const val BTN_W = 270f
+        private const val BTN_CY = 118f
         /** 차 그림 높이 · 인간이 앉는 만큼 들어 올림 · 다시 탈 수 있는 거리 */
         const val DRAW_H = 120f
         /** 앉으면 인간을 이만큼 내린다(음수) — 엉덩이가 차 자리에 오게 */

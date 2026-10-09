@@ -49,20 +49,8 @@ class ShopScreen(private val gameView: GameView) : Screen {
     /** 출전시킨 팀 냥이는 상점 마을에도 인간을 따라온다 (대표님 2026-09-27 「출전시키기를 누르면 고양이와 같이 상점에 갈 수 있어」) */
     private val allies = mutableListOf<com.jamcat.nayngapo.entity.AllyCat>()
 
-    /** 자동차 매장에서 고른 차 (없으면 걸어 다닌다) */
-    private val car = com.jamcat.nayngapo.engine.CarCatalog.selected
-    private val carDst = RectF()
-    /** 인간이 탄 차: 바퀴가 땅에 닿게, 바라보는 쪽으로 — 인간 앞에 그려 앉은 다리를 가린다 (GamePlayScreen 과 같다) */
-    private fun drawCar(canvas: Canvas) {
-        val c = car ?: return
-        val base = SpriteManager.cars[c.id] ?: return
-        val bmp = if (player.facingRight) base else SpriteManager.getFlipped(base)
-        val ch = CAR_DRAW_H; val cw = bmp.width * ch / bmp.height
-        val cx = player.x + player.width / 2f
-        val bottom = player.y + player.jumpZ + 14f
-        carDst.set(cx - cw / 2f, bottom - ch, cx + cw / 2f, bottom)
-        canvas.drawBitmap(bmp, null, carDst, null)
-    }
+    /** 자동차 매장에서 고른 차 (없으면 걸어 다닌다) — 차를 누르면 내리고 탄다 */
+    private val carRide = com.jamcat.nayngapo.engine.CarCatalog.selected?.let { com.jamcat.nayngapo.entity.CarRide(it) }
 
     init {
         Terrain.stage = Terrain.SHOP            // 상점 마을은 평평한 초원
@@ -71,7 +59,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         returnX = null
         player.facingRight = true
         // 상점 마을에서도 고른 자동차를 타고 다닌다 (대표님 2026-10-09)
-        car?.let { player.carSpeedMul = it.speedMul; player.rideLift = CAR_RIDE_LIFT }
+        carRide?.mount(player)
         // 땅 스테이지와 같이 날아냥이는 빼고, 인간 뒤에 줄지어 선다
         // 배냥이도 상점 마을을 걸어 다니고 모든 가게에 갈 수 있다 (대표님 2026-10-09). 날아냥이는 여전히 하늘 전용
         val party = com.jamcat.nayngapo.engine.CatTeam.party.filter { it.kind != com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING }
@@ -500,9 +488,10 @@ class ShopScreen(private val gameView: GameView) : Screen {
             rect.set(cx - cw / 2f, groundY + 14f - ch, cx + cw / 2f, groundY + 14f)
             canvas.drawBitmap(bmp, null, rect, null)
         }
+        carRide?.drawParked(canvas)
         for (ally in allies) ally.draw(canvas)
         player.draw(canvas)
-        drawCar(canvas)
+        carRide?.drawRiding(canvas, player)
         canvas.restore()
         towerRect.offset(-cameraX, 0f)
 
@@ -1031,6 +1020,15 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 touchControls.releaseAll(); returnX = player.x; gameView.showSettings(fromShop = true); return true
             }
             if (paused) return true
+            // 자동차를 누르면 내리고 탄다 (대표님 2026-10-09)
+            if (!touchControls.isControlArea(px, py, gameView.screenWidth, gameView.screenHeight)) carRide?.let { cr ->
+                when (cr.tap(px + cameraX, py, player)) {
+                    com.jamcat.nayngapo.entity.CarRide.Tap.GOT_OFF -> { touchControls.releaseAll(); showNotice("차에서 내렸어요"); return true }
+                    com.jamcat.nayngapo.entity.CarRide.Tap.GOT_ON -> { touchControls.releaseAll(); showNotice("차를 탔어요!"); return true }
+                    com.jamcat.nayngapo.entity.CarRide.Tap.TOO_FAR -> { showNotice("차 가까이 가서 누르세요"); return true }
+                    com.jamcat.nayngapo.entity.CarRide.Tap.NONE -> Unit
+                }
+            }
             if (nearCarShop && !enterRect.isEmpty && enterRect.contains(px, py)) {
                 touchControls.releaseAll(); returnX = player.x; gameView.showCarShop(); return true
             }
@@ -1110,9 +1108,6 @@ class ShopScreen(private val gameView: GameView) : Screen {
         private const val SIGN_W = 520f
         /** 자동차 매장 건물 그림 높이 */
         private const val CAR_SHOP_H = 440f
-        /** 탄 자동차 그림 높이 · 인간이 앉는 만큼 들어 올림 (스테이지와 같다) */
-        private const val CAR_DRAW_H = 120f
-        private const val CAR_RIDE_LIFT = 46f
         private const val SIGN_TOP = 460f
         private const val SIGN_H = 260f
         private const val HOUSE_X = 880f

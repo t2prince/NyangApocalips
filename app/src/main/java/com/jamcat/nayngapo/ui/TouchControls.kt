@@ -144,6 +144,18 @@ class TouchControls {
         }
     }
 
+    /** 이 자리가 패드·버튼 자리인가 — 화면 위 다른 것(자동차 등)을 누를 때 조작과 겹치지 않게 (2026-10-09) */
+    fun isControlArea(px: Float, py: Float, screenWidth: Int, screenHeight: Int): Boolean {
+        if (dpadCenterX == 0f) updateLayout(screenWidth, screenHeight)
+        fun near(cx: Float, cy: Float, r: Float) = kotlin.math.hypot(px - cx, py - cy) < r
+        if (near(dpadCenterX, dpadCenterY, dpadRadius + 30f)) return true
+        if (near(attackBtnX, attackBtnY, 150f) || near(jumpBtnX, jumpBtnY, 140f) || near(specialBtnX, specialBtnY, 130f)) return true
+        if (orderRect.contains(px, py)) return true
+        for (i in 0 until SKILL_SLOTS) if (near(skillCenters[i * 2], skillCenters[i * 2 + 1], 70f)) return true
+        for (i in 0 until HUMAN_SKILL_SLOTS) if (near(humanSkillCenters[i * 2], humanSkillCenters[i * 2 + 1], 70f)) return true
+        return false
+    }
+
     fun onTouchEvent(event: MotionEvent, screenWidth: Int, screenHeight: Int): Boolean {
         if (dpadCenterX == 0f) updateLayout(screenWidth, screenHeight)
 

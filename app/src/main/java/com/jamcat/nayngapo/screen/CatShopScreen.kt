@@ -15,12 +15,21 @@ import kotlin.math.min
  * 도감 화면과 같은 도화지 + 흰 카드 손그림 톤.
  */
 /** fromTent: 상점(천막) 화면의 고양이 상점 천막에서 들어왔으면 돌아갈 때도 그 화면으로 */
-class CatShopScreen(private val gameView: GameView, private val fromTent: Boolean = false) : Screen {
+class CatShopScreen(
+    private val gameView: GameView,
+    private val fromTent: Boolean = false,
+    /** 가게 이름 — 상점가 천막마다 다르다 (2026-10-09) */
+    private val title: String = "고양이 상점",
+    /** 진열할 물건 id */
+    ids: List<String> = ShopCatalog.catShopIds,
+) : Screen {
+    private val shelf: List<ShopCatalog.Item> = ids.mapNotNull { id -> ShopCatalog.items.firstOrNull { it.id == id } }
+
 
     private val backRect = RectF()
 
     /** 물건 카드 자리 — 그릴 때 채워 두고 터치 판정에 쓴다 */
-    private val itemRects = ShopCatalog.items.map { RectF() }
+    private val itemRects = shelf.map { RectF() }
 
     private var pressedIndex = -1
 
@@ -88,7 +97,7 @@ class CatShopScreen(private val gameView: GameView, private val fromTent: Boolea
         canvas.drawRect(0f, 0f, w, h, bgPaint)
 
         titlePaint.textSize = h * 0.075f
-        canvas.drawText("고양이 상점", w / 2f, h * 0.095f, titlePaint)
+        canvas.drawText(title, w / 2f, h * 0.095f, titlePaint)
 
         // 오른쪽 위: 지금 가진 루비
         rubyCountPaint.textSize = h * 0.048f
@@ -107,7 +116,7 @@ class CatShopScreen(private val gameView: GameView, private val fromTent: Boolea
         val ch = h * 0.305f
         val top = h * 0.145f
 
-        for ((i, item) in ShopCatalog.items.withIndex()) {
+        for ((i, item) in shelf.withIndex()) {
             val col = i % cols
             val row = i / cols
             val l = padX + col * (cw + gap)
@@ -231,7 +240,7 @@ class CatShopScreen(private val gameView: GameView, private val fromTent: Boolea
         itemRects.indexOfFirst { it.contains(x, y) }
 
     private fun buy(index: Int) {
-        val item = ShopCatalog.items[index]
+        val item = shelf[index]
         if (item.id == "revive_all") {
             // 다부활: 물건이 아니라 사는 즉시 무덤 냥이 전부 부활 (되살릴 냥이가 없으면 안 판다)
             val dead = com.jamcat.nayngapo.engine.CatTeam.deadCount()

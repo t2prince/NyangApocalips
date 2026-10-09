@@ -290,6 +290,9 @@ class AllyCat(
     /** 모래바람 등 환경 효과로 몸이 살짝 들리는 양 (음수 = 위로) */
     var windLift = 0f
 
+    /** 지금 모습 그림 (상점 마을 고르기 창에서 쓴다) */
+    fun spriteNow(): android.graphics.Bitmap = spriteFor(kind)
+
     fun draw(canvas: Canvas) {
         val cx = x + width / 2f
         // 기술을 쓰는 순간 콩 뛰어오른다 (0.3초 동안 최대 40)

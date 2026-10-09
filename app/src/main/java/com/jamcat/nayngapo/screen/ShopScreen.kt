@@ -132,6 +132,44 @@ class ShopScreen(private val gameView: GameView) : Screen {
         }
     }
 
+    // ===== 데려온 냥이가 2마리 이상이면: 누구에게 가르칠지 고르기 =====
+    private var choosing: List<com.jamcat.nayngapo.engine.CatTeam.TeamCat>? = null
+    private val chooseRects = List(3) { RectF() }
+
+    private fun drawChooser(canvas: Canvas, w: Float, h: Float) {
+        val list = choosing ?: return
+        canvas.drawRect(0f, 0f, w, h, pauseVeil)
+        panelRect.set(w * 0.2f, h * 0.18f, w * 0.8f, h * 0.82f)
+        canvas.drawRoundRect(panelRect, 28f, 28f, panelPaint); canvas.drawRoundRect(panelRect, 28f, 28f, ink)
+        panelTitle.textSize = h * 0.05f
+        canvas.drawText("누구에게 기술을 가르칠까요? (1마리)", panelRect.centerX(), panelRect.top + h * 0.08f, panelTitle)
+        val n = list.size.coerceAtMost(3)
+        val cw = (panelRect.width() - w * 0.04f) / n
+        for (k in 0 until n) {
+            val c = list[k]
+            val r = chooseRects[k]
+            r.set(panelRect.left + w * 0.02f + k * cw + 10f, panelRect.top + h * 0.13f, panelRect.left + w * 0.02f + (k + 1) * cw - 10f, panelRect.bottom - h * 0.04f)
+            canvas.drawRoundRect(r, 20f, 20f, rowPaint); canvas.drawRoundRect(r, 20f, 20f, ink)
+            val bmp = allies.firstOrNull { it.teamId == c.id }?.spriteNow()
+            if (bmp != null) {
+                val s = (r.width() * 0.7f / bmp.width).coerceAtMost(r.height() * 0.6f / bmp.height)
+                rect.set(r.centerX() - bmp.width * s / 2f, r.top + r.height() * 0.1f, r.centerX() + bmp.width * s / 2f, r.top + r.height() * 0.1f + bmp.height * s)
+                canvas.drawBitmap(bmp, null, rect, null)
+            }
+            rowName.textSize = h * 0.04f; rowName.textAlign = Paint.Align.CENTER
+            canvas.drawText(c.name, r.centerX(), r.bottom - r.height() * 0.12f, rowName)
+            rowName.textAlign = Paint.Align.LEFT
+        }
+    }
+
+    private fun tapChooser(px: Float, py: Float) {
+        val list = choosing ?: return
+        for (k in 0 until list.size.coerceAtMost(3)) {
+            if (chooseRects[k].contains(px, py)) { choosing = null; skillStudent = list[k]; return }
+        }
+        if (!panelRect.contains(px, py)) choosing = null
+    }
+
     private fun tapSkillPanel(px: Float, py: Float) {
         val student = skillStudent ?: return
         if (closeRect.contains(px, py) || !panelRect.contains(px, py)) { skillStudent = null; return }
@@ -184,7 +222,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     override fun update(deltaTime: Float) {
         if (paused) return
-        if (skillStudent != null) { if (noticeTimer > 0f) noticeTimer -= deltaTime; return }   // 기술 창이 떠 있는 동안은 멈춘다
+        if (skillStudent != null || choosing != null) { if (noticeTimer > 0f) noticeTimer -= deltaTime; return }   // 창이 떠 있는 동안은 멈춘다
         timer += deltaTime
         if (noticeTimer > 0f) noticeTimer -= deltaTime
 
@@ -342,6 +380,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
             return
         }
         drawSkillPanel(canvas, w, h)
+        drawChooser(canvas, w, h)
         if (noticeTimer > 0f) {
             noticeTextPaint.textSize = 42f
             val nw = noticeTextPaint.measureText(noticeText) + 70f
@@ -533,12 +572,19 @@ class ShopScreen(private val gameView: GameView) : Screen {
         when (i) {
             CAT_SHOP_TENT -> gameView.showCatShop(fromTent = true)
             CAT_SKILL_TENT -> {
-                // 데려온 냥이(출전 중인 첫 냥이) 1마리만 배운다
-                val student = allies.firstOrNull()?.teamId?.let { com.jamcat.nayngapo.engine.CatTeam.cat(it) }
-                if (student == null) showNotice("냥이를 데려와야 기술을 가르쳐 줄 수 있어요! (고양이 관리에서 출전)")
-                else { skillStudent = student; showNotice("${student.name}에게 무슨 기술을 가르칠까요?") }
+                // 데려온 냥이 1마리만 배운다 — 2마리 이상 데려왔으면 먼저 하나를 고른다 (2026-10-09)
+                val brought = allies.mapNotNull { a -> a.teamId?.let { com.jamcat.nayngapo.engine.CatTeam.cat(it) } }.filter { !it.gone }
+                when {
+                    brought.isEmpty() -> showNotice("냥이를 데려와야 기술을 가르쳐 줄 수 있어요! (고양이 관리에서 출전)")
+                    brought.size == 1 -> skillStudent = brought[0]
+                    else -> choosing = brought
+                }
             }
-            else -> showNotice("${tentName(i)}은(는) 아직 물건을 준비 중이에요")
+            else -> {
+                val shop = com.jamcat.nayngapo.engine.ShopCatalog.tentShops[i]
+                if (shop != null) gameView.showCatShop(fromTent = true, title = shop.first, ids = shop.second)
+                else showNotice("${tentName(i)}은(는) 아직 물건을 준비 중이에요")
+            }
         }
     }
 
@@ -547,6 +593,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
             val idx = event.actionIndex
             val px = event.getX(idx); val py = event.getY(idx)
+            if (choosing != null) { tapChooser(px, py); return true }
             if (skillStudent != null) { tapSkillPanel(px, py); return true }   // 기술 창이 떠 있으면 창만 누른다
             if (kotlin.math.hypot(px - PAUSE_BTN_X, py - MENU_BTN_Y) < MENU_HIT_R) {
                 paused = !paused; touchControls.releaseAll(); return true
@@ -574,6 +621,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     /** 뒤로가기: 스테이지처럼 먼저 멈추고, 멈춘 상태에서 한 번 더 누르면 로비로 */
     override fun onBack(): Boolean {
+        if (choosing != null) { choosing = null; return true }
         if (skillStudent != null) { skillStudent = null; return true }   // 기술 창부터 닫는다
         touchControls.releaseAll()
         if (!paused) paused = true else gameView.showLobby()
@@ -593,12 +641,16 @@ class ShopScreen(private val gameView: GameView) : Screen {
         /** 고양이 상점 옆 천막 = 고양이 기술 (대표님 2026-10-09: 냥이를 데려오면 가격을 말하고 그 냥이 1마리만 가르친다) */
         const val CAT_SKILL_TENT = 1
         private val TENT_NAMES: List<String?> = List(TENT_COUNT) {
-            when (it) { CAT_SHOP_TENT -> "고양이 상점"; CAT_SKILL_TENT -> "고양이 기술"; else -> null }
+            when (it) { CAT_SHOP_TENT -> "고양이 상점"; CAT_SKILL_TENT -> "고양이 기술"; else -> com.jamcat.nayngapo.engine.ShopCatalog.tentShops[it]?.first }
         }
         /** 가게 주인의 광고 문구 (Claude 판단 — 대표님이 정하면 바꾼다) */
         private val TENT_ADS: Map<Int, List<String>> = mapOf(
             CAT_SHOP_TENT to listOf("어서 오세요!", "냥이 간식 있어요~", "장난감·캣타워 팝니다!", "튼튼한 고양이 갑옷!"),
             CAT_SKILL_TENT to listOf("냥이를 데려오세요!", "기술을 가르쳐 드려요~", "토네이도·묭묭 진화!"),
+            2 to listOf("어서 오세요!", "갓 구운 연어 있어요~", "고양이 케이크 팝니다!"),
+            3 to listOf("장난감 들어왔어요!", "레이저 포인터 인기 최고~", "깃털 막대 살랑살랑!"),
+            4 to listOf("어서 오세요!", "푹신한 방석·캣타워~", "빗으로 뽀송뽀송!"),
+            5 to listOf("냥이 약국이에요!", "부활 약 있어요~", "튼튼한 갑옷!"),
         )
         private val DEFAULT_ADS = listOf("어서 오세요!", "곧 좋은 물건 들어와요~")
         private const val START_X = 160f

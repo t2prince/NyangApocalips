@@ -531,6 +531,9 @@ object CatTeam {
         "tuna_can" to 40,
         "feed" to 25,
         "catnip" to 35,
+        "milk" to 15,        // 상점가 새 간식 (2026-10-09, Claude 판단)
+        "salmon" to 45,
+        "cat_cake" to 80,
     )
 
     /** 간식별 포만감 */
@@ -540,6 +543,9 @@ object CatTeam {
         "tuna_can" to 40,
         "feed" to 40,
         "catnip" to 20,
+        "milk" to 20,
+        "salmon" to 40,
+        "cat_cake" to 60,
     )
 
     /** 먹이로 줄 수 있는 물건 목록 (간식 고르기 줄) */
@@ -572,15 +578,15 @@ object CatTeam {
     fun play(id: Int): CareResult? {
         val cat = cat(id) ?: return null
         if (cat.gone) return null
-        val rod = GameProgress.itemCount("fish_toy") > 0
-        val ball = GameProgress.itemCount("ball") > 0
+        // 가진 장난감 중 가장 좋은 것 + 다른 장난감마다 3씩 더 (최대 40) — 새 장난감 2026-10-09
+        val toyJoy = linkedMapOf("laser_pointer" to 28, "fish_toy" to 25, "feather_wand" to 22, "mouse_toy" to 20, "ball" to 18)
+        val owned = toyJoy.filterKeys { GameProgress.itemCount(it) > 0 }
         val gain: Int
         val withWhat: String
-        when {
-            rod && ball -> { gain = 30; withWhat = " (낚싯대 장난감 + 방울 공)" }
-            rod -> { gain = 25; withWhat = " (낚싯대 장난감)" }
-            ball -> { gain = 18; withWhat = " (방울 공)" }
-            else -> { gain = 8; withWhat = "" }
+        if (owned.isEmpty()) { gain = 8; withWhat = "" }
+        else {
+            gain = (owned.values.max() + 3 * (owned.size - 1)).coerceAtMost(40)
+            withWhat = " (" + owned.keys.joinToString(" + ") { id -> ShopCatalog.items.first { it.id == id }.name } + ")"
         }
         cat.joy = bump(cat.joy, gain)
         cat.fullness = drop(cat.fullness, 5)

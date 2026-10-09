@@ -314,6 +314,11 @@ class GamePlayScreen(
         /** 꽃가루에 숨이 막혀 느려지는 시간 (Claude 판단) */
         /** 배냥이 위에 올라탄 인간을 그만큼 위로 그린다 (Claude 판단) */
         private const val SEA_RIDE_LIFT = 58f
+        /** 해적선 항해 (Claude 판단) */
+        private const val SHIP_SPEED = 45f
+        private const val SHIP_MAX_TRAVEL = 1600f
+        private const val SHIP_WAKE_RANGE = 2200f
+        private const val SHIP_STOP_GAP = 60f
         private const val CHOKE_TIME = 1.5f
         /** 젤리 발바닥 반지름 */
         const val JELLY_R = 22f
@@ -525,6 +530,9 @@ class GamePlayScreen(
         // 덩굴 그네는 계속 흔들린다
         for (vine in level.vines) vine.update(deltaTime)
         if (vineGrabLockout > 0f) vineGrabLockout -= deltaTime
+
+        // 31 해적선은 앞(왼쪽, 뱃머리 쪽)으로 나아간다 — 갑판 위의 인간·냥이도 함께 실려 간다
+        if (isSea) sailPirateShip(deltaTime)
 
         // Update player
         player.update(deltaTime)
@@ -2793,6 +2801,36 @@ class GamePlayScreen(
         canvas.drawRoundRect(mountDst, 8f, 8f, raftInk)
         var k = cx - hw + hw / 3f
         while (k < cx + hw) { canvas.drawLine(k, y - 6f, k, y + 16f, raftInk); k += hw / 1.5f }
+    }
+
+    /**
+     * 해적선이 앞으로 움직인다 (대표님 2026-10-09). 인간이 가까이(2200 안) 오면 천천히 왼쪽으로 나아가고,
+     * 갑판 위에 선 것들(인간·냥이·해적냥이)은 배와 함께 옮겨 간다.
+     * 물 위의 인간 바로 앞에 뱃머리가 닿으면 멈춰 서서 점프로 올라탈 수 있게 한다. 해적냥이가 쓰러지면 멈춘다.
+     * (속도 45·최대 1600 이동은 Claude 판단)
+     */
+    private var shipTravel = 0f
+    private fun sailPirateShip(deltaTime: Float) {
+        val sx = level.pirateShipX ?: return
+        val pcx = player.x + player.width / 2f
+        val boss = level.enemies.firstOrNull { it is com.jamcat.nayngapo.entity.PirateCatBoss && !it.isDead }
+        if (boss == null || shipTravel >= SHIP_MAX_TRAVEL || Terrain.deckLeft - pcx > SHIP_WAKE_RANGE) return
+        val playerOnDeck = Terrain.onDeck(pcx)
+        // 물 위의 인간 바로 앞까지 오면 멈춘다 (뱃전에 부딪혀 밀리지 않게)
+        if (!playerOnDeck && pcx < Terrain.deckLeft && Terrain.deckLeft - (player.x + player.width) < SHIP_STOP_GAP) return
+        val d = -SHIP_SPEED * deltaTime
+        // 갑판 위의 것들을 먼저 고른 뒤 배를 옮기고 같이 옮긴다
+        val riders = level.enemies.filter { !it.isDead && Terrain.onDeck(it.x + it.width / 2f) }
+        val allyRiders = level.allies.filter { !it.isDead && Terrain.onDeck(it.x + it.width / 2f) }
+        level.pirateShipX = sx + d
+        Terrain.deckLeft += d; Terrain.deckRight += d
+        shipTravel -= d
+        if (playerOnDeck) player.x += d
+        for (e in riders) {
+            e.x += d
+            if (e is com.jamcat.nayngapo.entity.PirateCatBoss) { e.deckLeft += d; e.deckRight += d }
+        }
+        for (a in allyRiders) a.x += d
     }
 
     // ===== 31 해적: 해적선 (모래밭에 얹힌 커다란 배, 보스 뒤 배경) =====

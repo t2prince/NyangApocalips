@@ -312,16 +312,14 @@ class ShopScreen(private val gameView: GameView) : Screen {
      */
     private val towerX = HOUSE_X
     /** 상점가 끝의 '스테이지 깨기' 자리 (대표님 2026-10-09) — 누르면 스테이지를 골라 깨고, 끝나면 여기로 돌아온다 */
-    private val stageGateX = FIRST_TENT_X + (TENT_COUNT - 1) * TENT_GAP + 760f
+    // 스테이지 이동(표지판)은 집 옆 (대표님 2026-10-10 「스테이지 이동은 집 옆에 있어」, 전에는 상점가 끝)
+    private val stageGateX = HOUSE_X + 600f
     /** 맨 끝(뒤)의 자동차 매장 (대표님 2026-10-09) */
-    private val carShopX = stageGateX + 760f
+    private val carShopX = FIRST_TENT_X + (TENT_COUNT - 1) * TENT_GAP + 760f
     private val worldWidth = carShopX + 560f
     private var nearCarShop = false
     private val carShopRect = RectF()
     private var nearGate = false
-    /** 스테이지 고르기 창 (열려 있으면 true) */
-    private var pickingStage = false
-    private val stageCells = mutableListOf<Pair<Int, RectF>>()
     private val settingsRect = RectF()
     private var nearTower = false
     /** 집 뒤(왼쪽)의 돈쟁이 아저씨 앞에 서 있는가 — 루비 환전 (대표님 2026-10-09) */
@@ -356,7 +354,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     override fun update(deltaTime: Float) {
         if (paused) return
-        if (skillStudent != null || choosing != null || patient != null || pickingStage) { if (noticeTimer > 0f) noticeTimer -= deltaTime; return }   // 창이 떠 있는 동안은 멈춘다
+        if (skillStudent != null || choosing != null || patient != null) { if (noticeTimer > 0f) noticeTimer -= deltaTime; return }   // 창이 떠 있는 동안은 멈춘다
         timer += deltaTime
         if (noticeTimer > 0f) noticeTimer -= deltaTime
 
@@ -627,7 +625,6 @@ class ShopScreen(private val gameView: GameView) : Screen {
         drawSkillPanel(canvas, w, h)
         drawHospital(canvas, w, h)
         drawChooser(canvas, w, h)
-        drawStagePicker(canvas, w, h)
         if (noticeTimer > 0f) {
             noticeTextPaint.textSize = 42f
             val nw = noticeTextPaint.measureText(noticeText) + 70f
@@ -802,62 +799,6 @@ class ShopScreen(private val gameView: GameView) : Screen {
         }
         boardText.textSize = 54f
         canvas.drawText("▶", cx + 150f, top + SIGN_H * 0.72f + 18f, boardText)
-    }
-
-    /**
-     * 스테이지 고르기 창: **모든 스테이지(1~128)가 다 나와 있다** (대표님 2026-10-09). 갈 수 있는 돌은 밝게, 잠겼거나 아직 안 만든 돌은 어둡게.
-     * 누르면 로비 지도와 같은 규칙으로 들어가 게임을 진행한다(못 가면 까닭을 알려 준다).
-     */
-    private fun drawStagePicker(canvas: Canvas, w: Float, h: Float) {
-        if (!pickingStage) return
-        canvas.drawRect(0f, 0f, w, h, pauseVeil)
-        panelRect.set(w * 0.08f, h * 0.10f, w * 0.92f, h * 0.90f)
-        canvas.drawRoundRect(panelRect, 28f, 28f, panelPaint); canvas.drawRoundRect(panelRect, 28f, 28f, ink)
-        panelTitle.textSize = h * 0.05f
-        canvas.drawText("깰 스테이지를 누르세요", panelRect.centerX(), panelRect.top + h * 0.075f, panelTitle)
-        val last = GameProgress.TOTAL_STAGES
-        val cols = 16
-        val rows = (last + cols - 1) / cols
-        val top = panelRect.top + h * 0.12f
-        val cw = (panelRect.width() - 60f) / cols
-        val ch = ((panelRect.bottom - 30f - top) / rows.coerceAtLeast(1)).coerceAtMost(cw)
-        stageCells.clear()
-        for (n in 1..last) {
-            val k = n - 1
-            val cx = panelRect.left + 30f + (k % cols + 0.5f) * cw
-            val cy = top + (k / cols + 0.5f) * ch
-            val r = minOf(cw, ch) * 0.40f
-            val cell = RectF(cx - r, cy - r, cx + r, cy + r)
-            stageCells.add(n to cell)
-            val ok = gameView.stageBlockReason(n) == null
-            canvas.drawCircle(cx, cy + 5f, r, stoneDark)
-            canvas.drawCircle(cx, cy, r, if (ok) stonePaint else stoneDark)
-            canvas.drawCircle(cx, cy, r, ink)
-            rowName.textSize = r * 0.8f; rowName.textAlign = Paint.Align.CENTER
-            canvas.drawText("$n", cx, cy + r * 0.28f, rowName)
-            rowName.textAlign = Paint.Align.LEFT
-        }
-        closeRect.set(panelRect.right - 90f, panelRect.top + 20f, panelRect.right - 20f, panelRect.top + 90f)
-        canvas.drawText("✕", closeRect.centerX(), closeRect.centerY() + 18f, panelTitle)
-        // 왼쪽 위: 스토리 다시 보기 (대표님 2026-10-09 「스테이지 깨기에선 스토리를 볼 수 있어」)
-        storyRect.set(panelRect.left + 24f, panelRect.top + 20f, panelRect.left + 300f, panelRect.top + 96f)
-        canvas.drawRoundRect(storyRect, 38f, 38f, storyBtnPaint); canvas.drawRoundRect(storyRect, 38f, 38f, ink)
-        rowName.textSize = 38f; rowName.textAlign = Paint.Align.CENTER
-        canvas.drawText("📖 스토리 보기", storyRect.centerX(), storyRect.centerY() + 13f, rowName)
-        rowName.textAlign = Paint.Align.LEFT
-    }
-    private val storyRect = RectF()
-    private val storyBtnPaint = Paint().apply { color = Color.rgb(255, 226, 150); isAntiAlias = true }
-
-    private fun tapStagePicker(px: Float, py: Float) {
-        if (storyRect.contains(px, py)) { pickingStage = false; returnX = player.x; gameView.replayStory(); return }
-        if (closeRect.contains(px, py) || !panelRect.contains(px, py)) { pickingStage = false; return }
-        val n = stageCells.firstOrNull { it.second.contains(px, py) }?.first ?: return
-        val why = gameView.stageBlockReason(n)
-        if (why != null) { showNotice(why); return }
-        pickingStage = false
-        returnX = player.x   // 다 깨고(또는 나오면) 스테이지 깨기 앞으로 돌아온다
-        gameView.startStage(n, fromShop = true)
     }
 
     /** 오른쪽 맨 위 설정 버튼 (톱니) */
@@ -1039,7 +980,6 @@ class ShopScreen(private val gameView: GameView) : Screen {
             if (kotlin.math.hypot(px - EXIT_BTN_X, py - MENU_BTN_Y) < MENU_HIT_R) {
                 touchControls.releaseAll(); gameView.showLobby(); return true
             }
-            if (pickingStage) { tapStagePicker(px, py); return true }
             // 오른쪽 맨 위 설정 (대표님 2026-10-09) — 닫으면 상점 마을 그 자리로
             if (kotlin.math.hypot(px - settingsRect.centerX(), py - settingsRect.centerY()) < MENU_HIT_R) {
                 touchControls.releaseAll(); returnX = player.x; gameView.showSettings(fromShop = true); return true
@@ -1059,7 +999,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 touchControls.releaseAll(); returnX = player.x; gameView.showCarShop(); return true
             }
             if (nearGate && !enterRect.isEmpty && enterRect.contains(px, py)) {
-                touchControls.releaseAll(); pickingStage = true; return true
+                touchControls.releaseAll(); returnX = player.x; gameView.showStageMap(); return true   // 숫자 칸 대신 스테이지 지도 (2026-10-09)
             }
             // 집은 '집 들어가기' 말풍선을 눌러야만 들어간다 — 집 그림을 눌러서는 안 들어간다 (대표님 2026-10-09)
             if (nearMoney && !enterRect.isEmpty && enterRect.contains(px, py)) {
@@ -1087,7 +1027,6 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     /** 뒤로가기: 스테이지처럼 먼저 멈추고, 멈춘 상태에서 한 번 더 누르면 로비로 */
     override fun onBack(): Boolean {
-        if (pickingStage) { pickingStage = false; return true }
         if (choosing != null) { choosing = null; return true }
         if (skillStudent != null) { skillStudent = null; return true }   // 기술 창부터 닫는다
         if (patient != null) { patient = null; return true }
@@ -1156,7 +1095,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         private val MONEY_ADS = listOf("루비 바꿔 드려요~", "점수를 루비로!", "돈 되는 건 다 바꿔 줘요")
         /** 가게 화면에 들어갈 때의 인간 자리 — 돌아오면 거기서 시작 */
         private var returnX: Float? = null
-        private const val FIRST_TENT_X = 1800f
+        private const val FIRST_TENT_X = 2150f   // 집 옆 '스테이지 이동' 표지판 뒤부터 천막
         private const val TENT_GAP = 760f
         private const val TENT_W = 460f
         private const val TENT_H = 520f

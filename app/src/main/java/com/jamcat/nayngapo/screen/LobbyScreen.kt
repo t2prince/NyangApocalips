@@ -18,7 +18,8 @@ import kotlin.math.sin
  * 가운데 지도는 돌 하나가 스테이지 하나인 긴 길이며, 좌우로 밀어 100번째 돌까지 볼 수 있다.
  * 아직 만들지 않은 기능·스테이지는 눌러도 안내 쪽지만 뜬다.
  */
-class LobbyScreen(private val gameView: GameView) : Screen {
+/** mapOnly: 상점 마을 '스테이지 깨기'에서 열면 지도만 화면 가득 (대표님 2026-10-09 「스테이지로 넘어갈 때 스테이지 지도가 나와, 그냥 숫자 말고」) */
+class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean = false) : Screen {
 
     /** 화면 비율(0~1) 좌표로 정의한 칸 하나 */
     private data class Slot(
@@ -160,6 +161,8 @@ class LobbyScreen(private val gameView: GameView) : Screen {
         val h = canvas.height.toFloat()
 
         canvas.drawRect(0f, 0f, w, h, paperPaint)
+
+        if (mapOnly) { drawMapOnly(canvas, w, h); return }
 
         titlePaint.textSize = h * 0.072f
         canvas.drawText("냥이 아포칼립스", w / 2f, h * 0.077f, titlePaint)
@@ -406,9 +409,43 @@ class LobbyScreen(private val gameView: GameView) : Screen {
         labelPaint.alpha = 255
     }
 
+    // ===== 상점 '스테이지 깨기' 지도 화면 (mapOnly) =====
+    private val backRect = RectF()
+    private val storyRect = RectF()
+    private val mapOnlyRect = RectF()
+    private val btnFill = Paint().apply { color = Color.rgb(255, 236, 190); isAntiAlias = true }
+    private val btnInk = Paint().apply { color = Color.rgb(60, 44, 30); style = Paint.Style.STROKE; strokeWidth = 4f; isAntiAlias = true }
+
+    /** 로비와 같은 원안 지도(돌마다 스테이지)를 화면 가득 + 왼쪽 위 '상점 마을로' · 오른쪽 위 '스토리 보기' */
+    private fun drawMapOnly(canvas: Canvas, w: Float, h: Float) {
+        titlePaint.textSize = h * 0.06f
+        canvas.drawText("스테이지 지도", w / 2f, h * 0.07f, titlePaint)
+        mapOnlyRect.set(w * 0.04f, h * 0.10f, w * 0.96f, h * 0.98f)
+        drawStageMap(canvas, mapOnlyRect, h)
+        labelPaint.textSize = h * 0.032f
+        backRect.set(w * 0.02f, h * 0.015f, w * 0.02f + 300f, h * 0.015f + 80f)
+        storyRect.set(w * 0.98f - 300f, h * 0.015f, w * 0.98f, h * 0.015f + 80f)
+        for ((r, t) in listOf(backRect to "◀ 상점 마을로", storyRect to "📖 스토리 보기")) {
+            canvas.drawRoundRect(r, 40f, 40f, btnFill); canvas.drawRoundRect(r, 40f, 40f, btnInk)
+            canvas.drawText(t, r.centerX(), r.centerY() + h * 0.011f, labelPaint)
+        }
+        drawNotice(canvas, w, h)
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val w = gameView.screenWidth.toFloat()
         val h = gameView.screenHeight.toFloat()
+        if (mapOnly && event.actionMasked == MotionEvent.ACTION_UP) {
+            when {
+                backRect.contains(event.x, event.y) -> gameView.showShop()
+                storyRect.contains(event.x, event.y) -> gameView.replayStory()
+                !prevPageRect.isEmpty && prevPageRect.contains(event.x, event.y) -> mapPage--
+                !nextPageRect.isEmpty && nextPageRect.contains(event.x, event.y) -> mapPage++
+                else -> stageAt(event.x, event.y)?.let { enterStage(it) }
+            }
+            return true
+        }
+        if (mapOnly) return true
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> pressedId = slotAt(event.x, event.y, w, h)?.id
@@ -434,6 +471,7 @@ class LobbyScreen(private val gameView: GameView) : Screen {
 
     /** 로비에서 뒤로가기 → 타이틀 화면 (거기서 한 번 더 누르면 앱이 닫힌다) */
     override fun onBack(): Boolean {
+        if (mapOnly) { gameView.showShop(); return true }
         gameView.showTitle()
         return true
     }
@@ -462,7 +500,7 @@ class LobbyScreen(private val gameView: GameView) : Screen {
         if (why != null) {
             showNotice(why)
             if (why.length > 20) noticeTimer = 2.8f
-        } else gameView.startStage(stage)   // 하늘 스테이지는 들어가면 날아냥이를 그냥 준다
+        } else gameView.startStage(stage, fromShop = mapOnly)   // 하늘 스테이지는 들어가면 날아냥이를 그냥 준다 · 상점 지도에서 왔으면 끝나고 상점 마을로
     }
 
     private fun onSlotSelected(slot: Slot) {

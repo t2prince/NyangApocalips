@@ -6,16 +6,17 @@ import android.graphics.*
  * 늪 (기획3: "스테이지는 늪이 있고, 빠지면 5배 느려진다. 점프로 건너뛸 수 있다.")
  * 걸어 들어가면 걸음이 5배 느려지지만, 눈밭과 달리 점프로 빠져나올 수 있다.
  */
-class Swamp(val x: Float, val y: Float, seed: Int) {
+/** honey: 꿀 지역(21~30)의 꿀 늪 — 색만 황금빛 (대표님 2026-10-09) */
+class Swamp(val x: Float, val y: Float, seed: Int, val honey: Boolean = false) {
 
     val width = 240f + (kotlin.math.abs(seed * 47) % 120)   // 240 ~ 360
 
     /** 늪 안쪽에 발이 있는지 (가장자리 턱은 안전) */
     fun swallows(centerX: Float): Boolean = centerX > x + 24f && centerX < x + width - 24f
 
-    private val mudPaint = Paint().apply { color = Color.rgb(94, 82, 48); isAntiAlias = true }
-    private val darkPaint = Paint().apply { color = Color.rgb(70, 60, 34); isAntiAlias = true }
-    private val glossPaint = Paint().apply { color = Color.rgb(118, 104, 62); isAntiAlias = true }
+    private val mudPaint = Paint().apply { color = if (honey) Color.rgb(226, 150, 30) else Color.rgb(94, 82, 48); isAntiAlias = true }
+    private val darkPaint = Paint().apply { color = if (honey) Color.rgb(176, 100, 14) else Color.rgb(70, 60, 34); isAntiAlias = true }
+    private val glossPaint = Paint().apply { color = if (honey) Color.rgb(255, 214, 110) else Color.rgb(118, 104, 62); isAntiAlias = true }
     private val reedPaint = Paint().apply {
         color = Color.rgb(64, 112, 52); strokeWidth = 5f
         strokeCap = Paint.Cap.ROUND; isAntiAlias = true

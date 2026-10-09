@@ -17,6 +17,7 @@ ITEMS = {
     'mud_cat': ('cat_mud', 86),
     'pirate_cat': ('cat_pirate', 118),
     'boat_cat': ('cat_boat', 92),
+    'honey_cat': ('cat_honey', 86),     # 꿀냥이 (꿀 늪, 2026-10-09)
     'pirate_ship': ('pirate_ship', 760),
 }
 

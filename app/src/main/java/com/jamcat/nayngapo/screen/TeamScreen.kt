@@ -345,7 +345,11 @@ class TeamScreen(private val gameView: GameView) : Screen {
         // 교배로 태어난 새끼는 누구랑 누구 사이인지 보여 준다 (대표님 2026-09-27)
         if (cat.isKitten) {
             centerSmallPaint.textSize = h * 0.028f
-            val from = if (cat.parents.isNotEmpty()) "부모 ${cat.parents}" else "감옥에서 구함"
+            val from = when {
+                cat.parents.startsWith("엄마 ") -> "${cat.parents}와 함께 구함"
+                cat.parents.isNotEmpty() -> "부모 ${cat.parents}"
+                else -> "감옥에서 구함"
+            }
             val label = "새끼 · $from · Lv ${CatTeam.GROW_UP_LEVEL} 이면 다 자라요"
             canvas.drawText(label, cx, h * 0.140f, centerSmallPaint)
         }
@@ -391,7 +395,7 @@ class TeamScreen(private val gameView: GameView) : Screen {
             else -> {
                 val base = CatTeam.maxHpFor(cat.level)
                 val bonus = Math.round(base * CatTeam.careMultiplier(cat)) - base
-                "Lv ${cat.level} · 체력 $base" + if (bonus > 0) " (+$bonus)" else ""
+                (if (cat.male) "♂ " else "♀ ") + "Lv ${cat.level} · 체력 $base" + if (bonus > 0) " (+$bonus)" else ""
             }
         }
         leftBoldPaint.textSize = h * 0.030f

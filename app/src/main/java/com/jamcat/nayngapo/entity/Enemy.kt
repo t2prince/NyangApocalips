@@ -1111,7 +1111,10 @@ class KittenCat(x: Float, y: Float, val coat: com.jamcat.nayngapo.engine.CatCoat
  * 늪마다 한 마리 (스테이지 배치는 Claude 판단). 숨어 있으면 스테이지 클리어 조건에서 빠진다(Level.stageCleared).
  * 도약 시간 0.9초·높이·다시 뛰기까지 1.6초는 Claude 판단.
  */
-class MudCat(private val swamp: Swamp) : Enemy(swamp.x + swamp.width / 2f - 46f, swamp.y, 20, 2) {
+open class MudCat(private val swamp: Swamp) : Enemy(swamp.x + swamp.width / 2f - 46f, swamp.y, 20, 2) {
+    /** 튀어나올 때 그림 (꿀냥이는 꿀색) */
+    protected open val sprite: android.graphics.Bitmap get() = SpriteManager.mudCatEvil
+
     override val width = 92f
     override val height = 90f
     override val contactDamage = 2
@@ -1169,13 +1172,13 @@ class MudCat(private val swamp: Swamp) : Enemy(swamp.x + swamp.width / 2f - 46f,
             val cx = x + width / 2f
             val by = y + 12f
             moundRect.set(cx - 34f, by - 20f, cx + 34f, by + 14f)
-            canvas.drawArc(moundRect, 180f, 180f, true, moundPaint)
+            canvas.drawArc(moundRect, 180f, 180f, true, if (swamp.honey) honeyMoundPaint else moundPaint)
             canvas.drawArc(moundRect, 180f, 180f, false, moundInk)
             val t = bubble % 2.2f
             if (t < 1.2f) canvas.drawCircle(cx + 22f, by - 8f - t * 12f, 4f + t * 3f, bubbleInk)
             return
         }
-        drawSprite(canvas, SpriteManager.mudCatEvil)
+        drawSprite(canvas, sprite)
         // 몸에서 진흙 방울이 떨어진다
         val cx = x + width / 2f
         for (k in 0 until 3) {
@@ -1190,10 +1193,19 @@ class MudCat(private val swamp: Swamp) : Enemy(swamp.x + swamp.width / 2f - 46f,
         private const val LEAP_HEIGHT = 120f
         private const val REST_TIME = 1.6f
         private val moundPaint = Paint().apply { color = Color.rgb(150, 102, 60); isAntiAlias = true }
+        private val honeyMoundPaint = Paint().apply { color = Color.rgb(240, 160, 32); isAntiAlias = true }
         private val moundInk = Paint().apply { color = Color.rgb(40, 30, 22); style = Paint.Style.STROKE; strokeWidth = 4f; isAntiAlias = true }
         private val bubbleInk = Paint().apply { color = Color.rgb(132, 118, 74); style = Paint.Style.STROKE; strokeWidth = 3f; isAntiAlias = true }
         private val moundRect = RectF()
     }
+}
+
+/**
+ * 꿀냥이 — 꿀 지역(21~30)에서는 머드냥이 대신 **꿀 늪에 꿀냥이**가 숨어 있다 (대표님 2026-10-09).
+ * 동작·체력·공격은 머드냥이와 같다(HP 20 · 튀어 오를 때 하트 2). 그림만 황금빛 꿀색(GPT).
+ */
+class HoneyCat(swamp: Swamp) : MudCat(swamp) {
+    override val sprite: android.graphics.Bitmap get() = SpriteManager.honeyCat
 }
 
 // ============ 나쁜 그린냥이 (HP 20, 슬라임 대미지 10) ============

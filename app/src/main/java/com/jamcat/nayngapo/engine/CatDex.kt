@@ -40,6 +40,7 @@ object CatDex {
         Entry("boat", "배냥이", "나무배를 타고 다닌다", { SpriteManager.boatCat }),            // 31 해적 스테이지 (기획13, 2026-10-04)
         Entry("pirate", "해적냥이", "해적선의 선장 (31 보스)", { SpriteManager.pirateCat }),
         Entry("kitten", "새끼 고양이", "작지만 깨문다", { KittenCat.small(SpriteManager.normalCat) }),   // 2026-09-27
+        Entry("honey", "꿀냥이", "꿀 늪에 숨어 있다", { SpriteManager.honeyCat }),   // 2026-10-09
         Entry("mud", "머드냥이", "늪 속에 숨어 있다", { SpriteManager.mudCatEvil }),   // 기획9 (2026-09-27)
         Entry("poop", "똥냥이", "냄새가 지독하다", { SpriteManager.poopCat }),
         Entry("flying", "날아냥이", "하늘을 난다", { SpriteManager.flyingCat }),
@@ -67,6 +68,7 @@ object CatDex {
         is RedCat -> "red"
         is OrangeCat -> "orange"
         is YellowCat -> "yellow"
+        is HoneyCat -> "honey"
         is MudCat -> "mud"
         is KittenCat -> "kitten"
         is BeeCat -> "bee"

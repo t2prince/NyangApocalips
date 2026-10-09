@@ -70,6 +70,8 @@ object CatTeam {
         var isKitten: Boolean = false,
         /** 새끼의 부모 이름 "A × B" (태어날 때의 이름) */
         val parents: String = "",
+        /** 성별 — true 수컷 ♂, false 암컷 ♀ (대표님 2026-10-09). 구출·출생 때 무작위 */
+        val male: Boolean = Math.random() < 0.5,
         /** 치즈냥이의 털 무늬 (다른 종은 CHEESE 로 두고 무시) */
         val coat: CatCoat = CatCoat.CHEESE
     ) {
@@ -190,6 +192,8 @@ object CatTeam {
                             attackBonus = o.optInt("attackBonus", 0).coerceAtLeast(0),
                             isKitten = o.optBoolean("isKitten", false),
                             parents = o.optString("parents", ""),
+                            // 성별 도입 전 냥이는 한 번 무작위로 정해 바로 저장한다
+                            male = if (o.has("male")) o.optBoolean("male") else { migratedCoat = true; Math.random() < 0.5 },
                             // 무늬 도입(2026-09-20) 전에 저장된 치즈냥이는 무늬가 없다 → 한 번 무작위로 뽑아 준다 (대표님 지시)
                             coat = if (o.has("coat")) CatCoat.of(o.optString("coat"))
                                    else if (kind == AllyCat.Kind.NORMAL) { migratedCoat = true; CatCoat.random() }
@@ -248,6 +252,7 @@ object CatTeam {
                     .put("attackBonus", c.attackBonus)
                     .put("isKitten", c.isKitten)
                     .put("parents", c.parents)
+                    .put("male", c.male)
             )
         }
         val counts = JSONObject()
@@ -311,10 +316,12 @@ object CatTeam {
 
     /** 살아 있는 냥이 둘을 골라 새끼를 낳는다. 둘이 안 되면 null */
     private fun breed(): TeamCat? {
-        val alive = living
-        if (alive.size < 2) return null
-        val a = alive.random()
-        val b = alive.filter { it.id != a.id }.random()
+        // 수컷과 암컷이 한 마리씩 있어야 새끼를 낳는다 (성별 2026-10-09)
+        val males = living.filter { it.male }
+        val females = living.filter { !it.male }
+        if (males.isEmpty() || females.isEmpty()) return null
+        val a = males.random()
+        val b = females.random()
         val like = if (Math.random() < 0.5) a else b           // 닮는 쪽
         val coat = if (like.kind == AllyCat.Kind.NORMAL) like.coat else CatCoat.CHEESE
         val kid = TeamCat(
@@ -391,7 +398,8 @@ object CatTeam {
      * 구출한 냥이를 팀에 넣는다.
      * 바로 싸우지는 않는다 — 관리 화면에서 직접 출전을 켜 줘야 한다.
      */
-    fun recruit(kind: AllyCat.Kind, coat: CatCoat = CatCoat.CHEESE, isKitten: Boolean = false): TeamCat {
+    fun recruit(kind: AllyCat.Kind, coat: CatCoat = CatCoat.CHEESE, isKitten: Boolean = false,
+                male: Boolean = Math.random() < 0.5, parents: String = ""): TeamCat {
         val cat = TeamCat(
             id = nextId++,
             kind = kind,
@@ -399,7 +407,9 @@ object CatTeam {
             inParty = false,
             seen = false,
             coat = if (kind == AllyCat.Kind.NORMAL) coat else CatCoat.CHEESE,
-            isKitten = isKitten
+            isKitten = isKitten,
+            male = male,
+            parents = parents
         )
         roster.add(cat)
         save()

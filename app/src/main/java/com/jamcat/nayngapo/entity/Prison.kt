@@ -20,7 +20,8 @@ class Prison(
     /** 치즈냥이가 갇혀 있을 때의 털 무늬 — 감옥마다 정해 두어 구출 뒤 팀에도 같은 무늬로 간다 */
     val catCoat: com.jamcat.nayngapo.engine.CatCoat = com.jamcat.nayngapo.engine.CatCoat.random()
 
-    /** 새끼 고양이가 갇혀 있다 — 구하면 새끼 고양이가 우리 팀이 된다 (대표님 2026-09-27). 무작위 냥이 감옥의 25% (Claude 판단) */
+    /** 새끼 고양이가 갇혀 있다 — 구하면 새끼 고양이가 우리 팀이 된다 (대표님 2026-09-27). 무작위 냥이 감옥의 25% (Claude 판단).
+     *  새끼는 **엄마(암컷) 냥이와 같이** 갇혀 있다 — 구하면 둘 다 팀에 들어온다 (대표님 2026-10-09) */
     val holdsKitten: Boolean = kind == Kind.CAT && catKind == null && Math.random() < 0.25
 
     enum class Kind { HUMAN, CAT }
@@ -86,12 +87,22 @@ class Prison(
                 AllyCat.Kind.GUN -> SpriteManager.gunCatAlly
                 else -> catCoat.ally
             }
-            val scale = (width - 24f) / bmp.width * (if (holdsKitten) 0.6f else 1f)   // 새끼는 작게
-            val bw = bmp.width * scale
-            val bh = bmp.height * scale
             srcRect.set(0, 0, bmp.width, bmp.height)
-            dstRect.set(x + width / 2f - bw / 2f, y - 12f - bh, x + width / 2f + bw / 2f, y - 12f)
-            canvas.drawBitmap(bmp, srcRect, dstRect, bitmapPaint)
+            if (holdsKitten) {
+                // 엄마 냥이(뒤쪽, 조금 작게) + 그 앞에 새끼(작게)
+                val ms = (width - 30f) / bmp.width * 0.85f
+                dstRect.set(x + 4f, y - 12f - bmp.height * ms, x + 4f + bmp.width * ms, y - 12f)
+                canvas.drawBitmap(bmp, srcRect, dstRect, bitmapPaint)
+                val ks = (width - 24f) / bmp.width * 0.5f
+                dstRect.set(x + width - 8f - bmp.width * ks, y - 8f - bmp.height * ks, x + width - 8f, y - 8f)
+                canvas.drawBitmap(bmp, srcRect, dstRect, bitmapPaint)
+            } else {
+                val scale = (width - 24f) / bmp.width
+                val bw = bmp.width * scale
+                val bh = bmp.height * scale
+                dstRect.set(x + width / 2f - bw / 2f, y - 12f - bh, x + width / 2f + bw / 2f, y - 12f)
+                canvas.drawBitmap(bmp, srcRect, dstRect, bitmapPaint)
+            }
             // 훌쩍이는 눈물 (얼굴은 오른쪽 40% 언저리)
             val fx = dstRect.left + dstRect.width() * 0.72f
             val fy = dstRect.top + dstRect.height() * 0.45f

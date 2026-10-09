@@ -201,9 +201,10 @@ class Level(val stageNumber: Int) {
                 hazardX.add(hx)
                 when (hazardOrder[i]) {
                     Hazard.SWAMP -> {
-                        val swamp = Swamp(hx, Terrain.groundY(hx + 150f), seed = stageNumber * 13 + i * 5)
+                        val honey = stageNumber in 21..30          // 꿀 지역은 꿀 늪 + 꿀냥이 (2026-10-09)
+                        val swamp = Swamp(hx, Terrain.groundY(hx + 150f), seed = stageNumber * 13 + i * 5, honey = honey)
                         swamps.add(swamp)
-                        enemies.add(MudCat(swamp))      // 늪마다 머드냥이 한 마리가 숨어 있다 (기획9)
+                        enemies.add(if (honey) HoneyCat(swamp) else MudCat(swamp))      // 늪마다 한 마리가 숨어 있다 (기획9)
                     }
                     Hazard.SPIKE -> traps.add(Trap(hx, Terrain.groundY(hx + 75f)))
                     Hazard.PIT -> pits.add(PitTrap(hx, Terrain.groundY(hx + 85f), seed = stageNumber * 31 + i * 7))

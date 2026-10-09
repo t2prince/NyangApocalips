@@ -1880,7 +1880,13 @@ class GamePlayScreen(
             val kind = if (prison.holdsKitten) com.jamcat.nayngapo.entity.AllyCat.Kind.NORMAL
                 else prison.catKind ?: randomKinds[(Math.random() * randomKinds.size).toInt()]
             // 구한 냥이는 팀 명단에만 올라간다 — 바로 싸우지 않고, 관리 화면에서 출전을 켜 줘야 한다
-            val recruited = com.jamcat.nayngapo.engine.CatTeam.recruit(kind, prison.catCoat, isKitten = prison.holdsKitten)
+            val recruited = if (prison.holdsKitten) {
+                // 새끼는 엄마(암컷)와 같이 갇혀 있다 — 둘 다 팀에 들어온다 (2026-10-09)
+                val mom = com.jamcat.nayngapo.engine.CatTeam.recruit(kind, prison.catCoat, male = false)
+                com.jamcat.nayngapo.engine.CatTeam.recruit(kind, prison.catCoat, isKitten = true, parents = "엄마 ${mom.name}").also {
+                    hitEffects.add(HitEffect(prison.x, prison.y - prison.height - 50f, 1.6f, "엄마 ${mom.name}도 구출!"))
+                }
+            } else com.jamcat.nayngapo.engine.CatTeam.recruit(kind, prison.catCoat)
             hitEffects.add(
                 HitEffect(
                     prison.x, prison.y - prison.height, 1.6f,
@@ -2009,8 +2015,8 @@ class GamePlayScreen(
                 drawBackgroundTrees(canvas)
             }
             Theme.HONEY -> {
-                drawClouds(canvas)
                 drawHoneyFlowers(canvas)    // 멀리 선 커다란 꽃들
+                drawHoneyCeiling(canvas)    // 위쪽은 벌꿀 (대표님 2026-10-09 「위에가 벌꿀」)
             }
             Theme.JUNGLE -> {
                 drawClouds(canvas)
@@ -2701,6 +2707,42 @@ class GamePlayScreen(
     private val stemPaint = Paint().apply { color = Color.rgb(96, 170, 80); strokeWidth = 14f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
     private val petalPaint = Paint().apply { isAntiAlias = true }
     private val petalCore = Paint().apply { color = Color.rgb(255, 214, 70); isAntiAlias = true }
+
+    private val honeyTop = Paint().apply { color = Color.rgb(196, 112, 12); isAntiAlias = true }
+    private val honeyGloss = Paint().apply { color = Color.rgb(250, 190, 70); isAntiAlias = true }
+    private val honeyPath = Path()
+
+    /** 화면 위쪽을 덮은 벌꿀: 물결진 아랫자락에서 꿀 방울이 길게 늘어진다 (카메라를 따라 천천히 흐른다) */
+    private fun drawHoneyCeiling(canvas: Canvas) {
+        val sw = gameView.screenWidth.toFloat()
+        val drift = camera.x * 0.2f
+        val base = 120f
+        honeyPath.reset()
+        honeyPath.moveTo(0f, 0f)
+        var x = 0f
+        while (x <= sw + 30f) {
+            val wx = x + drift
+            honeyPath.lineTo(x, base + kotlin.math.sin(wx * 0.012f) * 18f + kotlin.math.sin(wx * 0.031f + 2f) * 8f)
+            x += 20f
+        }
+        honeyPath.lineTo(sw + 30f, 0f)
+        honeyPath.close()
+        canvas.drawPath(honeyPath, honeyTop)
+        // 늘어지는 꿀 방울 (자리마다 길이가 다르고 천천히 늘었다 줄었다)
+        var k = kotlin.math.floor(drift / 140f).toInt() - 1
+        while (k * 140f - drift < sw + 140f) {
+            val dx = k * 140f - drift + 40f
+            val seed = ((k % 7) + 7) % 7
+            val len = 30f + seed * 14f + kotlin.math.sin(elapsed * 0.8f + k) * 10f
+            val top = base + kotlin.math.sin((dx + drift) * 0.012f) * 18f - 6f
+            canvas.drawRect(dx - 9f, top, dx + 9f, top + len, honeyTop)
+            canvas.drawCircle(dx, top + len, 14f, honeyTop)
+            canvas.drawCircle(dx - 4f, top + len - 4f, 4f, honeyGloss)
+            k++
+        }
+        // 윗부분 광택 줄
+        canvas.drawRect(0f, 26f, sw, 34f, honeyGloss)
+    }
 
     /** 멀리 선 커다란 꽃들 (느린 원경) */
     private fun drawHoneyFlowers(canvas: Canvas) {

@@ -44,7 +44,16 @@ class CarRide(val car: CarCatalog.Car) {
     /** 지금 세워 둔 자리 (스테이지를 나갈 때 방치차로 남긴다) */
     val parkedAt: Float get() = parkedX
 
+    /** 같이 다니는 냥이들 — 차를 타면 뒷자리에 같이 탄다 (화면이 냥이를 만든 뒤 넣어 준다) */
+    private var passengers: List<AllyCat> = emptyList()
+
+    fun attach(allies: List<AllyCat>) {
+        passengers = allies
+        for (a in passengers) a.inCar = riding && !a.isDead
+    }
+
     fun mount(p: Player) {
+        for (a in passengers) if (!a.isDead) a.inCar = true
         if (abandoned) com.jamcat.nayngapo.engine.GameProgress.clearAbandonedCar()   // 방치차를 되찾았다
         abandoned = false
         riding = true
@@ -57,6 +66,14 @@ class CarRide(val car: CarCatalog.Car) {
         riding = false
         p.seatedInCar = false
         parkedX = p.x + p.width / 2f
+        // 냥이들은 차 뒤쪽 땅에 내린다
+        val back = if (p.facingRight) -1f else 1f
+        for ((k, a) in passengers.withIndex()) {
+            if (!a.inCar) continue
+            a.inCar = false
+            a.x = parkedX + back * (90f + 70f * k) - a.width / 2f
+            a.y = Terrain.groundY(a.x + a.width / 2f)
+        }
         parkedRight = p.facingRight
         p.carSpeedMul = 1f
         p.rideLift = 0f
@@ -68,8 +85,26 @@ class CarRide(val car: CarCatalog.Car) {
      */
     fun beginSeat(canvas: Canvas, p: Player) {
         canvas.save()
-        if (riding) canvas.clipRect(-1e6f, -1e6f, 1e6f, p.y + p.jumpZ + 14f - DRAW_H * DOOR_LINE)
+        if (!riding) return
+        val doorY = p.y + p.jumpZ + 14f - DRAW_H * DOOR_LINE
+        canvas.clipRect(-1e6f, -1e6f, 1e6f, doorY)
+        // 뒷자리 냥이들: 인간 뒤쪽에 줄지어 앉아 문 위로 윗몸만 (인간보다 먼저 그려 뒤에 보인다)
+        if (place(p.x + p.width / 2f, p.y + p.jumpZ, p.facingRight) == null) return
+        val dir = if (p.facingRight) 1f else -1f
+        val riders = passengers.filter { it.inCar && !it.isDead }
+        // 뒤쪽 냥이부터 그려 앞 냥이가 겹쳐 보이게
+        for (slot in riders.indices.reversed()) {
+            val a = riders[slot]
+            val base = a.spriteNow()
+            val bmp = if (p.facingRight) base else SpriteManager.getFlipped(base)
+            val ch = PASSENGER_H * (if (a.kitten) AllyCat.KITTEN_SCALE else 1f); val cw = bmp.width * ch / bmp.height
+            val cx = dst.centerX() - dir * dst.width() * (0.15f + slot * 0.12f)
+            val feet = doorY + 8f
+            seatRect.set(cx - cw / 2f, feet - ch, cx + cw / 2f, feet)
+            canvas.drawBitmap(bmp, null, seatRect, null)
+        }
     }
+    private val seatRect = RectF()
 
     /** 탄 차: 바퀴가 땅에 닿게, 바라보는 쪽으로 — 인간 앞에 그린다 */
     fun drawRiding(canvas: Canvas, p: Player) {
@@ -173,6 +208,8 @@ class CarRide(val car: CarCatalog.Car) {
         const val RIDE_LIFT = -40f
         /** 차 그림 위에서부터 문 줄까지 (높이 비율) — 이 아래 인간 다리는 안 그린다 */
         const val DOOR_LINE = 0.55f
+        /** 뒷자리 냥이 그림 높이 */
+        const val PASSENGER_H = 70f
         const val NEAR = 200f
     }
 }

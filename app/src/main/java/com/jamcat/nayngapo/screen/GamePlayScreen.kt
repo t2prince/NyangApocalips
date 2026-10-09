@@ -305,6 +305,8 @@ class GamePlayScreen(
                 ).also { it.evolve(com.jamcat.nayngapo.engine.CatTeam.evolveSecondsLeft, grown = true) }   // 묭묭 진화 중이면 큰 채로
             )
         }
+        // 자동차를 타고 시작하면 냥이들도 뒷자리에 탄다 (2026-10-09)
+        carRide?.attach(level.allies)
     }
 
     private var elapsed = 0f   // GO → 표시 깜빡임용

@@ -75,6 +75,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 )   // 상점 마을에서는 기술이 무효 — 그전에 묭묭 진화를 썼어도 보통 크기 (대표님 2026-10-09)
             )
         }
+        carRide?.attach(allies)   // 자동차를 타고 있으면 냥이들도 뒷자리에 (2026-10-09)
     }
 
     // ===== 고양이 기술 천막 창 =====

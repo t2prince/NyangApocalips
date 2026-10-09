@@ -80,6 +80,7 @@ class AllyCat(
 
     /** 피해를 입는다 (짧은 피격 무적이 있어 한 공격에 한 번만 맞는다) */
     fun takeDamage(amount: Int) {
+        if (inCar) return
         if (isDead || hitCooldown > 0f) return
         hitCooldown = 0.35f
         // 묭묭 진화: 방어력 50 — 받는 피해에서 50을 뺀다 (0이면 막아 낸다)
@@ -194,11 +195,18 @@ class AllyCat(
     private val scratch = RectF()
 
     private val hitBoxRect = RectF()
-    val hitBox: RectF get() = hitBoxRect.apply { set(x, y + jumpZ - height, x + width, y + 10f) }
+    val hitBox: RectF get() = hitBoxRect.apply {
+        if (inCar) set(-1e6f, -1e6f, -1e6f + 1f, -1e6f + 1f)   // 차에 탄 동안은 아무것도 닿지 않는다
+        else set(x, y + jumpZ - height, x + width, y + 10f)
+    }
+
+    /** 인간과 같이 자동차에 타 있다 (대표님 2026-10-09 「자동차를 타면 고양이들도 자동차에 있어」) — 걷기·싸우기·맞기·그리기를 쉰다, 차가 그린다 */
+    var inCar = false
 
     fun update(deltaTime: Float, playerX: Float, playerY: Float, enemies: List<Enemy>) {
         pendingMeleeTarget = null
         pendingProjectiles.clear()
+        if (inCar) return
         if (hitCooldown > 0f) hitCooldown -= deltaTime
         if (castTimer > 0f) castTimer -= deltaTime
         if (evolveTimer > 0f) { evolveTimer -= deltaTime; evolveAge += deltaTime }
@@ -312,6 +320,7 @@ class AllyCat(
     fun spriteNow(): android.graphics.Bitmap = spriteFor(kind)
 
     fun draw(canvas: Canvas) {
+        if (inCar) return   // 차에 탄 냥이는 차가 그린다
         val cx = x + width / 2f
         // 기술을 쓰는 순간 콩 뛰어오른다 (0.3초 동안 최대 40)
         val castLift =

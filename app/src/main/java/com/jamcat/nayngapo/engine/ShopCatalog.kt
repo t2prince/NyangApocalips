@@ -47,6 +47,8 @@ object ShopCatalog {
         Item("h_gauntlet", "강철 주먹", 45, "인간 공격력 +$H_GAUNTLET_ATK (영구)", max = 5),
         // 총 (대표님 2026-10-09 「무기 상점에는 총이 있고, 그걸 들고 있다가 자동차에 달 수 있어」) — 값·한 개만·장난감 레이저 총 모양은 Claude 판단
         Item("h_gun", "레이저 총", 80, "들고 다니며 공격 버튼으로 총알을 쏜다 · 차를 타면 차에 단다", max = 1),
+        // 채집통 (대표님 2026-10-10 「12번 가게 — 거기엔 채집통」). 쓰임은 아직 안 정해짐 — 값 15·최대 3개는 Claude 판단
+        Item("h_bugbox", "채집통", 15, "벌레·꽃잎 같은 걸 담는 통", max = 3),
         Item("h_helmet", "투구", 40, "인간 하트 +1 (영구)", max = 3),
         Item("h_vest", "가죽 조끼", 60, "인간 하트 +1 (영구)", max = 2),
         Item("h_life", "생명 물약", 15, "다음 스테이지 목숨 +1", max = 3),
@@ -72,6 +74,8 @@ object ShopCatalog {
         7 to ("무기점" to listOf("h_glove", "h_gauntlet", "h_gun")),
         8 to ("갑옷점" to listOf("h_helmet", "h_vest")),
         9 to ("약국" to listOf("h_life", "h_heal")),
+        // 12번 천막 (11번은 로봇 상점)
+        11 to ("채집 가게" to listOf("h_bugbox")),
     )
 
     /** 물건 값 — 안내 문구에 값을 박아 두지 말고 여기서 읽는다 */

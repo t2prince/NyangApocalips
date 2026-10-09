@@ -1075,7 +1075,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     companion object {
         /** 천막 수 — 대표님이 정할 때까지 임시 6개 (Claude 판단) */
-        const val TENT_COUNT = 11
+        const val TENT_COUNT = 12
         private const val MENU_BTN_R = 46f
         private const val MENU_HIT_R = 60f
         private const val MENU_BTN_Y = 118f
@@ -1107,6 +1107,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
             8 to listOf("갑옷점이에요!", "투구 쓰면 하트 +1!", "튼튼한 가죽 조끼~"),
             9 to listOf("약국이에요!", "생명 물약 팔아요~", "하트 물약 하나 어때요?"),
             ROBOT_TENT to listOf("로봇 팔아요!", "피 100 · 공격 50!", "Lv 올리면 두 배!"),
+            11 to listOf("채집통 있어요!", "튼튼한 채집통~", "무엇을 담을까요?"),
         )
         private val DEFAULT_ADS = listOf("어서 오세요!", "곧 좋은 물건 들어와요~")
         /** 맨 앞 집의 가운데 x · 그림 높이 — 인간은 집 앞(오른쪽)에서 시작한다 */

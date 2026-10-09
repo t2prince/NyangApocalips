@@ -18,7 +18,7 @@ import kotlin.math.sin
  *
  * **Lv 버튼** (대표님 2026-10-09): 루비 10개로 가짜 냥이 Lv업 — Lv업 할 때마다 가짜 냥이가 **두 배로 딴딴해진다**
  * (딴딴함 = 100 × 2^(Lv-1), 다 깎이면 부서졌다가 다시 선다). **최대 Lv 1,000,000,000**(대표님 2026-10-09).
- * 딴딴함이 너무 커지면 숫자를 억·조·지수로 줄여 보여 주고, 끝없이 크면 '무한'. 30초마다 오르는 공격력은 Lv 와 상관없이 +3.
+ * 딴딴함이 너무 커지면 숫자를 억·조·지수로 줄여 보여 주고, 끝없이 크면 '무한'. 30초마다 오르는 공격력은 Lv 마다 3씩 더해진다(+3 × Lv).
  * 재료는 Lv1 밀짚 → 나무 → 돌 → 철 → 금 → Lv6 이상 다이아.
  * **쓰는 값** (대표님 2026-10-09): 루비 1개를 내면 1분 쓸 수 있다. 남은 시간이 있을 때만 훈련·싸움이 흘러가고, 다 쓰면 멈춘다.
  * 남은 시간은 투기장을 나갔다 와도 남는다(앱을 끄면 사라짐) — Claude 판단.
@@ -40,7 +40,8 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
     /** 가짜 냥이 Lv · 딴딴함 — Lv업마다 두 배 */
     private val dummyLevel: Int get() = com.jamcat.nayngapo.engine.GameProgress.dummyLevel
     private val dummyMax: Double get() = 100.0 * Math.pow(2.0, (dummyLevel - 1).toDouble())
-    private val trainGain: Int get() = CatTeam.ARENA_ATTACK
+    /** 30초마다 오르는 공격력 — 가짜 냥이 Lv 마다 3씩 더한다 (Lv1 +3, Lv2 +6, Lv3 +9 …, 대표님 2026-10-09). 너무 크면 10억에서 멈춘다 */
+    private val trainGain: Int get() = (CatTeam.ARENA_ATTACK.toLong() * dummyLevel).coerceAtMost(1_000_000_000L).toInt()
     private var dummyHp = 100.0 * Math.pow(2.0, (com.jamcat.nayngapo.engine.GameProgress.dummyLevel - 1).toDouble())
 
     /** 큰 수를 짧게 (억·조·지수, 끝없으면 '무한') */

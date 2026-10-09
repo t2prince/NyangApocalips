@@ -552,7 +552,8 @@ object CatTeam {
     fun arenaTrain(catId: Int, amount: Int = ARENA_ATTACK): Boolean {
         val c = cat(catId) ?: return false
         if (c.gone) return false
-        c.attackBonus += amount
+        // 투기장 Lv 가 아주 높으면 숫자가 넘치지 않게 멈춘다
+        c.attackBonus = (c.attackBonus.toLong() + amount).coerceAtMost(Int.MAX_VALUE / 2L).toInt()
         save()
         return true
     }

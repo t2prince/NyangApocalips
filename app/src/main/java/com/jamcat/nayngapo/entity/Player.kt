@@ -83,6 +83,10 @@ class Player(var x: Float, var y: Float) {
     var rideLift = 0f
     /** 자동차에 앉아 있다 — 인간이 차에 고정되어 걷기·대기·공격 동작 없이 한 자세로 그린다 (대표님 2026-10-09) */
     var seatedInCar = false
+    /** 무기점에서 산 레이저 총 — 들고 다니고, 차를 타면 차에 단다 (2026-10-09) */
+    val hasGun: Boolean = com.jamcat.nayngapo.engine.GameProgress.itemCount("h_gun") > 0
+    private val handPt = android.graphics.PointF()
+    private val gunDst = RectF()
     /** 꽃가루에 숨이 막혀 느려진 남은 시간 (꽃냥이, 2026-09-27) */
     var chokeTimer = 0f
     /** 눈에 잠긴 깊이 (0 = 평지, 최대치면 몸이 완전히 파묻힌다) */
@@ -327,6 +331,17 @@ class Player(var x: Float, var y: Float) {
         drawSprite(canvas, cx, drawY, dir)
     }
 
+    /** 앞손에 레이저 총 — 손잡이(그림 가로 30%·세로 70%)가 손에 오게, 바라보는 쪽으로 */
+    private fun drawGunInHand(canvas: Canvas, bmp: Bitmap) {
+        val gun = SpriteManager.gunSide ?: return
+        if (!com.jamcat.nayngapo.ui.frontHand(bmp, heroDst, facingRight, handPt)) return
+        val gh = heroDst.height() * 0.17f; val gw = gun.width * gh / gun.height
+        val g = if (facingRight) gun else SpriteManager.getFlipped(gun)
+        val gripX = if (facingRight) 0.30f else 0.70f
+        gunDst.set(handPt.x - gw * gripX, handPt.y - gh * 0.70f, handPt.x - gw * gripX + gw, handPt.y + gh * 0.30f)
+        canvas.drawBitmap(g, null, gunDst, null)
+    }
+
     /** 상태에 맞는 졸라맨 프레임을 골라 발끝(drawY)에 맞춰 그린다 */
     private fun drawSprite(canvas: Canvas, cx: Float, drawY: Float, dir: Float) {
         // 공격 진행 0→1 을 7프레임 연속 동작에 그대로 태운다
@@ -367,6 +382,8 @@ class Player(var x: Float, var y: Float) {
         val bmp = if (facingRight) frame else SpriteManager.getFlipped(frame)
         setHeroDst(bmp, cx, drawY)
         com.jamcat.nayngapo.ui.drawHero(canvas, bmp, heroDst, hero, facingRight, animTime)
+        // 총을 들고 있으면 앞손에 쥔다 (차를 타면 총은 차에 달려 있다)
+        if (hasGun && !seatedInCar) drawGunInHand(canvas, bmp)
 
         // 피격 이펙트: 실제로 맞췄고 타격 프레임일 때만 뻗은 팔·다리 끝에
         if (hitSparkTimer > 0f && striking && prog in 0.45f..0.80f) {

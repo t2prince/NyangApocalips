@@ -32,6 +32,7 @@ ITEMS = {
     'car_red': ('car_red', 240),
     'car_blue': ('car_blue', 240),
     'car_yellow': ('car_yellow', 240),
+    'gun_side': ('gun_side', 120),      # 무기점 레이저 총 옆모습 — 인간 손·자동차에 단다 (2026-10-09)
     # 집 안 가구 (2026-10-09 「집에 가구들도 있어」)
     'furn_sofa': ('furn_sofa', 300),
     'furn_shelf': ('furn_shelf', 400),

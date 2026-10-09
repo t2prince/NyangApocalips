@@ -45,6 +45,8 @@ object ShopCatalog {
         // 장갑·투구·조끼는 사 두면 계속 효과(영구), 물약은 다음 땅 스테이지를 시작할 때 하나씩 저절로 마신다
         Item("h_glove", "권투 장갑", 20, "인간 공격력 +$H_GLOVE_ATK (영구)", max = 10),
         Item("h_gauntlet", "강철 주먹", 45, "인간 공격력 +$H_GAUNTLET_ATK (영구)", max = 5),
+        // 총 (대표님 2026-10-09 「무기 상점에는 총이 있고, 그걸 들고 있다가 자동차에 달 수 있어」) — 값·한 개만·장난감 레이저 총 모양은 Claude 판단
+        Item("h_gun", "레이저 총", 80, "들고 다니며 공격 버튼으로 총알을 쏜다 · 차를 타면 차에 단다", max = 1),
         Item("h_helmet", "투구", 40, "인간 하트 +1 (영구)", max = 3),
         Item("h_vest", "가죽 조끼", 60, "인간 하트 +1 (영구)", max = 2),
         Item("h_life", "생명 물약", 15, "다음 스테이지 목숨 +1", max = 3),
@@ -67,7 +69,7 @@ object ShopCatalog {
         3 to ("장난감 가게" to listOf("ball", "fish_toy", "mouse_toy", "feather_wand", "laser_pointer")),
         4 to ("살림 가게" to listOf("brush", "water_bowl", "cushion", "scratcher", "litter", "cat_tower")),
         // 8~10번 천막 = 인간이 가는 가게 (2026-10-09)
-        7 to ("무기점" to listOf("h_glove", "h_gauntlet")),
+        7 to ("무기점" to listOf("h_glove", "h_gauntlet", "h_gun")),
         8 to ("갑옷점" to listOf("h_helmet", "h_vest")),
         9 to ("약국" to listOf("h_life", "h_heal")),
     )

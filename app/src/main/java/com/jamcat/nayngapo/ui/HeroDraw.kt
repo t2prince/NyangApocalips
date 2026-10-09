@@ -214,6 +214,18 @@ private val handLookup: Map<Bitmap, FloatArray> by lazy {
     m
 }
 
+/** 앞손(바라보는 쪽 손)의 화면 자리 — 총 같은 걸 쥐여 줄 때 (프레임마다 미리 찾아 둔 손 자리) */
+fun frontHand(bmp: Bitmap, dst: RectF, facingRight: Boolean, out: android.graphics.PointF): Boolean {
+    val t = handLookup[bmp] ?: return false
+    var best = -1f
+    for (k in 0..1) {
+        val fx = t[k * 2]
+        if (fx > best) { best = fx; out.y = dst.top + dst.height() * t[k * 2 + 1] }
+    }
+    out.x = dst.left + dst.width() * (if (facingRight) best else 1f - best)
+    return true
+}
+
 private val gloveFill = Paint().apply { color = Color.rgb(226, 40, 40); isAntiAlias = true }
 private val gloveShine = Paint().apply { color = Color.argb(110, 255, 255, 255); isAntiAlias = true }
 private val gloveCuff = Paint().apply { color = Color.rgb(250, 246, 236); isAntiAlias = true }

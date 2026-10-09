@@ -75,6 +75,23 @@ class CarRide(val car: CarCatalog.Car) {
     fun drawRiding(canvas: Canvas, p: Player) {
         if (!riding) return
         place(p.x + p.width / 2f, p.y + p.jumpZ, p.facingRight)?.let { canvas.drawBitmap(it, null, dst, null) }
+        // 총을 가졌으면 차 앞쪽 위에 달려 있다 (2026-10-09 「총을 자동차에 달 수 있어」)
+        if (p.hasGun) SpriteManager.gunSide?.let { gun ->
+            val g = if (p.facingRight) gun else SpriteManager.getFlipped(gun)
+            val gh = DRAW_H * 0.36f; val gw = gun.width * gh / gun.height
+            val gx = dst.centerX() + (if (p.facingRight) 1f else -1f) * dst.width() * 0.18f
+            val gy = dst.top + DRAW_H * 0.30f
+            gunRect.set(gx - gw / 2f, gy - gh / 2f, gx + gw / 2f, gy + gh / 2f)
+            canvas.drawBitmap(g, null, gunRect, null)
+        }
+    }
+    private val gunRect = RectF()
+
+    /** 차에 단 총의 총구 자리 (월드 좌표) */
+    fun muzzle(p: Player, out: android.graphics.PointF) {
+        val dir = if (p.facingRight) 1f else -1f
+        out.x = gunRect.centerX() + dir * gunRect.width() / 2f
+        out.y = gunRect.centerY() - gunRect.height() * 0.15f
     }
 
     /** 세워 둔 차 (인간보다 뒤에 그린다) */

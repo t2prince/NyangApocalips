@@ -325,6 +325,9 @@ class GamePlayScreen(
         /** 꽃가루에 숨이 막혀 느려지는 시간 (Claude 판단) */
         /** 배냥이 위에 올라탄 인간을 그만큼 위로 그린다 (Claude 판단) */
         private const val SEA_RIDE_LIFT = 58f
+        /** 레이저 총: 쏘는 간격(초) · 총알 빠르기 */
+        private const val GUN_INTERVAL = 0.28f
+        private const val GUN_SPEED = 1100f
         /** 해적선 항해 (Claude 판단) */
         private const val SHIP_SPEED = 45f
         private const val SHIP_MAX_TRAVEL = 1600f
@@ -545,6 +548,7 @@ class GamePlayScreen(
 
         // 31 해적선은 앞(왼쪽, 뱃머리 쪽)으로 나아간다 — 갑판 위의 인간·냥이도 함께 실려 간다
         if (isSea) sailPirateShip(deltaTime)
+        if (gunCooldown > 0f) gunCooldown -= deltaTime   // 레이저 총 쏘는 간격
 
         // Update player
         player.update(deltaTime)
@@ -2029,7 +2033,8 @@ class GamePlayScreen(
             input.jump = false
         }
         if (input.attack) {
-            if (player.performAttack()) {
+            if (player.hasGun) fireGun()   // 총을 가졌으면 공격 버튼 = 쏘기 (2026-10-09)
+            else if (player.performAttack()) {
                 SoundManager.playAttack()
                 shake(0.07f, 4f)          // 휘두르는 순간의 가벼운 반동
             }
@@ -3264,6 +3269,25 @@ class GamePlayScreen(
             gameView.leaveStage()
         }
         return true
+    }
+
+    // ===== 레이저 총 (무기점, 2026-10-09) — 들고 쏘거나, 차를 타면 차에 단 총으로 쏜다. 빠르기·간격은 Claude 판단 =====
+    private var gunCooldown = 0f
+    private val muzzlePt = android.graphics.PointF()
+    private fun fireGun() {
+        if (gunCooldown > 0f) return
+        gunCooldown = GUN_INTERVAL
+        val dir = if (player.facingRight) 1f else -1f
+        val cr = carRide
+        if (cr != null && cr.riding) cr.muzzle(player, muzzlePt)
+        else { muzzlePt.x = player.x + player.width / 2f + dir * 75f; muzzlePt.y = player.y + player.jumpZ - 108f }
+        level.projectiles.add(
+            com.jamcat.nayngapo.entity.Projectile(
+                muzzlePt.x, muzzlePt.y, dir * GUN_SPEED, 0f, player.attackPower, true,
+                tint = Color.rgb(255, 120, 200), radius = 9f
+            )
+        )
+        SoundManager.playAttack()
     }
 
     /** 스테이지를 나갈 때 차에서 내려 있으면 그 자리에 방치차로 남긴다 (대표님 2026-10-09) */

@@ -2067,7 +2067,12 @@ class GamePlayScreen(
                 drawPyramids(canvas)
             }
             Theme.BEACH -> {
-                drawHorizonBand(canvas, Color.rgb(246, 222, 168))   // 멀리 이어지는 모래사장
+                if (isSea) {
+                    // 31 해적: 전체가 바다 — 모래사장 없이 수평선부터 발밑까지 물 (대표님 2026-10-09)
+                    val horizon = Constants.GROUND_Y - 150f
+                    canvas.drawRect(0f, horizon - 96f, gameView.screenWidth.toFloat(), Constants.GROUND_Y, seaPaint)
+                    canvas.drawRect(0f, horizon - 96f, gameView.screenWidth.toFloat(), horizon - 40f, seaFarPaint)
+                } else drawHorizonBand(canvas, Color.rgb(246, 222, 168))   // 멀리 이어지는 모래사장
                 drawSea(canvas)
             }
             Theme.VOLCANO -> {

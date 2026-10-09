@@ -269,7 +269,8 @@ class Level(val stageNumber: Int) {
                 hazardX.add(tx - 80f)
             }
         }
-        if (stageNumber == 31) pirateShipX = bossBaseX + 420f
+        // 해적선은 바다의 맨 끝 (대표님 2026-10-09) — 해적냥이가 그 앞을 지킨다
+        if (stageNumber == 31) pirateShipX = bossBaseX + 1150f
 
         // 벌집 구조물은 뺐다 (대표님 2026-10-04 「벌집을 없애줘」) — 벌냥이는 다른 냥이처럼 표에서 바로 배치되어 날아다닌다
 

@@ -66,6 +66,8 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
             }
             spots.add(Spot(UP_STAIRS_X, "▼ 아래층 내려가기") { gameView.showHouse(0, STAIRS_X - 60f) })
         }
+        // 소파에 앉을 수 있다 (대표님 2026-10-10 「집에 있는 소파에 앉을 수 있어」)
+        spots.add(Spot(sofaX, "▼ 소파에 앉기") { sit() })
         player = Player(startX ?: (DOOR_X + 220f), Constants.GROUND_Y)
         player.facingRight = true
         for ((i, c) in CatTeam.party.withIndex()) {
@@ -74,6 +76,30 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
                 c.kind, level = c.level, teamId = c.id, armored = c.hasArmor, attackBonus = c.attackBonus, coat = c.coat,
                 speedMul = CatTeam.speedMultiplier(c), hpBonus = CatTeam.hpBonusOf(c), kitten = c.isKitten))
         }
+    }
+
+    // ===== 소파에 앉기 =====
+    /** 이 층 소파 가운데 x · 그림 높이 */
+    private val sofaX: Float get() = (if (floor == 0) GROUND_FURNITURE else UP_FURNITURE).first { it.first == "sofa" }.second
+    private val sofaH: Float get() = (if (floor == 0) GROUND_FURNITURE else UP_FURNITURE).first { it.first == "sofa" }.third
+    private var sitting = false
+    private val standSpot by lazy { Spot(sofaX, "▲ 일어나기") { stand() } }
+
+    /** 소파 가운데에 앉는다: 자세는 고정(차에 앉을 때처럼), 다리는 소파 앞판이 가린다 */
+    private fun sit() {
+        sitting = true
+        touchControls.releaseAll()
+        player.setMovement(0f, 0f)
+        player.x = sofaX - player.width / 2f
+        player.facingRight = true
+        player.seatedInCar = true
+        player.rideLift = SIT_LIFT
+    }
+
+    private fun stand() {
+        sitting = false
+        player.seatedInCar = false
+        player.rideLift = 0f
     }
 
     override fun update(deltaTime: Float) {
@@ -90,6 +116,9 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
         var dirX = 0f
         if (input.moveLeft) dirX -= 1f
         if (input.moveRight) dirX += 1f
+        // 앉아 있을 때 좌우를 누르면 일어난다
+        if (sitting && dirX != 0f) stand()
+        if (sitting) { dirX = 0f; input.jump = false }
         player.setMovement(dirX, 0f)
         if (input.jump || input.moveUp) { player.jump(); input.jump = false }
         if (input.attack) { player.performAttack(); input.attack = false }
@@ -127,7 +156,8 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
         val sw = gameView.screenWidth.toFloat()
         cameraX = (player.x + player.width / 2f - sw * 0.4f).coerceIn(0f, (worldWidth - sw).coerceAtLeast(0f))
         val pcx = player.x + player.width / 2f
-        nearSpot = spots.firstOrNull { abs(pcx - it.x) < 170f }
+        nearSpot = if (sitting) standSpot
+            else spots.firstOrNull { abs(pcx - it.x) < (if (it.x == sofaX) 110f else 170f) }
     }
 
     // ===== 그림 =====
@@ -199,7 +229,20 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
             for (r in residents) drawResident(canvas, r, gy)
         }
         for (f in followers) f.draw(canvas)
+        // 앉아 있으면 앉는 자리 아래(다리)는 안 그린다
+        canvas.save()
+        if (sitting) canvas.clipRect(-1e6f, -1e6f, 1e6f, gy - 20f - sofaH + sofaH * SOFA_SEAT + 12f)
         player.draw(canvas)
+        canvas.restore()
+        // 그리고 소파 앞판(앉는 자리 아래)을 인간 위에 한 번 더 그린다
+        if (sitting) SpriteManager.furniture["sofa"]?.let { bmp ->
+            val fh = sofaH; val fw = bmp.width * fh / bmp.height
+            rect.set(sofaX - fw / 2f, gy - 20f - fh, sofaX + fw / 2f, gy - 20f)
+            canvas.save()
+            canvas.clipRect(rect.left, rect.top + fh * SOFA_SEAT, rect.right, rect.bottom)
+            canvas.drawBitmap(bmp, null, rect, null)
+            canvas.restore()
+        }
         canvas.restore()
 
         // 말풍선 — 눌러야 들어간다
@@ -341,6 +384,9 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
     }
 
     companion object {
+        /** 소파: 그림 위에서부터 앉는 자리(방석 윗면)까지 비율 · 앉으면 인간을 들어 올리는 양 (그림에 맞춰 Claude 판단) */
+        private const val SOFA_SEAT = 0.52f
+        private const val SIT_LIFT = 60f
         private const val GROUND_W = 2800f
         private const val DOOR_X = 220f
         private const val TOWER_X = 1120f

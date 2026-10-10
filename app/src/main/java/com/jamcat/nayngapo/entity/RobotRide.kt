@@ -92,7 +92,7 @@ class RobotRide(val level: Int) {
         val r = 28f
         val fx = if (wristX != 0f) wristX else dst.centerX() + dir * dst.width() * 0.42f
         val fy = if (wristY != 0f) wristY else dst.top + DRAW_H * 0.47f
-        return Projectile(fx - r, fy - r, dir * FIST_SPEED, 0f, damage, true, radius = r, sprite = fist)
+        return Projectile(fx - r, fy - r, dir * FIST_SPEED, 0f, damage, true, radius = r, sprite = fist, byHuman = true)
     }
 
     /** 조종석 테두리 아래로는 인간을 안 그린다 (화면이 인간을 그리기 전에 부르고, 끝나면 restore) */

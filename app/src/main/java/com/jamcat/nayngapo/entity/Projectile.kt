@@ -44,7 +44,9 @@ class Projectile(
     /** 꽃가루 — 꽃냥이가 뿜는다. 맞으면 숨이 막힌다 (대표님 2026-09-27) */
     val isPollen: Boolean = false,
     /** 그림으로 날아가는 탄 — 로봇 주먹 발사 (2026-10-10). 바라보는 쪽(velocityX 부호)으로 그린다 */
-    val sprite: android.graphics.Bitmap? = null
+    val sprite: android.graphics.Bitmap? = null,
+    /** 인간이 쏜 탄 (레이저 총·로봇 주먹) — 채집통은 인간이 때릴 때만 잡는다 (대표님 2026-10-10) */
+    val byHuman: Boolean = false
 ) {
     val width = radius * 2f
     val height = radius * 2f

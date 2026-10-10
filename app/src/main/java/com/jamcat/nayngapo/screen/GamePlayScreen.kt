@@ -946,7 +946,8 @@ class GamePlayScreen(
                         // 미사일은 닿은 자리에서 터져 주변까지 휩쓴다
                         explodeMissile(proj.x + proj.width / 2f, proj.y + proj.height / 2f, proj.damage)
                     } else {
-                        if (!tryCapture(enemy)) damageEnemy(enemy, proj.damage)
+                        // 채집통은 인간이 때릴 때만 (냥이들이 쏜 탄은 안 잡힌다)
+                        if (!(proj.byHuman && tryCapture(enemy))) damageEnemy(enemy, proj.damage)
                         // 돌은 맞고 부서진다
                         if (proj.isStone) chipStone(proj.x + proj.width / 2f, proj.y + proj.height / 2f)
                     }
@@ -3421,7 +3422,7 @@ class GamePlayScreen(
         level.projectiles.add(
             com.jamcat.nayngapo.entity.Projectile(
                 muzzlePt.x, muzzlePt.y, dir * GUN_SPEED, 0f, player.attackPower, true,
-                tint = Color.rgb(255, 120, 200), radius = 9f
+                tint = Color.rgb(255, 120, 200), radius = 9f, byHuman = true
             )
         )
         SoundManager.playAttack()

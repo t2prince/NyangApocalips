@@ -150,7 +150,8 @@ for name, (plain, res, strip) in ARMOR.items():
 # ===== 인간 가게 물건 아이콘 (GPT, 2026-10-09 「인간이 가는 상점도 몇 개 만들어 줘」) =====
 # Plan/shop_icons/shop_h_*.png → 다른 상점 아이콘과 같은 448×448 투명 칸 가운데에 (여백 24)
 ICON = 448
-for p in sorted(glob.glob(os.path.join('Plan/shop_icons', 'shop_h_*.png'))):
+# 다 먹이기(2026-10-10)도 같은 방식
+for p in sorted(glob.glob(os.path.join('Plan/shop_icons', 'shop_h_*.png'))) + sorted(glob.glob('Plan/shop_icons/shop_feed_all.png')):
     img = strip_background(Image.open(p))
     img = img.crop(img.getbbox())
     s = (ICON - 48) / max(img.width, img.height)

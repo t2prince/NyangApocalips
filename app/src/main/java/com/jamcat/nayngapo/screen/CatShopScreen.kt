@@ -241,6 +241,20 @@ class CatShopScreen(
 
     private fun buy(index: Int) {
         val item = shelf[index]
+        if (item.id == "feed_all") {
+            // 다 먹이기: 물건이 아니라 사는 즉시 내 팀 냥이 모두 포만감 가득 (먹일 냥이가 없으면 안 판다)
+            val living = com.jamcat.nayngapo.engine.CatTeam.living.size
+            when {
+                living == 0 -> showNotice("먹일 냥이가 없다냥!")
+                !GameProgress.spendRubies(item.price) -> showNotice("루비가 부족하다냥!")
+                else -> {
+                    val n = com.jamcat.nayngapo.engine.CatTeam.feedAll()
+                    showNotice("냥이 ${n}마리 배가 빵빵!")
+                    SoundManager.playCatHit()
+                }
+            }
+            return
+        }
         if (item.id == "revive_all") {
             // 다부활: 물건이 아니라 사는 즉시 무덤 냥이 전부 부활 (되살릴 냥이가 없으면 안 판다)
             val dead = com.jamcat.nayngapo.engine.CatTeam.deadCount()

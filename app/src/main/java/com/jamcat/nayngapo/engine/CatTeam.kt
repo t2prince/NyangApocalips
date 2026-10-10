@@ -393,6 +393,14 @@ object CatTeam {
         save()
     }
 
+    /** 다 먹이기 (상점, 대표님 2026-10-10): 내 팀 냥이(떠나거나 무덤인 냥이 빼고) 모두 포만감이 가득 찬다. 먹인 마릿수 */
+    fun feedAll(): Int {
+        val cats = roster.filter { !it.gone }
+        for (c in cats) c.fullness = CARE_MAX
+        if (cats.isNotEmpty()) save()
+        return cats.size
+    }
+
     /** 포만감을 하트 개수로 (모자란 하트는 버림) */
     fun heartsOf(cat: TeamCat) = (cat.fullness / FULLNESS_PER_HEART).coerceIn(0, FULLNESS_HEARTS)
 

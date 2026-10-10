@@ -676,6 +676,10 @@ object CatTeam {
         "milk" to 15,        // 상점가 새 간식 (2026-10-09, Claude 판단)
         "salmon" to 45,
         "cat_cake" to 80,
+        // 낚시터에서 잡은 물고기도 먹이 (대표님 2026-10-10 「낚시하면 물고기가 잡혀, 그걸로 고양이 먹이를 줄 수 있어」 — 값은 Claude 판단)
+        "fish_small" to 20,
+        "fish_big" to 45,
+        "fish_gold" to 100,
     )
 
     /** 간식별 포만감 */
@@ -688,6 +692,9 @@ object CatTeam {
         "milk" to 20,
         "salmon" to 40,
         "cat_cake" to 60,
+        "fish_small" to 20,
+        "fish_big" to 40,
+        "fish_gold" to 100,
     )
 
     /** 먹이로 줄 수 있는 물건 목록 (간식 고르기 줄) */

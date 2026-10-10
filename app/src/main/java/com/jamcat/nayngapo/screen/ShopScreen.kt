@@ -319,7 +319,10 @@ class ShopScreen(private val gameView: GameView) : Screen {
     private val stageGateX = HOUSE_X + 600f
     /** 맨 끝(뒤)의 자동차 매장 (대표님 2026-10-09) */
     private val carShopX = FIRST_TENT_X + (TENT_COUNT - 1) * TENT_GAP + 760f
-    private val worldWidth = carShopX + 560f
+    /** 맨 끝의 낚시터 (대표님 2026-10-10) — 자동차 매장 뒤 */
+    private val fishingX = carShopX + 760f
+    private val worldWidth = fishingX + 560f
+    private var nearFishing = false
     private var nearCarShop = false
     private val carShopRect = RectF()
     private var nearGate = false
@@ -424,6 +427,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         nearMoney = abs(pcx - MONEY_X) < 170f
         nearGate = abs(pcx - stageGateX) < 220f
         nearCarShop = abs(pcx - carShopX) < 260f
+        nearFishing = abs(pcx - fishingX) < 260f
     }
 
     override fun draw(canvas: Canvas) {
@@ -507,6 +511,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
             signText.textSize = 46f
             canvas.drawText("자동차 매장", carShopX, carShopRect.top + th * 0.12f, signText)
         }
+        drawFishingSpot(canvas, fishingX, groundY)
         for ((k, car) in com.jamcat.nayngapo.engine.CarCatalog.cars.withIndex()) {
             val bmp = SpriteManager.cars[car.id] ?: continue
             val ch = 110f; val cw = bmp.width * ch / bmp.height
@@ -566,6 +571,19 @@ class ShopScreen(private val gameView: GameView) : Screen {
             bubbleText.textSize = 44f
             val bw = bubbleText.measureText(label) + 60f
             val by = groundY - HOUSE_H - 50f + sin(timer * 4f) * 6f
+            enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
+            canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
+            canvas.drawRoundRect(enterRect, 38f, 38f, ink)
+            canvas.drawText(label, bx, enterRect.centerY() + 15f, bubbleText)
+        }
+
+        // 낚시터 앞: 말풍선
+        if (nearFishing) {
+            val bx = fishingX - cameraX
+            val label = "▼ 낚시하기"
+            bubbleText.textSize = 44f
+            val bw = bubbleText.measureText(label) + 60f
+            val by = groundY - 360f + sin(timer * 4f) * 6f
             enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
             canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
             canvas.drawRoundRect(enterRect, 38f, 38f, ink)
@@ -810,6 +828,37 @@ class ShopScreen(private val gameView: GameView) : Screen {
     private val boardDark = Paint().apply { color = Color.rgb(170, 112, 60); isAntiAlias = true }
     private val boardText = Paint().apply { color = Color.rgb(60, 32, 14); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
 
+    // ===== 낚시터 (맨 끝) =====
+    private val pondPaint = Paint().apply { color = Color.rgb(90, 170, 230); isAntiAlias = true }
+    private val pondLight = Paint().apply { color = Color.rgb(150, 205, 245); isAntiAlias = true }
+    private val pierPaint = Paint().apply { color = Color.rgb(170, 118, 70); isAntiAlias = true }
+
+    /** 작은 연못 + 나무 부두 + '낚시터' 팻말 + 꽂아 둔 낚싯대 (코드 그림) */
+    private fun drawFishingSpot(canvas: Canvas, cx: Float, groundY: Float) {
+        rect.set(cx - 260f, groundY - 40f, cx + 260f, groundY + 60f)
+        canvas.drawOval(rect, pondPaint); canvas.drawOval(rect, ink)
+        val wave = sin(timer * 2f) * 10f
+        canvas.drawLine(cx - 120f + wave, groundY + 5f, cx - 60f + wave, groundY + 5f, pondLight)
+        canvas.drawLine(cx + 40f - wave, groundY + 25f, cx + 110f - wave, groundY + 25f, pondLight)
+        rect.set(cx - 300f, groundY - 54f, cx - 120f, groundY - 30f)
+        canvas.drawRect(rect, pierPaint); canvas.drawRect(rect, ink)
+        // 낚싯대 + 줄 + 찌
+        canvas.drawLine(cx - 150f, groundY - 54f, cx - 20f, groundY - 230f, ladderPaintThin)
+        canvas.drawLine(cx - 20f, groundY - 230f, cx + 60f, groundY - 10f, fishLine)
+        canvas.drawCircle(cx + 60f, groundY - 10f + sin(timer * 3f) * 3f, 9f, fishBobber)
+        // 팻말
+        signText.textSize = 38f
+        val label = "낚시터"
+        val lw = signText.measureText(label) + 40f
+        canvas.drawRect(cx + 200f, groundY - 200f, cx + 214f, groundY - 30f, pierPaint)
+        rect.set(cx + 207f - lw / 2f, groundY - 260f, cx + 207f + lw / 2f, groundY - 196f)
+        canvas.drawRoundRect(rect, 10f, 10f, signPaint); canvas.drawRoundRect(rect, 10f, 10f, ink)
+        canvas.drawText(label, rect.centerX(), rect.centerY() + 13f, signText)
+    }
+    private val ladderPaintThin = Paint().apply { color = Color.rgb(120, 80, 40); strokeWidth = 7f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    private val fishLine = Paint().apply { color = Color.WHITE; strokeWidth = 2.5f; isAntiAlias = true }
+    private val fishBobber = Paint().apply { color = Color.rgb(230, 60, 60); isAntiAlias = true }
+
     /** '스테이지 깨기'는 큰 표지판 (대표님 2026-10-09): 나무 기둥 두 개 위에 큰 판, 글씨와 스테이지 돌 그림 */
     private fun drawStageGate(canvas: Canvas, cx: Float, groundY: Float) {
         val top = groundY - SIGN_TOP; val bottom = groundY - SIGN_TOP + SIGN_H
@@ -1046,6 +1095,9 @@ class ShopScreen(private val gameView: GameView) : Screen {
                     com.jamcat.nayngapo.entity.CarRide.Tap.TOO_FAR -> { showNotice("차 가까이 가서 누르세요"); return true }
                     com.jamcat.nayngapo.entity.CarRide.Tap.NONE -> Unit
                 }
+            }
+            if (nearFishing && !enterRect.isEmpty && enterRect.contains(px, py)) {
+                touchControls.releaseAll(); returnX = player.x; gameView.showFishing(); return true
             }
             if (nearCarShop && !enterRect.isEmpty && enterRect.contains(px, py)) {
                 touchControls.releaseAll(); returnX = player.x; gameView.showCarShop(); return true

@@ -221,6 +221,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         fadeTo { PlayroomScreen(this) }
     }
 
+    /** 낚시터 (상점 마을 맨 끝) — 잡은 물고기는 냥이 먹이 */
+    fun showFishing() {
+        fadeTo { FishingScreen(this) }
+    }
+
     /** 뽑기 가게 (상점 마을 집 앞) — 나오면 상점 마을 기계 앞 */
     fun showGacha() {
         fadeTo { GachaScreen(this) }

@@ -82,6 +82,8 @@ object CatTeam {
         var soothes: Int = 0,
         /** 체력 훈련장에서 늘린 체력 (대표님 2026-10-10 「고양이 체력 훈련장」) */
         var hpTraining: Int = 0,
+        /** 고양이 놀이방에 맡겨 두었다 — 캣타워에서 빠지고, 거기서 밥을 줘서 포만감이 늘 가득 (대표님 2026-10-10) */
+        var inDaycare: Boolean = false,
         /** 치즈냥이의 털 무늬 (다른 종은 CHEESE 로 두고 무시) */
         val coat: CatCoat = CatCoat.CHEESE
     ) {
@@ -149,17 +151,34 @@ object CatTeam {
     private val petCooldown = mutableMapOf<Int, Long>()
     private const val PET_COOLDOWN_MS = 800L
 
-    /** 무덤까지 포함한 전체 명단 (칸 순서가 유지된다) */
-    val cats: List<TeamCat> get() = roster
+    /** 무덤까지 포함한 전체 명단 (칸 순서가 유지된다) — 놀이방에 맡긴 냥이는 빠진다 */
+    val cats: List<TeamCat> get() = roster.filter { !it.inDaycare }
+
+    /** 고양이 놀이방에 맡긴 냥이들 */
+    val daycare: List<TeamCat> get() = roster.filter { it.inDaycare && !it.gone }
+
+    /** 놀이방에 맡기기 — 캣타워·출전에서 빠지고 포만감 가득 */
+    fun putInDaycare(id: Int) {
+        val c = cat(id) ?: return
+        c.inDaycare = true; c.inParty = false; c.fullness = CARE_MAX
+        save()
+    }
+
+    /** 맡기지 않기 — 다시 캣타워로 데려온다 */
+    fun takeFromDaycare(id: Int) {
+        val c = cat(id) ?: return
+        c.inDaycare = false; c.fullness = CARE_MAX
+        save()
+    }
 
     /** 하늘 스테이지에 탈 수 있는, 살아 있는 날아냥이 (없으면 null) */
-    fun flyingMount(): TeamCat? = roster.firstOrNull { it.kind == AllyCat.Kind.FLYING && !it.gone }
+    fun flyingMount(): TeamCat? = roster.firstOrNull { it.kind == AllyCat.Kind.FLYING && !it.gone && !it.inDaycare }
 
     /** 날아냥이를 한 마리라도 데리고 있는가 (11스테이지 입장 조건) */
     fun hasFlyingCat() = flyingMount() != null
 
     /** 31 해적 바다에서 타는 배냥이 (30스테이지에서 구한다, 2026-10-09) */
-    fun boatMount(): TeamCat? = roster.firstOrNull { it.kind == AllyCat.Kind.BOAT && !it.gone }
+    fun boatMount(): TeamCat? = roster.firstOrNull { it.kind == AllyCat.Kind.BOAT && !it.gone && !it.inDaycare }
     /** 배냥이가 죽어 무덤에 있고 살아 있는 배냥이가 없다 */
     fun boatDead(): Boolean = boatMount() == null && roster.any { it.kind == AllyCat.Kind.BOAT && it.isDead }
 
@@ -167,10 +186,10 @@ object CatTeam {
     fun flyingDead(): Boolean = flyingMount() == null && roster.any { it.kind == AllyCat.Kind.FLYING && it.isDead }
 
     /** 아직 살아 있는 냥이들 */
-    val living: List<TeamCat> get() = roster.filter { !it.gone }
+    val living: List<TeamCat> get() = roster.filter { !it.gone && !it.inDaycare }
 
     /** 이번 스테이지에 함께 나갈 냥이들 (최대 PARTY_MAX, 무덤은 빠진다) */
-    val party: List<TeamCat> get() = roster.filter { it.inParty && !it.gone }.take(PARTY_MAX)
+    val party: List<TeamCat> get() = roster.filter { it.inParty && !it.gone && !it.inDaycare }.take(PARTY_MAX)
 
     fun init(prefs: SharedPreferences) {
         this.prefs = prefs
@@ -220,6 +239,7 @@ object CatTeam {
                             hpSurgeries = o.optInt("hpSurgeries", 0).coerceIn(0, HP_SURGERY_MAX),
                             soothes = o.optInt("soothes", 0).coerceIn(0, SOOTHE_NEED),
                             hpTraining = o.optInt("hpTraining", 0).coerceAtLeast(0),
+                            inDaycare = o.optBoolean("inDaycare", false),
                             skills = o.optJSONArray("skills")?.let { arr -> MutableList(arr.length()) { arr.optString(it) }.toMutableSet() } ?: mutableSetOf(),
                             // 무늬 도입(2026-09-20) 전에 저장된 치즈냥이는 무늬가 없다 → 한 번 무작위로 뽑아 준다 (대표님 지시)
                             coat = if (o.has("coat")) CatCoat.of(o.optString("coat"))
@@ -285,6 +305,7 @@ object CatTeam {
                     .put("hpSurgeries", c.hpSurgeries)
                     .put("soothes", c.soothes)
                     .put("hpTraining", c.hpTraining)
+                    .put("inDaycare", c.inDaycare)
             )
         }
         val counts = JSONObject()
@@ -335,6 +356,7 @@ object CatTeam {
     private fun decayOnce() {
         for (cat in roster) {
             if (cat.gone) continue
+            if (cat.inDaycare) { cat.fullness = CARE_MAX; continue }   // 놀이방에서 밥을 줘서 늘 배부르다
             cat.fullness = drop(cat.fullness, DECAY_FULLNESS)
             cat.cleanliness = drop(cat.cleanliness, DECAY_CLEANLINESS)
             cat.joy = drop(cat.joy, DECAY_JOY)

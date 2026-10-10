@@ -216,6 +216,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         fadeTo { HpTrainingScreen(this, catId) }
     }
 
+    /** 고양이 놀이방 (상점 마을 14번 천막) — 루비 10개를 내고 들어간다 */
+    fun showPlayroom() {
+        fadeTo { PlayroomScreen(this) }
+    }
+
     /** 뽑기 가게 (상점 마을 집 앞) — 나오면 상점 마을 기계 앞 */
     fun showGacha() {
         fadeTo { GachaScreen(this) }

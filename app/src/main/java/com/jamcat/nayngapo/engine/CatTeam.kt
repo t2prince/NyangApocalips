@@ -692,9 +692,10 @@ object CatTeam {
         "milk" to 20,
         "salmon" to 40,
         "cat_cake" to 60,
-        "fish_small" to 20,
-        "fish_big" to 40,
-        "fish_gold" to 100,
+        // 물고기 포만감 (대표님 2026-10-10 「작은 물고기 3, 큰 물고기 6, 황금 물고기 10」)
+        "fish_small" to 3,
+        "fish_big" to 6,
+        "fish_gold" to 10,
     )
 
     /** 먹이로 줄 수 있는 물건 목록 (간식 고르기 줄) */

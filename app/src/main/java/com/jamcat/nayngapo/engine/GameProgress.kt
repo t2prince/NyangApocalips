@@ -38,6 +38,7 @@ object GameProgress {
     private const val KEY_SELECTED_CAR = "selected_car"
     private const val KEY_ROBOT_LEVEL = "robot_level"
     private const val KEY_LINE_LEVEL = "fishing_line_level"
+    private const val KEY_CAUGHT_KINDS = "caught_kinds"
     private const val KEY_RIDE_ROBOT = "ride_robot"
     private const val KEY_AB_CAR = "abandoned_car"
     private const val KEY_AB_STAGE = "abandoned_car_stage"
@@ -160,6 +161,18 @@ object GameProgress {
         return true
     }
 
+    /** 낚시로 한 번이라도 잡아 본 종류 — 처음 잡으면 루비 50 (대표님 2026-10-16) */
+    private val caughtKinds = mutableSetOf<String>()
+    const val FIRST_CATCH_RUBIES = 50
+
+    /** 잡았다고 적는다. 처음 잡은 종류면 루비 50을 주고 true */
+    fun recordCatch(id: String): Boolean {
+        if (!caughtKinds.add(id)) return false
+        prefs?.edit()?.putString(KEY_CAUGHT_KINDS, caughtKinds.joinToString(","))?.apply()
+        addRubies(FIRST_CATCH_RUBIES)
+        return true
+    }
+
     /** 로봇 Lv (0 = 없음) · 스테이지에서 로봇을 탈지 (로봇 상점, 2026-10-09) */
     var robotLevel = 0
         private set
@@ -272,6 +285,7 @@ object GameProgress {
         selectedCar = prefs?.getString(KEY_SELECTED_CAR, "") ?: ""
         robotLevel = (prefs?.getInt(KEY_ROBOT_LEVEL, 0) ?: 0).coerceIn(0, RobotCatalog.MAX_LEVEL)
         fishingLineLevel = (prefs?.getInt(KEY_LINE_LEVEL, 1) ?: 1).coerceIn(1, LINE_LEVEL_MAX)
+        caughtKinds.clear(); prefs?.getString(KEY_CAUGHT_KINDS, "")?.split(',')?.filter { it.isNotBlank() }?.let { caughtKinds.addAll(it) }
         rideRobot = prefs?.getBoolean(KEY_RIDE_ROBOT, false) ?: false
         abandonedCarId = prefs?.getString(KEY_AB_CAR, "") ?: ""
         abandonedCarStage = prefs?.getInt(KEY_AB_STAGE, 0) ?: 0

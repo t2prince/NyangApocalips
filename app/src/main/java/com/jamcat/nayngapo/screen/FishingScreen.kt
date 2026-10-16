@@ -47,6 +47,24 @@ class FishingScreen(private val gameView: GameView) : Screen {
         return when { r < 0.08 -> "fish_gold"; r < 0.40 -> "fish_big"; else -> "fish_small" }
     }
 
+    /**
+     * 바다에는 바다 생물이 산다 (대표님 2026-10-16): 깊이 SEA_START 아래는 바다 — 해파리·고래·광어·돔·쓰레기가 70%, 물고기가 30%.
+     * 비율은 Claude 판단: 쓰레기 30 · 광어 25 · 돔 22 · 해파리 15 · 고래 8.
+     */
+    private fun seaCreature(): String {
+        val r = Math.random() * 100
+        return when { r < 30 -> "sea_trash"; r < 55 -> "sea_flounder"; r < 77 -> "sea_bream"; r < 92 -> "sea_jelly"; else -> "sea_whale" }
+    }
+
+    /** 잡았다: 가방에 넣고, 처음 잡은 종류면 루비 50 */
+    private fun onCatch(id: String) {
+        GameProgress.addItem(id)
+        catchId = id
+        firstCatch = GameProgress.recordCatch(id)
+        if (firstCatch) { noticeText = "처음 잡았다! 루비 +${GameProgress.FIRST_CATCH_RUBIES}"; noticeTimer = 2.5f }
+    }
+    private var firstCatch = false
+
     /** 깊이(0 얕음 → 1 심해)에 따라: 깊을수록 큰 물고기·황금 물고기가 많다 */
     private fun fishIdAtDepth(d: Float): String {
         val r = Math.random()
@@ -74,12 +92,16 @@ class FishingScreen(private val gameView: GameView) : Screen {
             val y = waterY + 90f + (bottom - waterY - 90f) * ((k + Math.random().toFloat()) / SWIMMERS)
             // 깊이 비율은 가장 긴 낚시줄(Lv4) 기준 — 줄이 길수록 더 깊은 곳의 좋은 물고기를 만난다
             val d = ((y - waterY) / (BASE_DEPTH * 8f)).coerceIn(0f, 1f)
-            swimmers.add(Swimmer(fishIdAtDepth(d), w * (0.35f + Math.random().toFloat() * 0.6f), y,
+            val inSea = y - waterY > SEA_START && Math.random() < 0.7
+            swimmers.add(Swimmer(if (inSea) seaCreature() else fishIdAtDepth(d), w * (0.35f + Math.random().toFloat() * 0.6f), y,
                 if (Math.random() < 0.5) 1f else -1f, 60f + Math.random().toFloat() * 90f))
         }
     }
 
-    private fun fishSize(id: String) = when (id) { "fish_big" -> 120f; "fish_gold" -> 90f; else -> 75f }
+    private fun fishSize(id: String) = when (id) {
+        "fish_big" -> 120f; "fish_gold" -> 90f; "sea_whale" -> 230f; "sea_jelly" -> 100f
+        "sea_flounder" -> 110f; "sea_bream" -> 105f; "sea_trash" -> 90f; else -> 75f
+    }
     private var state = State.READY
     private var t = 0f
     private var waitTime = 3f
@@ -144,8 +166,8 @@ class FishingScreen(private val gameView: GameView) : Screen {
                 hookY -= 900f * deltaTime   // 심해에서 끌어 올린다
                 if (hookY <= waterY - 40f) {
                     val id = hooked?.id ?: "fish_small"
-                    GameProgress.addItem(id)
-                    catchId = id; hooked = null; swimmers.clear()
+                    onCatch(id)
+                    hooked = null; swimmers.clear()
                     state = State.CAUGHT; t = 0f
                     SoundManager.playSpecial()
                 }
@@ -165,8 +187,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
             State.BITE -> {
                 val r = Math.random()
                 val id = when { r < 0.08 -> "fish_gold"; r < 0.40 -> "fish_big"; else -> "fish_small" }
-                GameProgress.addItem(id)
-                catchId = id
+                onCatch(id)
                 state = State.CAUGHT; t = 0f
                 SoundManager.playSpecial()
             }
@@ -269,16 +290,16 @@ class FishingScreen(private val gameView: GameView) : Screen {
         text.textSize = h * 0.03f
         canvas.drawText("찌가 쏙 들어가고 '!'가 뜨면 바로 당기기! · 물고기는 캣타워에서 간식으로", w / 2f, h * 0.16f, text)
 
-        // 가진 물고기
-        var ix = w * 0.04f
-        for (id in listOf("fish_small", "fish_big", "fish_gold")) {
+        // 가진 물고기·바다 생물 (왼쪽 위 한 줄 — 아래 버튼과 안 겹치게, 한 번도 안 잡은 건 흐리게)
+        var ix = w * 0.03f
+        for (id in CATCH_IDS) {
             val icon = SpriteManager.shopIcons[id] ?: continue
-            rect.set(ix, h * 0.84f, ix + h * 0.09f, h * 0.84f + h * 0.09f)
-            canvas.drawBitmap(icon, null, rect, null)
-            text.textAlign = Paint.Align.LEFT; text.textSize = h * 0.035f
-            canvas.drawText("×${GameProgress.itemCount(id)}", rect.right + 6f, rect.centerY() + h * 0.012f, text)
+            rect.set(ix, h * 0.19f, ix + h * 0.07f, h * 0.26f)
+            canvas.drawBitmap(icon, null, rect, if (GameProgress.itemCount(id) > 0) null else dimIcon)
+            text.textAlign = Paint.Align.LEFT; text.textSize = h * 0.028f
+            canvas.drawText("×${GameProgress.itemCount(id)}", rect.right + 4f, rect.centerY() + h * 0.01f, text)
             text.textAlign = Paint.Align.CENTER
-            ix += h * 0.22f
+            ix += h * 0.135f
         }
 
         // 버튼
@@ -379,6 +400,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
         rect.set(cx - s / 2f, cy - s / 2f, cx + s / 2f, cy + s / 2f)
         canvas.drawBitmap(bmp, null, rect, null)
     }
+    private val dimIcon = Paint().apply { alpha = 70 }
     private val controlPaint = Paint().apply { color = Color.rgb(160, 220, 255); isAntiAlias = true }
     private val hookPaint = Paint().apply { color = Color.rgb(90, 90, 100); strokeWidth = 5f; style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
 
@@ -425,6 +447,11 @@ class FishingScreen(private val gameView: GameView) : Screen {
         private const val BASE_DEPTH = 1500f
         private const val SINK_SPEED = 220f
         private const val HOOK_SPEED = 700f
-        private val NAMES = mapOf("fish_small" to "작은 물고기", "fish_big" to "큰 물고기", "fish_gold" to "✨황금 물고기")
+        private val NAMES = mapOf("fish_small" to "작은 물고기", "fish_big" to "큰 물고기", "fish_gold" to "✨황금 물고기",
+            "sea_jelly" to "해파리", "sea_whale" to "🐋고래", "sea_flounder" to "광어", "sea_bream" to "돔", "sea_trash" to "쓰레기")
+        /** 아래쪽에 가진 개수를 보여 줄 종류 */
+        private val CATCH_IDS = listOf("fish_small", "fish_big", "fish_gold", "sea_flounder", "sea_bream", "sea_jelly", "sea_whale", "sea_trash")
+        /** 이 깊이보다 아래는 바다 (낚시줄 Lv2 부터 닿는다) */
+        private const val SEA_START = 1500f
     }
 }

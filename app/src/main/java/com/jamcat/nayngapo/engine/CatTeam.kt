@@ -680,6 +680,8 @@ object CatTeam {
         "fish_small" to 20,
         "fish_big" to 45,
         "fish_gold" to 100,
+        "sea_flounder" to 50,     // 광어·돔도 먹이 (경험치·포만감은 Claude 판단)
+        "sea_bream" to 60,
     )
 
     /** 간식별 포만감 */
@@ -696,6 +698,8 @@ object CatTeam {
         "fish_small" to 3,
         "fish_big" to 6,
         "fish_gold" to 10,
+        "sea_flounder" to 5,
+        "sea_bream" to 7,
     )
 
     /** 먹이로 줄 수 있는 물건 목록 (간식 고르기 줄) */

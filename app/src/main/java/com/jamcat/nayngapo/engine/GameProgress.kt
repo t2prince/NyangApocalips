@@ -39,6 +39,7 @@ object GameProgress {
     private const val KEY_ROBOT_LEVEL = "robot_level"
     private const val KEY_LINE_LEVEL = "fishing_line_level"
     private const val KEY_CAUGHT_KINDS = "caught_kinds"
+    private const val KEY_DAY_CLOCK = "day_clock"
     private const val KEY_RIDE_ROBOT = "ride_robot"
     private const val KEY_AB_CAR = "abandoned_car"
     private const val KEY_AB_STAGE = "abandoned_car_stage"
@@ -159,6 +160,19 @@ object GameProgress {
         fishingLineLevel++
         prefs?.edit()?.putInt(KEY_LINE_LEVEL, fishingLineLevel)?.apply()
         return true
+    }
+
+    /** 밤낮 시계 — 플레이 시간 1시간마다 낮 ↔ 밤 (대표님 2026-10-17). 0~3600 낮, 3600~7200 밤 */
+    var dayClock = 0f
+        private set
+    private var dayClockSaveT = 0f
+    const val DAY_LENGTH = 3600f
+    val isNight: Boolean get() = dayClock >= DAY_LENGTH
+
+    fun tickDayClock(dt: Float) {
+        dayClock = (dayClock + dt.coerceIn(0f, 1f)) % (DAY_LENGTH * 2)
+        dayClockSaveT += dt
+        if (dayClockSaveT >= 30f) { dayClockSaveT = 0f; prefs?.edit()?.putFloat(KEY_DAY_CLOCK, dayClock)?.apply() }
     }
 
     /** 낚시로 한 번이라도 잡아 본 종류 — 처음 잡으면 루비 50 (대표님 2026-10-16) */
@@ -285,6 +299,7 @@ object GameProgress {
         selectedCar = prefs?.getString(KEY_SELECTED_CAR, "") ?: ""
         robotLevel = (prefs?.getInt(KEY_ROBOT_LEVEL, 0) ?: 0).coerceIn(0, RobotCatalog.MAX_LEVEL)
         fishingLineLevel = (prefs?.getInt(KEY_LINE_LEVEL, 1) ?: 1).coerceIn(1, LINE_LEVEL_MAX)
+        dayClock = (prefs?.getFloat(KEY_DAY_CLOCK, 0f) ?: 0f).coerceIn(0f, DAY_LENGTH * 2)
         caughtKinds.clear(); prefs?.getString(KEY_CAUGHT_KINDS, "")?.split(',')?.filter { it.isNotBlank() }?.let { caughtKinds.addAll(it) }
         rideRobot = prefs?.getBoolean(KEY_RIDE_ROBOT, false) ?: false
         abandonedCarId = prefs?.getString(KEY_AB_CAR, "") ?: ""

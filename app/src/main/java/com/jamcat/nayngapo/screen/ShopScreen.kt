@@ -642,6 +642,9 @@ class ShopScreen(private val gameView: GameView) : Screen {
             canvas.drawText(label, bx, enterRect.centerY() + 15f, bubbleText)
         }
 
+        // 밤이면 하늘이 어두워지고 '밤' 글자 (2026-10-17)
+        com.jamcat.nayngapo.ui.DayNight.drawNight(canvas, w, h, timer, labelY = 150f)
+
         // 위 가운데: 구한 인간 · 열린 가게
         hudText.textSize = 40f
         val info = if (openCount == 0) "인간을 구하면 가게 문이 열려요!"

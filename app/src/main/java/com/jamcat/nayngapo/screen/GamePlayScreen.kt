@@ -286,6 +286,8 @@ class GamePlayScreen(
 
     init {
         camera.forwardOnly = true   // 플랫포머식: 카메라가 뒤로 돌아가지 않는다
+        // 한 번 깬 스테이지: 냥이가 없고 감옥은 깨져 있다 — 끝까지 가면 클리어 (2026-10-17)
+        if (GameProgress.isCleared(stageNumber)) level.emptyForReplay()
         if (isSea) { player.lives = 1; player.rideLift = SEA_RIDE_LIFT }
         robotRide?.mount(player)
         carRide?.let { cr ->
@@ -299,7 +301,7 @@ class GamePlayScreen(
         if (!isSea && loadout.lifePotion && GameProgress.consumeItem("h_life")) player.lives += 1
         if (loadout.heartPotion && GameProgress.consumeItem("h_heal")) { player.maxHp += 2; player.hp = player.maxHp }
         player.hasGun = player.hasGun && loadout.gun
-        showWaveText("STAGE $stageNumber - START!")
+        showWaveText(if (level.replay) "STAGE $stageNumber - 이미 깬 스테이지 (끝까지 가면 클리어)" else "STAGE $stageNumber - START!")
 
         // 관리 화면에서 출전으로 골라 둔 팀 냥이들이 플레이어 뒤에 줄지어 함께 출발한다.
         // 여기서 쓰러져도 명단에서 사라지지는 않는다 (이번 판만 못 싸운다).
@@ -355,6 +357,8 @@ class GamePlayScreen(
         /** 레이저 총: 쏘는 간격(초) · 총알 빠르기 */
         private const val GUN_INTERVAL = 0.28f
         private const val GUN_SPEED = 1100f
+        /** 다시 하는 스테이지: 끝에서 이만큼 안에 들어오면 클리어 */
+        private const val REPLAY_END_MARGIN = 600f
         /** 화살비: 모두 합쳐 쏟아지는 화살 수(냥이마다 나눠 2~6개) · 노리는 냥이 수 · 떨어지는 빠르기 */
         private const val ARROW_TOTAL = 24
         private const val ARROW_MAX_TARGETS = 12
@@ -586,6 +590,7 @@ class GamePlayScreen(
         // 31 해적선은 앞(왼쪽, 뱃머리 쪽)으로 나아간다 — 갑판 위의 인간·냥이도 함께 실려 간다
         if (isSea) sailPirateShip(deltaTime)
         if (gunCooldown > 0f) gunCooldown -= deltaTime   // 레이저 총 쏘는 간격
+        if (level.replay && player.x > level.areaWidth - REPLAY_END_MARGIN) level.reachedEnd = true   // 다시 하는 스테이지는 끝까지 가면 깬다
         // 여왕 벌냥이가 쓰러지면 독이 풀린다
         if (player.poisoned && level.enemies.none { it is com.jamcat.nayngapo.entity.QueenBeeCatBoss && !it.isDead }) {
             player.poisoned = false

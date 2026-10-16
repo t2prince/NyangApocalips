@@ -65,7 +65,22 @@ class Level(val stageNumber: Int) {
     var totalEnemies = 0
     var defeatedEnemies = 0
     // 늪 속에 숨은 머드냥이는 인간이 늪에 빠져야만 나오므로 클리어 조건에서 뺀다 (대표님 2026-09-27 기획9)
-    val stageCleared: Boolean get() = enemies.isNotEmpty() && enemies.all { it.isDead || it is MudCat || it is StrayTeamCat } &&   // 떠난 냥이는 세지 않는다
+    /**
+     * 한 번 깬 스테이지를 다시 하는 중 (대표님 2026-10-17 「한 번 클리어한 스테이지는 고양이가 없어, 감옥도 깨져 있지」):
+     * 냥이(보스 포함)가 없고 감옥은 이미 깨져 있다. 잡을 냥이가 없으니 끝까지 가면(reachedEnd) 깬다 (Claude 판단).
+     */
+    var replay = false
+    var reachedEnd = false
+
+    /** 냥이를 모두 빼고 감옥을 다 깨 둔다 — 다시 하는 스테이지 */
+    fun emptyForReplay() {
+        replay = true
+        enemies.clear()
+        totalEnemies = 0
+        for (p in prisons) p.isOpen = true
+    }
+
+    val stageCleared: Boolean get() = if (replay) reachedEnd else enemies.isNotEmpty() && enemies.all { it.isDead || it is MudCat || it is StrayTeamCat } &&   // 떠난 냥이는 세지 않는다
         // 30: 끝에 갇힌 배냥이를 구해야 끝난다 (31 바다에 타고 나갈 배냥이, 2026-10-09)
         prisons.none { it.catKind == AllyCat.Kind.BOAT && !it.isOpen }
 

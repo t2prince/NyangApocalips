@@ -127,12 +127,13 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         if (state == State.CONTROL || state == State.REEL) return
         val seaBefore = seaDist
         updateHero(dt, w, h, waterY)
+        if (onBoat) updateCrew(dt, w, h)
         if (!onBoat) return
         val shipW = shipWidth(h)
         if (pirateX.isNaN()) {
             pirateWait -= dt
             if (pirateWait <= 0f && seaDist < ISLAND_AT - gameView.screenWidth * 1.2f) {
-                pirateX = w + 20f; pirateStay = PIRATE_STAY; pirateFire = 1.2f; pirateLeaving = false; pirateHp = PIRATE_HP; pirateCatDead = false
+                pirateX = w + 20f; pirateStay = PIRATE_STAY; pirateFire = 1.2f; pirateLeaving = false; pirateHp = PIRATE_HP; pirateCatDead = false; spawnCrew()
                 noticeText = "🏴‍☠️ 해적선이다! 점프로 뛰어 건너가 때리거나 그물(SP)을 던져요!"; noticeTimer = 2.5f
                 SoundManager.playPlayerHurt()
             }
@@ -203,14 +204,14 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
     }
 
     private fun sinkBoat() {
-        onBoat = false; pirateX = Float.NaN; balls.clear(); nets.clear(); pos = Pos.DECK; atHelm = false; touchControls.releaseAll()
+        onBoat = false; pirateX = Float.NaN; balls.clear(); nets.clear(); crew.clear(); pos = Pos.DECK; atHelm = false; touchControls.releaseAll()
         if (state != State.CONTROL && state != State.REEL) { state = State.READY; catchId = null }
         noticeText = "배가 가라앉았다! 겨우 부두로 돌아왔어요"; noticeTimer = 2.5f
     }
 
     /** 배에서 내려 부두로 (나가기) */
     private fun leaveBoat() {
-        onBoat = false; pirateX = Float.NaN; balls.clear(); nets.clear(); pos = Pos.DECK; atHelm = false; paused = false
+        onBoat = false; pirateX = Float.NaN; balls.clear(); nets.clear(); crew.clear(); pos = Pos.DECK; atHelm = false; paused = false
         touchControls.releaseAll()
         state = State.READY; catchId = null
         noticeText = "부두로 돌아왔어요"; noticeTimer = 2f
@@ -224,7 +225,140 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
     private fun pirateDefeated() {
         pirateCatDead = true; catBoomT = 0.7f; balls.clear()
         SoundManager.playCatDie(); SoundManager.playSpecial()
-        noticeText = "해적냥이를 물리쳤다! 이제 해적선은 안전해"; noticeTimer = 2.2f
+        // 선장이 쓰러지면 선원 냥이들도 바다로 뛰어들어 도망간다 — 그래서 해적냥이만 쓰러뜨리면 안전
+        crewFlee()
+        noticeText = "해적냥이를 물리쳤다! 선원 냥이들도 도망갔다 — 이제 해적선은 안전해"; noticeTimer = 2.4f
+    }
+
+    // ===== 해적선 선원 냥이 (대표님 2026-10-17 「해적선에 해적냥이 빼고 다른 냥이가 있어, 해적냥이랑 같이 있다.
+    //  다른 고양이들이 우리 배에 올라타서 공격할 수 있다」) =====
+    // 해적선마다 선원 냥이 CREW_COUNT 마리(치즈냥이 모습). 해적선이 멈춰 있는 동안 BOARD_GAP 초마다 한 마리씩 우리 배로 뛰어 건너와
+    // 인간 쪽으로 걸어와 할퀸다(배 하트 −1). 주먹으로 때려 쓰러뜨린다 (선원 ♥3, 주먹 2 — Claude 판단).
+    // 해적선에 올라탄 인간도 남은 선원이 할퀸다. 해적냥이가 쓰러지면 모두 바다로 도망간다.
+    private enum class CrewAt { SHIP, AIR, BOAT }
+    private class Crew(var at: CrewAt, var u: Float) {
+        var hp = CREW_HP
+        var x = 0f; var y = 0f; var vx = 0f; var vy = 0f; var t = 0f; var targetU = 0f
+        var scratch = 0.8f
+        var dir = -1f
+        var boom = 0f
+    }
+    private val crew = mutableListOf<Crew>()
+    private var boardT = 0f
+
+    private fun spawnCrew() {
+        crew.clear()
+        for (k in 0 until CREW_COUNT) crew.add(Crew(CrewAt.SHIP, 0.45f + k * 0.15f))
+        boardT = 2.5f
+    }
+
+    private fun crewFlee() {
+        val h = gameView.screenHeight.toFloat(); val w = gameView.screenWidth.toFloat()
+        for (c in crew) if (c.boom <= 0f) splashes.add(Splash(crewX(c, w, h), h * 0.55f, 0f, false))
+        crew.clear()
+    }
+
+    private fun crewX(c: Crew, w: Float, h: Float): Float = when (c.at) {
+        CrewAt.SHIP -> pirateX + shipWidth(h) * c.u
+        CrewAt.AIR -> c.x
+        CrewAt.BOAT -> boatLeft(w) + boatWidth(w) * c.u
+    }
+
+    private fun updateCrew(dt: Float, w: Float, h: Float) {
+        if (pirateX.isNaN() || pirateCatDead) { if (crew.isNotEmpty() && pirateX.isNaN()) crewFlee(); return }
+        if (pirateLeaving) {
+            // 해적선이 떠나면 우리 배에 있던 선원도 바다로 뛰어들어 돌아간다
+            if (crew.any { it.at != CrewAt.SHIP }) { crew.filter { it.at != CrewAt.SHIP }.forEach { splashes.add(Splash(crewX(it, w, h), h * 0.55f, 0f, false)) }; crew.removeAll { it.at != CrewAt.SHIP } }
+            return
+        }
+        val stopped = pirateX <= w - shipWidth(h) * 0.95f + 1f
+        // 한 마리씩 우리 배로 뛰어 건너온다
+        if (stopped) {
+            boardT -= dt
+            if (boardT <= 0f) {
+                boardT = BOARD_GAP
+                crew.firstOrNull { it.at == CrewAt.SHIP && it.boom <= 0f }?.let { c ->
+                    c.x = crewX(c, w, h); c.y = pirateFootY(h)
+                    c.targetU = DECK_MIN + Math.random().toFloat() * (DECK_MAX - DECK_MIN)
+                    val tx = boatLeft(w) + boatWidth(w) * c.targetU
+                    val tt = CREW_JUMP_T
+                    c.vx = (tx - c.x) / tt; c.vy = (deckFootY(h) - 55f - c.y) / tt - 0.5f * JUMP_G * tt
+                    c.t = 0f; c.at = CrewAt.AIR; c.dir = -1f
+                }
+            }
+        }
+        val heroX = heroWorldX(w, h)
+        val it = crew.iterator()
+        while (it.hasNext()) {
+            val c = it.next()
+            if (c.boom > 0f) { c.boom -= dt; if (c.boom <= 0f) it.remove(); continue }
+            when (c.at) {
+                CrewAt.AIR -> {
+                    c.t += dt; c.vy += JUMP_G * dt; c.x += c.vx * dt; c.y += c.vy * dt
+                    if (c.t >= CREW_JUMP_T) {
+                        val bl = boatLeft(w); val bw = boatWidth(w)
+                        if (c.x in (bl + bw * DECK_MIN - 40f)..(bl + bw * DECK_MAX + 40f)) {
+                            c.at = CrewAt.BOAT; c.u = ((c.x - bl) / bw).coerceIn(DECK_MIN, DECK_MAX)
+                            noticeText = "선원 냥이가 우리 배에 올라탔다! 공격으로 때려요"; noticeTimer = 1.4f
+                        } else { splashes.add(Splash(c.x, h * 0.55f, 0f, false)); it.remove() }   // 배가 움직여 빗나가면 바다에 빠진다
+                    }
+                }
+                CrewAt.BOAT -> {
+                    // 인간이 갑판에 있으면 인간 쪽으로, 없으면(조타실·해적선) 조타실 쪽으로 가서 배를 할퀸다
+                    val targetU = if (pos == Pos.DECK && !atHelm) heroU else DECK_MIN
+                    val d = targetU - c.u
+                    if (kotlin.math.abs(d) > 0.06f) { c.dir = if (d > 0f) 1f else -1f; c.u = (c.u + c.dir * CREW_WALK_U * dt).coerceIn(DECK_MIN, DECK_MAX) }
+                    c.scratch -= dt
+                    if (c.scratch <= 0f && kotlin.math.abs(d) <= 0.08f) {
+                        c.scratch = CREW_SCRATCH_GAP
+                        hurtBoat(if (pos == Pos.DECK && !atHelm) "선원 냥이 할퀴기!" else "선원 냥이가 배를 할퀸다!")
+                        if (!onBoat) return
+                    }
+                }
+                CrewAt.SHIP -> {
+                    // 해적선에 올라탄 인간에게 다가가 할퀸다
+                    if (pos == Pos.PIRATE) {
+                        val d = pirU - c.u
+                        if (kotlin.math.abs(d) > 0.08f) { c.dir = if (d > 0f) 1f else -1f; c.u = (c.u + c.dir * CREW_WALK_U * 0.5f * dt).coerceIn(PIRATE_DECK_MIN, PIRATE_DECK_MAX) }
+                        c.scratch -= dt
+                        if (c.scratch <= 0f && kotlin.math.abs(crewX(c, w, h) - heroX) < 140f) {
+                            c.scratch = CREW_SCRATCH_GAP
+                            hurtBoat("선원 냥이 할퀴기!")
+                            if (!onBoat) return
+                        }
+                    } else c.dir = -1f
+                }
+            }
+        }
+    }
+
+    /** 주먹이 닿는 선원 냥이를 때린다 (맞으면 true) */
+    private fun punchCrew(w: Float, h: Float): Boolean {
+        val heroX = heroWorldX(w, h)
+        val where = if (pos == Pos.PIRATE) CrewAt.SHIP else CrewAt.BOAT
+        val c = crew.filter { it.at == where && it.boom <= 0f }.minByOrNull { kotlin.math.abs(crewX(it, w, h) - heroX) } ?: return false
+        if (kotlin.math.abs(crewX(c, w, h) - heroX) > 200f) return false
+        c.hp -= BOAT_ATTACK
+        SoundManager.playCatHit()
+        if (c.hp <= 0) { c.boom = 0.5f; SoundManager.playCatDie(); noticeText = "선원 냥이를 쓰러뜨렸다!"; noticeTimer = 1f }
+        else { noticeText = "퍽! 선원 냥이 ♥ ${c.hp}/$CREW_HP"; noticeTimer = 0.8f }
+        return true
+    }
+
+    /** 선원 냥이 그리기 (치즈냥이 걷는 그림, 가는 쪽을 본다) — onWhere 에 있는 것만 */
+    private fun drawCrew(canvas: Canvas, w: Float, h: Float, onWhere: CrewAt, footY: Float) {
+        val frames = SpriteManager.catWalk
+        for (c in crew) {
+            if (c.at != onWhere) continue
+            val x = crewX(c, w, h)
+            val fy = if (onWhere == CrewAt.AIR) c.y else footY
+            if (c.boom > 0f) { boomPaint.alpha = (c.boom / 0.5f * 255).toInt(); canvas.drawCircle(x, fy - 60f, 40f + (0.5f - c.boom) * 120f, boomPaint); continue }
+            val f = frames[((timer * 8f).toInt() + crew.indexOf(c)) % frames.size]
+            val bmp = if (c.dir < 0f) SpriteManager.getFlipped(f) else f
+            val ch = h * 0.13f; val cw = bmp.width * ch / bmp.height
+            rect.set(x - cw / 2f, fy - ch, x + cw / 2f, fy)
+            canvas.drawBitmap(bmp, null, rect, null)
+        }
     }
 
     private fun hurtBoat(msg: String) {
@@ -318,7 +452,14 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         jumpHeld = jumpNow
         // 공격: 해적선 위에서만 (어선에서는 해적선을 못 때린다 — 그물은 SP)
         if (input.attack && !attackHeld) {
-            if (pos == Pos.PIRATE && punchT <= 0f) {
+            if ((pos == Pos.DECK && !atHelm || pos == Pos.PIRATE) && punchT <= 0f && crew.isNotEmpty() &&
+                crew.any { c -> c.at == (if (pos == Pos.PIRATE) CrewAt.SHIP else CrewAt.BOAT) && c.boom <= 0f &&
+                    kotlin.math.abs(crewX(c, w, h) - heroWorldX(w, h)) <= 200f } &&
+                (pos == Pos.DECK || kotlin.math.abs(heroWorldX(w, h) - (pirateX + shipWidth(h) * PIRATE_CAT_U)) >= 230f || pirateCatDead)) {
+                // 가까운 선원 냥이부터 (해적선 위에서 해적냥이가 더 가까우면 해적냥이)
+                punchT = PUNCH_TIME
+                punchCrew(w, h)
+            } else if (pos == Pos.PIRATE && punchT <= 0f) {
                 punchT = PUNCH_TIME
                 val catX = pirateX + shipWidth(h) * PIRATE_CAT_U
                 if (kotlin.math.abs(heroWorldX(w, h) - catX) < 230f && !pirateCatDead) {
@@ -328,8 +469,9 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
                     if (pirateHp <= 0) pirateDefeated()
                     else { noticeText = "퍽! 해적냥이 ♥ $pirateHp/$PIRATE_HP"; noticeTimer = 0.8f }
                 } else SoundManager.playAttack()
-            } else if (pos == Pos.DECK && !pirateX.isNaN()) {
-                noticeText = "해적선으로 뛰어 건너가야 때릴 수 있어요 (그물은 SP)"; noticeTimer = 1.4f
+            } else if (pos == Pos.DECK && !atHelm && !pirateX.isNaN() && punchT <= 0f) {
+                punchT = PUNCH_TIME; SoundManager.playAttack()
+                if (crew.none { it.at == CrewAt.BOAT }) { noticeText = "해적냥이는 해적선으로 뛰어 건너가야 때릴 수 있어요 (그물은 SP)"; noticeTimer = 1.4f }
             }
         }
         attackHeld = input.attack
@@ -452,6 +594,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
             if (!pirateCatDead) canvas.drawBitmap(pc, null, rect, null)
             else if (catBoomT > 0f) { boomPaint.alpha = (catBoomT / 0.7f * 255).toInt(); canvas.drawCircle(cx2, rect.centerY(), 60f + (0.7f - catBoomT) * 120f, boomPaint) }
             // 해적선에 올라탄 인간 (다리는 뱃전이 가린다)
+            drawCrew(canvas, w, h, CrewAt.SHIP, top + sh * PIRATE_DECK_V + 12f)
             if (pos == Pos.PIRATE) drawHero(canvas, pirateX + sw * pirU, top + sh * PIRATE_DECK_V + 40f, h * 0.30f)
             rect.set(pirateX, top, pirateX + sw, top + sh)
             canvas.drawBitmap(SpriteManager.pirateShip, null, rect, null)
@@ -737,6 +880,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         } else {
             // 어선: 인간은 앞 갑판에 서 있고(다리는 뱃전이 가린다) 물결 따라 출렁인다 · ◀ ▶ 로 움직인다
             // 걸을 때는 걷는 그림 (왼쪽으로 가면 뒤집어서) · 조타실 안에서는 조타실 벽이 가린다
+            drawCrew(canvas, w, h, CrewAt.BOAT, footY - 55f)
             if (pos == Pos.DECK) drawHero(canvas, hx, footY, hh)
             drawFishingBoat(canvas, w, h, footY)
             if (atHelm) { text.textSize = h * 0.05f; canvas.drawText("🛞", hx, footY - hh * 1.05f, text) }
@@ -744,6 +888,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         if (onBoat && state != State.CONTROL && state != State.REEL && islandLeft(w) < w) drawIsland(canvas, w, h, waterY, hh)
         if (state != State.CONTROL && state != State.REEL) drawSea(canvas, w, h, waterY)
         // 점프 중인 인간은 배들 앞에
+        if (onBoat) drawCrew(canvas, w, h, CrewAt.AIR, 0f)
         if (onBoat && pos == Pos.AIR) drawHero(canvas, airX, airY, hh)
         // 낚싯대 끝 → 찌
         val rodBaseX = hx + hw * 0.25f; val rodBaseY = footY - hh * 0.61f
@@ -1093,6 +1238,13 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         private const val PIRATE_DECK_MIN = 0.22f
         private const val PIRATE_DECK_MAX = 0.92f
         private const val PIRATE_CAT_U = 0.30f
+        /** 선원 냥이: 마릿수 · ♥ · 우리 배로 건너오는 간격 · 뛰는 시간 · 걷는 빠르기 · 할퀴기 간격 (Claude 판단) */
+        private const val CREW_COUNT = 3
+        private const val CREW_HP = 3
+        private const val BOARD_GAP = 3.5f
+        private const val CREW_JUMP_T = 0.9f
+        private const val CREW_WALK_U = 0.18f
+        private const val CREW_SCRATCH_GAP = 1.2f
         /** 바다 끝(상점마을2 항구)까지의 거리 (배 빠르기 420 으로 약 30초) · 항구 땅에서 걷는 폭 (화면 폭 비율) — Claude 판단 */
         private const val ISLAND_AT = 12600f
         private const val ISLAND_W = 0.26f

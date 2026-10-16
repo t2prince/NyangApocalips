@@ -814,5 +814,12 @@
  "{0}번 가게 · 닫힘 (감옥의 사람을 구해요)": "Shop {0} · Closed (rescue the captives)",
  "상점마을2 · 열린 가게 {0} / {1}": "Village 2 · Shops open {0} / {1}",
  "{0}번 가게 · 닫힘": "Shop {0} · Closed",
- "헤엄쳐서 배로 돌아왔다": "You swam back to the boat"
+ "헤엄쳐서 배로 돌아왔다": "You swam back to the boat",
+ "해적냥이를 물리쳤다! 선원 냥이들도 도망갔다 — 이제 해적선은 안전해": "Pirate cat defeated! The crew fled — the ship is safe now",
+ "선원 냥이가 우리 배에 올라탔다! 공격으로 때려요": "A crew cat boarded our boat! Hit it with Attack",
+ "선원 냥이 할퀴기!": "Crew cat scratch!",
+ "선원 냥이가 배를 할퀸다!": "A crew cat is clawing the boat!",
+ "선원 냥이를 쓰러뜨렸다!": "Crew cat defeated!",
+ "퍽! 선원 냥이 ♥ {0}/{1}": "Pow! Crew cat ♥ {0}/{1}",
+ "해적냥이는 해적선으로 뛰어 건너가야 때릴 수 있어요 (그물은 SP)": "Jump onto the pirate ship to hit the pirate cat (Net = SP)"
 }

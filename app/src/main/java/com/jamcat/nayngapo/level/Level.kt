@@ -143,7 +143,9 @@ class Level(val stageNumber: Int) {
             29 -> StagePlan(mapOf(Kind.BEE to 16, Kind.FLOWER to 8, Kind.GUN to 3, Kind.RED to 2, Kind.ORANGE to 2, Kind.THIEF to 1),
                 spikes = 2, dangerPits = 1, secrets = 3, humans = 1, cats = 1)
             30 -> StagePlan(mapOf(Kind.BEE to 18, Kind.FLOWER to 8, Kind.YELLOW to 3, Kind.ANVIL to 2, Kind.NORMAL to 4),
-                dangerPits = 1, secrets = 3, cats = 2)
+                dangerPits = 1, secrets = 3, cats = 2,
+                // 30 보스 = 여왕 벌냥이 (대표님 2026-10-10)
+                boss = { baseX -> listOf(QueenBeeCatBoss(baseX, Constants.GROUND_Y)) })
             // ===== 31 해적 스테이지 (특수 스테이지 표 기획12): 해적냥이 Boss·냥이·물냥이·배냥이 / 토네이도 함정 =====
             // 마릿수·구출·비밀의 방은 Claude 판단. 끝에 해적선이 있고 해적냥이가 그 앞을 지킨다.
             31 -> StagePlan(mapOf(Kind.NORMAL to 8, Kind.BLUE to 6, Kind.BOAT to 6),

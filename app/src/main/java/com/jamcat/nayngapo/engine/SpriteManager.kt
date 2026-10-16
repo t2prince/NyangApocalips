@@ -70,6 +70,8 @@ object SpriteManager {
     var robotLeg: Bitmap? = null
     /** 집 앞 뽑기 기계 */
     var gachaMachine: Bitmap? = null
+    /** 30스테이지 보스 여왕 벌냥이 (GPT) */
+    var queenBeeCat: Bitmap? = null
     lateinit var catIdleRed: List<Bitmap>
     lateinit var catIdleOrange: List<Bitmap>
     lateinit var catIdleYellow: List<Bitmap>
@@ -227,6 +229,7 @@ object SpriteManager {
             robotFist = Bitmap.createBitmap(r, x0, y0, r.width - x0, (r.height * 0.62f).toInt() - y0)
         }
         res.getIdentifier("gacha_machine", "drawable", context.packageName).let { if (it != 0) gachaMachine = BitmapFactory.decodeResource(res, it) }
+        res.getIdentifier("cat_queen_bee", "drawable", context.packageName).let { if (it != 0) queenBeeCat = BitmapFactory.decodeResource(res, it) }
         furniture = listOf("sofa", "shelf", "table", "lamp", "catbeds", "plant", "fireplace").mapNotNull { n ->
             val id = res.getIdentifier("furn_$n", "drawable", context.packageName)
             if (id == 0) null else n to BitmapFactory.decodeResource(res, id)

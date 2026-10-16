@@ -635,7 +635,8 @@ class GamePlayScreen(
             hitEffects.add(HitEffect(player.x, player.y - player.height - 40f, 1.4f, "점프로 덩굴 잡기!"))
         }
 
-        // Update enemies
+        // Update enemies (보스가 불러낸 냥이는 돌고 나서 넣는다)
+        val newcomers = mutableListOf<com.jamcat.nayngapo.entity.Enemy>()
         for (enemy in level.enemies) {
             if (enemy.isDead) {
                 enemy.updateDeath(deltaTime)      // 쓰러진 냥이는 사망 모션만 재생
@@ -643,6 +644,7 @@ class GamePlayScreen(
             }
             if (!enemy.isDead) {
                 enemy.update(deltaTime, player.x, player.y)
+                newcomers.addAll(enemy.takeSpawns())
                 // Collect projectiles
                 for (proj in enemy.getProjectiles()) {
                     level.projectiles.add(proj)
@@ -656,6 +658,10 @@ class GamePlayScreen(
                     }
                 }
             }
+        }
+        if (newcomers.isNotEmpty()) {
+            level.enemies.addAll(newcomers)
+            level.totalEnemies += newcomers.size   // 불러낸 냥이도 다 잡아야 끝난다
         }
 
         // 아군 냥이: 적을 쫓아가 공격하고, 적이 없으면 플레이어 곁을 지킨다.

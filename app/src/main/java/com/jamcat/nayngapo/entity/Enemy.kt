@@ -108,6 +108,9 @@ abstract class Enemy(
 
     open fun getProjectiles(): List<Projectile> = emptyList()
 
+    /** 새로 불러낸 냥이들 (여왕 벌냥이가 벌냥이를 부른다) — 화면이 매 프레임 가져가 스테이지에 넣는다 */
+    open fun takeSpawns(): List<Enemy> = emptyList()
+
     /** 모래바람 등 환경 효과로 몸이 살짝 들리는 양 (음수 = 위로) */
     var windLift = 0f
 
@@ -934,6 +937,99 @@ class BeeCat(x: Float, y: Float) : Enemy(x, y, 3, 10) {
         private const val STING_Z = -70f
         private const val FLY_SPEED = 230f
         private const val STING_EVERY = 1.6f
+    }
+}
+
+/**
+ * 여왕 벌냥이 — 30스테이지 보스 (대표님 2026-10-10 「30스테이지 보스는 여왕 벌냥이야」). GPT 그림 `queen_bee_cat`(금관을 쓴 큰 벌냥이).
+ * 높이 떠서 인간 위를 따라다니다가 2.8초마다 엉덩이 침으로 내려와 찌르고(내려왔을 때만 맞는다), 7초마다 벌냥이 둘을 불러낸다(한 번에 최대 6마리까지).
+ * HP 60 · 공격 12 · 닿으면 하트 3(보스) · 간격·높이·부르는 수는 Claude 판단.
+ */
+class QueenBeeCatBoss(x: Float, y: Float) : Enemy(x, y, 60, 12) {
+    override val width = 170f
+    override val height = 150f
+    override val contactDamage = 3
+    private enum class State { FLY, DIVE }
+    private var state = State.FLY
+    private var stingT = 0f
+    private var cooldown = 2.0f
+    private var summonT = 4f
+    private var bob = 0f
+    private val box = RectF()
+    private val spawns = mutableListOf<Enemy>()
+    private val summoned = mutableListOf<Enemy>()
+
+    init { jumpZ = HOVER_Z }
+
+    override val isTangible: Boolean get() = state == State.DIVE || jumpZ > HOVER_Z * 0.6f
+    override val hitBox: RectF get() = box.apply { set(x, y + jumpZ - height, x + width, y + jumpZ + 6f) }
+
+    override fun takeSpawns(): List<Enemy> {
+        if (spawns.isEmpty()) return emptyList()
+        val out = spawns.toList(); spawns.clear(); return out
+    }
+
+    override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
+        if (hitCooldown > 0f) hitCooldown -= deltaTime
+        animTime += deltaTime
+        bob += deltaTime * 3f
+        y = Terrain.groundY(x + width / 2f)
+        val pcx = playerX + Constants.PLAYER_WIDTH / 2f
+        val cx = x + width / 2f
+        // 벌냥이 부르기 (살아 있는 부하가 MAX_MINIONS 보다 적을 때)
+        summonT -= deltaTime
+        summoned.removeAll { it.isDead }
+        if (summonT <= 0f) {
+            summonT = SUMMON_EVERY
+            repeat(2) { k ->
+                if (summoned.size < MAX_MINIONS) {
+                    val b = BeeCat(cx + (if (k == 0) -120f else 120f), y)
+                    summoned.add(b); spawns.add(b)
+                }
+            }
+        }
+        when (state) {
+            State.FLY -> {
+                jumpZ += (HOVER_Z + sin(bob) * 18f - jumpZ) * (deltaTime * 3f).coerceAtMost(1f)
+                val dx = pcx - cx
+                facingRight = dx > 0f
+                if (abs(dx) < 900f && abs(dx) > 80f) x += sign(dx) * FLY_SPEED * deltaTime
+                cooldown -= deltaTime
+                if (cooldown <= 0f && abs(dx) < 160f && jumpZ < HOVER_Z * 0.7f) { state = State.DIVE; stingT = 0f }
+            }
+            State.DIVE -> {
+                stingT += deltaTime
+                facingRight = pcx < cx            // 엉덩이(침)가 인간 쪽
+                jumpZ = when {
+                    stingT < 0.4f -> HOVER_Z + (STING_Z - HOVER_Z) * (stingT / 0.4f)
+                    stingT < 0.8f -> STING_Z
+                    else -> STING_Z + (HOVER_Z - STING_Z) * ((stingT - 0.8f) / 0.5f).coerceAtMost(1f)
+                }
+                if (stingT >= 1.3f) { state = State.FLY; cooldown = STING_EVERY }
+            }
+        }
+        x = x.coerceIn(Constants.PLAY_AREA_LEFT + 5f, Constants.PLAY_AREA_RIGHT - width - 5f)
+    }
+
+    override fun takeDamage(amount: Int) {
+        if (isTangible) super.takeDamage(amount)
+    }
+
+    override fun draw(canvas: Canvas) {
+        val flapLift = sin(animTime * 34f) * 3f
+        jumpZ += flapLift
+        drawSprite(canvas, SpriteManager.queenBeeCat ?: SpriteManager.beeCat)
+        jumpZ -= flapLift
+        drawHpBar(canvas)
+    }
+
+    companion object {
+        private const val HOVER_Z = -240f
+        private const val STING_Z = -80f
+        private const val FLY_SPEED = 180f
+        private const val STING_EVERY = 2.8f
+        private const val SUMMON_EVERY = 7f
+        private const val MAX_MINIONS = 6
     }
 }
 

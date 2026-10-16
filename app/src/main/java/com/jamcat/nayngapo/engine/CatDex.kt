@@ -39,6 +39,7 @@ object CatDex {
         Entry("flower", "꽃냥이", "꽃가루로 숨막히게 한다", { SpriteManager.flowerCat }),
         Entry("boat", "배냥이", "나무배를 타고 다닌다", { SpriteManager.boatCat }),            // 31 해적 스테이지 (기획13, 2026-10-04)
         Entry("pirate", "해적냥이", "해적선의 선장 (31 보스)", { SpriteManager.pirateCat }),
+        Entry("queen_bee", "여왕 벌냥이", "벌냥이를 부르고 독침을 쏜다 (30 보스)", { SpriteManager.queenBeeCat ?: SpriteManager.beeCat }),   // 2026-10-17
         Entry("kitten", "새끼 고양이", "작지만 깨문다", { KittenCat.small(SpriteManager.normalCat) }),   // 2026-09-27
         Entry("honey", "꿀냥이", "꿀 늪에 숨어 있다", { SpriteManager.honeyCat }),   // 2026-10-09
         Entry("mud", "머드냥이", "늪 속에 숨어 있다", { SpriteManager.mudCatEvil }),   // 기획9 (2026-09-27)
@@ -72,6 +73,7 @@ object CatDex {
         is MudCat -> "mud"
         is KittenCat -> "kitten"
         is BeeCat -> "bee"
+        is QueenBeeCatBoss -> "queen_bee"
         is FlowerCat -> "flower"
         is BoatCat -> "boat"
         is PirateCatBoss -> "pirate"

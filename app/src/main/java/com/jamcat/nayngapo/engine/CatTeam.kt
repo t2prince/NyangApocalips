@@ -569,7 +569,13 @@ object CatTeam {
     fun attachGps(id: Int): CareResult? {
         val cat = cat(id) ?: return null
         if (cat.gone) return null
-        if (cat.hasGps) return CareResult(false, "이미 GPS를 달고 있다냥! (떠나도 어디 있는지 알 수 있어요)")
+        // 다시 누르면 GPS를 뗀다 — 뗀 GPS는 가방으로 돌아온다 (대표님 2026-10-17 「GPS 버튼 다시 누르면 해제돼」, 돌려받는 건 Claude 판단)
+        if (cat.hasGps) {
+            cat.hasGps = false
+            GameProgress.addItem("cat_gps")
+            save()
+            return CareResult(true, "GPS를 뗐다 (가방에 돌아왔어요)")
+        }
         if (!GameProgress.consumeItem("cat_gps")) return CareResult(false, "고양이 GPS가 없다냥! 고양이 상점에서 사 오자")
         cat.hasGps = true
         save()

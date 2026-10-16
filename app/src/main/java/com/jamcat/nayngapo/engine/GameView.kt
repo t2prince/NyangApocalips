@@ -41,6 +41,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         SoundManager.init(context)
         SoundManager.startBgm(context)   // 밝은 배경음악을 계속 반복
         GameProgress.init(context)
+        I18n.init(context)   // 언어 설정 (저장된 언어를 읽는다)
     }
 
     fun setScreen(screen: Screen) {

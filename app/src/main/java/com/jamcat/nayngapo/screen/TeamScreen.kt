@@ -27,6 +27,9 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         const val COLS = 8
         const val ROWS = 2
         const val VISIBLE = COLS * ROWS
+        /** 낚싯대 줄 길이 · 앞발이 깃털을 쫓는 빠르기 */
+        private const val WAND_STRING = 170f
+        private const val PAW_FOLLOW = 5f
 
         /** 부활 연출 길이 */
         const val REVIVE_POP_TIME = 0.6f
@@ -228,6 +231,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
     override fun update(deltaTime: Float) {
         timer += deltaTime
         lastDelta = deltaTime
+        if (playing) updatePlay(deltaTime)
         if (revivePopT > 0f) revivePopT -= deltaTime
         if (noticeTimer > 0f) noticeTimer -= deltaTime
 
@@ -267,6 +271,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
             if (snackOpen) drawSnackPicker(canvas, w, h) else clearSnackRects()
         }
 
+        if (playing) drawPlay(canvas, w, h)
         drawParticles(canvas, h)
         drawNotice(canvas, w, h)
     }
@@ -731,7 +736,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         )
         gpsRect.set(mid + 6f, uTop, r, uTop + bh)
         drawButton(
-            canvas, gpsRect, if (cat.hasGps) "GPS ✓" else "GPS 달기", bh * 0.30f,
+            canvas, gpsRect, if (cat.hasGps) "GPS ✓ (떼기)" else "GPS 달기", bh * 0.30f,
             if (cat.hasGps) btnPaint else btnWhitePaint, pressedKey == "gps", alive
         )
 
@@ -1106,6 +1111,13 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val h = gameView.screenHeight.toFloat()
+        if (playing) {
+            if (event.actionMasked == MotionEvent.ACTION_DOWN && playDoneRect.contains(event.x, event.y)) { playing = false; return true }
+            if (event.actionMasked == MotionEvent.ACTION_DOWN || event.actionMasked == MotionEvent.ACTION_MOVE) {
+                wandX = event.x; wandY = event.y.coerceAtMost(h * 0.80f)
+            }
+            return true
+        }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 pressedKey = keyAt(event.x, event.y)
@@ -1215,10 +1227,105 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
     private fun doPlay(h: Float) {
         val cat = selected ?: return
         if (cat.gone) return
-        val result = CatTeam.play(cat.id) ?: return
-        spawnFx(Fx.STAR, 4, h)
-        SoundManager.playCatHit()
-        showNotice(result.message)
+        // 놀아주기 = 고양이 낚싯대 놀이 (대표님 2026-10-17 「낚싯대를 움직이면 고양이 발바닥이 따라와」)
+        playing = true; playCatches = 0; playCool = 0f
+        wandX = gameView.screenWidth * 0.62f; wandY = h * 0.30f
+        featherX = wandX; featherY = wandY + WAND_STRING; featherVX = 0f; featherVY = 0f
+        pawX = gameView.screenWidth * 0.5f; pawY = h * 0.70f
+    }
+
+    // ===== 고양이 낚싯대 놀이 =====
+    // 손가락 = 낚싯대 끝. 끝에 매단 깃털이 줄에 달려 흔들리며 따라오고, 냥이 앞발이 깃털을 쫓아 뻗는다.
+    // 앞발이 깃털에 닿으면 '냥!' — 놀아주기 한 번만큼 즐거움이 오른다 (닿을 때마다, 1.2초 쉬고. 앞발 빠르기는 Claude 판단)
+    private var playing = false
+    private var playCatches = 0
+    private var playCool = 0f
+    private var wandX = 0f; private var wandY = 0f
+    private var featherX = 0f; private var featherY = 0f
+    private var featherVX = 0f; private var featherVY = 0f
+    private var pawX = 0f; private var pawY = 0f
+    private val playDoneRect = RectF()
+    private val playShade = Paint().apply { color = Color.argb(150, 30, 26, 40) }
+    private val playFloor = Paint().apply { color = Color.rgb(250, 238, 214); isAntiAlias = true }
+    private val wandPaint = Paint().apply { color = Color.rgb(150, 100, 60); strokeWidth = 12f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    private val stringPaint = Paint().apply { color = Color.rgb(60, 56, 52); strokeWidth = 3f; style = Paint.Style.STROKE; isAntiAlias = true }
+    private val featherPaint = Paint().apply { color = Color.rgb(250, 120, 160); isAntiAlias = true }
+    private val feather2Paint = Paint().apply { color = Color.rgb(120, 200, 250); isAntiAlias = true }
+    private val pawFill = Paint().apply { color = Color.WHITE; isAntiAlias = true }
+    private val armFill = Paint().apply { color = Color.WHITE; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    private val armInk = Paint().apply { color = Color.rgb(34, 30, 28); strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    private val padPaint = Paint().apply { color = Color.rgb(255, 160, 180); isAntiAlias = true }
+    private val pawInk = Paint().apply { color = Color.rgb(34, 30, 28); style = Paint.Style.STROKE; strokeWidth = 5f; isAntiAlias = true }
+    private val playText = Paint().apply { color = Color.WHITE; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
+
+    private fun updatePlay(dt: Float) {
+        val h = gameView.screenHeight.toFloat()
+        if (playCool > 0f) playCool -= dt
+        // 깃털: 줄 끝에 매달린 추 — 낚싯대 끝 아래로 늘어지며 흔들린다
+        val dx = featherX - wandX; val dy = featherY - wandY
+        val d = kotlin.math.hypot(dx, dy).coerceAtLeast(1f)
+        val pull = (d - WAND_STRING) * 30f
+        featherVX += (-dx / d * pull) * dt
+        featherVY += (-dy / d * pull + 1600f) * dt
+        featherVX *= (1f - 2.5f * dt); featherVY *= (1f - 2.5f * dt)
+        featherX += featherVX * dt; featherY += featherVY * dt
+        // 앞발: 어깨에서 닿는 만큼만 뻗어 깃털을 쫓는다 (쉬는 동안은 내려놓는다)
+        val sx = gameView.screenWidth * 0.5f; val sy = h * 0.74f
+        var tx = if (playCool > 0f) sx + 40f else featherX
+        var ty = if (playCool > 0f) sy + 20f else featherY
+        val rx = tx - sx; val ry = ty - sy
+        val rd = kotlin.math.hypot(rx, ry)
+        val reach = h * 0.48f
+        if (rd > reach) { tx = sx + rx / rd * reach; ty = sy + ry / rd * reach }
+        val k = (dt * PAW_FOLLOW).coerceAtMost(1f)
+        pawX += (tx - pawX) * k; pawY += (ty - pawY) * k
+        if (playCool <= 0f && kotlin.math.hypot(pawX - featherX, pawY - featherY) < 70f) {
+            playCool = 1.2f; playCatches++
+            val cat = selected
+            val r = cat?.let { CatTeam.play(it.id) }
+            spawnText("냥!", h)
+            spawnFx(Fx.STAR, 4, h, featherX, featherY)
+            SoundManager.playCatHit()
+            r?.let { showNotice(it.message) }
+            featherVX += (Math.random().toFloat() - 0.5f) * 1400f; featherVY -= 900f   // 툭 쳐서 튕긴다
+        }
+    }
+
+    private fun drawPlay(canvas: Canvas, w: Float, h: Float) {
+        val cat = selected ?: run { playing = false; return }
+        canvas.drawRect(0f, 0f, w, h, playShade)
+        canvas.drawRect(0f, h * 0.86f, w, h, playFloor)
+        // 냥이 (아래 가운데, 위를 올려다본다)
+        val bmp = plainSpriteFor(cat)
+        val ch = h * 0.42f; val cw = bmp.width * ch / bmp.height
+        val cx = w * 0.5f
+        dstRect.set(cx - cw / 2f, h * 0.90f - ch, cx + cw / 2f, h * 0.90f)
+        canvas.drawBitmap(bmp, null, dstRect, null)
+        // 앞발: 어깨에서 발바닥까지 팔 + 둥근 발바닥(분홍 젤리 네 개 + 큰 젤리)
+        val sx = w * 0.5f; val sy = h * 0.74f
+        armInk.strokeWidth = 64f; canvas.drawLine(sx, sy, pawX, pawY, armInk)
+        armFill.strokeWidth = 54f; canvas.drawLine(sx, sy, pawX, pawY, armFill)
+        canvas.drawCircle(pawX, pawY, 44f, pawFill); canvas.drawCircle(pawX, pawY, 44f, pawInk)
+        canvas.drawOval(pawX - 18f, pawY - 2f, pawX + 18f, pawY + 24f, padPaint)
+        for (k in 0 until 4) {
+            val a = Math.toRadians((200 + k * 47).toDouble())
+            canvas.drawCircle(pawX + kotlin.math.cos(a).toFloat() * 26f, pawY - 6f + kotlin.math.sin(a).toFloat() * 26f, 8f, padPaint)
+        }
+        // 낚싯대: 오른쪽 아래 손잡이 → 손가락 끝, 줄 → 깃털
+        canvas.drawLine(w * 0.98f, h * 1.02f, wandX, wandY, wandPaint)
+        canvas.drawLine(wandX, wandY, featherX, featherY, stringPaint)
+        val ang = Math.toDegrees(kotlin.math.atan2((featherVY).toDouble(), (featherVX + 0.001f).toDouble())).toFloat() * 0.2f
+        canvas.save(); canvas.rotate(ang, featherX, featherY)
+        canvas.drawOval(featherX - 16f, featherY - 6f, featherX + 16f, featherY + 70f, featherPaint)
+        canvas.drawOval(featherX - 10f, featherY + 10f, featherX + 30f, featherY + 60f, feather2Paint)
+        canvas.drawOval(featherX - 30f, featherY + 14f, featherX + 6f, featherY + 56f, featherPaint)
+        canvas.restore()
+        playText.textSize = h * 0.05f
+        canvas.drawText("${cat.name}와 놀기 — 손가락으로 낚싯대를 움직여요!", w / 2f, h * 0.09f, playText)
+        playText.textSize = h * 0.036f
+        canvas.drawText("깃털을 잡았다 $playCatches 번 · 즐거움 ${cat.joy}", w / 2f, h * 0.15f, playText)
+        playDoneRect.set(w * 0.03f, h * 0.04f, w * 0.03f + 260f, h * 0.04f + 100f)
+        drawButton(canvas, playDoneRect, "그만 놀기", 38f, btnPaint, false, true)
     }
 
     private fun doGroom(h: Float) {
@@ -1342,6 +1449,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
 
     override fun onBack(): Boolean {
         if (snackOpen) { snackOpen = false; return true }
+        if (playing) { playing = false; return true }
         close()
         return true
     }

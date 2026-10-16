@@ -287,6 +287,10 @@ object GameProgress {
     fun setBgm(on: Boolean) { bgmEnabled = on; prefs?.edit()?.putBoolean(KEY_BGM, on)?.apply(); SoundManager.applyBgmSetting() }
     fun setSfx(on: Boolean) { sfxEnabled = on; prefs?.edit()?.putBoolean(KEY_SFX, on)?.apply() }
     fun setShake(on: Boolean) { shakeEnabled = on; prefs?.edit()?.putBoolean(KEY_SHAKE, on)?.apply() }
+    /** 화면 언어 ("ko" 한국어 · "en" English) — 설정에서 고른다 (2026-10-17) */
+    var language: String
+        get() = prefs?.getString("language", "ko") ?: "ko"
+        set(v) { prefs?.edit()?.putString("language", v)?.apply() }
 
     /** 한 번도 죽지 않고 20스테이지를 깬 적이 있는가 (미션 '살아남아라') */
     var stage20NoDeath = false

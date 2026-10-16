@@ -42,6 +42,11 @@ object ShopCatalog {
         Item("sea_flounder", "광어", 0, "바다에서 잡은 광어"),
         Item("sea_bream", "돔", 0, "바다에서 잡은 돔"),
         Item("sea_trash", "쓰레기", 0, "바다에서 건진 쓰레기"),
+        Item("sea_starfish", "불가사리", 0, "바다에서 잡은 불가사리"),   // 2026-10-16 추가
+        Item("sea_clam", "조개", 0, "바다에서 잡은 조개"),
+        Item("sea_rockfish", "우럭", 0, "바다에서 잡은 우럭"),
+        Item("sea_turtle", "거북이", 0, "바다에서 잡은 거북이"),
+        Item("sea_shark", "상어", 0, "바다에서 잡은 상어!"),
         Item("feed_all", "다 먹이기", 10, "내 팀 냥이들 포만감이 다 찬다 (사면 바로)"),   // 대표님 2026-10-10
         Item("revive_all", "다부활", 500, "내 팀 냥이를 전부 되살린다 (사면 바로)"),   // 대표님 2026-09-20
         Item("attack_up", "공격력 Lv업", 200, "냥이 공격력 +60 (영구)"),

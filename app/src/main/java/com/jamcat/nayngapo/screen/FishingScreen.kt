@@ -48,12 +48,15 @@ class FishingScreen(private val gameView: GameView) : Screen {
     }
 
     /**
-     * 바다에는 바다 생물이 산다 (대표님 2026-10-16): 깊이 SEA_START 아래는 바다 — 해파리·고래·광어·돔·쓰레기가 70%, 물고기가 30%.
-     * 비율은 Claude 판단: 쓰레기 30 · 광어 25 · 돔 22 · 해파리 15 · 고래 8.
+     * 바다에는 바다 생물이 산다 (대표님 2026-10-16): 깊이 SEA_START 아래는 바다 — 바다 생물이 70%, 물고기가 30%.
+     * 해파리·고래·광어·돔·쓰레기, 그리고 불가사리·조개·우럭·거북이·상어(2026-10-16 추가). **고래는 아주 크다.**
+     * 비율은 Claude 판단: 쓰레기 18 · 광어 14 · 돔 12 · 우럭 12 · 조개 12 · 불가사리 10 · 해파리 9 · 거북이 6 · 상어 4 · 고래 3.
      */
     private fun seaCreature(): String {
         val r = Math.random() * 100
-        return when { r < 30 -> "sea_trash"; r < 55 -> "sea_flounder"; r < 77 -> "sea_bream"; r < 92 -> "sea_jelly"; else -> "sea_whale" }
+        var acc = 0.0
+        for ((id, wgt) in SEA_TABLE) { acc += wgt; if (r < acc) return id }
+        return "sea_trash"
     }
 
     /** 잡았다: 가방에 넣고, 처음 잡은 종류면 루비 50 */
@@ -99,8 +102,10 @@ class FishingScreen(private val gameView: GameView) : Screen {
     }
 
     private fun fishSize(id: String) = when (id) {
-        "fish_big" -> 120f; "fish_gold" -> 90f; "sea_whale" -> 230f; "sea_jelly" -> 100f
-        "sea_flounder" -> 110f; "sea_bream" -> 105f; "sea_trash" -> 90f; else -> 75f
+        "fish_big" -> 120f; "fish_gold" -> 90f; "sea_whale" -> 520f; "sea_jelly" -> 100f   // 고래는 아주 크다
+        "sea_flounder" -> 110f; "sea_bream" -> 105f; "sea_trash" -> 90f
+        "sea_starfish" -> 80f; "sea_clam" -> 75f; "sea_rockfish" -> 105f; "sea_turtle" -> 150f; "sea_shark" -> 260f
+        else -> 75f
     }
     private var state = State.READY
     private var t = 0f
@@ -291,15 +296,16 @@ class FishingScreen(private val gameView: GameView) : Screen {
         canvas.drawText("찌가 쏙 들어가고 '!'가 뜨면 바로 당기기! · 물고기는 캣타워에서 간식으로", w / 2f, h * 0.16f, text)
 
         // 가진 물고기·바다 생물 (왼쪽 위 한 줄 — 아래 버튼과 안 겹치게, 한 번도 안 잡은 건 흐리게)
-        var ix = w * 0.03f
-        for (id in CATCH_IDS) {
+        for ((n, id) in CATCH_IDS.withIndex()) {
             val icon = SpriteManager.shopIcons[id] ?: continue
-            rect.set(ix, h * 0.19f, ix + h * 0.07f, h * 0.26f)
+            // 7개씩 두 줄
+            val ix = w * 0.03f + (n % 7) * h * 0.11f
+            val iy = h * 0.19f + (n / 7) * h * 0.075f
+            rect.set(ix, iy, ix + h * 0.06f, iy + h * 0.06f)
             canvas.drawBitmap(icon, null, rect, if (GameProgress.itemCount(id) > 0) null else dimIcon)
             text.textAlign = Paint.Align.LEFT; text.textSize = h * 0.028f
             canvas.drawText("×${GameProgress.itemCount(id)}", rect.right + 4f, rect.centerY() + h * 0.01f, text)
             text.textAlign = Paint.Align.CENTER
-            ix += h * 0.135f
         }
 
         // 버튼
@@ -448,9 +454,13 @@ class FishingScreen(private val gameView: GameView) : Screen {
         private const val SINK_SPEED = 220f
         private const val HOOK_SPEED = 700f
         private val NAMES = mapOf("fish_small" to "작은 물고기", "fish_big" to "큰 물고기", "fish_gold" to "✨황금 물고기",
-            "sea_jelly" to "해파리", "sea_whale" to "🐋고래", "sea_flounder" to "광어", "sea_bream" to "돔", "sea_trash" to "쓰레기")
+            "sea_jelly" to "해파리", "sea_whale" to "🐋고래", "sea_flounder" to "광어", "sea_bream" to "돔", "sea_trash" to "쓰레기",
+            "sea_starfish" to "불가사리", "sea_clam" to "조개", "sea_rockfish" to "우럭", "sea_turtle" to "거북이", "sea_shark" to "🦈상어")
         /** 아래쪽에 가진 개수를 보여 줄 종류 */
-        private val CATCH_IDS = listOf("fish_small", "fish_big", "fish_gold", "sea_flounder", "sea_bream", "sea_jelly", "sea_whale", "sea_trash")
+        private val CATCH_IDS = listOf("fish_small", "fish_big", "fish_gold", "sea_flounder", "sea_bream", "sea_rockfish", "sea_clam",
+            "sea_starfish", "sea_jelly", "sea_turtle", "sea_shark", "sea_whale", "sea_trash")
+        private val SEA_TABLE = listOf("sea_trash" to 18, "sea_flounder" to 14, "sea_bream" to 12, "sea_rockfish" to 12, "sea_clam" to 12,
+            "sea_starfish" to 10, "sea_jelly" to 9, "sea_turtle" to 6, "sea_shark" to 4, "sea_whale" to 3)
         /** 이 깊이보다 아래는 바다 (낚시줄 Lv2 부터 닿는다) */
         private const val SEA_START = 1500f
     }

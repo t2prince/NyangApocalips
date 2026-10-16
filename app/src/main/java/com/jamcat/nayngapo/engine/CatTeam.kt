@@ -72,8 +72,8 @@ object CatTeam {
         var isKitten: Boolean = false,
         /** 새끼의 부모 이름 "A × B" (태어날 때의 이름) */
         val parents: String = "",
-        /** 성별 — true 수컷 ♂, false 암컷 ♀ (대표님 2026-10-09). 구출·출생 때 무작위 */
-        val male: Boolean = Math.random() < 0.5,
+        /** 성별 — true 수컷 ♂, false 암컷 ♀ (대표님 2026-10-09). 구출·출생 때 무작위 — 단 삼색이는 암컷밖에 없다 (아래 init) */
+        var male: Boolean = Math.random() < 0.5,
         /** 이 냥이가 상점 마을 '고양이 기술' 천막에서 배운 기술 id들 (데려온 냥이 1마리만 배운다, 2026-10-09) */
         val skills: MutableSet<String> = mutableSetOf(),
         /** 중성화 수술을 받았나(0/1) — 빨라진다. 중성화한 냥이는 새끼를 낳지 않는다 (2026-10-09) */
@@ -89,6 +89,9 @@ object CatTeam {
         /** 치즈냥이의 털 무늬 (다른 종은 CHEESE 로 두고 무시) */
         val coat: CatCoat = CatCoat.CHEESE
     ) {
+        // 삼색이는 암컷밖에 없다 (대표님 2026-10-17) — 구출·채집·출생·예전 저장 모두
+        init { if (coat == CatCoat.CALICO) male = false }
+
         /** 더는 돌볼 수 없는 냥이 (무덤이거나 떠났다) */
         val gone: Boolean get() = isDead || hasLeft
     }

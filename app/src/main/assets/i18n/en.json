@@ -779,5 +779,18 @@
  "그물 명중! 해적선 ♥ {0}/{1}": "Net hit! Pirate ship ♥ {0}/{1}",
  "쾅! 배가 맞았다 (배 ♥ {0}/{1})": "Boom! Boat hit (Boat ♥ {0}/{1})",
  "배 ♥ {0}/{1} · 공격력 {2}": "Boat ♥ {0}/{1} · Atk {2}",
- "🕸 그물 던지기": "🕸 Throw net"
+ "🕸 그물 던지기": "🕸 Throw net",
+ "그물": "Net",
+ "🏴‍☠️ 해적선이다! 점프로 뛰어 건너가 때리거나 그물(SP)을 던져요!": "🏴‍☠️ Pirates! Jump aboard to fight, or throw a net (SP)!",
+ "해적선이 떠난다! 헤엄쳐서 배로 돌아왔다": "The pirates are leaving! You swam back to the boat",
+ "해적선이 가라앉는다! 헤엄쳐서 배로 돌아왔다": "The pirate ship is sinking! You swam back to the boat",
+ "해적선에 올라탔다! 공격 버튼으로 해적냥이를 때려요": "Aboard the pirate ship! Hit the pirate cat with Attack",
+ "풍덩! 바다에 빠졌다 — 배로 기어 올라왔다": "Splash! You fell in — climbed back aboard",
+ "퍽! 해적선 ♥ {0}/{1}": "Pow! Pirate ship ♥ {0}/{1}",
+ "해적선으로 뛰어 건너가야 때릴 수 있어요 (그물은 SP)": "Jump onto the pirate ship to hit it (Net = SP)",
+ "해적냥이 할퀴기!": "Pirate cat scratch!",
+ "어선 · 공격력 {0} · 조타실: 패드로 배 조종": "Fishing boat · Atk {0} · Wheelhouse: steer with the pad",
+ "어선 · 공격력 {0} · 패드 걷기 · 점프로 해적선에": "Fishing boat · Atk {0} · Pad to walk · Jump to board",
+ "조타실에 들어왔다! 패드로 배를 움직여요": "In the wheelhouse! Steer with the pad",
+ "어선 갑판에서 낚시해요": "Fish from the boat deck"
 }

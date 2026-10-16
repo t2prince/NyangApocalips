@@ -12,6 +12,9 @@ class TouchControls {
 
     /** 필살기 남은 쿨다운(초). GamePlayScreen이 매 프레임 갱신 → SP 버튼에 카운트다운 표시 */
     var specialCooldown = 0f
+    /** SP 버튼 그림 이름과 쿨다운 전체 길이 — 어선에서는 '그물' (2026-10-17) */
+    var specialLabel = "special"
+    var specialCooldownTotal = Constants.SPECIAL_COOLDOWN
 
     /**
      * 하늘 모드 (날개냥이 탑승): 패드가 상하좌우 8방향이 되고 JUMP 버튼은 사라진다.
@@ -480,9 +483,9 @@ class TouchControls {
     }
 
     /** SP(필살기) 버튼: 쿨다운 중에는 어둡게 덮고 남은 초를 카운트다운으로 보여준다 */
-    private fun drawSpecialButton(canvas: Canvas, label: String = "special") {
+    private fun drawSpecialButton(canvas: Canvas, label: String = specialLabel) {
         drawCooldownButton(canvas, specialBtnX, specialBtnY, label, inputState.special,
-            Color.argb(80, 255, 200, 50), specialCooldown, Constants.SPECIAL_COOLDOWN)
+            Color.argb(80, 255, 200, 50), specialCooldown, specialCooldownTotal)
     }
 
     /** 쿨다운이 있는 기술 버튼 공통 그리기 (SP · FG) */

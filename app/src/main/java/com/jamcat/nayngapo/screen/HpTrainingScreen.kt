@@ -49,6 +49,7 @@ class HpTrainingScreen(private val gameView: GameView, catId: Int) : Screen {
     private val rect = RectF()
     private val timeBtn = RectF()
     private val exitRect = RectF()
+    private val upRect = RectF()
 
     private val running: Boolean get() = cat != null && !cat.gone && timeLeft > 0f
 
@@ -61,7 +62,7 @@ class HpTrainingScreen(private val gameView: GameView, catId: Int) : Screen {
         trained += deltaTime
         if (trained >= CatTeam.HP_TRAIN_SECONDS) {
             trained -= CatTeam.HP_TRAIN_SECONDS
-            if (CatTeam.trainHp(cat.id)) { gained += CatTeam.HP_TRAIN_GAIN; popTimer = 2f }
+            if (CatTeam.trainHp(cat.id)) { gained += CatTeam.hpTrainGain; popTimer = 2f }
         }
     }
 
@@ -90,7 +91,7 @@ class HpTrainingScreen(private val gameView: GameView, catId: Int) : Screen {
         if (tm != null) canvas.drawBitmap(tm, null, rect, null)
         val beltY = floorY - tmH * 0.31f   // 벨트 윗면 (그림 아래에서 31%)
         val ch = h * 0.22f; val cw = sprite.width * ch / sprite.height
-        val hop = if (running) abs(sin(timer * 14f)) * h * 0.025f else 0f
+        val hop = if (running) abs(sin(timer * (12f + GameProgress.treadmillLevel * 2f))) * h * 0.025f else 0f   // Lv 이 높으면 더 빨리 달린다
         val catCx = tmX - tmW * 0.08f
         rect.set(catCx - cw / 2f, beltY - ch - hop, catCx + cw / 2f, beltY - hop)
         canvas.drawBitmap(sprite, null, rect, null)
@@ -120,7 +121,7 @@ class HpTrainingScreen(private val gameView: GameView, catId: Int) : Screen {
         if (popTimer > 0f) {
             pop.textSize = h * 0.09f
             pop.alpha = (popTimer.coerceAtMost(0.5f) / 0.5f * 255).toInt()
-            canvas.drawText("체력 +${CatTeam.HP_TRAIN_GAIN}!", w / 2f, h * 0.36f - (2f - popTimer) * 40f, pop)
+            canvas.drawText("체력 +${CatTeam.hpTrainGain}!", w / 2f, h * 0.36f - (2f - popTimer) * 40f, pop)
         }
 
         // 아래: 다음 +5 까지
@@ -130,7 +131,7 @@ class HpTrainingScreen(private val gameView: GameView, catId: Int) : Screen {
         rect.set(bx, by, bx + bw * (trained / CatTeam.HP_TRAIN_SECONDS).coerceIn(0f, 1f), by + bh); canvas.drawRoundRect(rect, bh / 2f, bh / 2f, barFill)
         rect.set(bx, by, bx + bw, by + bh); canvas.drawRoundRect(rect, bh / 2f, bh / 2f, ink)
         text.textSize = h * 0.038f
-        canvas.drawText("다음 체력 +${CatTeam.HP_TRAIN_GAIN}까지 ${left}초", w / 2f, by - h * 0.02f, text)
+        canvas.drawText("다음 체력 +${CatTeam.hpTrainGain}까지 ${left}초", w / 2f, by - h * 0.02f, text)
 
         // 루비 1개 = 1분
         val sec = kotlin.math.ceil(timeLeft).toInt()
@@ -146,6 +147,13 @@ class HpTrainingScreen(private val gameView: GameView, catId: Int) : Screen {
         canvas.drawText("⏱ ${sec / 60}:${"%02d".format(sec % 60)}   +1분 (루비 1)", timeBtn.centerX(), timeBtn.centerY() + 14f, text)
 
         drawExit(canvas, w, h)
+        // 러닝머신 업그레이드 (나가기 아래)
+        val lv = GameProgress.treadmillLevel
+        upRect.set(w - w * 0.03f - 440f, h * 0.05f + 116f, w - w * 0.03f, h * 0.05f + 206f)
+        canvas.drawRoundRect(upRect, 45f, 45f, timeBtnPaint); canvas.drawRoundRect(upRect, 45f, 45f, ink)
+        text.textSize = 32f
+        canvas.drawText(if (lv >= GameProgress.TREADMILL_MAX) "러닝머신 Lv $lv (최대)" else "러닝머신 Lv $lv → ${lv + 1} · 루비 ${GameProgress.treadmillUpPrice()}",
+            upRect.centerX(), upRect.centerY() + 11f, text)
         if (noticeTimer > 0f) {
             text.textSize = 40f
             val nw = text.measureText(noticeText) + 70f
@@ -166,6 +174,16 @@ class HpTrainingScreen(private val gameView: GameView, catId: Int) : Screen {
         if (event.actionMasked != MotionEvent.ACTION_UP) return true
         val x = event.x; val y = event.y
         if (exitRect.contains(x, y)) { gameView.showShop(); return true }
+        if (upRect.contains(x, y)) {
+            val lv = GameProgress.treadmillLevel
+            noticeText = when {
+                lv >= GameProgress.TREADMILL_MAX -> "러닝머신이 이미 최대 Lv 이에요"
+                GameProgress.upgradeTreadmill() -> "러닝머신 Lv ${lv + 1}! 30초마다 체력 +${CatTeam.hpTrainGain}"
+                else -> "루비가 모자라요 (루비 ${GameProgress.treadmillUpPrice()})"
+            }
+            noticeTimer = 2f
+            return true
+        }
         if (timeBtn.contains(x, y)) {
             if (GameProgress.spendRubies(1)) { timeLeft += 60f; noticeText = "1분 늘었어요! (루비 ${GameProgress.rubies}개 남음)" }
             else noticeText = "루비가 모자라요 (1분 = 루비 1)"

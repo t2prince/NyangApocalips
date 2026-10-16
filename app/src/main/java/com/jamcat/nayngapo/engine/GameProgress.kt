@@ -41,6 +41,7 @@ object GameProgress {
     private const val KEY_ROD_LEVEL = "fishing_rod_level"
     private const val KEY_CAUGHT_KINDS = "caught_kinds"
     private const val KEY_DAY_CLOCK = "day_clock"
+    private const val KEY_TREADMILL = "treadmill_level"
     private const val KEY_RIDE_ROBOT = "ride_robot"
     private const val KEY_AB_CAR = "abandoned_car"
     private const val KEY_AB_STAGE = "abandoned_car_stage"
@@ -167,6 +168,22 @@ object GameProgress {
 
     /** 한 번에 잡는 물고기 수 (Lv, 아주 크면 cap 까지만) */
     fun catchesPerCast(cap: Int): Int = fishingLineLevel.min(java.math.BigInteger.valueOf(cap.toLong())).toInt()
+
+    /**
+     * 러닝머신 Lv (대표님 2026-10-17 「체력 훈련장에서는 러닝머신도 업그레이드할 수 있어」) — 30초마다 오르는 체력 = 5 × Lv.
+     * 값 = 루비 30 × 지금 Lv · 최대 Lv 10 은 Claude 판단.
+     */
+    var treadmillLevel = 1
+        private set
+    const val TREADMILL_MAX = 10
+    fun treadmillUpPrice() = 30 * treadmillLevel
+    fun upgradeTreadmill(): Boolean {
+        if (treadmillLevel >= TREADMILL_MAX) return false
+        if (!spendRubies(treadmillUpPrice())) return false
+        treadmillLevel++
+        prefs?.edit()?.putInt(KEY_TREADMILL, treadmillLevel)?.apply()
+        return true
+    }
 
     /** 밤낮 시계 — 플레이 시간 1시간마다 낮 ↔ 밤 (대표님 2026-10-17). 0~3600 낮, 3600~7200 밤 */
     var dayClock = 0f
@@ -327,6 +344,7 @@ object GameProgress {
         if (fishingLineLevel < java.math.BigInteger.ONE) fishingLineLevel = java.math.BigInteger.ONE
         if (fishingLineLevel > LINE_LEVEL_MAX) fishingLineLevel = LINE_LEVEL_MAX
         dayClock = (prefs?.getFloat(KEY_DAY_CLOCK, 0f) ?: 0f).coerceIn(0f, DAY_LENGTH * 2)
+        treadmillLevel = (prefs?.getInt(KEY_TREADMILL, 1) ?: 1).coerceIn(1, TREADMILL_MAX)
         caughtKinds.clear(); prefs?.getString(KEY_CAUGHT_KINDS, "")?.split(',')?.filter { it.isNotBlank() }?.let { caughtKinds.addAll(it) }
         rideRobot = prefs?.getBoolean(KEY_RIDE_ROBOT, false) ?: false
         abandonedCarId = prefs?.getString(KEY_AB_CAR, "") ?: ""

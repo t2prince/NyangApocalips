@@ -660,10 +660,13 @@ object CatTeam {
     const val HP_TRAIN_SECONDS = 30f
     const val HP_TRAIN_GAIN = 5
 
+    /** 지금 러닝머신으로 30초마다 오르는 체력 (러닝머신 Lv 만큼 5씩) */
+    val hpTrainGain: Int get() = HP_TRAIN_GAIN * GameProgress.treadmillLevel
+
     fun trainHp(catId: Int): Boolean {
         val c = cat(catId) ?: return false
         if (c.gone) return false
-        c.hpTraining = (c.hpTraining + HP_TRAIN_GAIN).coerceAtMost(1_000_000)
+        c.hpTraining = (c.hpTraining + hpTrainGain).coerceAtMost(1_000_000)
         save()
         return true
     }

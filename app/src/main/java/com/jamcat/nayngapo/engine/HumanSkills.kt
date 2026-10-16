@@ -36,6 +36,12 @@ object HumanSkills : SkillBook {
             "10초 동안 공격력 +15 · 방어력 +15 (공격력 15 이하인 적의 공격을 막는다)",
             power = 15, cooldown = 30f
         ),
+        // 대표님 2026-10-16: 이름 화살비 · 하늘에서 많은 냥이에게 화살이 쏟아진다 · 공격력 50 · 122루비 (쿨타임 12초·화살 수는 Claude 판단)
+        CatSkills.Skill(
+            "arrow_rain", "화살비", 122,
+            "하늘에서 화면 안의 냥이들에게 화살이 쏟아진다 (공격력 50)",
+            power = 50, cooldown = 12f
+        ),
     )
 
     fun byId(id: String): CatSkills.Skill? = all.firstOrNull { it.id == id }

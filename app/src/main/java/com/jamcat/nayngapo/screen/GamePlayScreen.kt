@@ -350,6 +350,8 @@ class GamePlayScreen(
         /** 레이저 총: 쏘는 간격(초) · 총알 빠르기 */
         private const val GUN_INTERVAL = 0.28f
         private const val GUN_SPEED = 1100f
+        /** 화살비: 냥이를 노린 화살 말고 하늘에서 흩뿌리는 화살 수 */
+        private const val ARROW_EXTRA = 10
         /** 해적선 항해 (Claude 판단) */
         private const val SHIP_SPEED = 45f
         private const val SHIP_MAX_TRAVEL = 1600f
@@ -812,6 +814,12 @@ class GamePlayScreen(
                 proj.isAlive = false
                 explodeMissile(mx, ground - 6f, proj.damage)
             }
+        }
+
+        // 화살비 화살은 땅에 꽂히면 사라진다
+        for (proj in level.projectiles) {
+            if (!proj.isArrow || !proj.isAlive) continue
+            if (proj.y + proj.height >= Terrain.groundY(proj.x + proj.width / 2f)) proj.isAlive = false
         }
 
         // 먹구름 번개가 땅에 닿으면 불꽃을 튀기고 사라진다
@@ -1472,6 +1480,28 @@ class GamePlayScreen(
                 SoundManager.playSpecial()
                 shake(0.2f, 8f)
                 hitEffects.add(HitEffect(player.x, player.y - player.height - 40f, 1.2f, "각성!"))
+            }
+
+            "arrow_rain" -> {
+                // 화살비: 화면 안의 냥이들 머리 위 하늘에서 화살이 쏟아진다 — 냥이마다 화살 2~3개 + 사이사이 흩뿌림 (공격력 50)
+                val sw = gameView.screenWidth.toFloat()
+                val top = camera.y - 80f
+                val targets = level.enemies.filter { !it.isDead && it.x + it.width > camera.x && it.x < camera.x + sw }
+                for (e in targets) {
+                    repeat(2 + (Math.random() * 2).toInt()) { k ->
+                        val ax = e.x + e.width / 2f + (Math.random().toFloat() - 0.5f) * 60f
+                        level.projectiles.add(com.jamcat.nayngapo.entity.Projectile(ax, top - k * 140f - (Math.random() * 120f).toFloat(),
+                            -60f, 1500f, skill.power, true, radius = 12f, byHuman = true, isArrow = true))
+                    }
+                }
+                repeat(ARROW_EXTRA) {
+                    val ax = camera.x + (Math.random() * sw).toFloat()
+                    level.projectiles.add(com.jamcat.nayngapo.entity.Projectile(ax, top - (Math.random() * 400f).toFloat(),
+                        -60f, 1500f, skill.power, true, radius = 12f, byHuman = true, isArrow = true))
+                }
+                SoundManager.playSpecial()
+                shake(0.15f, 6f)
+                hitEffects.add(HitEffect(player.x, player.y - player.height - 40f, 1.0f, "화살비!"))
             }
 
             "missile" -> {

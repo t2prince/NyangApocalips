@@ -593,7 +593,7 @@ class TouchControls {
         const val SKILL_SLOTS = 4   // 묭묭 진화 추가로 4칸 (2026-10-09)
 
         /** 인간 기술 버튼 칸 수 */
-        const val HUMAN_SKILL_SLOTS = 5   // 각성 추가로 5칸 (2026-10-09)
+        const val HUMAN_SKILL_SLOTS = 6   // 각성(2026-10-09)·화살비(2026-10-16) 추가로 6칸
 
         /** 기술 버튼 반지름 (지름 96px) */
         const val SKILL_RADIUS = 48f

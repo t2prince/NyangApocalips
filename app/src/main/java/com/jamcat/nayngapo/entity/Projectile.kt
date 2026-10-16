@@ -46,7 +46,9 @@ class Projectile(
     /** 그림으로 날아가는 탄 — 로봇 주먹 발사 (2026-10-10). 바라보는 쪽(velocityX 부호)으로 그린다 */
     val sprite: android.graphics.Bitmap? = null,
     /** 인간이 쏜 탄 (레이저 총·로봇 주먹) — 채집통은 인간이 때릴 때만 잡는다 (대표님 2026-10-10) */
-    val byHuman: Boolean = false
+    val byHuman: Boolean = false,
+    /** 화살 — 인간 기술 '화살비'. 날아가는 쪽을 향한 나무 화살로 그린다 (2026-10-16) */
+    val isArrow: Boolean = false
 ) {
     val width = radius * 2f
     val height = radius * 2f
@@ -61,6 +63,9 @@ class Projectile(
 
     val hitBox: RectF get() = RectF(x, y, x + width, y + height)
     private val spriteDst = RectF()
+    private val arrowShaft = Paint().apply { color = android.graphics.Color.rgb(140, 92, 48); strokeWidth = 6f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    private val arrowHead = Paint().apply { color = android.graphics.Color.rgb(200, 204, 212); isAntiAlias = true }
+    private val arrowFeather = Paint().apply { color = android.graphics.Color.rgb(220, 60, 60); strokeWidth = 5f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
     private val fistFlameOuter = Paint().apply { color = android.graphics.Color.rgb(255, 140, 40); isAntiAlias = true }
     private val fistFlameInner = Paint().apply { color = android.graphics.Color.rgb(255, 230, 90); isAntiAlias = true }
 
@@ -140,6 +145,19 @@ class Projectile(
         val cx = x + width / 2f
         val cy = y + height / 2f
 
+        if (isArrow) {
+            // 날아가는 방향으로 나무 화살: 몸통 + 은색 촉 + 빨간 깃
+            val len = 70f
+            val vl = kotlin.math.hypot(velocityX, velocityY).coerceAtLeast(1f)
+            val ux = velocityX / vl; val uy = velocityY / vl
+            val tipX = cx + ux * len * 0.5f; val tipY = cy + uy * len * 0.5f
+            val tailX = cx - ux * len * 0.5f; val tailY = cy - uy * len * 0.5f
+            canvas.drawLine(tailX, tailY, tipX, tipY, arrowShaft)
+            canvas.drawCircle(tipX, tipY, 6f, arrowHead)
+            canvas.drawLine(tailX, tailY, tailX - uy * 10f - ux * 12f, tailY + ux * 10f - uy * 12f, arrowFeather)
+            canvas.drawLine(tailX, tailY, tailX + uy * 10f - ux * 12f, tailY - ux * 10f - uy * 12f, arrowFeather)
+            return
+        }
         if (sprite != null) {
             val bmp = if (velocityX >= 0f) sprite else com.jamcat.nayngapo.engine.SpriteManager.getFlipped(sprite)
             val sh = height * 1.3f; val sw = bmp.width * sh / bmp.height

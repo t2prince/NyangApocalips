@@ -16,7 +16,7 @@ import kotlin.math.sin
  * 낚싯바늘을 옮긴다 — 바늘이 물고기에 닿으면 그 물고기가 물려 끌려 올라온다(한 번에 한 마리만). 헤엄치는 마릿수·빠르기는 Claude 판단.
  * **낚시줄이 심해까지 내려간다**(2026-10-16): 화면이 바늘을 따라 아래로 내려가고(깊이 3000), 깊을수록 물빛이 어두운 심해·빛나는 알갱이,
  * 맨 아래 바닥엔 바위. 깊은 곳일수록 큰 물고기·황금 물고기가 많다 (깊이·비율은 Claude 판단).
- * 포만감 = 작은 3 · 큰 6 · 황금 10 (대표님 2026-10-10). 확률·시간·공짜는 Claude 판단 (작은 물고기 60% · 큰 물고기 32% · 황금 물고기 8%).
+ * 포만감 = 작은 3 · 큰 6 · 황금 10 (대표님 2026-10-10). 확률·시간은 Claude 판단 · 낚시 한 번 루비 2(대표님) (작은 물고기 60% · 큰 물고기 32% · 황금 물고기 8%).
  */
 class FishingScreen(private val gameView: GameView) : Screen {
 
@@ -52,6 +52,13 @@ class FishingScreen(private val gameView: GameView) : Screen {
         val r = Math.random()
         val gold = 0.05 + 0.30 * d; val bigger = gold + 0.25 + 0.30 * d
         return when { r < gold -> "fish_gold"; r < bigger -> "fish_big"; else -> "fish_small" }
+    }
+
+    /** 낚시는 한 번에 루비 2개를 내고 한다 (대표님 2026-10-16) — 던지기·낚시줄 조종하기 둘 다 */
+    private fun payForFishing(): Boolean {
+        if (GameProgress.spendRubies(FISHING_PRICE)) return true
+        noticeText = "낚시는 루비 ${FISHING_PRICE}개를 내고 해요 (지금 ${GameProgress.rubies}개)"; noticeTimer = 2f
+        return false
     }
 
     /** 낚시줄을 물속으로 내리고 물고기들을 헤엄치게 한다 */
@@ -149,7 +156,10 @@ class FishingScreen(private val gameView: GameView) : Screen {
 
     private fun press() {
         when (state) {
-            State.READY, State.CAUGHT, State.MISSED -> { state = State.CAST; t = 0f; catchId = null }
+            State.READY, State.CAUGHT, State.MISSED -> {
+                if (!payForFishing()) return
+                state = State.CAST; t = 0f; catchId = null
+            }
             State.CONTROL, State.REEL -> Unit   // 조종 중에는 손가락으로 바늘을 움직인다
             State.CAST, State.WAIT -> { state = State.MISSED; t = 0f }   // 너무 일찍 당기면 놓친다
             State.BITE -> {
@@ -273,10 +283,10 @@ class FishingScreen(private val gameView: GameView) : Screen {
 
         // 버튼
         val label = when (state) {
-            State.READY -> "🎣 던지기"
+            State.READY -> "🎣 던지기 · 루비 $FISHING_PRICE"
             State.CAST, State.WAIT -> "기다리는 중…"
             State.BITE -> "당기기!"
-            State.CAUGHT, State.MISSED -> "🎣 다시 던지기"
+            State.CAUGHT, State.MISSED -> "🎣 다시 던지기 · 루비 $FISHING_PRICE"
             State.CONTROL -> "↔ 바늘 움직이기 (내려가는 중)"
             State.REEL -> "끌어 올리는 중!"
         }
@@ -305,7 +315,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
             controlRect.set(w * 0.42f - 240f, h * 0.80f, w * 0.42f + 240f, h * 0.80f + 110f)
             canvas.drawRoundRect(controlRect, 55f, 55f, controlPaint); canvas.drawRoundRect(controlRect, 55f, 55f, ink)
             text.textSize = h * 0.042f
-            canvas.drawText("🎮 낚시줄 조종하기", controlRect.centerX(), controlRect.centerY() + h * 0.015f, text)
+            canvas.drawText("🎮 낚시줄 조종 · 루비 $FISHING_PRICE", controlRect.centerX(), controlRect.centerY() + h * 0.015f, text)
         }
         exitRect.set(w - w * 0.03f - 240f, h * 0.04f, w - w * 0.03f, h * 0.04f + 90f)
         canvas.drawRoundRect(exitRect, 45f, 45f, card); canvas.drawRoundRect(exitRect, 45f, 45f, ink)
@@ -393,7 +403,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
             noticeTimer = 2f
             return true
         }
-        if (!controlRect.isEmpty && controlRect.contains(event.x, event.y)) { startControl(); return true }
+        if (!controlRect.isEmpty && controlRect.contains(event.x, event.y)) { if (payForFishing()) startControl(); return true }
         // 버튼이나 물을 누르면 던지기/당기기 (당기기는 빨리 눌러야 해서 누르는 순간 반응)
         if (btnRect.contains(event.x, event.y) || event.y > gameView.screenHeight * 0.45f) press()
         return true
@@ -407,6 +417,8 @@ class FishingScreen(private val gameView: GameView) : Screen {
     companion object {
         /** '!' 뜨고 당길 수 있는 시간 */
         private const val BITE_WINDOW = 1.0f
+        /** 낚시 한 번 값 (루비) */
+        const val FISHING_PRICE = 2
         /** 낚시줄 조종: 헤엄치는 물고기 수 · 바늘 빠르기 */
         private const val SWIMMERS = 12
         /** Lv1 낚시줄 길이(물 위에서 바닥까지) · Lv1 가라앉는 빠르기 (바닥까지 약 7초) */

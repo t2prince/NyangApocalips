@@ -287,6 +287,10 @@ object GameProgress {
     fun setBgm(on: Boolean) { bgmEnabled = on; prefs?.edit()?.putBoolean(KEY_BGM, on)?.apply(); SoundManager.applyBgmSetting() }
     fun setSfx(on: Boolean) { sfxEnabled = on; prefs?.edit()?.putBoolean(KEY_SFX, on)?.apply() }
     fun setShake(on: Boolean) { shakeEnabled = on; prefs?.edit()?.putBoolean(KEY_SHAKE, on)?.apply() }
+    /** 바다 끝 섬 가게: 갇힌 인간을 구출하면 사람이 생겨 문을 연다 (2026-10-17) */
+    var islandShopOpen: Boolean
+        get() = prefs?.getBoolean("island_shop_open", false) ?: false
+        set(v) { prefs?.edit()?.putBoolean("island_shop_open", v)?.apply() }
     /** 화면 언어 ("ko" 한국어 · "en" English) — 설정에서 고른다 (2026-10-17) */
     var language: String
         get() = prefs?.getString("language", "ko") ?: "ko"

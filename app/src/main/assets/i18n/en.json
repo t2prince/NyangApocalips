@@ -792,5 +792,16 @@
  "어선 · 공격력 {0} · 조타실: 패드로 배 조종": "Fishing boat · Atk {0} · Wheelhouse: steer with the pad",
  "어선 · 공격력 {0} · 패드 걷기 · 점프로 해적선에": "Fishing boat · Atk {0} · Pad to walk · Jump to board",
  "조타실에 들어왔다! 패드로 배를 움직여요": "In the wheelhouse! Steer with the pad",
- "어선 갑판에서 낚시해요": "Fish from the boat deck"
+ "어선 갑판에서 낚시해요": "Fish from the boat deck",
+ "섬에 내렸다! 갇힌 사람을 구해 주자 (공격)": "Landed on the island! Rescue the captive (Attack)",
+ "인간 3명 구출! 섬 가게에 사람이 생겨 문을 열었다": "Rescued 3 humans! The island shop is now open",
+ "섬 가게: 어서 오세요! (파는 물건은 준비 중)": "Island shop: Welcome! (Goods coming soon)",
+ "섬 가게": "Island Shop",
+ "섬 가게 · 닫힘": "Island Shop · Closed",
+ "🏝 바다 끝 섬": "🏝 Island at sea’s end",
+ "🏝 섬까지 {0}%": "🏝 {0}% to the island",
+ "그물 명중! 해적냥이 ♥ {0}/{1}": "Net hit! Pirate cat ♥ {0}/{1}",
+ "퍽! 해적냥이 ♥ {0}/{1}": "Pow! Pirate cat ♥ {0}/{1}",
+ "해적냥이를 물리쳤다! 이제 해적선은 안전해": "Pirate cat defeated! The ship is safe now",
+ "낚시터 · 바다": "Fishing · Sea"
 }

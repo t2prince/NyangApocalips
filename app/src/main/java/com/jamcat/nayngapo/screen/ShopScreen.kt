@@ -109,7 +109,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         raiders.clear()
         repeat(RAID_CATS) { k ->
             val side = if (k % 2 == 0) -1f else 1f
-            val x = (player.x + side * (700f + (k / 2) * 110f + (Math.random() * 120f).toFloat())).coerceIn(40f, worldWidth - 140f)
+            val x = (player.x + side * (700f + (k / 2) * 110f + (Math.random() * 120f).toFloat())).coerceIn(40f, walkMaxX - 140f)
             val e: com.jamcat.nayngapo.entity.Enemy = when (k % 5) {
                 3 -> com.jamcat.nayngapo.entity.KittenCat(x, Constants.GROUND_Y)
                 4 -> com.jamcat.nayngapo.entity.HammerCat(x, Constants.GROUND_Y)
@@ -139,7 +139,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         for (e in raiders) {
             if (e.isDead) { e.updateDeath(deltaTime); continue }
             e.update(deltaTime, player.x, player.y)
-            e.x = e.x.coerceIn(10f, worldWidth - e.width - 10f)
+            e.x = e.x.coerceIn(10f, walkMaxX - e.width - 10f)
         }
         // 인간이 때린다 (주먹·발차기·로봇 주먹)
         player.getAttackHitBox()?.let { box ->
@@ -445,11 +445,14 @@ class ShopScreen(private val gameView: GameView) : Screen {
     private val stageGateX = HOUSE_X + 600f
     /** 맨 끝(뒤)의 자동차 매장 (대표님 2026-10-09) */
     private val carShopX = FIRST_TENT_X + (TENT_COUNT - 1) * TENT_GAP + 760f
-    /** 맨 끝의 낚시터 (대표님 2026-10-10) — 자동차 매장 뒤 */
-    private val fishingX = carShopX + 760f
-    /** 낚시터 옆(맨 끝)의 낚시 상점 — 낚싯대 Lv업·미끼 (대표님 2026-10-17) */
-    private val fishShopX = fishingX + 700f
-    private val worldWidth = fishShopX + 420f
+    /** 낚시 상점 — 낚싯대 Lv업·미끼 (대표님 2026-10-17), 자동차 매장 뒤 */
+    private val fishShopX = carShopX + 760f
+    /** 맨 끝의 낚시터 = 바다 (대표님 2026-10-17 「낚시터는 끝에 바다처럼 있어」): 땅이 모래사장으로 끝나고 그 뒤는 바다, 부두가 바다로 뻗어 있다 */
+    private val fishingX = fishShopX + 700f
+    /** 땅이 끝나는 곳 (모래사장 끝) · 부두 끝 — 인간·냥이는 부두 끝까지만 */
+    private val seaStartX = fishingX - 60f
+    private val walkMaxX = fishingX + 260f
+    private val worldWidth = fishingX + 1500f
     private var nearFishing = false
     private var nearFishShop = false
     private var nearCarShop = false
@@ -539,10 +542,10 @@ class ShopScreen(private val gameView: GameView) : Screen {
         if (input.attack) { if (player.performAttack()) SoundManager.playAttack(); input.attack = false }
         player.update(deltaTime)
         updateRaid(deltaTime)
-        player.x = player.x.coerceIn(40f, worldWidth - player.width - 40f)
+        player.x = player.x.coerceIn(40f, walkMaxX - player.width - 40f)
         for (ally in allies) {
             ally.update(deltaTime, player.x, player.y, emptyList())
-            ally.x = ally.x.coerceIn(10f, worldWidth - ally.width - 10f)
+            ally.x = ally.x.coerceIn(10f, walkMaxX - ally.width - 10f)
         }
 
         // 카메라: 인간을 화면 왼쪽 3분의 1쯤에 두고 따라간다
@@ -993,26 +996,57 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     /** 작은 연못 + 나무 부두 + '낚시터' 팻말 + 꽂아 둔 낚싯대 (코드 그림) */
     private fun drawFishingSpot(canvas: Canvas, cx: Float, groundY: Float) {
-        rect.set(cx - 260f, groundY - 40f, cx + 260f, groundY + 60f)
-        canvas.drawOval(rect, pondPaint); canvas.drawOval(rect, ink)
-        val wave = sin(timer * 2f) * 10f
-        canvas.drawLine(cx - 120f + wave, groundY + 5f, cx - 60f + wave, groundY + 5f, pondLight)
-        canvas.drawLine(cx + 40f - wave, groundY + 25f, cx + 110f - wave, groundY + 25f, pondLight)
-        rect.set(cx - 300f, groundY - 54f, cx - 120f, groundY - 30f)
+        // 바다: 모래사장 끝(seaStartX)부터 마을 끝까지, 땅(잔디) 위를 덮는다
+        val sea0 = seaStartX
+        val top = groundY - 30f
+        rect.set(sea0, top, worldWidth + 400f, groundY + 2000f)
+        canvas.drawRect(rect, pondPaint)
+        // 수평선 쪽 짙은 물빛 + 출렁이는 물결
+        canvas.drawRect(sea0, top, worldWidth + 400f, top + 10f, seaDeep)
+        var k = 0
+        var x = sea0 + 60f
+        while (x < worldWidth) {
+            val wave = sin(timer * 2f + k) * 14f
+            canvas.drawLine(x + wave, top + 40f + (k % 3) * 34f, x + 70f + wave, top + 40f + (k % 3) * 34f, pondLight)
+            x += 150f; k++
+        }
+        // 모래사장: 잔디에서 바다로 비스듬히 내려간다
+        sandPath.reset()
+        sandPath.moveTo(sea0 - 220f, groundY - 42f); sandPath.lineTo(sea0 + 10f, groundY - 42f)
+        sandPath.lineTo(sea0 + 120f, groundY + 200f); sandPath.lineTo(sea0 - 220f, groundY + 200f); sandPath.close()
+        canvas.drawPath(sandPath, sandPaint)
+        // 부두: 모래사장에서 바다로 뻗은 나무 길 + 기둥
+        rect.set(cx - 200f, groundY - 54f, walkMaxX + 40f, groundY - 30f)
         canvas.drawRect(rect, pierPaint); canvas.drawRect(rect, ink)
-        // 낚싯대 + 줄 + 찌
-        canvas.drawLine(cx - 150f, groundY - 54f, cx - 20f, groundY - 230f, ladderPaintThin)
-        canvas.drawLine(cx - 20f, groundY - 230f, cx + 60f, groundY - 10f, fishLine)
-        canvas.drawCircle(cx + 60f, groundY - 10f + sin(timer * 3f) * 3f, 9f, fishBobber)
-        // 팻말
+        var px = cx - 100f
+        while (px < walkMaxX + 40f) {
+            rect.set(px - 10f, groundY - 30f, px + 10f, groundY + 120f)
+            canvas.drawRect(rect, pierPaint); canvas.drawRect(rect, ink)
+            px += 160f
+        }
+        // 부두 끝에 매어 둔 어선 (5루비로 타는 그 배)
+        val boat = SpriteManager.fishingBoat
+        val bh = 210f; val bw = boat.width * bh / boat.height
+        val bob = sin(timer * 1.8f) * 5f
+        rect.set(walkMaxX + 70f, groundY - bh * 0.80f + 30f + bob, walkMaxX + 70f + bw, groundY + bh * 0.20f + 30f + bob)
+        canvas.drawBitmap(boat, null, rect, null)
+        // 부두 위 낚싯대 + 줄 + 찌
+        canvas.drawLine(cx + 60f, groundY - 54f, cx + 190f, groundY - 230f, ladderPaintThin)
+        canvas.drawLine(cx + 190f, groundY - 230f, cx + 280f, groundY + 20f, fishLine)
+        canvas.drawCircle(cx + 280f, groundY + 20f + sin(timer * 3f) * 3f, 9f, fishBobber)
+        // 팻말 (모래사장 위)
         signText.textSize = 38f
-        val label = "낚시터"
+        val label = "낚시터 · 바다"
         val lw = signText.measureTr(label) + 40f
-        canvas.drawRect(cx + 200f, groundY - 200f, cx + 214f, groundY - 30f, pierPaint)
-        rect.set(cx + 207f - lw / 2f, groundY - 260f, cx + 207f + lw / 2f, groundY - 196f)
+        val sx = sea0 - 160f
+        canvas.drawRect(sx - 7f, groundY - 200f, sx + 7f, groundY - 40f, pierPaint)
+        rect.set(sx - lw / 2f, groundY - 260f, sx + lw / 2f, groundY - 196f)
         canvas.drawRoundRect(rect, 10f, 10f, signPaint); canvas.drawRoundRect(rect, 10f, 10f, ink)
         canvas.drawTr(label, rect.centerX(), rect.centerY() + 13f, signText)
     }
+    private val seaDeep = Paint().apply { color = Color.rgb(60, 140, 210) }
+    private val sandPaint = Paint().apply { color = Color.rgb(236, 214, 160); isAntiAlias = true }
+    private val sandPath = Path()
     private val ladderPaintThin = Paint().apply { color = Color.rgb(120, 80, 40); strokeWidth = 7f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
     private val fishLine = Paint().apply { color = Color.WHITE; strokeWidth = 2.5f; isAntiAlias = true }
     private val fishBobber = Paint().apply { color = Color.rgb(230, 60, 60); isAntiAlias = true }

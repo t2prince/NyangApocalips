@@ -57,7 +57,13 @@ class FishingScreen(private val gameView: GameView) : Screen {
     private val touchControls = com.jamcat.nayngapo.ui.TouchControls().apply { specialLabel = "그물"; specialCooldownTotal = NET_GAP }
     private var paused = false
     /** 인간이 있는 곳: 어선 갑판 · 점프 중 · 해적선 갑판 (대표님 2026-10-17 「해적선이 나오면 뛰어 건너가서만 공격할 수 있어」) */
-    private enum class Pos { DECK, AIR, PIRATE }
+    private enum class Pos { DECK, AIR, PIRATE, ISLAND }
+    /** 배는 앞으로 계속 멀리 갈 수 있다 (대표님 2026-10-17 「배는 계속 앞으로 갈 수 있고, 끝까지 가면 새롭지만 닫혀 있는 다른 상점이 있어」).
+     *  seaDist = 부두에서 온 거리. 조타실에서 오른쪽으로 계속 가면 화면이 흘러가고, ISLAND_AT 에 섬이 있다 */
+    private var seaDist = 0f
+    /** 섬 위 자리 (섬 왼쪽 끝에서의 거리) */
+    private var islandOff = 0f
+    private val islandPrison = com.jamcat.nayngapo.entity.Prison(0f, 0f, com.jamcat.nayngapo.entity.Prison.Kind.HUMAN)
     private var pos = Pos.DECK
     private var airX = 0f; private var airY = 0f; private var airVX = 0f; private var airVY = 0f
     /** 해적선 갑판 위 자리 (해적선 그림 가로 비율) */
@@ -83,9 +89,11 @@ class FishingScreen(private val gameView: GameView) : Screen {
     private var pirateStay = 0f
     private var pirateFire = 0f
     private var pirateLeaving = false
-    /** 해적선 체력 · 가라앉는 중이면 0 이상 (대표님 2026-10-17 「배 HP 10, 공격력 2, 액션: 그물을 던져서 공격」) */
+    /** 해적냥이 체력 — **해적냥이만 쓰러뜨리면 해적선은 안전**(대표님 2026-10-17 「해적선은 해적냥이만 죽이면 안전해」「31 스테이지랑 비슷한 형식」):
+     *  대포가 멈추고 빈 해적선은 그대로 떠 있다가 떠나간다 */
     private var pirateHp = PIRATE_HP
-    private var pirateSinkT = -1f
+    private var pirateCatDead = false
+    private var catBoomT = 0f
     /** 그물: 배 뒤 크레인에서 던져 해적선에 맞으면 배 공격력만큼 */
     private class Net(var x: Float, var y: Float, var vx: Float, var vy: Float, var spin: Float = 0f)
     private val nets = mutableListOf<Net>()
@@ -96,7 +104,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
     private val splashes = mutableListOf<Splash>()
 
     private fun boardBoat() {
-        onBoat = true; boatHp = BOAT_HP; boatX = gameView.screenWidth * 0.24f; heroU = BOAT_HERO_U; atHelm = false
+        onBoat = true; boatHp = BOAT_HP; boatX = gameView.screenWidth * 0.24f; heroU = BOAT_HERO_U; atHelm = false; seaDist = 0f
         pos = Pos.DECK; paused = false; touchControls.releaseAll(); nets.clear()
         pirateX = Float.NaN; balls.clear(); pirateWait = PIRATE_FIRST + (Math.random() * PIRATE_EVERY).toFloat()
     }
@@ -116,31 +124,25 @@ class FishingScreen(private val gameView: GameView) : Screen {
         val shipW = shipWidth(h)
         if (pirateX.isNaN()) {
             pirateWait -= dt
-            if (pirateWait <= 0f) {
-                pirateX = w + 20f; pirateStay = PIRATE_STAY; pirateFire = 1.2f; pirateLeaving = false; pirateHp = PIRATE_HP; pirateSinkT = -1f
+            if (pirateWait <= 0f && seaDist < ISLAND_AT - gameView.screenWidth * 1.2f) {
+                pirateX = w + 20f; pirateStay = PIRATE_STAY; pirateFire = 1.2f; pirateLeaving = false; pirateHp = PIRATE_HP; pirateCatDead = false
                 noticeText = "🏴‍☠️ 해적선이다! 점프로 뛰어 건너가 때리거나 그물(SP)을 던져요!"; noticeTimer = 2.5f
                 SoundManager.playPlayerHurt()
             }
         } else {
             val stopX = w - shipW * 0.95f
-            if (pirateSinkT >= 0f) {
-                // 그물에 걸려 가라앉는다
-                pirateSinkT += dt
-                if (pirateSinkT >= SINK_TIME) {
-                    pirateX = Float.NaN; pirateSinkT = -1f; pirateWait = PIRATE_EVERY * (0.6f + Math.random().toFloat() * 0.8f)
-                    noticeText = "해적선을 물리쳤다!"; noticeTimer = 2f
-                }
-            } else if (pirateLeaving) {
+            if (catBoomT > 0f) catBoomT -= dt
+            if (pirateLeaving) {
                 pirateX += 260f * dt
                 if (pirateX > w + 40f && balls.isEmpty()) {
                     pirateX = Float.NaN; pirateWait = PIRATE_EVERY * (0.6f + Math.random().toFloat() * 0.8f)
-                    noticeText = "해적선이 물러갔다!"; noticeTimer = 1.6f
+                    if (!pirateCatDead) { noticeText = "해적선이 물러갔다!"; noticeTimer = 1.6f }
                 }
             } else {
                 if (pirateX > stopX) pirateX = (pirateX - 300f * dt).coerceAtLeast(stopX)
                 else {
                     pirateStay -= dt; pirateFire -= dt
-                    if (pirateFire <= 0f) {
+                    if (pirateFire <= 0f && !pirateCatDead) {
                         // 뱃전의 대포 구멍에서 배를 겨누고 쏜다 (조금씩 빗나가게)
                         val sx = pirateX + shipW * 0.20f; val sy = waterY - shipHeight(h) * 0.30f
                         val tx = boatCenter(w) + (Math.random().toFloat() - 0.5f) * w * 0.16f
@@ -159,13 +161,13 @@ class FishingScreen(private val gameView: GameView) : Screen {
             val n = ni.next()
             n.vy += BALL_G * dt; n.x += n.vx * dt; n.y += n.vy * dt; n.spin += dt * 4f
             val sh = shipHeight(h); val sw = shipWidth(h)
-            val shipHit = !pirateX.isNaN() && pirateSinkT < 0f && n.x in pirateX..(pirateX + sw) && n.y >= waterY - sh * 0.45f
+            val shipHit = !pirateX.isNaN() && !pirateCatDead && n.x in pirateX..(pirateX + sw) && n.y >= waterY - sh * 0.45f
             if (shipHit) {
                 pirateHp -= BOAT_ATTACK
                 splashes.add(Splash(n.x, n.y, 0f, true))
                 SoundManager.playCatHit()
                 if (pirateHp <= 0) pirateDefeated()
-                else { noticeText = "그물 명중! 해적선 ♥ $pirateHp/$PIRATE_HP"; noticeTimer = 1f }
+                else { noticeText = "그물 명중! 해적냥이 ♥ $pirateHp/$PIRATE_HP"; noticeTimer = 1f }
                 ni.remove()
             } else if (n.vy > 0f && n.y >= waterY) { splashes.add(Splash(n.x, waterY, 0f, false)); ni.remove() }
         }
@@ -206,8 +208,9 @@ class FishingScreen(private val gameView: GameView) : Screen {
     }
 
     private fun pirateDefeated() {
-        pirateSinkT = 0f; balls.clear(); SoundManager.playSpecial()
-        if (pos == Pos.PIRATE) swimBack("해적선이 가라앉는다! 헤엄쳐서 배로 돌아왔다")
+        pirateCatDead = true; catBoomT = 0.7f; balls.clear()
+        SoundManager.playCatDie(); SoundManager.playSpecial()
+        noticeText = "해적냥이를 물리쳤다! 이제 해적선은 안전해"; noticeTimer = 2.2f
     }
 
     private fun hurtBoat(msg: String) {
@@ -219,6 +222,9 @@ class FishingScreen(private val gameView: GameView) : Screen {
     }
 
     private fun deckFootY(h: Float) = h * 0.55f + 90f
+    /** 섬: 바다 끝까지 오면 화면 오른쪽에 나타난다 (왼쪽 끝 = 화면 74%) */
+    private fun islandLeft(w: Float) = w * 0.74f + (ISLAND_AT - seaDist)
+    private fun islandFootY(h: Float) = h * 0.55f - 40f
     private fun pirateTop(h: Float) = h * 0.55f - shipHeight(h) * 0.68f
     private fun pirateFootY(h: Float) = pirateTop(h) + shipHeight(h) * PIRATE_DECK_V
 
@@ -227,6 +233,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
         Pos.DECK -> boatLeft(w) + boatWidth(w) * (if (atHelm) HELM_U else heroU)
         Pos.AIR -> airX
         Pos.PIRATE -> pirateX + shipWidth(h) * pirU
+        Pos.ISLAND -> islandLeft(w) + islandOff
     }
 
     /** 십자 패드 = 걷기(조타실에선 배 조종) · 점프 = 뛰어 건너기 · 공격 = 해적선 위에서 주먹 · SP = 그물 */
@@ -237,8 +244,20 @@ class FishingScreen(private val gameView: GameView) : Screen {
         walking = false
         val canAct = state == State.READY || state == State.CAUGHT || state == State.MISSED   // 낚싯줄을 던져 놓은 동안은 갑판에 서 있는다
         when (pos) {
-            Pos.DECK -> if (atHelm) boatX = (boatX + dir * BOAT_SPEED * dt).coerceIn(w * 0.22f, w * 0.60f)
+            Pos.DECK -> if (atHelm) {
+                    // 화면 오른쪽 60% 를 넘으면 배 대신 바다가 흘러간다 — 멀리 간다
+                    val nx = boatX + dir * BOAT_SPEED * dt
+                    when {
+                        nx > w * 0.60f && seaDist < ISLAND_AT -> { seaDist = (seaDist + nx - w * 0.60f).coerceAtMost(ISLAND_AT); boatX = w * 0.60f }
+                        nx < w * 0.22f && seaDist > 0f -> { seaDist = (seaDist - (w * 0.22f - nx)).coerceAtLeast(0f); boatX = w * 0.22f }
+                        else -> boatX = nx.coerceIn(w * 0.22f, w * 0.60f)
+                    }
+                }
                 else if (dir != 0f && canAct) { heroU = (heroU + dir * WALK_U * dt).coerceIn(DECK_MIN, DECK_MAX); walking = true; walkDir = dir }
+            Pos.ISLAND -> if (dir != 0f) {
+                islandOff = (islandOff + dir * WALK_U * boatWidth(w) * dt).coerceIn(40f, (w - 40f - islandLeft(w)).coerceAtMost(w * ISLAND_W))
+                walking = true; walkDir = dir
+            }
             Pos.PIRATE -> if (dir != 0f) {
                 pirU = (pirU + dir * WALK_U * dt * boatWidth(w) / shipWidth(h)).coerceIn(PIRATE_DECK_MIN, PIRATE_DECK_MAX)
                 walking = true; walkDir = dir
@@ -255,10 +274,15 @@ class FishingScreen(private val gameView: GameView) : Screen {
                         airX in (bl + bw * DECK_MIN)..(bl + bw * DECK_MAX) && airY >= deckFootY(h) && airY < deckFootY(h) + 90f -> {
                             pos = Pos.DECK; heroU = (airX - bl) / bw
                         }
-                        !pirateX.isNaN() && pirateSinkT < 0f && !pirateLeaving &&
+                        !pirateX.isNaN() && !pirateLeaving &&
                             airX in (pirateX + sw * PIRATE_DECK_MIN)..(pirateX + sw * PIRATE_DECK_MAX) && airY >= pf && airY < pf + 90f -> {
                             pos = Pos.PIRATE; pirU = (airX - pirateX) / sw
                             noticeText = "해적선에 올라탔다! 공격 버튼으로 해적냥이를 때려요"; noticeTimer = 1.6f
+                        }
+                        islandLeft(w) < w && airX in (islandLeft(w) + 30f)..(islandLeft(w) + w * ISLAND_W) &&
+                            airY >= islandFootY(h) && airY < islandFootY(h) + 90f -> {
+                            pos = Pos.ISLAND; islandOff = airX - islandLeft(w)
+                            if (!GameProgress.islandShopOpen) { noticeText = "섬에 내렸다! 갇힌 사람을 구해 주자 (공격)"; noticeTimer = 1.8f }
                         }
                         airY >= waterY + 40f -> {
                             splashes.add(Splash(airX, waterY, 0f, false))
@@ -273,7 +297,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
         // 점프: 누르는 순간 한 번 (조타실 안·낚시 중에는 못 뛴다)
         val jumpNow = input.jump || input.moveUp
         if (jumpNow && !jumpHeld && pos != Pos.AIR && !atHelm && canAct) {
-            airX = heroWorldX(w, h); airY = if (pos == Pos.PIRATE) pirateFootY(h) else deckFootY(h)
+            airX = heroWorldX(w, h); airY = when (pos) { Pos.PIRATE -> pirateFootY(h); Pos.ISLAND -> islandFootY(h); else -> deckFootY(h) }
             airVX = (if (dir != 0f) dir else walkDir) * JUMP_VX; airVY = -JUMP_VY
             if (dir != 0f) walkDir = dir
             pos = Pos.AIR
@@ -284,12 +308,25 @@ class FishingScreen(private val gameView: GameView) : Screen {
             if (pos == Pos.PIRATE && punchT <= 0f) {
                 punchT = PUNCH_TIME
                 val catX = pirateX + shipWidth(h) * PIRATE_CAT_U
-                if (kotlin.math.abs(heroWorldX(w, h) - catX) < 230f && pirateSinkT < 0f) {
+                if (kotlin.math.abs(heroWorldX(w, h) - catX) < 230f && !pirateCatDead) {
                     pirateHp -= BOAT_ATTACK
                     splashes.add(Splash(catX, pirateFootY(h) - 120f, 0f, true))
                     SoundManager.playCatHit()
                     if (pirateHp <= 0) pirateDefeated()
-                    else { noticeText = "퍽! 해적선 ♥ $pirateHp/$PIRATE_HP"; noticeTimer = 0.8f }
+                    else { noticeText = "퍽! 해적냥이 ♥ $pirateHp/$PIRATE_HP"; noticeTimer = 0.8f }
+                } else SoundManager.playAttack()
+            } else if (pos == Pos.ISLAND && punchT <= 0f) {
+                punchT = PUNCH_TIME
+                val hx = heroWorldX(w, h)
+                val prisonX = islandLeft(w) + w * ISLAND_PRISON_U + islandPrison.width / 2f
+                if (!GameProgress.islandShopOpen && kotlin.math.abs(hx - prisonX) < 170f) {
+                    // 구출하면 사람이 생긴다 → 섬 가게가 문을 연다
+                    GameProgress.islandShopOpen = true
+                    SoundManager.playSpecial()
+                    splashes.add(Splash(prisonX, islandFootY(h) - 80f, 0f, true))
+                    noticeText = "인간 3명 구출! 섬 가게에 사람이 생겨 문을 열었다"; noticeTimer = 2.5f
+                } else if (GameProgress.islandShopOpen && kotlin.math.abs(hx - (islandLeft(w) + w * ISLAND_SHOP_U)) < 200f) {
+                    noticeText = "섬 가게: 어서 오세요! (파는 물건은 준비 중)"; noticeTimer = 2f
                 } else SoundManager.playAttack()
             } else if (pos == Pos.DECK && !pirateX.isNaN()) {
                 noticeText = "해적선으로 뛰어 건너가야 때릴 수 있어요 (그물은 SP)"; noticeTimer = 1.4f
@@ -301,7 +338,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
         specialHeld = input.special
         touchControls.specialCooldown = netCool
         // 해적냥이 할퀴기: 해적선 위에서 가까이 있으면 1.5초마다
-        if (pos == Pos.PIRATE && pirateSinkT < 0f) {
+        if (pos == Pos.PIRATE && !pirateCatDead) {
             scratchT -= dt
             if (scratchT <= 0f && kotlin.math.abs(heroWorldX(w, h) - (pirateX + shipWidth(h) * PIRATE_CAT_U)) < 200f) {
                 scratchT = SCRATCH_GAP
@@ -318,7 +355,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
         val bw = boatWidth(w); val bh = bw * SpriteManager.fishingBoat.height / SpriteManager.fishingBoat.width
         val sx = boatLeft(w) + bw * 0.08f
         val sy = waterY + 90f - bh * 0.80f + bh * 0.30f
-        val tx = if (!pirateX.isNaN() && pirateSinkT < 0f) pirateX + shipWidth(h) * 0.5f else w * 0.8f
+        val tx = if (!pirateX.isNaN() && !pirateCatDead) pirateX + shipWidth(h) * PIRATE_CAT_U else w * 0.8f
         val ty = waterY - shipHeight(h) * 0.25f
         val tt = 1.0f
         nets.add(Net(sx, sy, (tx - sx) / tt, (ty - sy) / tt - 0.5f * BALL_G * tt))
@@ -345,6 +382,67 @@ class FishingScreen(private val gameView: GameView) : Screen {
     private val steerPaint = Paint().apply { color = Color.argb(200, 255, 252, 244); isAntiAlias = true }
     private val heartPaint = Paint().apply { color = Color.rgb(230, 60, 70); textAlign = Paint.Align.LEFT; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
 
+    private val islandSand = Paint().apply { color = Color.rgb(238, 216, 160); isAntiAlias = true }
+    private val palmTrunk = Paint().apply { color = Color.rgb(150, 100, 60); strokeWidth = 26f; strokeCap = Paint.Cap.ROUND; style = Paint.Style.STROKE; isAntiAlias = true }
+    private val palmLeaf = Paint().apply { color = Color.rgb(70, 170, 80); isAntiAlias = true }
+    private val hutWall = Paint().apply { color = Color.rgb(200, 150, 96); isAntiAlias = true }
+    private val hutRoof = Paint().apply { color = Color.rgb(90, 160, 200); isAntiAlias = true }
+    private val board = Paint().apply { color = Color.rgb(130, 86, 50); strokeWidth = 16f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    private val islandPath = Path()
+
+    /** 바다 끝 섬: 모래섬 + 야자나무 + 닫힌 섬 가게(널빤지·'닫힘') + 사람이 갇힌 감옥. 구하면 사람이 생겨 가게 문이 열린다 */
+    private fun drawIsland(canvas: Canvas, w: Float, h: Float, waterY: Float, hh: Float) {
+        val left = islandLeft(w); val foot = islandFootY(h)
+        islandPath.reset()
+        islandPath.moveTo(left, waterY + 30f)
+        islandPath.quadTo(left + 30f, foot, left + 120f, foot)
+        islandPath.lineTo(w + 400f, foot); islandPath.lineTo(w + 400f, waterY + 30f); islandPath.close()
+        canvas.drawPath(islandPath, islandSand); canvas.drawPath(islandPath, ink)
+        // 야자나무
+        val tx = left + w * 0.02f
+        path.reset(); path.moveTo(tx, foot); path.quadTo(tx + 40f, foot - 200f, tx + 10f, foot - 360f)
+        canvas.drawPath(path, palmTrunk)
+        for (k in 0 until 5) {
+            val a = Math.toRadians((200 + k * 35).toDouble())
+            canvas.save(); canvas.rotate(Math.toDegrees(a).toFloat() + 90f, tx + 10f, foot - 360f)
+            canvas.drawOval(tx - 20f, foot - 380f, tx + 40f, foot - 230f, palmLeaf); canvas.drawOval(tx - 20f, foot - 380f, tx + 40f, foot - 230f, ink)
+            canvas.restore()
+        }
+        // 섬 가게 (오두막)
+        val sx = left + w * ISLAND_SHOP_U
+        val open = GameProgress.islandShopOpen
+        rect.set(sx - 150f, foot - 260f, sx + 150f, foot)
+        canvas.drawRect(rect, hutWall); canvas.drawRect(rect, ink)
+        path.reset(); path.moveTo(sx - 190f, foot - 250f); path.lineTo(sx, foot - 380f); path.lineTo(sx + 190f, foot - 250f); path.close()
+        canvas.drawPath(path, hutRoof); canvas.drawPath(path, ink)
+        rect.set(sx - 50f, foot - 170f, sx + 50f, foot)
+        canvas.drawRect(rect, if (open) card else wood); canvas.drawRect(rect, ink)
+        if (!open) {
+            canvas.drawLine(sx - 60f, foot - 150f, sx + 60f, foot - 30f, board)
+            canvas.drawLine(sx + 60f, foot - 150f, sx - 60f, foot - 30f, board)
+        }
+        text.textSize = 34f
+        rect.set(sx - 110f, foot - 330f, sx + 110f, foot - 280f)
+        canvas.drawRoundRect(rect, 10f, 10f, card); canvas.drawRoundRect(rect, 10f, 10f, ink)
+        canvas.drawTr(if (open) "섬 가게" else "섬 가게 · 닫힘", sx, rect.centerY() + 12f, text)
+        // 갇힌 사람 (감옥) → 구하면 가게 앞에 사람 셋
+        val px = left + w * ISLAND_PRISON_U
+        if (!open) {
+            canvas.save(); canvas.translate(px, foot)
+            islandPrison.draw(canvas)
+            canvas.restore()
+        } else {
+            val man = SpriteManager.playerIdle[0]
+            val mh = hh * 0.75f; val mw = man.width * mh / man.height
+            for (k in 0 until 3) {
+                val mx = sx - 230f + k * 120f + sin(timer * 2f + k) * 6f
+                rect.set(mx - mw / 2f, foot - mh, mx + mw / 2f, foot)
+                canvas.drawBitmap(man, null, rect, null)
+            }
+        }
+        if (pos == Pos.ISLAND) drawHero(canvas, left + islandOff, foot, hh)
+    }
+
     /** 인간 그리기: 서 있기·걷기·점프·주먹 (왼쪽으로 가면 뒤집는다) */
     private fun drawHero(canvas: Canvas, x: Float, footY: Float, hh: Float) {
         val body = when {
@@ -364,26 +462,20 @@ class FishingScreen(private val gameView: GameView) : Screen {
         if (!pirateX.isNaN()) {
             val sh = shipHeight(h); val sw = shipWidth(h)
             val bob = sin(timer * 1.6f) * 8f
-            val sinkU = if (pirateSinkT >= 0f) (pirateSinkT / SINK_TIME).coerceIn(0f, 1f) else 0f
-            val top = waterY - sh * 0.68f + bob + sinkU * sh * 0.9f
-            canvas.save()
-            if (sinkU > 0f) {
-                canvas.rotate(-sinkU * 25f, pirateX + sw / 2f, top + sh)
-                canvas.clipRect(pirateX - sw, -h, pirateX + sw * 2f, waterY + 30f)   // 물 밑으로 들어간 부분은 안 보인다
-            }
+            val top = waterY - sh * 0.68f + bob
             // 해적냥이가 갑판 위에서 이쪽을 본다
             val pc = SpriteManager.getFlipped(SpriteManager.pirateCat)
             val ch = sh * 0.30f; val cw = pc.width * ch / pc.height
             val cx2 = pirateX + sw * PIRATE_CAT_U
             rect.set(cx2 - cw / 2f, top + sh * PIRATE_DECK_V - ch, cx2 + cw / 2f, top + sh * PIRATE_DECK_V)
-            canvas.drawBitmap(pc, null, rect, null)
+            if (!pirateCatDead) canvas.drawBitmap(pc, null, rect, null)
+            else if (catBoomT > 0f) { boomPaint.alpha = (catBoomT / 0.7f * 255).toInt(); canvas.drawCircle(cx2, rect.centerY(), 60f + (0.7f - catBoomT) * 120f, boomPaint) }
             // 해적선에 올라탄 인간 (다리는 뱃전이 가린다)
             if (pos == Pos.PIRATE) drawHero(canvas, pirateX + sw * pirU, top + sh * PIRATE_DECK_V + 40f, h * 0.30f)
             rect.set(pirateX, top, pirateX + sw, top + sh)
             canvas.drawBitmap(SpriteManager.pirateShip, null, rect, null)
-            canvas.restore()
-            if (pirateSinkT < 0f) {
-                // 해적선 체력 줄
+            if (!pirateCatDead) {
+                // 해적냥이 체력 줄
                 val bx = pirateX + sw * 0.2f; val by = top - 30f
                 canvas.drawRoundRect(bx, by, bx + sw * 0.6f, by + 22f, 11f, 11f, hpBack)
                 canvas.drawRoundRect(bx + 3f, by + 3f, bx + 3f + (sw * 0.6f - 6f) * pirateHp.coerceAtLeast(0) / PIRATE_HP, by + 19f, 8f, 8f, hpFill)
@@ -644,7 +736,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
             deepPaint.shader = deepShader
             canvas.drawRect(0f, waterY, w, seabedY + h, deepPaint)
         }
-        var wx = -((timer * 40f) % 160f)
+        var wx = -((timer * 40f + seaDist) % 160f)
         while (wx < w) { canvas.drawLine(wx, waterY + 40f, wx + 60f, waterY + 42f, waterDark); canvas.drawLine(wx + 80f, waterY + 140f, wx + 140f, waterY + 142f, waterDark); wx += 160f }
 
         // 왼쪽 나무 부두(또는 바다 위 작은 배) + 인간 + 낚싯대
@@ -668,6 +760,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
             drawFishingBoat(canvas, w, h, footY)
             if (atHelm) { text.textSize = h * 0.05f; canvas.drawText("🛞", hx, footY - hh * 1.05f, text) }
         }
+        if (onBoat && state != State.CONTROL && state != State.REEL && islandLeft(w) < w) drawIsland(canvas, w, h, waterY, hh)
         if (state != State.CONTROL && state != State.REEL) drawSea(canvas, w, h, waterY)
         // 점프 중인 인간은 배들 앞에
         if (onBoat && pos == Pos.AIR) drawHero(canvas, airX, airY, hh)
@@ -814,6 +907,14 @@ class FishingScreen(private val gameView: GameView) : Screen {
             for (k in 0 until BOAT_HP) drawHeartShape(canvas, hx0 + k * gap, h * 0.165f, r, if (k < boatHp) heartOn else heartOff)
             text.textSize = h * 0.028f
             canvas.drawTr(if (atHelm) "어선 · 공격력 $BOAT_ATTACK · 조타실: 패드로 배 조종" else "어선 · 공격력 $BOAT_ATTACK · 패드 걷기 · 점프로 해적선에", w / 2f, h * 0.215f, text)
+            // 섬까지 남은 거리
+            val u = (seaDist / ISLAND_AT).coerceIn(0f, 1f)
+            rect.set(w / 2f - 260f, h * 0.24f, w / 2f + 260f, h * 0.24f + 16f)
+            canvas.drawRoundRect(rect, 8f, 8f, steerPaint); canvas.drawRoundRect(rect, 8f, 8f, ink)
+            rect.right = rect.left + 520f * u
+            canvas.drawRoundRect(rect, 8f, 8f, btnPaint)
+            text.textSize = h * 0.026f
+            canvas.drawTr(if (u >= 1f) "🏝 바다 끝 섬" else "🏝 섬까지 ${((1f - u) * 100).toInt()}%", w / 2f, h * 0.24f + 50f, text)
             com.jamcat.nayngapo.ui.MenuButtons.draw(canvas, paused)
         }
         // 낚시터 나가기 (어선 위에서는 위 왼쪽 '나가기'가 배에서 내리기)
@@ -988,9 +1089,8 @@ class FishingScreen(private val gameView: GameView) : Screen {
         /** 어선: 튼튼함 · 빠르기 · 그림에서 인간이 서는 곳(가로 비율)·갑판 높이(세로 비율) */
         private const val BOAT_HP = 10   // 대표님 2026-10-17
         private const val BOAT_ATTACK = 2   // 대표님 2026-10-17 (그물 한 번에)
-        /** 해적선 체력 · 가라앉는 시간 · 그물 다시 던지기까지 (Claude 판단) */
+        /** 해적냥이 체력 · 그물 다시 던지기까지 (Claude 판단) */
         private const val PIRATE_HP = 20
-        private const val SINK_TIME = 2f
         private const val NET_GAP = 0.8f
         /** 점프 (Claude 판단: 약 0.8초 동안 약 700 앞으로) · 주먹 · 해적냥이 할퀴기 간격 */
         private const val JUMP_VX = 850f
@@ -1003,6 +1103,11 @@ class FishingScreen(private val gameView: GameView) : Screen {
         private const val PIRATE_DECK_MIN = 0.22f
         private const val PIRATE_DECK_MAX = 0.92f
         private const val PIRATE_CAT_U = 0.30f
+        /** 바다 끝 섬까지의 거리 (배 빠르기 420 으로 약 30초) · 섬에서 걷는 폭 · 감옥·가게 자리 (화면 폭 비율) — Claude 판단 */
+        private const val ISLAND_AT = 12600f
+        private const val ISLAND_W = 0.26f
+        private const val ISLAND_PRISON_U = 0.05f
+        private const val ISLAND_SHOP_U = 0.17f
         private const val BOAT_SPEED = 420f
         private const val BOAT_HERO_U = 0.70f
         /** 앞 갑판에서 걸을 수 있는 곳 · 조타실 자리 (배 그림 가로 비율) · 걷는 빠르기 */

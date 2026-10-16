@@ -350,8 +350,10 @@ class GamePlayScreen(
         /** 레이저 총: 쏘는 간격(초) · 총알 빠르기 */
         private const val GUN_INTERVAL = 0.28f
         private const val GUN_SPEED = 1100f
-        /** 화살비: 냥이를 노린 화살 말고 하늘에서 흩뿌리는 화살 수 */
-        private const val ARROW_EXTRA = 10
+        /** 화살비: 모두 합쳐 쏟아지는 화살 수(냥이마다 나눠 2~6개) · 노리는 냥이 수 · 떨어지는 빠르기 */
+        private const val ARROW_TOTAL = 24
+        private const val ARROW_MAX_TARGETS = 12
+        private const val ARROW_SPEED = 1500f
         /** 해적선 항해 (Claude 판단) */
         private const val SHIP_SPEED = 45f
         private const val SHIP_MAX_TRAVEL = 1600f
@@ -1483,21 +1485,31 @@ class GamePlayScreen(
             }
 
             "arrow_rain" -> {
-                // 화살비: 화면 안의 냥이들 머리 위 하늘에서 화살이 쏟아진다 — 냥이마다 화살 2~3개 + 사이사이 흩뿌림 (공격력 50)
+                // 화살비: 하늘에서 **냥이가 있는 쪽으로** 화살이 쏟아진다 (대표님 2026-10-16·17, 공격력 50)
+                // 화면 안(없으면 인간과 가까운) 냥이들을 노리고, 떨어지는 동안 냥이가 움직일 자리까지 셈해서 그쪽으로 비스듬히 쏜다
                 val sw = gameView.screenWidth.toFloat()
                 val top = camera.y - 80f
-                val targets = level.enemies.filter { !it.isDead && it.x + it.width > camera.x && it.x < camera.x + sw }
-                for (e in targets) {
-                    repeat(2 + (Math.random() * 2).toInt()) { k ->
-                        val ax = e.x + e.width / 2f + (Math.random().toFloat() - 0.5f) * 60f
-                        level.projectiles.add(com.jamcat.nayngapo.entity.Projectile(ax, top - k * 140f - (Math.random() * 120f).toFloat(),
-                            -60f, 1500f, skill.power, true, radius = 12f, byHuman = true, isArrow = true))
-                    }
+                val alive = level.enemies.filter { !it.isDead }
+                val onScreen = alive.filter { it.x + it.width > camera.x && it.x < camera.x + sw }
+                val targets = (if (onScreen.isNotEmpty()) onScreen
+                    else alive.sortedBy { kotlin.math.abs(it.x - player.x) }.take(4)).take(ARROW_MAX_TARGETS)
+                if (targets.isEmpty()) {
+                    hitEffects.add(HitEffect(player.x, player.y - player.height - 40f, 0.8f, "노릴 냥이가 없다"))
+                    humanSkillCooldowns[index] = 0f
+                    return
                 }
-                repeat(ARROW_EXTRA) {
-                    val ax = camera.x + (Math.random() * sw).toFloat()
-                    level.projectiles.add(com.jamcat.nayngapo.entity.Projectile(ax, top - (Math.random() * 400f).toFloat(),
-                        -60f, 1500f, skill.power, true, radius = 12f, byHuman = true, isArrow = true))
+                val perCat = ((ARROW_TOTAL + targets.size - 1) / targets.size).coerceIn(2, 6)
+                for (e in targets) {
+                    repeat(perCat) { k ->
+                        val sy = top - k * 120f - (Math.random() * 100f).toFloat()
+                        val ty = e.y - e.height * 0.5f
+                        val fall = (ty - sy) / ARROW_SPEED                 // 떨어지는 시간
+                        val tx = e.x + e.width / 2f + e.velocityX * fall + (Math.random().toFloat() - 0.5f) * 40f
+                        val sx = tx + (Math.random().toFloat() - 0.5f) * 160f   // 하늘의 조금 옆에서 냥이 쪽으로
+                        val vx = (tx - sx) / fall.coerceAtLeast(0.1f)
+                        level.projectiles.add(com.jamcat.nayngapo.entity.Projectile(sx, sy, vx, ARROW_SPEED, skill.power, true,
+                            radius = 12f, byHuman = true, isArrow = true))
+                    }
                 }
                 SoundManager.playSpecial()
                 shake(0.15f, 6f)

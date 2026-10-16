@@ -37,6 +37,7 @@ object GameProgress {
     private const val KEY_DUMMY_LEVEL = "dummy_level"
     private const val KEY_SELECTED_CAR = "selected_car"
     private const val KEY_ROBOT_LEVEL = "robot_level"
+    private const val KEY_LINE_LEVEL = "fishing_line_level"
     private const val KEY_RIDE_ROBOT = "ride_robot"
     private const val KEY_AB_CAR = "abandoned_car"
     private const val KEY_AB_STAGE = "abandoned_car_stage"
@@ -139,6 +140,24 @@ object GameProgress {
         if (abandonedCarStage == 0) return
         abandonedCarId = ""; abandonedCarStage = 0; abandonedCarX = 0f
         prefs?.edit()?.remove(KEY_AB_CAR)?.remove(KEY_AB_STAGE)?.remove(KEY_AB_X)?.apply()
+    }
+
+    /**
+     * 낚시줄 Lv (대표님 2026-10-16 「낚시줄 Lv업이 있어, 누르면 Lv2가 되면서 두 배가 돼」) — Lv 마다 낚시줄 길이(내려가는 깊이)가 두 배.
+     * 값 = 루비 20 × 지금 Lv · 최대 Lv 4 는 Claude 판단.
+     */
+    var fishingLineLevel = 1
+        private set
+    const val LINE_LEVEL_MAX = 4
+
+    fun lineLevelUpPrice() = 20 * fishingLineLevel
+
+    fun levelUpFishingLine(): Boolean {
+        if (fishingLineLevel >= LINE_LEVEL_MAX) return false
+        if (!spendRubies(lineLevelUpPrice())) return false
+        fishingLineLevel++
+        prefs?.edit()?.putInt(KEY_LINE_LEVEL, fishingLineLevel)?.apply()
+        return true
     }
 
     /** 로봇 Lv (0 = 없음) · 스테이지에서 로봇을 탈지 (로봇 상점, 2026-10-09) */
@@ -252,6 +271,7 @@ object GameProgress {
         dummyLevel = (prefs?.getInt(KEY_DUMMY_LEVEL, 1) ?: 1).coerceIn(1, DUMMY_LEVEL_MAX)
         selectedCar = prefs?.getString(KEY_SELECTED_CAR, "") ?: ""
         robotLevel = (prefs?.getInt(KEY_ROBOT_LEVEL, 0) ?: 0).coerceIn(0, RobotCatalog.MAX_LEVEL)
+        fishingLineLevel = (prefs?.getInt(KEY_LINE_LEVEL, 1) ?: 1).coerceIn(1, LINE_LEVEL_MAX)
         rideRobot = prefs?.getBoolean(KEY_RIDE_ROBOT, false) ?: false
         abandonedCarId = prefs?.getString(KEY_AB_CAR, "") ?: ""
         abandonedCarStage = prefs?.getInt(KEY_AB_STAGE, 0) ?: 0

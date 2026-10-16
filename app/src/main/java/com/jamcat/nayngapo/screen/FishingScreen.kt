@@ -31,9 +31,16 @@ class FishingScreen(private val gameView: GameView) : Screen {
     private var hookTX = 0f
     private var hookTY = 0f
     private val controlRect = RectF()
+    private val lvRect = RectF()
+    private var noticeText = ""
+    private var noticeTimer = 0f
     /** 물속을 내려다보는 화면 높이 (바늘을 따라 심해까지 내려간다) */
     private var camY = 0f
-    private val seabedY: Float get() = gameView.screenHeight * 0.55f + DEPTH + gameView.screenHeight * 0.35f
+    /** 낚시줄 길이 = 내려가는 깊이: Lv1 1500 → Lv 마다 두 배 (Lv4 12000) */
+    private val depth: Float get() = BASE_DEPTH * (1 shl (GameProgress.fishingLineLevel - 1))
+    /** 가라앉는 빠르기도 Lv 마다 두 배 — 바닥까지 걸리는 시간은 같다 */
+    private val sinkSpeed: Float get() = SINK_SPEED * (1 shl (GameProgress.fishingLineLevel - 1))
+    private val seabedY: Float get() = gameView.screenHeight * 0.55f + depth + gameView.screenHeight * 0.35f
 
     private fun randomFishId(): String {
         val r = Math.random()
@@ -58,7 +65,8 @@ class FishingScreen(private val gameView: GameView) : Screen {
         repeat(SWIMMERS) { k ->
             // 얕은 곳부터 심해까지 고르게 흩어 놓는다
             val y = waterY + 90f + (bottom - waterY - 90f) * ((k + Math.random().toFloat()) / SWIMMERS)
-            val d = ((y - waterY) / (bottom - waterY)).coerceIn(0f, 1f)
+            // 깊이 비율은 가장 긴 낚시줄(Lv4) 기준 — 줄이 길수록 더 깊은 곳의 좋은 물고기를 만난다
+            val d = ((y - waterY) / (BASE_DEPTH * 8f)).coerceIn(0f, 1f)
             swimmers.add(Swimmer(fishIdAtDepth(d), w * (0.35f + Math.random().toFloat() * 0.6f), y,
                 if (Math.random() < 0.5) 1f else -1f, 60f + Math.random().toFloat() * 90f))
         }
@@ -97,6 +105,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
     override fun update(deltaTime: Float) {
         timer += deltaTime
         t += deltaTime
+        if (noticeTimer > 0f) noticeTimer -= deltaTime
         // 화면이 바늘을 따라 물속으로 내려간다 (조종할 때만)
         val h = gameView.screenHeight.toFloat()
         val camTarget = if (state == State.CONTROL || state == State.REEL) (hookY - h * 0.55f).coerceIn(0f, seabedY - h * 0.92f) else 0f
@@ -112,7 +121,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
                     if (f.x < w * 0.33f || f.x > w * 0.97f) { f.dir = -f.dir; f.x = f.x.coerceIn(w * 0.33f, w * 0.97f) }
                 }
                 // 바늘은 물고기가 잡힐 때까지 저절로 가라앉는다 (대표님 2026-10-16 「심해까지 내려가, 물고기가 잡힐 때까지」) — 좌우는 손가락으로
-                hookTY = (hookTY + SINK_SPEED * deltaTime).coerceAtMost(seabedY - 30f)
+                hookTY = (hookTY + sinkSpeed * deltaTime).coerceAtMost(seabedY - 30f)
                 val dx = hookTX - hookX; val dy = hookTY - hookY
                 val d = kotlin.math.hypot(dx, dy)
                 val step = HOOK_SPEED * deltaTime
@@ -166,6 +175,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
         canvas.drawRect(0f, waterY, w, h + camY, water)
         if (camY > 1f || state == State.CONTROL || state == State.REEL) {
             // 얕은 강물 → 깊은 심해로 점점 어두워진다
+            if (deepShader == null || deepShaderLv != GameProgress.fishingLineLevel) deepShaderLv = GameProgress.fishingLineLevel.also { deepShader = null }
             if (deepShader == null) deepShader = LinearGradient(0f, waterY, 0f, seabedY,
                 intArrayOf(Color.rgb(90, 170, 230), Color.rgb(40, 90, 160), Color.rgb(12, 24, 60)), floatArrayOf(0f, 0.35f, 1f), Shader.TileMode.CLAMP)
             deepPaint.shader = deepShader
@@ -275,6 +285,20 @@ class FishingScreen(private val gameView: GameView) : Screen {
         canvas.drawRoundRect(btnRect, 55f, 55f, ink)
         text.textSize = h * 0.048f
         canvas.drawText(label, btnRect.centerX(), btnRect.centerY() + h * 0.017f, text)
+        // 낚시줄 Lv업 (오른쪽 위, 나가기 아래)
+        lvRect.set(w - w * 0.03f - 380f, h * 0.04f + 110f, w - w * 0.03f, h * 0.04f + 200f)
+        canvas.drawRoundRect(lvRect, 45f, 45f, controlPaint); canvas.drawRoundRect(lvRect, 45f, 45f, ink)
+        text.textSize = 34f
+        val lv = GameProgress.fishingLineLevel
+        canvas.drawText(if (lv >= GameProgress.LINE_LEVEL_MAX) "낚시줄 Lv $lv (최대)" else "낚시줄 Lv $lv → ${lv + 1} · 루비 ${GameProgress.lineLevelUpPrice()}",
+            lvRect.centerX(), lvRect.centerY() + 12f, text)
+        if (noticeTimer > 0f) {
+            text.textSize = 38f
+            val nw = text.measureText(noticeText) + 60f
+            rect.set(w / 2f - nw / 2f, h * 0.22f, w / 2f + nw / 2f, h * 0.22f + 76f)
+            canvas.drawRoundRect(rect, 24f, 24f, card); canvas.drawRoundRect(rect, 24f, 24f, ink)
+            canvas.drawText(noticeText, w / 2f, rect.centerY() + 13f, text)
+        }
         // 낚시줄 조종하기 버튼 (기다리지 않을 때)
         controlRect.setEmpty()
         if (state == State.READY || state == State.CAUGHT || state == State.MISSED) {
@@ -298,6 +322,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
 
     private val deepPaint = Paint()
     private var deepShader: Shader? = null
+    private var deepShaderLv = 0
     private val glow = Paint().apply { color = Color.argb(170, 160, 255, 230); isAntiAlias = true }
     private val rock = Paint().apply { color = Color.rgb(60, 60, 72); isAntiAlias = true }
 
@@ -321,7 +346,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
         // 심해: 빛나는 알갱이가 천천히 떠오른다
         for (k in 0 until 24) {
             val gx = w * (0.32f + (k * 97 % 66) / 100f)
-            val gy = waterY + DEPTH * 0.35f + ((k * 131) % 100) / 100f * (bed - waterY - DEPTH * 0.35f) - (timer * 20f + k * 13f) % 120f
+            val gy = waterY + depth * 0.35f + ((k * 131) % 100) / 100f * (bed - waterY - depth * 0.35f) - (timer * 20f + k * 13f) % 120f
             canvas.drawCircle(gx, gy, 3f + (k % 3), glow)
         }
         // 맨 아래 바닥: 모래와 바위
@@ -358,6 +383,16 @@ class FishingScreen(private val gameView: GameView) : Screen {
         }
         if (event.actionMasked != MotionEvent.ACTION_DOWN) return true
         if (exitRect.contains(event.x, event.y)) { gameView.showShop(); return true }
+        if (lvRect.contains(event.x, event.y)) {
+            val lv = GameProgress.fishingLineLevel
+            noticeText = when {
+                lv >= GameProgress.LINE_LEVEL_MAX -> "낚시줄이 이미 최대 Lv 이에요"
+                GameProgress.levelUpFishingLine() -> "낚시줄 Lv ${lv + 1}! 두 배로 길어졌다 (더 깊이)"
+                else -> "루비가 모자라요 (루비 ${GameProgress.lineLevelUpPrice()})"
+            }
+            noticeTimer = 2f
+            return true
+        }
         if (!controlRect.isEmpty && controlRect.contains(event.x, event.y)) { startControl(); return true }
         // 버튼이나 물을 누르면 던지기/당기기 (당기기는 빨리 눌러야 해서 누르는 순간 반응)
         if (btnRect.contains(event.x, event.y) || event.y > gameView.screenHeight * 0.45f) press()
@@ -374,9 +409,8 @@ class FishingScreen(private val gameView: GameView) : Screen {
         private const val BITE_WINDOW = 1.0f
         /** 낚시줄 조종: 헤엄치는 물고기 수 · 바늘 빠르기 */
         private const val SWIMMERS = 12
-        /** 물 위에서 심해 바닥까지 깊이 */
-        private const val DEPTH = 3000f
-        /** 바늘이 가라앉는 빠르기 (심해 바닥까지 약 15초) */
+        /** Lv1 낚시줄 길이(물 위에서 바닥까지) · Lv1 가라앉는 빠르기 (바닥까지 약 7초) */
+        private const val BASE_DEPTH = 1500f
         private const val SINK_SPEED = 220f
         private const val HOOK_SPEED = 700f
         private val NAMES = mapOf("fish_small" to "작은 물고기", "fish_big" to "큰 물고기", "fish_gold" to "✨황금 물고기")

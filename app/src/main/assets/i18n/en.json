@@ -766,5 +766,12 @@
  "물고기": "fish",
  "낚시": "Fishing",
  "자동차": "Car",
- "로봇": "Robot"
+ "로봇": "Robot",
+ "🚶 갑판으로": "🚶 To deck",
+ "🛞 조타실": "🛞 Wheelhouse",
+ "◀ ▶ 배 조종": "◀ ▶ Steer",
+ "◀ ▶ 걷기": "◀ ▶ Walk",
+ "조타실에 들어왔다! ◀ ▶ 로 배를 움직여요": "In the wheelhouse! Steer with ◀ ▶",
+ "갑판으로 나왔다 · 여기서 낚시해요": "On deck · Fish from here",
+ "조타실에서는 낚시를 못 해요 · 갑판으로 나가요": "Can't fish in the wheelhouse · Go to the deck"
 }

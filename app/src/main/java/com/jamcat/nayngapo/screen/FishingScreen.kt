@@ -67,6 +67,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
     private var islandOff = 0f
     /** 바다 끝 = 상점마을2 항구 (대표님 2026-10-17 「섬 가게가 아니라 또 다른 상점마을이야. 상점마을2 가기를 누르면 들어갈 수 있어」) */
     private val village2Rect = RectF()
+    private val village1Rect = RectF()
     private var pos = Pos.DECK
     private var airX = 0f; private var airY = 0f; private var airVX = 0f; private var airVY = 0f
     /** 해적선 갑판 위 자리 (해적선 그림 가로 비율) */
@@ -632,6 +633,28 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         if (pos == Pos.ISLAND) drawHero(canvas, left + islandOff, foot, hh)
     }
 
+    /** 출발한 상점 마을 바닷가 (배가 처음 자리 가까이 오면 왼쪽에 보인다) — 오른쪽 끝 화면 x */
+    private fun villageShoreX(w: Float) = w * 0.10f - seaDist
+    private val grass = Paint().apply { color = Color.rgb(120, 190, 90) }
+
+    private fun drawVillageShore(canvas: Canvas, w: Float, h: Float, waterY: Float) {
+        val r = villageShoreX(w)
+        canvas.drawRect(-10f, waterY - 50f, r, waterY - 20f, grass)
+        islandPath.reset()
+        islandPath.moveTo(-10f, waterY - 20f); islandPath.lineTo(r, waterY - 20f); islandPath.lineTo(r + 60f, waterY + 40f); islandPath.lineTo(-10f, waterY + 40f); islandPath.close()
+        canvas.drawPath(islandPath, islandSand); canvas.drawPath(islandPath, ink)
+        // 부두
+        rect.set(r - 40f, waterY - 40f, r + 160f, waterY - 18f)
+        canvas.drawRect(rect, wood); canvas.drawRect(rect, ink)
+        // 마을 천막 하나 (멀리)
+        val tx = r - 160f
+        rect.set(tx - 90f, waterY - 190f, tx + 90f, waterY - 50f)
+        canvas.drawRect(rect, hutWall); canvas.drawRect(rect, ink)
+        path.reset(); path.moveTo(tx - 110f, waterY - 180f); path.lineTo(tx, waterY - 280f); path.lineTo(tx + 110f, waterY - 180f); path.close()
+        hutRoof.color = Color.rgb(230, 70, 70)
+        canvas.drawPath(path, hutRoof); canvas.drawPath(path, ink)
+    }
+
     /** 인간 그리기: 서 있기·걷기·점프·주먹 (왼쪽으로 가면 뒤집는다) */
     private fun drawHero(canvas: Canvas, x: Float, footY: Float, hh: Float) {
         val body = when {
@@ -955,6 +978,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
             if (atHelm) { text.textSize = h * 0.05f; canvas.drawText("🛞", hx, footY - hh * 1.05f, text) }
         }
         if (onBoat && state != State.CONTROL && state != State.REEL && islandLeft(w) < w) drawIsland(canvas, w, h, waterY, hh)
+        if (onBoat && state != State.CONTROL && state != State.REEL && villageShoreX(w) > 0f) drawVillageShore(canvas, w, h, waterY)
         if (state != State.CONTROL && state != State.REEL) drawSea(canvas, w, h, waterY)
         // 점프 중인 인간은 배들 앞에
         if (onBoat) drawCrew(canvas, w, h, CrewAt.AIR, 0f)
@@ -1002,6 +1026,8 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         }
 
         canvas.restore()   // 여기까지 물속(camY)과 함께 움직인다
+        // 낚시터도 밤이 된다 (대표님 2026-10-17 「낚시터도 밤의 영향을 받아」) — 물속을 볼 때는 위 하늘이 안 보여도 같이 어둡다
+        com.jamcat.nayngapo.ui.DayNight.drawNight(canvas, w, h, timer, labelY = h * 0.34f)
 
         // 잡은 물고기
         if (state == State.CAUGHT) catchId?.let { id ->
@@ -1118,6 +1144,14 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
                 text.textSize = h * 0.042f
                 canvas.drawTr("▼ 상점마을2 가기", village2Rect.centerX(), village2Rect.centerY() + h * 0.015f, text)
             }
+            // 처음 자리(상점 마을 바닷가)로 돌아오면 '상점마을 들어가기' (대표님 2026-10-17)
+            village1Rect.setEmpty()
+            if (seaDist <= 0f && boatX <= w * 0.30f && pos != Pos.AIR) {
+                village1Rect.set(w * 0.97f - 460f, h * 0.30f, w * 0.97f, h * 0.30f + 110f)
+                canvas.drawRoundRect(village1Rect, 55f, 55f, btnPaint); canvas.drawRoundRect(village1Rect, 55f, 55f, ink)
+                text.textSize = h * 0.042f
+                canvas.drawTr("▼ 상점마을 들어가기", village1Rect.centerX(), village1Rect.centerY() + h * 0.015f, text)
+            }
             com.jamcat.nayngapo.ui.MenuButtons.draw(canvas, paused)
         }
         // 낚시터 나가기 (어선 위에서는 위 왼쪽 '나가기'가 배에서 내리기)
@@ -1233,6 +1267,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
                 if (paused) return true
                 val px = event.getX(idx); val py = event.getY(idx)
                 if (!village2Rect.isEmpty && village2Rect.contains(px, py)) { touchControls.releaseAll(); gameView.showVillage2(); return true }
+                if (!village1Rect.isEmpty && village1Rect.contains(px, py)) { leaveBoat(); gameView.showShop(); return true }
                 if (!helmRect.isEmpty && helmRect.contains(px, py)) {
                     atHelm = !atHelm
                     if (!atHelm) heroU = DECK_MIN

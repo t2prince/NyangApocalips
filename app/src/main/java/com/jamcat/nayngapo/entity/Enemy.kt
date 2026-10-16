@@ -943,9 +943,9 @@ class BeeCat(x: Float, y: Float) : Enemy(x, y, 3, 10) {
 /**
  * 여왕 벌냥이 — 30스테이지 보스 (대표님 2026-10-10 「30스테이지 보스는 여왕 벌냥이야」). GPT 그림 `queen_bee_cat`(금관을 쓴 큰 벌냥이).
  * 높이 떠서 인간 위를 따라다니다가 2.8초마다 엉덩이 침으로 내려와 찌르고(내려왔을 때만 맞는다), 7초마다 벌냥이 둘을 불러낸다(한 번에 최대 6마리까지).
- * HP 60 · 공격 12 · 닿으면 하트 3(보스) · 간격·높이·부르는 수는 Claude 판단.
+ * **HP 25 · 공격 3** (대표님 2026-10-16) · 닿으면 하트 3(보스) · 간격·높이·부르는 수는 Claude 판단.
  */
-class QueenBeeCatBoss(x: Float, y: Float) : Enemy(x, y, 60, 12) {
+class QueenBeeCatBoss(x: Float, y: Float) : Enemy(x, y, 25, 3) {
     override val width = 170f
     override val height = 150f
     override val contactDamage = 3

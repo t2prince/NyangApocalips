@@ -984,6 +984,16 @@ class StrayTeamCat(val teamCat: com.jamcat.nayngapo.engine.CatTeam.TeamCat, x: F
         val by = y + jumpZ + 8f
         tagRect.set(cx - bw / 2f, by - bh, cx + bw / 2f, by)
         canvas.drawBitmap(bmp, null, tagRect, tagSpritePaint)
+        // 나무 막대에 흰 보따리를 매고 있다 (대표님 2026-10-17): 등 위에 얹은 막대가 뒤로 비스듬히, 뒤 끝에 흰 보따리 (얼굴은 안 가린다)
+        val dir = if (facingRight) 1f else -1f
+        val sx = cx - dir * bw * 0.04f; val sy = by - bh * 0.74f
+        val ex = cx - dir * bw * 0.60f; val ey = by - bh * 1.02f + sin(animTime * 8f) * 2f
+        canvas.drawLine(sx, sy, ex, ey, stickPaint)
+        val r = bw * 0.20f
+        tagRect.set(ex - r, ey - r * 0.1f, ex + r, ey + r * 1.7f)
+        canvas.drawOval(tagRect, bundlePaint); canvas.drawOval(tagRect, bundleInk)
+        // 묶은 매듭
+        canvas.drawCircle(ex, ey, r * 0.28f, bundlePaint); canvas.drawCircle(ex, ey, r * 0.28f, bundleInk)
         // 이름표: '이름 (떠난 냥이)'
         val label = "${teamCat.name} · 떠난 냥이"
         tagText.textSize = 26f
@@ -996,6 +1006,9 @@ class StrayTeamCat(val teamCat: com.jamcat.nayngapo.engine.CatTeam.TeamCat, x: F
     companion object {
         private val tagRect = RectF()
         private val tagSpritePaint = Paint().apply { isFilterBitmap = true; alpha = 230 }
+        private val stickPaint = Paint().apply { color = Color.rgb(140, 92, 48); strokeWidth = 7f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+        private val bundlePaint = Paint().apply { color = Color.rgb(250, 250, 246); isAntiAlias = true }
+        private val bundleInk = Paint().apply { color = Color.rgb(40, 34, 30); style = Paint.Style.STROKE; strokeWidth = 3f; isAntiAlias = true }
         private val tagBg = Paint().apply { color = Color.argb(190, 80, 60, 50); isAntiAlias = true }
         private val tagText = Paint().apply { color = Color.WHITE; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
     }

@@ -416,8 +416,11 @@ class ShopScreen(private val gameView: GameView) : Screen {
     private val carShopX = FIRST_TENT_X + (TENT_COUNT - 1) * TENT_GAP + 760f
     /** 맨 끝의 낚시터 (대표님 2026-10-10) — 자동차 매장 뒤 */
     private val fishingX = carShopX + 760f
-    private val worldWidth = fishingX + 560f
+    /** 낚시터 옆(맨 끝)의 낚시 상점 — 낚싯대 Lv업·미끼 (대표님 2026-10-17) */
+    private val fishShopX = fishingX + 700f
+    private val worldWidth = fishShopX + 420f
     private var nearFishing = false
+    private var nearFishShop = false
     private var nearCarShop = false
     private val carShopRect = RectF()
     private var nearGate = false
@@ -524,8 +527,9 @@ class ShopScreen(private val gameView: GameView) : Screen {
         nearGate = abs(pcx - stageGateX) < 220f
         nearCarShop = abs(pcx - carShopX) < 260f
         nearFishing = abs(pcx - fishingX) < 260f
+        nearFishShop = abs(pcx - fishShopX) < 200f
         // 기습 중에는 가게에 못 들어간다 — 냥이부터 잡아야 한다
-        if (raid || raidResult != null) { nearTent = -1; nearTower = false; nearGacha = false; nearMoney = false; nearGate = false; nearCarShop = false; nearFishing = false }
+        if (raid || raidResult != null) { nearTent = -1; nearTower = false; nearGacha = false; nearMoney = false; nearGate = false; nearCarShop = false; nearFishing = false; nearFishShop = false }
     }
 
     override fun draw(canvas: Canvas) {
@@ -610,6 +614,13 @@ class ShopScreen(private val gameView: GameView) : Screen {
             canvas.drawText("자동차 매장", carShopX, carShopRect.top + th * 0.12f, signText)
         }
         drawFishingSpot(canvas, fishingX, groundY)
+        SpriteManager.fishShop?.let { bmp ->
+            val th = 380f; val tw = bmp.width * th / bmp.height
+            rect.set(fishShopX - tw / 2f, groundY + 16f - th, fishShopX + tw / 2f, groundY + 16f)
+            canvas.drawBitmap(bmp, null, rect, null)
+            signText.textSize = 36f
+            canvas.drawText("낚시 상점", fishShopX, rect.top - 10f, signText)
+        }
         for ((k, car) in com.jamcat.nayngapo.engine.CarCatalog.cars.withIndex()) {
             val bmp = SpriteManager.cars[car.id] ?: continue
             val ch = 110f; val cw = bmp.width * ch / bmp.height
@@ -670,6 +681,19 @@ class ShopScreen(private val gameView: GameView) : Screen {
             bubbleText.textSize = 44f
             val bw = bubbleText.measureText(label) + 60f
             val by = groundY - HOUSE_H - 50f + sin(timer * 4f) * 6f
+            enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
+            canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
+            canvas.drawRoundRect(enterRect, 38f, 38f, ink)
+            canvas.drawText(label, bx, enterRect.centerY() + 15f, bubbleText)
+        }
+
+        // 낚시 상점 앞: 말풍선
+        if (nearFishShop) {
+            val bx = fishShopX - cameraX
+            val label = "▼ 낚시 상점 들어가기"
+            bubbleText.textSize = 44f
+            val bw = bubbleText.measureText(label) + 60f
+            val by = groundY - 470f + sin(timer * 4f) * 6f
             enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
             canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
             canvas.drawRoundRect(enterRect, 38f, 38f, ink)
@@ -1198,6 +1222,9 @@ class ShopScreen(private val gameView: GameView) : Screen {
                     com.jamcat.nayngapo.entity.CarRide.Tap.TOO_FAR -> { showNotice("차 가까이 가서 누르세요"); return true }
                     com.jamcat.nayngapo.entity.CarRide.Tap.NONE -> Unit
                 }
+            }
+            if (nearFishShop && !enterRect.isEmpty && enterRect.contains(px, py)) {
+                touchControls.releaseAll(); returnX = player.x; gameView.showFishingShop(); return true
             }
             if (nearFishing && !enterRect.isEmpty && enterRect.contains(px, py)) {
                 touchControls.releaseAll(); returnX = player.x; gameView.showFishing(); return true

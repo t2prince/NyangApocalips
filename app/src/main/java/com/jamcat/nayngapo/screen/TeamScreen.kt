@@ -62,6 +62,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
     private val actionRects = (0 until 4).map { RectF() }
     private val toggleRect = RectF()
     private val armorRect = RectF()
+    private val gpsRect = RectF()
     private val releaseRect = RectF()
     private val reviveRect = RectF()
     private val atkUpRect = RectF()
@@ -267,7 +268,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
     }
 
     private fun clearBodyRects() {
-        nameRect.setEmpty(); bigRect.setEmpty(); toggleRect.setEmpty(); armorRect.setEmpty()
+        nameRect.setEmpty(); bigRect.setEmpty(); toggleRect.setEmpty(); armorRect.setEmpty(); gpsRect.setEmpty()
         releaseRect.setEmpty()
         reviveRect.setEmpty()
         atkUpRect.setEmpty()
@@ -393,7 +394,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
             cat.isDead -> "스테이지 ${cat.diedAtStage}에서 잠들다"
             // 어디에 있는지는 고양이 GPS 가 있어야 안다 (2026-10-17)
             cat.hasLeft -> when {
-                GameProgress.itemCount("cat_gps") <= 0 -> "배고파서 떠났다... 어디 있는지 몰라요 (고양이 GPS가 있으면 알 수 있어요)"
+                !cat.hasGps -> "배고파서 떠났다... 어디 있는지 몰라요 (GPS를 달아 두면 알 수 있어요)"
                 cat.leftStage > 0 -> "배고파서 떠났다... 📍${cat.leftStage}스테이지에 있어요 (채집통으로 데려와요)"
                 else -> "배고파서 떠났다... (아직 어느 스테이지인지 몰라요)"
             }
@@ -648,7 +649,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         // 무덤이 된 냥이에게는 부활 약 칸 하나뿐이다
         if (cat.isDead) {
             for (rr in actionRects) rr.setEmpty()
-            toggleRect.setEmpty(); armorRect.setEmpty(); releaseRect.setEmpty()
+            toggleRect.setEmpty(); armorRect.setEmpty(); releaseRect.setEmpty(); gpsRect.setEmpty()
             atkUpRect.setEmpty()
             val top = h * 0.150f
             reviveRect.set(l, top, r, top + bh)
@@ -680,7 +681,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         // 무덤·떠난 냥이는 출전·갑옷 대신 칸을 비우는 '보내주기' 하나만
         if (!alive) {
             toggleRect.setEmpty()
-            armorRect.setEmpty()
+            armorRect.setEmpty(); gpsRect.setEmpty()
             atkUpRect.setEmpty()
             val rTop = h * 0.533f
             releaseRect.set(l, rTop, r, rTop + bh)
@@ -717,16 +718,23 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         )
         // 공격력 Lv업 (영구히 +60)
         val uTop = h * 0.652f
-        atkUpRect.set(l, uTop, r, uTop + bh)
+        // 공격력 Lv업 | GPS 달기 — 한 줄을 반씩 (2026-10-17)
+        val mid = (l + r) / 2f
+        atkUpRect.set(l, uTop, mid - 6f, uTop + bh)
         drawButton(
-            canvas, atkUpRect, "공격력 Lv업", bh * 0.34f,
+            canvas, atkUpRect, "공격력 Lv업", bh * 0.30f,
             btnWhitePaint, pressedKey == "atkup", alive
+        )
+        gpsRect.set(mid + 6f, uTop, r, uTop + bh)
+        drawButton(
+            canvas, gpsRect, if (cat.hasGps) "GPS ✓" else "GPS 달기", bh * 0.30f,
+            if (cat.hasGps) btnPaint else btnWhitePaint, pressedKey == "gps", alive
         )
 
         // 가진 아이템 수를 한 줄로
         leftSmallPaint.textSize = h * 0.023f
         canvas.drawText(
-            "갑옷 ${GameProgress.itemCount("cat_armor")} · Lv업 ${GameProgress.itemCount("attack_up")}",
+            "갑옷 ${GameProgress.itemCount("cat_armor")} · Lv업 ${GameProgress.itemCount("attack_up")} · GPS ${GameProgress.itemCount("cat_gps")}",
             l, uTop + bh + h * 0.030f, leftSmallPaint
         )
     }
@@ -1148,6 +1156,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         }
         if (!toggleRect.isEmpty && toggleRect.contains(x, y)) return "toggle"
         if (!armorRect.isEmpty && armorRect.contains(x, y)) return "armor"
+        if (!gpsRect.isEmpty && gpsRect.contains(x, y)) return "gps"
         if (!releaseRect.isEmpty && releaseRect.contains(x, y)) return "release"
         if (!reviveRect.isEmpty && reviveRect.contains(x, y)) return "revive"
         if (!atkUpRect.isEmpty && atkUpRect.contains(x, y)) return "atkup"
@@ -1169,6 +1178,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
             "a3" -> doGroom(h)
             "toggle" -> doToggleParty()
             "armor" -> doArmor()
+            "gps" -> selected?.let { c -> CatTeam.attachGps(c.id)?.let { r -> if (r.ok) SoundManager.playCatHit(); showNotice(r.message) } }
             "release" -> doRelease()
             "revive" -> doRevive(h)
             "atkup" -> doAttackUp(h)

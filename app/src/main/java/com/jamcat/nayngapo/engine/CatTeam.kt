@@ -66,6 +66,8 @@ object CatTeam {
         var hasLeft: Boolean = false,
         /** 떠난 냥이가 머무는 스테이지 — 거기서 이름표를 단 채 돌아다니고, 채집통으로 데려올 수 있다 (대표님 2026-10-17). 0 = 없음 */
         var leftStage: Int = 0,
+        /** 고양이 GPS 를 달았다 — 떠나도 어느 스테이지에 있는지 안다 (캣타워에서 단다, 대표님 2026-10-17) */
+        var hasGps: Boolean = false,
         /** 'Lv업' 아이템으로 영구히 올린 공격력 (되살아나도 남는다) */
         var attackBonus: Int = 0,
         /** 새끼인가 — 교배로 태어나거나 감옥에서 구한 새끼 (대표님 2026-09-27). 키워서 GROW_UP_LEVEL 이 되면 어른이 된다 */
@@ -236,6 +238,7 @@ object CatTeam {
                             diedAtStage = o.optInt("diedAtStage", 0),
                             hasLeft = o.optBoolean("hasLeft", false),
                             leftStage = o.optInt("leftStage", 0),
+                            hasGps = o.optBoolean("hasGps", false),
                             attackBonus = o.optInt("attackBonus", 0).coerceAtLeast(0),
                             isKitten = o.optBoolean("isKitten", false),
                             parents = o.optString("parents", ""),
@@ -303,6 +306,7 @@ object CatTeam {
                     .put("diedAtStage", c.diedAtStage)
                     .put("hasLeft", c.hasLeft)
                     .put("leftStage", c.leftStage)
+                    .put("hasGps", c.hasGps)
                     .put("attackBonus", c.attackBonus)
                     .put("isKitten", c.isKitten)
                     .put("parents", c.parents)
@@ -561,6 +565,17 @@ object CatTeam {
     }
 
     /** 갑옷을 입힌다 — 가진 갑옷 하나를 쓴다 */
+    /** 고양이 GPS 달기 (한 번 달면 계속, 고양이 GPS 하나를 쓴다) */
+    fun attachGps(id: Int): CareResult? {
+        val cat = cat(id) ?: return null
+        if (cat.gone) return null
+        if (cat.hasGps) return CareResult(false, "이미 GPS를 달고 있다냥! (떠나도 어디 있는지 알 수 있어요)")
+        if (!GameProgress.consumeItem("cat_gps")) return CareResult(false, "고양이 GPS가 없다냥! 고양이 상점에서 사 오자")
+        cat.hasGps = true
+        save()
+        return CareResult(true, "GPS를 달았다! 떠나도 어디 있는지 알 수 있어요")
+    }
+
     fun equipArmor(id: Int): CareResult? {
         val cat = cat(id) ?: return null
         if (cat.gone) return null

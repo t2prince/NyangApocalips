@@ -59,9 +59,12 @@ class FishingScreen(private val gameView: GameView) : Screen {
      * 비율은 Claude 판단: 쓰레기 18 · 광어 14 · 돔 12 · 우럭 12 · 조개 12 · 불가사리 10 · 해파리 9 · 거북이 6 · 상어 4 · 고래 3.
      */
     private fun seaCreature(): String {
-        val r = Math.random() * 100
+        // 황금 미끼면 거북이·상어·고래가 세 배 잘 나온다
+        val table = SEA_TABLE.map { (id, wgt) -> id to (if (bait == "bait_gold" && id in RARE_SEA) wgt * 3 else wgt) }
+        val total = table.sumOf { it.second }.toDouble()
+        val rr = Math.random() * total
         var acc = 0.0
-        for ((id, wgt) in SEA_TABLE) { acc += wgt; if (r < acc) return id }
+        for ((id, wgt) in table) { acc += wgt; if (rr < acc) return id }
         return "sea_trash"
     }
 
@@ -77,22 +80,33 @@ class FishingScreen(private val gameView: GameView) : Screen {
     /** 깊이(0 얕음 → 1 심해)에 따라: 깊을수록 큰 물고기·황금 물고기가 많다 */
     private fun fishIdAtDepth(d: Float): String {
         val r = Math.random()
-        val gold = 0.05 + 0.30 * d; val bigger = gold + 0.25 + 0.30 * d
+        // 미끼: 새우 = 큰 물고기가 잘, 황금 = 황금 물고기가 잘
+        val gold = 0.05 + 0.30 * d + (if (bait == "bait_gold") 0.25 else 0.0)
+        val bigger = gold + 0.25 + 0.30 * d + (if (bait == "bait_shrimp") 0.30 else 0.0)
         return when { r < gold -> "fish_gold"; r < bigger -> "fish_big"; else -> "fish_small" }
     }
 
     /** 낚시는 한 번에 루비 2개를 내고 한다 (대표님 2026-10-16) — 던지기·낚시줄 조종하기 둘 다 */
     private fun payForFishing(): Boolean {
-        if (GameProgress.spendRubies(FISHING_PRICE)) return true
-        noticeText = "낚시는 루비 ${FISHING_PRICE}개를 내고 해요 (지금 ${GameProgress.rubies}개)"; noticeTimer = 2f
-        return false
+        if (!GameProgress.spendRubies(FISHING_PRICE)) {
+            noticeText = "낚시는 루비 ${FISHING_PRICE}개를 내고 해요 (지금 ${GameProgress.rubies}개)"; noticeTimer = 2f
+            return false
+        }
+        // 미끼: 가진 것 중 좋은 것부터 하나 쓴다 (낚시 상점, 2026-10-17)
+        bait = listOf("bait_gold", "bait_shrimp", "bait_worm").firstOrNull { GameProgress.consumeItem(it) }
+        return true
     }
+    /** 이번 낚시에 쓴 미끼 (없으면 null) */
+    private var bait: String? = null
+    /** 바늘이 바닥에 박혔다 — 못 움직인다 (대표님 2026-10-17 「낚싯대는 땅에 박히면 못 움직여」) */
+    private var stuck = false
+    private var stuckT = 0f
 
     /** 낚시줄을 물속으로 내리고 물고기들을 헤엄치게 한다 */
     private fun startControl() {
         val w = gameView.screenWidth.toFloat(); val h = gameView.screenHeight.toFloat()
         val waterY = h * 0.55f
-        state = State.CONTROL; t = 0f; catchId = null; hookedList.clear()
+        state = State.CONTROL; t = 0f; catchId = null; hookedList.clear(); stuck = false; stuckT = 0f
         hookX = w * 0.62f; hookY = waterY + 60f; hookTX = hookX; hookTY = hookY
         swimmers.clear()
         val bottom = seabedY - 60f
@@ -102,8 +116,11 @@ class FishingScreen(private val gameView: GameView) : Screen {
             // 깊이 비율은 가장 긴 낚시줄(Lv4) 기준 — 줄이 길수록 더 깊은 곳의 좋은 물고기를 만난다
             val d = ((y - waterY) / (BASE_DEPTH * 8f)).coerceIn(0f, 1f)
             val inSea = (onBoat || y - waterY > SEA_START) && Math.random() < 0.7   // 배를 타면 얕은 곳도 바다
-            swimmers.add(Swimmer(if (inSea) seaCreature() else fishIdAtDepth(d), w * (0.35f + Math.random().toFloat() * 0.6f), y,
-                if (Math.random() < 0.5) 1f else -1f, 60f + Math.random().toFloat() * 90f))
+            val id = if (inSea) seaCreature() else fishIdAtDepth(d)
+            // 광어는 바닥에 붙어 있다 — 바닥에서 아주 천천히 기어 다닌다 (대표님 2026-10-17)
+            val onFloor = id == "sea_flounder"
+            swimmers.add(Swimmer(id, w * (0.35f + Math.random().toFloat() * 0.6f), if (onFloor) seabedY - 30f else y,
+                if (Math.random() < 0.5) 1f else -1f, if (onFloor) 12f else 60f + Math.random().toFloat() * 90f))
         }
     }
 
@@ -151,12 +168,13 @@ class FishingScreen(private val gameView: GameView) : Screen {
         val camTarget = if (state == State.CONTROL || state == State.REEL) (hookY - h * 0.55f).coerceIn(0f, seabedY - h * 0.92f) else 0f
         camY += (camTarget - camY) * (deltaTime * 5f).coerceAtMost(1f)
         when (state) {
-            State.CAST -> if (t >= 0.5f) { state = State.WAIT; t = 0f; waitTime = 2f + (Math.random() * 3f).toFloat() }
+            State.CAST -> if (t >= 0.5f) { state = State.WAIT; t = 0f; waitTime = if (bait == "bait_worm") 1f + Math.random().toFloat() else 2f + (Math.random() * 3f).toFloat() }
             State.WAIT -> if (t >= waitTime) { state = State.BITE; t = 0f; SoundManager.playCatHit() }
             State.BITE -> if (t >= BITE_WINDOW) { state = State.MISSED; t = 0f }
             State.CONTROL -> {
                 val w = gameView.screenWidth.toFloat()
                 for (f in swimmers) {
+                    if (bait == "bait_worm" && kotlin.math.abs(f.y - hookY) < 500f) f.dir = if (hookX > f.x) 1f else -1f   // 지렁이 냄새에 모인다
                     f.x += f.dir * f.speed * deltaTime
                     if (f.x < w * 0.33f || f.x > w * 0.97f) { f.dir = -f.dir; f.x = f.x.coerceIn(w * 0.33f, w * 0.97f) }
                 }
@@ -172,7 +190,16 @@ class FishingScreen(private val gameView: GameView) : Screen {
                     hookedList.add(it); swimmers.remove(it); SoundManager.playCatHit()
                 }
                 val atBottom = hookY >= seabedY - 40f
-                if (hookedList.size >= cap || (atBottom && hookedList.isNotEmpty()) || (hookedList.isNotEmpty() && swimmers.isEmpty())) { state = State.REEL; t = 0f }
+                // 낚싯대가 땅에 박히면 못 움직인다 — 물린 게 있으면 그대로 끌어 올리고, 없으면 잠깐 뒤 놓친다
+                if (atBottom && !stuck) { stuck = true; stuckT = 0f; hookTX = hookX }
+                if (stuck) {
+                    stuckT += deltaTime
+                    if (hookedList.isEmpty() && stuckT >= 1.5f) {
+                        state = State.MISSED; t = 0f; swimmers.clear()
+                        noticeText = "바늘이 땅에 박혔다…"; noticeTimer = 2f
+                    }
+                }
+                if (hookedList.size >= cap || (stuck && hookedList.isNotEmpty()) || (hookedList.isNotEmpty() && swimmers.isEmpty())) { state = State.REEL; t = 0f }
             }
             State.REEL -> {
                 // 물고기를 문 바늘이 물 위로 끌려 올라온다
@@ -202,9 +229,8 @@ class FishingScreen(private val gameView: GameView) : Screen {
                 // 낚싯대 Lv 만큼 한꺼번에 잡는다 (한 번에 최대 CAST_CAP 마리)
                 reelCount = GameProgress.catchesPerCast(CAST_CAP)
                 repeat(reelCount) {
-                    val r = Math.random()
-                    val id = if (onBoat && Math.random() < 0.5) seaCreature()   // 배 위에서는 바다 생물도 문다
-                        else when { r < 0.08 -> "fish_gold"; r < 0.40 -> "fish_big"; else -> "fish_small" }
+                        val id = if (onBoat && Math.random() < 0.5) seaCreature()   // 배 위에서는 바다 생물도 문다
+                        else fishIdAtDepth(0.1f)   // 물 위에서 문 물고기 (미끼 효과가 들어간다)
                     onCatch(id)
                 }
                 state = State.CAUGHT; t = 0f
@@ -356,12 +382,14 @@ class FishingScreen(private val gameView: GameView) : Screen {
             canvas.drawText(if (onBoat) "⛵ 돌아오기" else "⛵ 배 타기 · 루비 $BOAT_PRICE", boatRect.centerX(), boatRect.centerY() + h * 0.014f, text)
         }
         // 낚시줄 Lv업 (오른쪽 위, 나가기 아래)
-        lvRect.set(w - w * 0.03f - 380f, h * 0.04f + 110f, w - w * 0.03f, h * 0.04f + 200f)
-        canvas.drawRoundRect(lvRect, 45f, 45f, controlPaint); canvas.drawRoundRect(lvRect, 45f, 45f, ink)
-        text.textSize = 34f
+        // 낚싯대 Lv·미끼 표시 (Lv업·미끼는 낚시 상점에서)
+        lvRect.set(w - w * 0.03f - 420f, h * 0.04f + 110f, w - w * 0.03f, h * 0.04f + 200f)
+        canvas.drawRoundRect(lvRect, 45f, 45f, card); canvas.drawRoundRect(lvRect, 45f, 45f, ink)
+        text.textSize = 30f
         val lv = GameProgress.fishingLineLevel
-        canvas.drawText(if (lv >= GameProgress.LINE_LEVEL_MAX) "낚싯대 Lv $lv (최대)" else "낚싯대 Lv $lv (${lv}마리씩) · Lv업 루비 ${GameProgress.lineLevelUpPrice()}",
-            lvRect.centerX(), lvRect.centerY() + 12f, text)
+        val baitNow = listOf("bait_gold" to "황금", "bait_shrimp" to "새우", "bait_worm" to "지렁이").firstOrNull { GameProgress.itemCount(it.first) > 0 }
+        canvas.drawText("낚싯대 Lv $lv (${lv}마리씩) · 미끼 ${baitNow?.let { "${it.second} ${GameProgress.itemCount(it.first)}" } ?: "없음"}",
+            lvRect.centerX(), lvRect.centerY() + 11f, text)
         if (noticeTimer > 0f) {
             text.textSize = 38f
             val nw = text.measureText(noticeText) + 60f
@@ -447,8 +475,8 @@ class FishingScreen(private val gameView: GameView) : Screen {
         // 조종 중: 물속을 누르거나 끌면 바늘이 그쪽으로
         if (state == State.CONTROL && (event.actionMasked == MotionEvent.ACTION_DOWN || event.actionMasked == MotionEvent.ACTION_MOVE)) {
             if (exitRect.contains(event.x, event.y)) { gameView.showShop(); return true }
-            // 좌우만 손가락으로 (깊이는 저절로 가라앉는다)
-            hookTX = event.x.coerceIn(gameView.screenWidth * 0.3f, gameView.screenWidth * 0.98f)
+            // 좌우만 손가락으로 (깊이는 저절로 가라앉는다) — 땅에 박히면 못 움직인다
+            if (!stuck) hookTX = event.x.coerceIn(gameView.screenWidth * 0.3f, gameView.screenWidth * 0.98f)
             return true
         }
         if (event.actionMasked != MotionEvent.ACTION_DOWN) return true
@@ -459,16 +487,6 @@ class FishingScreen(private val gameView: GameView) : Screen {
             else noticeText = "배를 타려면 루비 ${BOAT_PRICE}개가 있어야 해요"
             noticeTimer = 2f
             state = State.READY; catchId = null
-            return true
-        }
-        if (lvRect.contains(event.x, event.y)) {
-            val lv = GameProgress.fishingLineLevel
-            noticeText = when {
-                lv >= GameProgress.LINE_LEVEL_MAX -> "낚싯대가 이미 최대 Lv 이에요"
-                GameProgress.levelUpFishingLine() -> "낚싯대 Lv ${GameProgress.fishingLineLevel}! 이제 한 번에 ${GameProgress.fishingLineLevel}마리"
-                else -> "루비가 모자라요 (루비 ${GameProgress.lineLevelUpPrice()})"
-            }
-            noticeTimer = 2f
             return true
         }
         if (!controlRect.isEmpty && controlRect.contains(event.x, event.y)) { if (payForFishing()) startControl(); return true }
@@ -503,6 +521,8 @@ class FishingScreen(private val gameView: GameView) : Screen {
         /** 아래쪽에 가진 개수를 보여 줄 종류 */
         private val CATCH_IDS = listOf("fish_small", "fish_big", "fish_gold", "sea_flounder", "sea_bream", "sea_rockfish", "sea_clam",
             "sea_starfish", "sea_jelly", "sea_turtle", "sea_shark", "sea_whale", "sea_trash")
+        /** 황금 미끼로 잘 나오는 귀한 바다 생물 */
+        private val RARE_SEA = setOf("sea_turtle", "sea_shark", "sea_whale")
         private val SEA_TABLE = listOf("sea_trash" to 18, "sea_flounder" to 14, "sea_bream" to 12, "sea_rockfish" to 12, "sea_clam" to 12,
             "sea_starfish" to 10, "sea_jelly" to 9, "sea_turtle" to 6, "sea_shark" to 4, "sea_whale" to 3)
         /** 이 깊이보다 아래는 바다 (낚시줄 Lv2 부터 닿는다) */

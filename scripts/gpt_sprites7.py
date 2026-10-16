@@ -44,7 +44,8 @@ ITEMS = {
     'robot_p_leg': ('robot_p_leg', 280),
     'hskill_robot_wing': ('hskill_robot_wing', 256),
     'hskill_arrow_rain': ('hskill_arrow_rain', 256),  # 인간 기술 '화살비' 버튼 (2026-10-16)  # 로봇 기술 '날개' 버튼 (2026-10-10)
-    'treadmill': ('treadmill', 420),   # 13번 고양이 체력 훈련장 러닝머신 (2026-10-10)
+    'treadmill': ('treadmill', 420),
+    'fish_shop': ('fish_shop', 420),   # 낚시 상점 건물 (2026-10-17)   # 13번 고양이 체력 훈련장 러닝머신 (2026-10-10)
     # 집 안 가구 (2026-10-09 「집에 가구들도 있어」)
     'furn_sofa': ('furn_sofa', 300),
     'furn_shelf': ('furn_shelf', 400),
@@ -153,7 +154,7 @@ for name, (plain, res, strip) in ARMOR.items():
 # Plan/shop_icons/shop_h_*.png → 다른 상점 아이콘과 같은 448×448 투명 칸 가운데에 (여백 24)
 ICON = 448
 # 다 먹이기(2026-10-10)도 같은 방식
-for p in sorted(glob.glob(os.path.join('Plan/shop_icons', 'shop_h_*.png'))) + sorted(glob.glob('Plan/shop_icons/shop_feed_all.png')) + sorted(glob.glob('Plan/shop_icons/shop_fish_*.png')) + sorted(glob.glob('Plan/shop_icons/shop_sea_*.png')) + sorted(glob.glob('Plan/shop_icons/shop_cat_gps.png')):
+for p in sorted(glob.glob(os.path.join('Plan/shop_icons', 'shop_h_*.png'))) + sorted(glob.glob('Plan/shop_icons/shop_feed_all.png')) + sorted(glob.glob('Plan/shop_icons/shop_fish_*.png')) + sorted(glob.glob('Plan/shop_icons/shop_sea_*.png')) + sorted(glob.glob('Plan/shop_icons/shop_cat_gps.png')) + sorted(glob.glob('Plan/shop_icons/shop_bait_*.png')) + sorted(glob.glob('Plan/shop_icons/shop_fish_rod.png')):
     img = strip_background(Image.open(p))
     img = img.crop(img.getbbox())
     s = (ICON - 48) / max(img.width, img.height)

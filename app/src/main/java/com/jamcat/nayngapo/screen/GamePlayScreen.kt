@@ -577,6 +577,11 @@ class GamePlayScreen(
         // 31 해적선은 앞(왼쪽, 뱃머리 쪽)으로 나아간다 — 갑판 위의 인간·냥이도 함께 실려 간다
         if (isSea) sailPirateShip(deltaTime)
         if (gunCooldown > 0f) gunCooldown -= deltaTime   // 레이저 총 쏘는 간격
+        // 여왕 벌냥이가 쓰러지면 독이 풀린다
+        if (player.poisoned && level.enemies.none { it is com.jamcat.nayngapo.entity.QueenBeeCatBoss && !it.isDead }) {
+            player.poisoned = false
+            hitEffects.add(HitEffect(player.x, player.y - player.height - 40f, 1.0f, "독이 풀렸다!"))
+        }
         robotRide?.let { rr ->
             rr.update(deltaTime)
             // 날개 기술: 켜면 발에서 불을 뿜으며 떠서 날고(▲▼ 높이), 끄면 내려온다 (2026-10-10)
@@ -931,7 +936,15 @@ class GamePlayScreen(
                         break
                     }
                     if (enemy.halfHeart) player.takeHalfDamage()      // 새끼 고양이: 하트 반 칸
-                    else player.takeDamage(enemy.contactDamage)   // 잡몹 1, 보스 3 (기획4)
+                    else {
+                        val before = player.hp + player.robotHp
+                        player.takeDamage(enemy.contactDamage)   // 잡몹 1, 보스 3 (기획4)
+                        // 여왕 벌냥이 침에 맞으면 독 — 계속 2초마다 하트 한 칸 (2026-10-16)
+                        if (enemy is com.jamcat.nayngapo.entity.QueenBeeCatBoss && player.hp + player.robotHp < before && !player.poisoned) {
+                            player.poisoned = true
+                            hitEffects.add(HitEffect(player.x, player.y - player.height - 40f, 1.2f, "독에 걸렸다! 2초마다 하트 -1"))
+                        }
+                    }
                     shake(0.18f, 11f)   // 피격: 크게 흔들림
                     hitEffects.add(HitEffect(player.x, player.y - player.height, 0.5f, "HIT!"))
                     break
@@ -2258,7 +2271,8 @@ class GamePlayScreen(
                 player.draw(canvas)
                 canvas.restore()
                 carRide?.drawRiding(canvas, player)
-                robotRide?.drawRiding(canvas, player)   // 로봇은 인간 앞 — 조종석에 앉은 인간   // 차는 인간 앞 — 앉은 다리를 가린다
+                robotRide?.drawRiding(canvas, player)   // 로봇은 인간 앞 — 조종석에 앉은 인간
+                if (player.poisoned) drawPoison(canvas)   // 차는 인간 앞 — 앉은 다리를 가린다
             })
         }
         // 바다: 배가 없는 냥이들은 작은 뗏목 위에 서 있다
@@ -3393,6 +3407,22 @@ class GamePlayScreen(
         val left = GameProgress.itemCount("h_bugbox")
         hitEffects.add(HitEffect(enemy.x, enemy.y - enemy.height - 40f, 1.6f, "채집! ${cat.name} 우리 팀 (채집통 ${left}개 남음)"))
         return true
+    }
+
+    /** 독에 걸리면 머리 위로 초록 방울이 보글보글 + '독' 글씨 */
+    private val poisonPaint = Paint().apply { color = Color.argb(200, 110, 220, 80); isAntiAlias = true }
+    private val poisonText = Paint().apply {
+        color = Color.rgb(90, 200, 60); textSize = 32f; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
+        setShadowLayer(4f, 0f, 2f, Color.argb(160, 0, 0, 0))
+    }
+    private fun drawPoison(canvas: Canvas) {
+        val cx = player.x + player.width / 2f
+        val top = player.y + player.jumpZ - player.rideLift - player.height
+        for (k in 0 until 4) {
+            val u = ((elapsed * 0.9f + k * 0.25f) % 1f)
+            canvas.drawCircle(cx + (k - 1.5f) * 16f, top - u * 70f, 7f * (1f - u * 0.5f), poisonPaint)
+        }
+        canvas.drawText("☠ 독", cx, top - 80f, poisonText)
     }
 
     /** 로봇 기술 (로켓 펀치 · 날개) */

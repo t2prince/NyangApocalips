@@ -88,6 +88,9 @@ class Player(var x: Float, var y: Float) {
     var robotMaxHp = 0
     /** 로봇이 방금 부서졌다 (화면이 보고 내리게 한다) */
     var robotJustBroke = false
+    /** 여왕 벌냥이 독 (대표님 2026-10-16 「한 번 때리면 독 때문에 계속 2초에 하트 1칸 없어짐」) — 목숨을 잃거나 여왕 벌냥이가 쓰러지면 풀린다(Claude 판단) */
+    var poisoned = false
+    private var poisonT = 0f
     /** 무기점에서 산 레이저 총 — 들고 다니고, 차를 타면 차에 단다 (2026-10-09) */
     var hasGun: Boolean = com.jamcat.nayngapo.engine.GameProgress.itemCount("h_gun") > 0   // 스테이지에서는 출전 준비에서 고른 대로
     /** 총을 꺼내 들고 있는가 — '총 넣기'로 넣으면 손에서 사라지고 주먹으로 싸운다 (2026-10-10) */
@@ -158,6 +161,19 @@ class Player(var x: Float, var y: Float) {
 
     fun update(deltaTime: Float) {
         if (isDead) return
+        // 독: 2초마다 하트 한 칸 (무적이어도 닳는다, 로봇을 타면 로봇 피가 닳는다)
+        if (poisoned) {
+            poisonT += deltaTime
+            if (poisonT >= POISON_EVERY) {
+                poisonT -= POISON_EVERY
+                if (robotHp > 0) hitRobot(com.jamcat.nayngapo.engine.RobotCatalog.HP_PER_HEART)
+                else {
+                    hp -= 1
+                    com.jamcat.nayngapo.engine.SoundManager.playPlayerHurt()
+                    if (hp <= 0) { lives--; poisoned = false; if (lives <= 0) isDead = true }
+                }
+            }
+        } else poisonT = 0f
         if (chokeTimer > 0f) chokeTimer -= deltaTime
         if (awakenTimer > 0f) awakenTimer -= deltaTime
 
@@ -404,6 +420,8 @@ class Player(var x: Float, var y: Float) {
     companion object {
         /** 한 프레임에 이보다 높이 바뀌는 턱은 걸어서 못 오른다 (지형 언덕은 이보다 훨씬 완만하다) */
         const val STEP_MAX = 40f
+        /** 독: 하트 한 칸이 닳는 간격(초) */
+        const val POISON_EVERY = 2f
         /** 각성: 공격력·방어력 증가량 (대표님 2026-10-09) · 지속 시간 10초 (Claude 판단) */
         const val AWAKEN_BONUS = 15
         const val AWAKEN_TIME = 10f
@@ -715,7 +733,7 @@ class Player(var x: Float, var y: Float) {
     fun needsRespawn(): Boolean = hp <= 0 && lives > 0
 
     fun respawn(startX: Float, startY: Float) {
-        x = startX; y = startY; hp = maxHp; halfLost = false; awakenTimer = 0f
+        x = startX; y = startY; hp = maxHp; halfLost = false; awakenTimer = 0f; poisoned = false
         velocityX = 0f; jumpZ = 0f; jumpVelocity = 0f
         isJumping = false; isAttacking = false
         stompPhase = StompPhase.NONE; stompTimer = 0f; shockwavePending = false

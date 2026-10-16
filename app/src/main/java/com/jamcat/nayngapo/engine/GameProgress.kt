@@ -229,6 +229,23 @@ object GameProgress {
         prefs?.edit()?.putBoolean(KEY_STORY_SEEN, true)?.apply()
     }
 
+    /**
+     * 기습에 졌다 (대표님 2026-10-17 「나쁜 편 고양이가 상점에 쳐들어와, 상점이 초기화돼 — 구출한 인간은 다 다시 잡혀가고
+     * 상점에서 구했던 아이템을 다 잃어버려」): 구한 인간 0명(천막이 다시 닫힌다), 상점에서 산 물건(물건·자동차·로봇·총 등) 모두 잃는다.
+     * 배운 기술·냥이·낚시로 잡은 것은 그대로 (Claude 판단).
+     */
+    fun loseShopToRaid() {
+        humansRescued = 0
+        val bought = ShopCatalog.items.filter { it.price > 0 }.map { it.id }.toSet() + CarCatalog.cars.map { it.id }
+        for (id in bought) inventory.remove(id)
+        selectedCar = ""
+        robotLevel = 0; rideRobot = false
+        val e = prefs?.edit() ?: return
+        e.putInt(KEY_HUMANS_RESCUED, 0).putString(KEY_SELECTED_CAR, "").putInt(KEY_ROBOT_LEVEL, 0).putBoolean(KEY_RIDE_ROBOT, false)
+        for (id in bought) e.remove(KEY_ITEM_PREFIX + id)
+        e.apply()
+    }
+
     /** 지금까지 구한 인간 수 — 한 명마다 상점 천막 하나가 열린다 (대표님 2026-09-27). 이 기록은 2026-09-27 부터 센다 */
     var humansRescued = 0
         private set

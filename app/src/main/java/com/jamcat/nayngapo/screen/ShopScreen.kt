@@ -81,6 +81,101 @@ class ShopScreen(private val gameView: GameView) : Screen {
             )
         }
         carRide?.attach(allies)   // 자동차를 타고 있으면 냥이들도 뒷자리에 (2026-10-09)
+        // 기습: 상점 마을에 들어올 때 1.3% 로 나쁜 편 냥이들이 쳐들어온다 (대표님 2026-10-17)
+        if (Math.random() < RAID_CHANCE) startRaid()
+    }
+
+    // ===== 기습 (대표님 2026-10-17 「1.3퍼센트로 상점에 고양이들이 쳐들어와, 상점이 초기화돼 — 구출한 인간은 다 다시 잡혀가고
+    // 상점에서 구했던 아이템을 다 잃어버려. 25초 안에 고양이를 다 잡아야 해, 나오는 고양이는 19마리」) =====
+    private var raid = false
+    private var raidTime = 0f
+    private val raiders = mutableListOf<com.jamcat.nayngapo.entity.Enemy>()
+    /** 기습이 끝난 뒤 결과 글자 (이겼으면 막아냄, 졌으면 털림 → 잠시 뒤 상점 마을을 새로 그린다) */
+    private var raidResult: String? = null
+    private var raidResultT = 0f
+    private var raidLost = false
+
+    private fun startRaid() {
+        raid = true; raidTime = RAID_TIME
+        raiders.clear()
+        repeat(RAID_CATS) { k ->
+            val side = if (k % 2 == 0) -1f else 1f
+            val x = (player.x + side * (700f + (k / 2) * 110f + (Math.random() * 120f).toFloat())).coerceIn(40f, worldWidth - 140f)
+            val e: com.jamcat.nayngapo.entity.Enemy = when (k % 5) {
+                3 -> com.jamcat.nayngapo.entity.KittenCat(x, Constants.GROUND_Y)
+                4 -> com.jamcat.nayngapo.entity.HammerCat(x, Constants.GROUND_Y)
+                else -> com.jamcat.nayngapo.entity.NormalCat(x, Constants.GROUND_Y)
+            }
+            raiders.add(e)
+        }
+        touchControls.releaseAll()
+        showNotice("⚠ 기습! 나쁜 편 냥이들이 쳐들어왔다! ${RAID_TIME.toInt()}초 안에 다 잡아라!")
+    }
+
+    private fun updateRaid(deltaTime: Float) {
+        if (raidResult != null) {
+            raidResultT -= deltaTime
+            if (raidResultT <= 0f) { raidResult = null; if (raidLost) gameView.showShop() }   // 털렸으면 상점 마을을 새로(닫힌 천막·잃은 물건)
+            return
+        }
+        if (!raid) return
+        raidTime -= deltaTime
+        for (e in raiders) {
+            if (e.isDead) { e.updateDeath(deltaTime); continue }
+            e.update(deltaTime, player.x, player.y)
+            e.x = e.x.coerceIn(10f, worldWidth - e.width - 10f)
+        }
+        // 인간이 때린다 (주먹·발차기·로봇 주먹)
+        player.getAttackHitBox()?.let { box ->
+            for (e in raiders) if (!e.isDead && RectF.intersects(box, e.hitBox)) {
+                e.takeDamage(player.getCurrentAttackPower())
+                if (e.isDead) com.jamcat.nayngapo.engine.SoundManager.playCatDie() else com.jamcat.nayngapo.engine.SoundManager.playCatHit()
+            }
+        }
+        // 냥이가 닿으면 다친다
+        if (!player.isInvincible && !player.isJumping) {
+            val pb = player.hitBox
+            for (e in raiders) if (!e.isDead && e.isTangible && RectF.intersects(pb, e.hitBox)) {
+                if (e.halfHeart) player.takeHalfDamage() else player.takeDamage(e.contactDamage)
+                break
+            }
+        }
+        val left = raiders.count { !it.isDead }
+        when {
+            left == 0 -> {
+                raid = false
+                raidResult = "기습을 막아냈다!"; raidResultT = 2.2f; raidLost = false
+                com.jamcat.nayngapo.engine.SoundManager.playSpecial()
+            }
+            raidTime <= 0f || player.hp <= 0 || player.isDead -> {
+                raid = false
+                GameProgress.loseShopToRaid()
+                raidResult = "상점이 털렸다… 인간들이 다시 잡혀가고 물건을 다 잃었다"; raidResultT = 3f; raidLost = true
+                com.jamcat.nayngapo.engine.SoundManager.playGameOver()
+            }
+        }
+    }
+
+    private val raidBanner = Paint().apply { color = Color.argb(220, 200, 40, 40); isAntiAlias = true }
+    private val raidText = Paint().apply { color = Color.WHITE; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; textSize = 42f; isAntiAlias = true }
+
+    private fun drawRaidHud(canvas: Canvas, w: Float, h: Float) {
+        if (raid) {
+            val t = "⚠ 기습! 냥이 ${raiders.count { !it.isDead }}/$RAID_CATS · 남은 시간 ${kotlin.math.ceil(raidTime.coerceAtLeast(0f)).toInt()}초 · ♥ ${player.hp.coerceAtLeast(0)}"
+            val tw = raidText.measureText(t) + 60f
+            rect.set(w / 2f - tw / 2f, 100f, w / 2f + tw / 2f, 170f)
+            canvas.drawRoundRect(rect, 34f, 34f, raidBanner)
+            canvas.drawText(t, w / 2f, rect.centerY() + 15f, raidText)
+        }
+        raidResult?.let { r ->
+            raidText.textSize = 54f
+            val tw = raidText.measureText(r) + 80f
+            rect.set(w / 2f - tw / 2f, h * 0.36f, w / 2f + tw / 2f, h * 0.36f + 100f)
+            canvas.drawRoundRect(rect, 40f, 40f, if (raidLost) raidBanner else bubblePaint)
+            raidText.color = if (raidLost) Color.WHITE else Color.rgb(40, 36, 32)
+            canvas.drawText(r, w / 2f, rect.centerY() + 19f, raidText)
+            raidText.color = Color.WHITE; raidText.textSize = 42f
+        }
     }
 
     // ===== 고양이 기술 천막 창 =====
@@ -409,6 +504,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         if (input.jump || input.moveUp) { player.jump(); input.jump = false }
         if (input.attack) { if (player.performAttack()) SoundManager.playAttack(); input.attack = false }
         player.update(deltaTime)
+        updateRaid(deltaTime)
         player.x = player.x.coerceIn(40f, worldWidth - player.width - 40f)
         for (ally in allies) {
             ally.update(deltaTime, player.x, player.y, emptyList())
@@ -428,6 +524,8 @@ class ShopScreen(private val gameView: GameView) : Screen {
         nearGate = abs(pcx - stageGateX) < 220f
         nearCarShop = abs(pcx - carShopX) < 260f
         nearFishing = abs(pcx - fishingX) < 260f
+        // 기습 중에는 가게에 못 들어간다 — 냥이부터 잡아야 한다
+        if (raid || raidResult != null) { nearTent = -1; nearTower = false; nearGacha = false; nearMoney = false; nearGate = false; nearCarShop = false; nearFishing = false }
     }
 
     override fun draw(canvas: Canvas) {
@@ -520,6 +618,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
             canvas.drawBitmap(bmp, null, rect, null)
         }
         carRide?.drawParked(canvas)
+        for (e in raiders) if (!e.isDead) e.draw(canvas) else if (e.isDying) e.drawDeath(canvas)   // 기습한 냥이들
         for (ally in allies) ally.draw(canvas)
         when {
             robotRide != null -> robotRide.beginSeat(canvas, player)
@@ -644,6 +743,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
         // 밤이면 하늘이 어두워지고 '밤' 글자 (2026-10-17)
         com.jamcat.nayngapo.ui.DayNight.drawNight(canvas, w, h, timer, labelY = 150f)
+        drawRaidHud(canvas, w, h)
 
         // 위 가운데: 구한 인간 · 열린 가게
         hudText.textSize = 40f
@@ -1148,6 +1248,10 @@ class ShopScreen(private val gameView: GameView) : Screen {
     companion object {
         /** 천막 수 — 대표님이 정할 때까지 임시 6개 (Claude 판단) */
         const val TENT_COUNT = 14
+        /** 기습: 들어올 때 일어날 확률 · 잡아야 하는 시간 · 쳐들어오는 냥이 수 (대표님 2026-10-17) */
+        private const val RAID_CHANCE = 0.013
+        private const val RAID_TIME = 25f
+        private const val RAID_CATS = 19
         private const val MENU_BTN_R = 46f
         private const val MENU_HIT_R = 60f
         private const val MENU_BTN_Y = 118f

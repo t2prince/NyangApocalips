@@ -2048,18 +2048,8 @@ class GamePlayScreen(
         player.score += 500
         if (prison.kind == com.jamcat.nayngapo.entity.Prison.Kind.CAT) {
             // 기획1: "고양이를 구해야지 아군이 된다" — 구출한 냥이가 아군으로 합류
-            // 날아냥이는 10스테이지의 지정 감옥에서만 나온다 — 나머지는 세 종류에서 무작위
-            val randomKinds = listOf(
-                com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN,
-                com.jamcat.nayngapo.entity.AllyCat.Kind.BLUE,
-                com.jamcat.nayngapo.entity.AllyCat.Kind.NORMAL,
-                com.jamcat.nayngapo.entity.AllyCat.Kind.GUN,      // 총냥이도 팀이 된다 (2026-09-20)
-            )
-            // 새끼 고양이가 갇혀 있었으면 그 무늬의 새끼 치즈냥이가 팀에 들어온다 (대표님 2026-09-27)
-            // 날아냥이는 「구출에 너무 안 나와, 많이(엄청 많이는 아니고)」(2026-10-09) — 무작위 냥이 감옥의 15% (Claude 판단)
-            val kind = if (prison.holdsKitten) com.jamcat.nayngapo.entity.AllyCat.Kind.NORMAL
-                else prison.catKind ?: if (Math.random() < 0.15) com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING
-                else randomKinds[(Math.random() * randomKinds.size).toInt()]
+            // 감옥에 그려진 냥이 그대로 팀에 들어온다 (종류는 감옥을 만들 때 정한다)
+            val kind = prison.rescueKind
             // 구한 냥이는 팀 명단에만 올라간다 — 바로 싸우지 않고, 관리 화면에서 출전을 켜 줘야 한다
             val recruited = if (prison.holdsKitten) {
                 // 새끼는 엄마(암컷)와 같이 갇혀 있다 — 둘 다 팀에 들어온다 (2026-10-09)

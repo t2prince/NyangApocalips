@@ -24,6 +24,15 @@ class Prison(
      *  새끼는 **엄마(암컷) 냥이와 같이** 갇혀 있다 — 구하면 둘 다 팀에 들어온다 (대표님 2026-10-09) */
     val holdsKitten: Boolean = kind == Kind.CAT && catKind == null && Math.random() < 0.25
 
+    /** 구하면 팀에 들어오는 냥이 — 감옥을 만들 때 정해서, 갇힌 그림과 구한 냥이가 꼭 같다 (2026-10-17 「물음표 고양이」 버그).
+     *  무작위 감옥: 새끼+엄마는 치즈냥이, 아니면 15% 날아냥이, 나머지는 그린·파랑·치즈·총냥이 중 하나 */
+    val rescueKind: AllyCat.Kind = when {
+        holdsKitten -> AllyCat.Kind.NORMAL
+        catKind != null -> catKind
+        Math.random() < 0.15 -> AllyCat.Kind.FLYING
+        else -> listOf(AllyCat.Kind.GREEN, AllyCat.Kind.BLUE, AllyCat.Kind.NORMAL, AllyCat.Kind.GUN).random()
+    }
+
     enum class Kind { HUMAN, CAT }
 
     val width = 100f
@@ -80,14 +89,14 @@ class Prison(
 
         // 갇힌 쪽(울상)을 먼저 그리고 창살을 위에 덮는다
         if (kind == Kind.CAT) {
-            val bmp = when (catKind) {
+            val bmp = when (rescueKind) {
                 AllyCat.Kind.FLYING -> SpriteManager.flyingCatAlly
                 AllyCat.Kind.GREEN -> SpriteManager.greenCatAlly
                 AllyCat.Kind.BLUE -> SpriteManager.blueCatAlly
                 AllyCat.Kind.GUN -> SpriteManager.gunCatAlly
                 AllyCat.Kind.BOAT -> catCoat.boatAlly
                 AllyCat.Kind.NORMAL -> catCoat.ally
-                else -> catKind?.let { AllyCat.extraSprite(it, catCoat) } ?: catCoat.ally   // 모든 냥이가 갇혀 있을 수 있다 (2026-10-10)
+                else -> AllyCat.extraSprite(rescueKind, catCoat) ?: catCoat.ally   // 모든 냥이가 갇혀 있을 수 있다 (2026-10-10)
             }
             srcRect.set(0, 0, bmp.width, bmp.height)
             if (holdsKitten) {

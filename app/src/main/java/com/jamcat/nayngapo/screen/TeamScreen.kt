@@ -216,6 +216,10 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
     init {
         // 배고픔은 게임을 하는 동안에만 흐른다 (GameView가 매 프레임 시간을 쌓는다)
         selectedId = CatTeam.cats.firstOrNull()?.id
+        // 새로 구한 냥이가 있으면 그 냥이가 있는 쪽을 먼저 보여 준다 — 명단이 길면 맨 뒤라 못 찾는다 (2026-10-17)
+        val cats = CatTeam.cats
+        val newest = cats.indexOfLast { !it.seen && !it.gone }
+        if (newest >= 0) { selectedId = cats[newest].id; stripPage = newest / VISIBLE }
     }
 
     private val selected: CatTeam.TeamCat?

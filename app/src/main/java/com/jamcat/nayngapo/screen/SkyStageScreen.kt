@@ -305,6 +305,7 @@ class SkyStageScreen(
         private val cage = com.jamcat.nayngapo.entity.Prison(0f, 0f, kind, catKind)
         /** 갇힌 치즈냥이의 털 무늬 — 구출하면 같은 무늬로 팀에 간다 */
         val catCoat: com.jamcat.nayngapo.engine.CatCoat get() = cage.catCoat
+        val rescueKind: com.jamcat.nayngapo.entity.AllyCat.Kind get() = cage.rescueKind
 
         private val scale = 0.88f
         val width = 100f * scale
@@ -620,7 +621,7 @@ class SkyStageScreen(
             effects.add(Effect(prison.x, prison.y - 70f, 1.2f, "인간 3명 구출!"))
         } else {
             rescued += 1
-            val kind = prison.catKind ?: com.jamcat.nayngapo.entity.AllyCat.Kind.NORMAL
+            val kind = prison.rescueKind
             val cat = CatTeam.recruit(kind, prison.catCoat)
             effects.add(
                 Effect(prison.x, prison.y - 70f, 1.8f, "${cat.name} 구출! 캣타워에서 출전시켜 주세요")

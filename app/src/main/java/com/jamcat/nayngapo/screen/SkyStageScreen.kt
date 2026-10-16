@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.*
@@ -793,7 +795,7 @@ class SkyStageScreen(
         }
         for (e in effects) {
             effectPaint.alpha = (255 * (e.timer / 0.7f).coerceIn(0f, 1f)).toInt()
-            canvas.drawText(e.text, e.x, e.y, effectPaint)
+            canvas.drawTr(e.text, e.x, e.y, effectPaint)
         }
         canvas.restore()
 
@@ -803,8 +805,8 @@ class SkyStageScreen(
 
         if (paused) {
             canvas.drawRect(0f, 0f, w, h, pauseVeilPaint)
-            canvas.drawText("PAUSED", w / 2f, h / 2f - 6f, pauseTextPaint)
-            canvas.drawText("멈추기 버튼을 다시 누르면 이어서 진행합니다", w / 2f, h / 2f + 44f, pauseHintPaint)
+            canvas.drawTr("PAUSED", w / 2f, h / 2f - 6f, pauseTextPaint)
+            canvas.drawTr("멈추기 버튼을 다시 누르면 이어서 진행합니다", w / 2f, h / 2f + 44f, pauseHintPaint)
             com.jamcat.nayngapo.ui.MenuButtons.draw(canvas, paused)   // 막 위에 한 번 더 — 멈춘 상태에서도 또렷하게
         }
     }

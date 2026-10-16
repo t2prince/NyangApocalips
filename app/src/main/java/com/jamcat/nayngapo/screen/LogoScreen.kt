@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.GameView
@@ -56,10 +58,10 @@ class LogoScreen(private val gameView: GameView) : Screen {
         val ta = ((timer - 0.35f) / 0.4f).coerceIn(0f, 1f)
         titlePaint.textSize = h * 0.12f
         titlePaint.alpha = (ta * 255).toInt()
-        canvas.drawText("JAMCAT", w / 2f, h * 0.80f + (1f - ta) * 30f, titlePaint)
+        canvas.drawTr("JAMCAT", w / 2f, h * 0.80f + (1f - ta) * 30f, titlePaint)
         subPaint.textSize = h * 0.04f
         subPaint.alpha = (ta * 255).toInt()
-        canvas.drawText("잼 캣", w / 2f, h * 0.88f + (1f - ta) * 30f, subPaint)
+        canvas.drawTr("잼 캣", w / 2f, h * 0.88f + (1f - ta) * 30f, subPaint)
         // 끝날 때 하얗게 사라진다
         val out = ((timer - (DURATION - 0.35f)) / 0.35f).coerceIn(0f, 1f)
         if (out > 0f) { veil.alpha = (out * 255).toInt(); canvas.drawRect(0f, 0f, w, h, veil) }

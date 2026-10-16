@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.ui
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -45,13 +47,13 @@ object MenuButtons {
             canvas.drawRect(PAUSE_X - 13f, BTN_Y - 16f, PAUSE_X - 5f, BTN_Y + 16f, iconPaint)
             canvas.drawRect(PAUSE_X + 5f, BTN_Y - 16f, PAUSE_X + 13f, BTN_Y + 16f, iconPaint)
         }
-        canvas.drawText("멈추기", PAUSE_X, BTN_Y + BTN_R + 30f, labelPaint)
+        canvas.drawTr("멈추기", PAUSE_X, BTN_Y + BTN_R + 30f, labelPaint)
 
         canvas.drawCircle(EXIT_X, BTN_Y, BTN_R, exitBtnPaint)
         canvas.drawCircle(EXIT_X, BTN_Y, BTN_R, edgePaint)
         canvas.drawLine(EXIT_X - 14f, BTN_Y - 14f, EXIT_X + 14f, BTN_Y + 14f, iconStrokePaint)
         canvas.drawLine(EXIT_X + 14f, BTN_Y - 14f, EXIT_X - 14f, BTN_Y + 14f, iconStrokePaint)
-        canvas.drawText("나가기", EXIT_X, BTN_Y + BTN_R + 30f, labelPaint)
+        canvas.drawTr("나가기", EXIT_X, BTN_Y + BTN_R + 30f, labelPaint)
     }
 
     /** 눌린 자리가 버튼이면 어느 버튼인지, 아니면 null */

@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.GameView
@@ -35,12 +37,12 @@ class GameOverScreen(
         val h = canvas.height.toFloat()
 
         canvas.drawRect(0f, 0f, w, h, bgPaint)
-        canvas.drawText("GAME OVER", w / 2f, h * 0.35f, titlePaint)
-        canvas.drawText("Score: $finalScore", w / 2f, h * 0.50f, scorePaint)
+        canvas.drawTr("GAME OVER", w / 2f, h * 0.35f, titlePaint)
+        canvas.drawTr("Score: $finalScore", w / 2f, h * 0.50f, scorePaint)
 
         val alpha = ((sin(timer.toDouble() * 3.0) * 0.5 + 0.5) * 255).toInt()
         tapPaint.alpha = alpha
-        canvas.drawText("TAP TO CONTINUE", w / 2f, h * 0.72f, tapPaint)
+        canvas.drawTr("TAP TO CONTINUE", w / 2f, h * 0.72f, tapPaint)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {

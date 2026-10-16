@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.GameProgress
@@ -54,11 +56,11 @@ class MissionScreen(private val gameView: GameView) : Screen {
         val w = canvas.width.toFloat(); val h = canvas.height.toFloat()
         canvas.drawRect(0f, 0f, w, h, bgPaint)
         titlePaint.textSize = h * 0.075f
-        canvas.drawText("미션", w / 2f, h * 0.095f, titlePaint)
+        canvas.drawTr("미션", w / 2f, h * 0.095f, titlePaint)
         // 오른쪽 위: 보유 루비
         rubyTextPaint.textSize = h * 0.05f
-        drawRubyIcon(canvas, w - w * 0.03f - rubyTextPaint.measureText("${GameProgress.rubies}") - h * 0.045f, h * 0.075f, h * 0.026f, gemPaint)
-        canvas.drawText("${GameProgress.rubies}", w - w * 0.03f, h * 0.093f, rubyTextPaint)
+        drawRubyIcon(canvas, w - w * 0.03f - rubyTextPaint.measureTr("${GameProgress.rubies}") - h * 0.045f, h * 0.075f, h * 0.026f, gemPaint)
+        canvas.drawTr("${GameProgress.rubies}", w - w * 0.03f, h * 0.093f, rubyTextPaint)
 
         // 카드 격자 2열, 위아래 스크롤
         val cols = 2
@@ -72,7 +74,7 @@ class MissionScreen(private val gameView: GameView) : Screen {
 
         if (Missions.all.isEmpty()) {
             descPaint.textSize = h * 0.04f; descPaint.textAlign = Paint.Align.CENTER
-            canvas.drawText("아직 미션이 없어요", w / 2f, h * 0.5f, descPaint)
+            canvas.drawTr("아직 미션이 없어요", w / 2f, h * 0.5f, descPaint)
             descPaint.textAlign = Paint.Align.LEFT
         }
         canvas.save(); canvas.clipRect(0f, listTop, w, listBottom)
@@ -85,22 +87,22 @@ class MissionScreen(private val gameView: GameView) : Screen {
             if (r.bottom < listTop || r.top > listBottom) { btnRects[i].setEmpty(); continue }
             canvas.drawRoundRect(r, 16f, 16f, when { m.claimed -> cardClaimedPaint; m.done -> cardDonePaint; else -> cardPaint })
             canvas.drawRoundRect(r, 16f, 16f, edgePaint)
-            canvas.drawText(m.title, l + cw * 0.04f, t + ch * 0.32f, namePaint)
-            canvas.drawText(m.desc, l + cw * 0.04f, t + ch * 0.55f, descPaint)
+            canvas.drawTr(m.title, l + cw * 0.04f, t + ch * 0.32f, namePaint)
+            canvas.drawTr(m.desc, l + cw * 0.04f, t + ch * 0.55f, descPaint)
             // 진행 막대
             val bx0 = l + cw * 0.04f; val bx1 = l + cw * 0.62f; val by = t + ch * 0.74f
             canvas.drawRoundRect(bx0, by, bx1, by + ch * 0.1f, 6f, 6f, trackPaint)
             val frac = if (m.goal == 0) 1f else (m.current / m.goal.toFloat()).coerceIn(0f, 1f)
             if (frac > 0f) canvas.drawRoundRect(bx0, by, bx0 + (bx1 - bx0) * frac, by + ch * 0.1f, 6f, 6f, fillPaint)
-            canvas.drawText("${m.current} / ${m.goal}", bx0, t + ch * 0.96f, progPaint)
+            canvas.drawTr("${m.current} / ${m.goal}", bx0, t + ch * 0.96f, progPaint)
             // 보상 + 버튼
             val b = btnRects[i]; b.set(l + cw * 0.68f, t + ch * 0.52f, l + cw * 0.96f, t + ch * 0.9f)
             canvas.drawRoundRect(b, 14f, 14f, if (m.claimable) btnPaint else btnOffPaint)
             canvas.drawRoundRect(b, 14f, 14f, edgePaint)
             val label = when { m.claimed -> "받음"; m.done -> "받기"; else -> "진행 중" }
-            canvas.drawText(label, b.centerX(), b.centerY() + h * 0.012f, if (m.claimable) btnTextPaint else btnTextOffPaint)
+            canvas.drawTr(label, b.centerX(), b.centerY() + h * 0.012f, if (m.claimable) btnTextPaint else btnTextOffPaint)
             drawRubyIcon(canvas, l + cw * 0.72f, t + ch * 0.28f, h * 0.018f, gemPaint)
-            canvas.drawText("${m.reward}", l + cw * 0.72f + h * 0.026f, t + ch * 0.35f, rewardPaint)
+            canvas.drawTr("${m.reward}", l + cw * 0.72f + h * 0.026f, t + ch * 0.35f, rewardPaint)
         }
         canvas.restore()
 
@@ -109,7 +111,7 @@ class MissionScreen(private val gameView: GameView) : Screen {
         backRect.set(w / 2f - bw / 2f, h * 0.875f, w / 2f + bw / 2f, h * 0.875f + bh)
         canvas.drawRoundRect(backRect, 20f, 20f, btnPaint); canvas.drawRoundRect(backRect, 20f, 20f, edgePaint)
         btnTextPaint.textSize = bh * 0.42f
-        canvas.drawText("돌아가기", backRect.centerX(), backRect.centerY() + bh * 0.15f, btnTextPaint)
+        canvas.drawTr("돌아가기", backRect.centerX(), backRect.centerY() + bh * 0.15f, btnTextPaint)
 
         if (noticeTimer > 0f) {
             val alpha = (255f * (noticeTimer / 0.4f).coerceIn(0f, 1f)).toInt()
@@ -117,7 +119,7 @@ class MissionScreen(private val gameView: GameView) : Screen {
             noticePaint.alpha = alpha; edgePaint.alpha = alpha; noticeTextPaint.alpha = alpha
             canvas.drawRoundRect(noticeRect, 18f, 18f, noticePaint); canvas.drawRoundRect(noticeRect, 18f, 18f, edgePaint)
             noticeTextPaint.textSize = h * 0.042f
-            canvas.drawText(noticeText, noticeRect.centerX(), noticeRect.centerY() + h * 0.015f, noticeTextPaint)
+            canvas.drawTr(noticeText, noticeRect.centerX(), noticeRect.centerY() + h * 0.015f, noticeTextPaint)
             edgePaint.alpha = 255; noticeTextPaint.alpha = 255; noticePaint.alpha = 255
         }
     }

@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.CatTeam
@@ -28,6 +30,8 @@ class SettingsScreen(private val gameView: GameView, private val fromShop: Boole
     private val leftLabelPaint = Paint().apply {
         color = Color.rgb(35, 32, 30); typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
     }
+    /** 언어 (대표님 2026-10-17 「설정에 언어설정 넣어줘. 일단 샘플로 영어부터」) — 누를 때마다 다음 언어로 */
+    private val langRect = RectF()
     private val resetRect = RectF()
     private val backRect = RectF()
 
@@ -94,32 +98,42 @@ class SettingsScreen(private val gameView: GameView, private val fromShop: Boole
         canvas.drawRect(0f, 0f, w, h, bgPaint)
 
         titlePaint.textSize = h * 0.075f
-        canvas.drawText("설정", w / 2f, h * 0.095f, titlePaint)
+        canvas.drawTr("설정", w / 2f, h * 0.095f, titlePaint)
 
         // 왼쪽: 소리·화면 설정 토글
-        infoPanel.set(w * 0.06f, h * 0.16f, w * 0.48f, h * 0.60f)
+        infoPanel.set(w * 0.06f, h * 0.16f, w * 0.48f, h * 0.63f)
         canvas.drawRoundRect(infoPanel, 18f, 18f, panelPaint)
         canvas.drawRoundRect(infoPanel, 18f, 18f, edgePaint)
         panelLabelPaint.textSize = h * 0.038f
-        canvas.drawText("소리 · 화면", infoPanel.centerX(), infoPanel.top + h * 0.065f, panelLabelPaint)
+        canvas.drawTr("소리 · 화면", infoPanel.centerX(), infoPanel.top + h * 0.065f, panelLabelPaint)
         leftLabelPaint.textSize = h * 0.040f
         btnTextPaint.textSize = h * 0.034f
-        val rowH = h * 0.105f
+        val rowH = h * 0.088f
         for ((i, t) in toggles.withIndex()) {
-            val cy = infoPanel.top + h * 0.13f + i * rowH + rowH / 2f
-            canvas.drawText(t.label, infoPanel.left + w * 0.03f, cy + h * 0.014f, leftLabelPaint)
+            val cy = infoPanel.top + h * 0.10f + i * rowH + rowH / 2f
+            canvas.drawTr(t.label, infoPanel.left + w * 0.03f, cy + h * 0.014f, leftLabelPaint)
             val on = t.get()
             t.rect.set(infoPanel.right - w * 0.15f, cy - rowH * 0.34f, infoPanel.right - w * 0.03f, cy + rowH * 0.34f)
             canvas.drawRoundRect(t.rect, 18f, 18f, if (on) onPaint else offPaint)
             canvas.drawRoundRect(t.rect, 18f, 18f, edgePaint)
-            canvas.drawText(if (on) "켜짐" else "꺼짐", t.rect.centerX(), t.rect.centerY() + h * 0.012f, btnTextPaint)
+            canvas.drawTr(if (on) "켜짐" else "꺼짐", t.rect.centerX(), t.rect.centerY() + h * 0.012f, btnTextPaint)
+        }
+        // 언어: 이름은 그 나라 글자로 그대로 (번역하지 않는다)
+        run {
+            val cy = infoPanel.top + h * 0.10f + toggles.size * rowH + rowH / 2f
+            canvas.drawText("언어 · Language", infoPanel.left + w * 0.03f, cy + h * 0.014f, leftLabelPaint)
+            langRect.set(infoPanel.right - w * 0.15f, cy - rowH * 0.34f, infoPanel.right - w * 0.03f, cy + rowH * 0.34f)
+            canvas.drawRoundRect(langRect, 18f, 18f, onPaint)
+            canvas.drawRoundRect(langRect, 18f, 18f, edgePaint)
+            val label = com.jamcat.nayngapo.engine.I18n.languages.first { it.code == com.jamcat.nayngapo.engine.I18n.lang }.label
+            canvas.drawText(label, langRect.centerX(), langRect.centerY() + h * 0.012f, btnTextPaint)
         }
 
         // 오른쪽: 지금 저장된 것들 + 데이터 리셋
-        val dataPanel = RectF(w * 0.52f, h * 0.16f, w * 0.94f, h * 0.60f)
+        val dataPanel = RectF(w * 0.52f, h * 0.16f, w * 0.94f, h * 0.63f)
         canvas.drawRoundRect(dataPanel, 18f, 18f, panelPaint)
         canvas.drawRoundRect(dataPanel, 18f, 18f, edgePaint)
-        canvas.drawText("지금 저장된 데이터", dataPanel.centerX(), dataPanel.top + h * 0.065f, panelLabelPaint)
+        canvas.drawTr("지금 저장된 데이터", dataPanel.centerX(), dataPanel.top + h * 0.065f, panelLabelPaint)
         linePaint.textSize = h * 0.032f
         val cleared = (1..GameProgress.PLAYABLE_STAGES).count { GameProgress.isCleared(it) }
         val lines = listOf(
@@ -129,7 +143,7 @@ class SettingsScreen(private val gameView: GameView, private val fromShop: Boole
         )
         var y = dataPanel.top + h * 0.125f
         for (line in lines) {
-            canvas.drawText(line, dataPanel.centerX(), y, linePaint)
+            canvas.drawTr(line, dataPanel.centerX(), y, linePaint)
             y += h * 0.052f
         }
 
@@ -147,15 +161,15 @@ class SettingsScreen(private val gameView: GameView, private val fromShop: Boole
         canvas.drawRoundRect(resetRect, 20f, 20f, edgePaint)
         val textPaint = if (armed) btnTextArmedPaint else btnTextPaint
         textPaint.textSize = bh * 0.36f
-        canvas.drawText(
+        canvas.drawTr(
             if (armed) "정말 지우기?" else "데이터 리셋",
             resetRect.centerX(), resetRect.centerY() + bh * 0.13f, textPaint
         )
 
         warnPaint.textSize = h * 0.030f
-        canvas.drawText(
+        canvas.drawTr(
             "데이터 리셋: 재화 · 진행한 스테이지 · 획득한 냥이 · 배운 기술이 전부 지워집니다 (되돌릴 수 없음)",
-            w / 2f, h * 0.68f, warnPaint
+            w / 2f, h * 0.70f, warnPaint
         )
 
         // 돌아가기 버튼
@@ -165,7 +179,7 @@ class SettingsScreen(private val gameView: GameView, private val fromShop: Boole
         canvas.drawRoundRect(backRect, 20f, 20f, backPaint)
         canvas.drawRoundRect(backRect, 20f, 20f, edgePaint)
         btnTextPaint.textSize = bbh * 0.42f
-        canvas.drawText("돌아가기", backRect.centerX(), backRect.centerY() + bbh * 0.15f, btnTextPaint)
+        canvas.drawTr("돌아가기", backRect.centerX(), backRect.centerY() + bbh * 0.15f, btnTextPaint)
 
         drawNotice(canvas, w, h)
     }
@@ -185,7 +199,7 @@ class SettingsScreen(private val gameView: GameView, private val fromShop: Boole
 
         noticeTextPaint.alpha = alpha
         noticeTextPaint.textSize = h * 0.040f
-        canvas.drawText(noticeText, noticeRect.centerX(), noticeRect.centerY() + h * 0.014f, noticeTextPaint)
+        canvas.drawTr(noticeText, noticeRect.centerX(), noticeRect.centerY() + h * 0.014f, noticeTextPaint)
         noticeTextPaint.alpha = 255
     }
 
@@ -196,6 +210,15 @@ class SettingsScreen(private val gameView: GameView, private val fromShop: Boole
                 if (backRect.contains(event.x, event.y)) {
                     resetPressed = false
                     if (fromShop) gameView.showShop() else gameView.showLobby()
+                    return true
+                }
+                if (langRect.contains(event.x, event.y)) {
+                    val langs = com.jamcat.nayngapo.engine.I18n.languages
+                    val i = langs.indexOfFirst { it.code == com.jamcat.nayngapo.engine.I18n.lang }
+                    val next = langs[(i + 1) % langs.size]
+                    com.jamcat.nayngapo.engine.I18n.setLanguage(next.code)
+                    SoundManager.playCatHit()
+                    resetPressed = false
                     return true
                 }
                 if (resetPressed && resetRect.contains(event.x, event.y)) doReset()

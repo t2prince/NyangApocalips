@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.Camera
@@ -2433,7 +2435,7 @@ class GamePlayScreen(
                 Color.rgb(255, 220, 50) else Color.WHITE
             effectPaint.textSize = if (effect.text.length > 3) 22f else 26f
             effectPaint.alpha = (effect.timer / 0.5f * 255).toInt().coerceIn(0, 255)
-            canvas.drawText(effect.text, effect.x, effect.y, effectPaint)
+            canvas.drawTr(effect.text, effect.x, effect.y, effectPaint)
         }
 
         canvas.restore()
@@ -2461,7 +2463,7 @@ class GamePlayScreen(
         // Wave announcement text
         if (waveTextTimer > 0f) {
             waveTextPaint.alpha = ((waveTextTimer / 2f).coerceIn(0f, 1f) * 255).toInt()
-            canvas.drawText(waveTextMessage, sw / 2f, sh / 2f - 50f, waveTextPaint)
+            canvas.drawTr(waveTextMessage, sw / 2f, sh / 2f - 50f, waveTextPaint)
         }
 
         // 진행 유도: 화면 안에 살아있는 냥이가 없고 앞쪽에 남아있으면 GO → 표시
@@ -2471,7 +2473,7 @@ class GamePlayScreen(
         if (!aliveOnScreen && aliveAhead) {
             val blink = (kotlin.math.sin(elapsed * 6.0) * 0.5 + 0.5).toFloat()
             goPaint.alpha = (110 + 145 * blink).toInt()
-            canvas.drawText("GO →", sw - 40f, sh / 2f, goPaint)
+            canvas.drawTr("GO →", sw - 40f, sh / 2f, goPaint)
         }
     }
 
@@ -3475,7 +3477,7 @@ class GamePlayScreen(
             val u = ((elapsed * 0.9f + k * 0.25f) % 1f)
             canvas.drawCircle(cx + (k - 1.5f) * 16f, top - u * 70f, 7f * (1f - u * 0.5f), poisonPaint)
         }
-        canvas.drawText("☠ 독", cx, top - 80f, poisonText)
+        canvas.drawTr("☠ 독", cx, top - 80f, poisonText)
     }
 
     /** 로봇 기술 (로켓 펀치 · 날개) */
@@ -3547,7 +3549,7 @@ class GamePlayScreen(
             canvas.drawRect(PAUSE_BTN_X + 5f, MENU_BTN_Y - 16f,
                 PAUSE_BTN_X + 13f, MENU_BTN_Y + 16f, menuIconPaint)
         }
-        canvas.drawText("멈추기", PAUSE_BTN_X, MENU_BTN_Y + MENU_BTN_R + 30f, menuLabelPaint)
+        canvas.drawTr("멈추기", PAUSE_BTN_X, MENU_BTN_Y + MENU_BTN_R + 30f, menuLabelPaint)
 
         // 나가기
         canvas.drawCircle(EXIT_BTN_X, MENU_BTN_Y, MENU_BTN_R, exitBtnPaint)
@@ -3556,15 +3558,15 @@ class GamePlayScreen(
             EXIT_BTN_X + 14f, MENU_BTN_Y + 14f, menuIconStrokePaint)
         canvas.drawLine(EXIT_BTN_X + 14f, MENU_BTN_Y - 14f,
             EXIT_BTN_X - 14f, MENU_BTN_Y + 14f, menuIconStrokePaint)
-        canvas.drawText("나가기", EXIT_BTN_X, MENU_BTN_Y + MENU_BTN_R + 30f, menuLabelPaint)
+        canvas.drawTr("나가기", EXIT_BTN_X, MENU_BTN_Y + MENU_BTN_R + 30f, menuLabelPaint)
     }
 
     /** 멈춘 동안 화면을 덮는 막. 조작 버튼까지 가려야 하므로 맨 마지막에 그린다. */
     private fun drawPauseOverlay(canvas: Canvas, sw: Int, sh: Int) {
         if (!paused) return
         canvas.drawRect(0f, 0f, sw.toFloat(), sh.toFloat(), pauseVeilPaint)
-        canvas.drawText("PAUSED", sw / 2f, sh / 2f - 6f, pauseTextPaint)
-        canvas.drawText("멈추기 버튼을 다시 누르면 이어서 진행합니다",
+        canvas.drawTr("PAUSED", sw / 2f, sh / 2f - 6f, pauseTextPaint)
+        canvas.drawTr("멈추기 버튼을 다시 누르면 이어서 진행합니다",
             sw / 2f, sh / 2f + 44f, pauseHintPaint)
 
         // 막 위에 멈추기/나가기 버튼을 다시 올려, 멈춘 상태에서도 두 버튼이 또렷하게 보이도록

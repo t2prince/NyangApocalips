@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.ui
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import com.jamcat.nayngapo.engine.Constants
 import com.jamcat.nayngapo.engine.GameProgress
@@ -103,28 +105,28 @@ class HUD {
 
         // STAGE
         var cx = left + cellW * 0.5f
-        canvas.drawText("STAGE", cx - textW("STAGE", labelPaint) / 2f, labelY, labelPaint)
+        canvas.drawTr("STAGE", cx - textW("STAGE", labelPaint) / 2f, labelY, labelPaint)
         val stageText = "${d.stage}"
         val totalText = " / ${GameProgress.TOTAL_STAGES}"
         val stageW = textW(stageText, accentTextPaint) + textW(totalText, labelPaint)
-        canvas.drawText(stageText, cx - stageW / 2f, valueY, accentTextPaint)
-        canvas.drawText(totalText, cx - stageW / 2f + textW(stageText, accentTextPaint), valueY, labelPaint)
+        canvas.drawTr(stageText, cx - stageW / 2f, valueY, accentTextPaint)
+        canvas.drawTr(totalText, cx - stageW / 2f + textW(stageText, accentTextPaint), valueY, labelPaint)
 
         canvas.drawRect(left + cellW - 0.5f, 30f, left + cellW + 0.5f, 72f, dividerPaint)
 
         // SCORE
         cx = left + cellW * 1.5f
-        canvas.drawText("SCORE", cx - textW("SCORE", labelPaint) / 2f, labelY, labelPaint)
+        canvas.drawTr("SCORE", cx - textW("SCORE", labelPaint) / 2f, labelY, labelPaint)
         val score = "%,d".format(d.score)
-        canvas.drawText(score, cx - textW(score, valuePaint) / 2f, valueY, valuePaint)
+        canvas.drawTr(score, cx - textW(score, valuePaint) / 2f, valueY, valuePaint)
 
         canvas.drawRect(left + cellW * 2 - 0.5f, 30f, left + cellW * 2 + 0.5f, 72f, dividerPaint)
 
         // LEVEL
         cx = left + cellW * 2.5f
-        canvas.drawText("LEVEL", cx - textW("LEVEL", labelPaint) / 2f, labelY, labelPaint)
+        canvas.drawTr("LEVEL", cx - textW("LEVEL", labelPaint) / 2f, labelY, labelPaint)
         val lv = "${d.level}"
-        canvas.drawText(lv, cx - textW(lv, valuePaint) / 2f, valueY, valuePaint)
+        canvas.drawTr(lv, cx - textW(lv, valuePaint) / 2f, valueY, valuePaint)
     }
 
     /** 우상단: 남은 목숨 · 구출한 인간 · 필살기 게이지 · 모은 루비 */
@@ -139,17 +141,17 @@ class HUD {
 
         // 목숨
         drawLifeIcon(canvas, left + 34f, top + 32f)
-        canvas.drawText("×${d.lives}", left + 58f, top + 40f, smallValuePaint)
+        canvas.drawTr("×${d.lives}", left + 58f, top + 40f, smallValuePaint)
 
         // 구출한 인간
         drawDoorIcon(canvas, left + 122f, top + 32f)
-        canvas.drawText("×${d.rescueCount}", left + 146f, top + 40f, smallValuePaint)
+        canvas.drawTr("×${d.rescueCount}", left + 146f, top + 40f, smallValuePaint)
 
         // 필살기 게이지
         val gaugeY = top + 74f
         val gaugeL = left + 22f
         val gaugeR = left + panelW - 22f
-        canvas.drawText("SPECIAL", gaugeL, gaugeY - 8f, labelPaint)
+        canvas.drawTr("SPECIAL", gaugeL, gaugeY - 8f, labelPaint)
         rect.set(gaugeL, gaugeY, gaugeR, gaugeY + 8f)
         canvas.drawRoundRect(rect, 4f, 4f, trackPaint)
 
@@ -162,12 +164,12 @@ class HUD {
         // 쓰러뜨린 냥이가 떨어뜨린 루비가 쌓이는 것을 여기서 본다
         val rubyCy = top + 116f
         drawRubyIcon(canvas, gaugeL + 11f, rubyCy, 11f, gemPaint)
-        canvas.drawText("×${GameProgress.rubies}", gaugeL + 30f, rubyCy + 8f, smallValuePaint)
-        if (GameProgress.rubyDebt > 0) canvas.drawText("빚 ${GameProgress.rubyDebt}", gaugeL + 110f, rubyCy + 8f, debtPaint)
+        canvas.drawTr("×${GameProgress.rubies}", gaugeL + 30f, rubyCy + 8f, smallValuePaint)
+        if (GameProgress.rubyDebt > 0) canvas.drawTr("빚 ${GameProgress.rubyDebt}", gaugeL + 110f, rubyCy + 8f, debtPaint)
 
         // 팀 냥이에게 내린 지시
         allyOrderLabel?.let { label ->
-            canvas.drawText("냥이 지시: $label", gaugeL, top + 156f, labelPaint)
+            canvas.drawTr("냥이 지시: $label", gaugeL, top + 156f, labelPaint)
         }
     }
 
@@ -216,9 +218,9 @@ class HUD {
         canvas.drawRoundRect(rect, 16f, 16f, panelPaint)
         canvas.drawRoundRect(rect, 16f, 16f, panelEdgePaint)
 
-        canvas.drawText("CLEARED", left + 20f, top + 26f, labelPaint)
+        canvas.drawTr("CLEARED", left + 20f, top + 26f, labelPaint)
         val count = "${d.defeated}/${d.total}"
-        canvas.drawText(count, left + panelW - 20f - textW(count, smallValuePaint), top + 26f, smallValuePaint)
+        canvas.drawTr(count, left + panelW - 20f - textW(count, smallValuePaint), top + 26f, smallValuePaint)
 
         val barY = top + 38f
         rect.set(left + 20f, barY, left + panelW - 20f, barY + 8f)
@@ -247,7 +249,7 @@ class HUD {
         canvas.drawCircle(cx + 5f, cy + 1f, 2f, iconPaint.apply { style = Paint.Style.FILL })
     }
 
-    private fun textW(text: String, paint: Paint) = paint.measureText(text)
+    private fun textW(text: String, paint: Paint) = paint.measureTr(text)
 
     private companion object {
         val ACCENT = Color.rgb(255, 205, 84)

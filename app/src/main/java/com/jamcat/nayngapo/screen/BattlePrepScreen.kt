@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.BattleLoadout
@@ -63,9 +65,9 @@ class BattlePrepScreen(private val gameView: GameView, private val stage: Int) :
         val h = gameView.screenHeight.toFloat()
         canvas.drawRect(0f, 0f, w, h, bg)
         title.textSize = h * 0.07f
-        canvas.drawText("STAGE $stage · 출전 준비", w / 2f, h * 0.11f, title)
+        canvas.drawTr("STAGE $stage · 출전 준비", w / 2f, h * 0.11f, title)
         title.textSize = h * 0.032f
-        canvas.drawText("전투 때 쓸 아이템을 고르세요", w / 2f, h * 0.17f, title)
+        canvas.drawTr("전투 때 쓸 아이템을 고르세요", w / 2f, h * 0.17f, title)
 
         // 아이템 카드 세 장
         val cw = w * 0.19f; val gap = (w - cw * items.size) / (items.size + 1)
@@ -83,7 +85,7 @@ class BattlePrepScreen(private val gameView: GameView, private val stage: Int) :
                 canvas.drawBitmap(bmp, null, rect, if (can) null else dim)
             }
             text.textSize = h * 0.036f
-            canvas.drawText(it.name, r.centerX(), r.top + r.height() * 0.64f, text)
+            canvas.drawTr(it.name, r.centerX(), r.top + r.height() * 0.64f, text)
             text.textSize = h * 0.027f
             val sub = when {
                 isSea && it.id == "h_life" -> "바다에서는 못 써요"
@@ -91,13 +93,13 @@ class BattlePrepScreen(private val gameView: GameView, private val stage: Int) :
                 it.id == "h_gun" -> if (on) "들고 간다 ✓" else "안 가져간다"
                 else -> "${it.desc} · ${GameProgress.itemCount(it.id)}개" + if (on) " ✓" else ""
             }
-            canvas.drawText(sub, r.centerX(), r.top + r.height() * 0.80f, text)
-            canvas.drawText(if (!can) "" else if (on) "가져가기" else "안 가져가기", r.centerX(), r.top + r.height() * 0.92f, text)
+            canvas.drawTr(sub, r.centerX(), r.top + r.height() * 0.80f, text)
+            canvas.drawTr(if (!can) "" else if (on) "가져가기" else "안 가져가기", r.centerX(), r.top + r.height() * 0.92f, text)
         }
 
         // 탈 것
         title.textSize = h * 0.035f
-        canvas.drawText(if (isSea) "탈 것: 바다에서는 배냥이를 타요" else "탈 것", w / 2f, h * 0.63f, title)
+        canvas.drawTr(if (isSea) "탈 것: 바다에서는 배냥이를 타요" else "탈 것", w / 2f, h * 0.63f, title)
         val now = BattleLoadout.rideNow()
         val rw = w * 0.2f; val rg = (w - rw * 3) / 4f
         for ((k, ride) in Ride.values().withIndex()) {
@@ -116,25 +118,25 @@ class BattlePrepScreen(private val gameView: GameView, private val stage: Int) :
                 Ride.CAR -> CarCatalog.selected?.let { "🚗 ${it.name}" } ?: "🚗 차 없음"
                 Ride.ROBOT -> if (RobotCatalog.owned) "🤖 로봇 Lv ${GameProgress.robotLevel}" else "🤖 로봇 없음"
             }
-            canvas.drawText(label + if (can && now == ride) " ✓" else "", r.centerX(), r.centerY() + h * 0.012f, text)
+            canvas.drawTr(label + if (can && now == ride) " ✓" else "", r.centerX(), r.centerY() + h * 0.012f, text)
         }
 
         // 출발 · 뒤로
         goRect.set(w / 2f - 260f, h * 0.82f, w / 2f + 260f, h * 0.82f + 110f)
         canvas.drawRoundRect(goRect, 55f, 55f, goPaint); canvas.drawRoundRect(goRect, 55f, 55f, ink)
         title.textSize = h * 0.055f
-        canvas.drawText("출발!", goRect.centerX(), goRect.centerY() + h * 0.02f, title)
+        canvas.drawTr("출발!", goRect.centerX(), goRect.centerY() + h * 0.02f, title)
         backRect.set(w * 0.04f, h * 0.84f, w * 0.04f + 240f, h * 0.84f + 90f)
         canvas.drawRoundRect(backRect, 45f, 45f, card); canvas.drawRoundRect(backRect, 45f, 45f, ink)
         text.textSize = h * 0.032f
-        canvas.drawText("◀ 돌아가기", backRect.centerX(), backRect.centerY() + h * 0.012f, text)
+        canvas.drawTr("◀ 돌아가기", backRect.centerX(), backRect.centerY() + h * 0.012f, text)
 
         if (noticeTimer > 0f) {
             text.textSize = 40f
-            val nw = text.measureText(noticeText) + 70f
+            val nw = text.measureTr(noticeText) + 70f
             rect.set(w / 2f - nw / 2f, h * 0.44f, w / 2f + nw / 2f, h * 0.44f + 80f)
             canvas.drawRoundRect(rect, 24f, 24f, chosen); canvas.drawRoundRect(rect, 24f, 24f, ink)
-            canvas.drawText(noticeText, w / 2f, rect.centerY() + 14f, text)
+            canvas.drawTr(noticeText, w / 2f, rect.centerY() + 14f, text)
         }
     }
 

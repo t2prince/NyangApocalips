@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.R
@@ -112,9 +114,9 @@ class StoryScreen(private val gameView: GameView, private val replay: Boolean = 
         captionPaint.textSize = band * 0.36f
         val text = captions[idx]
         val maxW = w * 0.74f
-        val tw = captionPaint.measureText(text)
+        val tw = captionPaint.measureTr(text)
         if (tw > maxW) captionPaint.textSize *= maxW / tw
-        canvas.drawText(text, w * 0.46f, ph + band / 2f + captionPaint.textSize * 0.36f, captionPaint)
+        canvas.drawTr(text, w * 0.46f, ph + band / 2f + captionPaint.textSize * 0.36f, captionPaint)
 
         // 몇 번째 장인지 점 + 누르면 넘어간다는 안내 (자막 띠 오른쪽)
         val dcx = w - w * 0.07f
@@ -124,14 +126,14 @@ class StoryScreen(private val gameView: GameView, private val replay: Boolean = 
         if (shown > 1.2f && turning < 0f) {
             hintPaint.alpha = (150 + 80 * kotlin.math.sin(shown * 3.0)).toInt().coerceIn(0, 255)
             hintPaint.textSize = band * 0.2f
-            canvas.drawText("누르면 다음 ▶", dcx, ph + band * 0.72f, hintPaint)
+            canvas.drawTr("누르면 다음 ▶", dcx, ph + band * 0.72f, hintPaint)
         }
 
         // 오른쪽 맨 위: 건너뛰기
         val bw = 220f; val bh = 84f; val m = 28f
         skipRect.set(w - m - bw, m, w - m, m + bh)
         canvas.drawRoundRect(skipRect, bh / 2f, bh / 2f, skipBg)
-        canvas.drawText("건너뛰기 ▶▶", skipRect.centerX(), skipRect.centerY() + 13f, skipText)
+        canvas.drawTr("건너뛰기 ▶▶", skipRect.centerX(), skipRect.centerY() + 13f, skipText)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {

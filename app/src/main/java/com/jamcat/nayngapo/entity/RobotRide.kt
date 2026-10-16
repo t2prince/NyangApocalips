@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.entity
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -142,7 +144,7 @@ class RobotRide(val level: Int) {
         bar.set(left, by, left + bw * p.robotHp / maxHp.toFloat(), by + 12f)
         canvas.drawRoundRect(bar, 6f, 6f, barFill)
         hpText.textSize = 24f
-        canvas.drawText("로봇 ${p.robotHp}/$maxHp", dst.centerX(), by - 8f, hpText)
+        canvas.drawTr("로봇 ${p.robotHp}/$maxHp", dst.centerX(), by - 8f, hpText)
     }
 
     /** 걸으면 쿵쿵 들썩이고, 때리면 앞으로 내지른다 */

@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.entity
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import com.jamcat.nayngapo.engine.Constants
 import com.jamcat.nayngapo.engine.SpriteManager
@@ -997,10 +999,10 @@ class StrayTeamCat(val teamCat: com.jamcat.nayngapo.engine.CatTeam.TeamCat, x: F
         // 이름표: '이름 (떠난 냥이)'
         val label = "${teamCat.name} · 떠난 냥이"
         tagText.textSize = 26f
-        val tw = tagText.measureText(label) + 24f
+        val tw = tagText.measureTr(label) + 24f
         tagRect.set(cx - tw / 2f, by - bh - 44f, cx + tw / 2f, by - bh - 10f)
         canvas.drawRoundRect(tagRect, 14f, 14f, tagBg)
-        canvas.drawText(label, cx, tagRect.bottom - 9f, tagText)
+        canvas.drawTr(label, cx, tagRect.bottom - 9f, tagText)
     }
 
     companion object {
@@ -1622,7 +1624,7 @@ class HumanCatBoss(x: Float, y: Float) : Enemy(x, y, 3, 5) {
         drawSprite(canvas, SpriteManager.bossHumanCat)
         val cx = x + width / 2f
         val textPaint = Paint().apply { color = Color.WHITE; textSize = 14f; textAlign = Paint.Align.CENTER; isAntiAlias = true }
-        canvas.drawText("P$phase/$maxPhases", cx, y - height - 5f, textPaint)
+        canvas.drawTr("P$phase/$maxPhases", cx, y - height - 5f, textPaint)
         drawHpBar(canvas)
     }
 }

@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.GameProgress
@@ -94,10 +96,10 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
         canvas.drawRect(0f, 0f, w, h, bgPaint)
 
         titlePaint.textSize = h * 0.070f
-        canvas.drawText("캐릭터 변경", w / 2f, h * 0.090f, titlePaint)
+        canvas.drawTr("캐릭터 변경", w / 2f, h * 0.090f, titlePaint)
         rubyTextPaint.textSize = h * 0.046f
-        com.jamcat.nayngapo.ui.drawRubyIcon(canvas, w - w * 0.03f - rubyTextPaint.measureText("${GameProgress.rubies}") - h * 0.04f, h * 0.072f, h * 0.024f, gemPaint)
-        canvas.drawText("${GameProgress.rubies}", w - w * 0.03f, h * 0.088f, rubyTextPaint)
+        com.jamcat.nayngapo.ui.drawRubyIcon(canvas, w - w * 0.03f - rubyTextPaint.measureTr("${GameProgress.rubies}") - h * 0.04f, h * 0.072f, h * 0.024f, gemPaint)
+        canvas.drawTr("${GameProgress.rubies}", w - w * 0.03f, h * 0.088f, rubyTextPaint)
 
         val groundY = h * 0.700f
         val selectedId = GameProgress.selectedHero
@@ -147,9 +149,9 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
 
             // 이름 · 한 줄 설명
             namePaint.textSize = h * 0.040f
-            canvas.drawText(hero.name, cx, groundY + h * 0.050f, namePaint)
+            canvas.drawTr(hero.name, cx, groundY + h * 0.050f, namePaint)
             descPaint.textSize = h * 0.028f
-            canvas.drawText(hero.desc, cx, groundY + h * 0.085f, descPaint)
+            canvas.drawTr(hero.desc, cx, groundY + h * 0.085f, descPaint)
 
             // 능력 점 세 줄
             pipLabelPaint.textSize = h * 0.024f
@@ -166,7 +168,7 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
                 canvas.drawRoundRect(tagRect, th / 2f, th / 2f, if (owned) tagPaint else pricePaint)
                 canvas.drawRoundRect(tagRect, th / 2f, th / 2f, edgePaint)
                 tagTextPaint.textSize = th * 0.52f
-                canvas.drawText(if (owned) "선택됨" else "${GameProgress.HERO_PRICE} 루비로 사기", cx, tagRect.centerY() + th * 0.19f, tagTextPaint)
+                canvas.drawTr(if (owned) "선택됨" else "${GameProgress.HERO_PRICE} 루비로 사기", cx, tagRect.centerY() + th * 0.19f, tagTextPaint)
             }
         }
 
@@ -177,7 +179,7 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
         canvas.drawRoundRect(backRect, 20f, 20f, backPaint)
         canvas.drawRoundRect(backRect, 20f, 20f, edgePaint)
         backTextPaint.textSize = bh2 * 0.42f
-        canvas.drawText("돌아가기", backRect.centerX(), backRect.centerY() + bh2 * 0.15f, backTextPaint)
+        canvas.drawTr("돌아가기", backRect.centerX(), backRect.centerY() + bh2 * 0.15f, backTextPaint)
 
         if (noticeTimer > 0f) {
             val alpha = (255f * (noticeTimer / 0.4f).coerceIn(0f, 1f)).toInt()
@@ -185,7 +187,7 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
             noticePaint.alpha = alpha; edgePaint.alpha = alpha; noticeTextPaint.alpha = alpha
             canvas.drawRoundRect(noticeRect, 18f, 18f, noticePaint); canvas.drawRoundRect(noticeRect, 18f, 18f, edgePaint)
             noticeTextPaint.textSize = h * 0.042f
-            canvas.drawText(noticeText, noticeRect.centerX(), noticeRect.centerY() + h * 0.015f, noticeTextPaint)
+            canvas.drawTr(noticeText, noticeRect.centerX(), noticeRect.centerY() + h * 0.015f, noticeTextPaint)
             edgePaint.alpha = 255; noticeTextPaint.alpha = 255; noticePaint.alpha = 255
         }
     }
@@ -198,7 +200,7 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
         val step = dotR * 3f
         val dotsW = step * 3f
         val labelRight = cx - dotsW / 2f - h * 0.010f
-        canvas.drawText(label, labelRight, baseY, pipLabelPaint)
+        canvas.drawTr(label, labelRight, baseY, pipLabelPaint)
         for (k in 0 until 3) {
             val dx = cx - dotsW / 2f + step * (k + 0.5f)
             canvas.drawCircle(dx, baseY - dotR * 0.9f, dotR, if (k < filled) pipFullPaint else pipEmptyPaint)

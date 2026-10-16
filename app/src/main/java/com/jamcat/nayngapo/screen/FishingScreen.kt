@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.GameProgress
@@ -450,7 +452,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
             canvas.drawOval(rect, ink)
             if (state == State.BITE) {
                 text.textSize = h * 0.12f; text.color = Color.rgb(230, 50, 50)
-                canvas.drawText("!", bob.first, bob.second - 50f, text)
+                canvas.drawTr("!", bob.first, bob.second - 50f, text)
                 text.color = Color.rgb(40, 36, 32)
             }
         } else {
@@ -468,17 +470,17 @@ class FishingScreen(private val gameView: GameView) : Screen {
                 canvas.drawBitmap(icon, null, rect, null)
             }
             big.textSize = h * 0.06f
-            canvas.drawText(if (reelCount > 1) "${reelCount}마리 잡았다! (마지막 ${NAMES[id]})" else "${NAMES[id]} 잡았다! (${GameProgress.itemCount(id)}마리)", w * 0.62f, h * 0.48f - size * 0.3f, big)
+            canvas.drawTr(if (reelCount > 1) "${reelCount}마리 잡았다! (마지막 ${NAMES[id]})" else "${NAMES[id]} 잡았다! (${GameProgress.itemCount(id)}마리)", w * 0.62f, h * 0.48f - size * 0.3f, big)
         }
         if (state == State.MISSED) {
             big.textSize = h * 0.06f
-            canvas.drawText("앗, 놓쳤다!", w * 0.62f, h * 0.35f, big)
+            canvas.drawTr("앗, 놓쳤다!", w * 0.62f, h * 0.35f, big)
         }
 
         text.textSize = h * 0.065f
-        canvas.drawText("낚시터", w / 2f, h * 0.10f, text)
+        canvas.drawTr("낚시터", w / 2f, h * 0.10f, text)
         text.textSize = h * 0.03f
-        canvas.drawText("찌가 쏙 들어가고 '!'가 뜨면 바로 당기기! · 물고기는 캣타워에서 간식으로", w / 2f, h * 0.16f, text)
+        canvas.drawTr("찌가 쏙 들어가고 '!'가 뜨면 바로 당기기! · 물고기는 캣타워에서 간식으로", w / 2f, h * 0.16f, text)
 
         // 가진 물고기·바다 생물 (왼쪽 위 한 줄 — 아래 버튼과 안 겹치게, 한 번도 안 잡은 건 흐리게)
         for ((n, id) in CATCH_IDS.withIndex()) {
@@ -489,7 +491,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
             rect.set(ix, iy, ix + h * 0.06f, iy + h * 0.06f)
             canvas.drawBitmap(icon, null, rect, if (GameProgress.itemCount(id) > 0) null else dimIcon)
             text.textAlign = Paint.Align.LEFT; text.textSize = h * 0.028f
-            canvas.drawText("×${GameProgress.itemCount(id)}", rect.right + 4f, rect.centerY() + h * 0.01f, text)
+            canvas.drawTr("×${GameProgress.itemCount(id)}", rect.right + 4f, rect.centerY() + h * 0.01f, text)
             text.textAlign = Paint.Align.CENTER
         }
 
@@ -506,14 +508,14 @@ class FishingScreen(private val gameView: GameView) : Screen {
         canvas.drawRoundRect(btnRect, 55f, 55f, if (state == State.BITE) bitePaint else btnPaint)
         canvas.drawRoundRect(btnRect, 55f, 55f, ink)
         text.textSize = h * 0.048f
-        canvas.drawText(label, btnRect.centerX(), btnRect.centerY() + h * 0.017f, text)
+        canvas.drawTr(label, btnRect.centerX(), btnRect.centerY() + h * 0.017f, text)
         // 배 타기 / 돌아오기 (왼쪽 아래, 낚시줄 조종 버튼 왼쪽 — 기다리지 않을 때만)
         boatRect.setEmpty()
         if (state == State.READY || state == State.CAUGHT || state == State.MISSED) {
             boatRect.set(w * 0.04f, h * 0.80f, w * 0.04f + 400f, h * 0.80f + 110f)
             canvas.drawRoundRect(boatRect, 55f, 55f, if (onBoat) btnPaint else controlPaint); canvas.drawRoundRect(boatRect, 55f, 55f, ink)
             text.textSize = h * 0.04f
-            canvas.drawText(if (onBoat) "🚤 돌아오기" else "🚤 어선 타기 · 루비 $BOAT_PRICE", boatRect.centerX(), boatRect.centerY() + h * 0.014f, text)
+            canvas.drawTr(if (onBoat) "🚤 돌아오기" else "🚤 어선 타기 · 루비 $BOAT_PRICE", boatRect.centerX(), boatRect.centerY() + h * 0.014f, text)
         }
         // 낚시줄 Lv업 (오른쪽 위, 나가기 아래)
         // 낚싯대 Lv·미끼 표시 (Lv업·미끼는 낚시 상점에서)
@@ -522,14 +524,14 @@ class FishingScreen(private val gameView: GameView) : Screen {
         text.textSize = 30f
         val lv = GameProgress.fishingLineLevel
         val baitNow = listOf("bait_gold" to "황금", "bait_shrimp" to "새우", "bait_worm" to "지렁이").firstOrNull { GameProgress.itemCount(it.first) > 0 }
-        canvas.drawText("낚싯대 Lv $lv (${lv}마리씩) · 미끼 ${baitNow?.let { "${it.second} ${GameProgress.itemCount(it.first)}" } ?: "없음"}",
+        canvas.drawTr("낚싯대 Lv $lv (${lv}마리씩) · 미끼 ${baitNow?.let { "${it.second} ${GameProgress.itemCount(it.first)}" } ?: "없음"}",
             lvRect.centerX(), lvRect.centerY() + 11f, text)
         if (noticeTimer > 0f) {
             text.textSize = 38f
-            val nw = text.measureText(noticeText) + 60f
+            val nw = text.measureTr(noticeText) + 60f
             rect.set(w / 2f - nw / 2f, h * 0.22f, w / 2f + nw / 2f, h * 0.22f + 76f)
             canvas.drawRoundRect(rect, 24f, 24f, card); canvas.drawRoundRect(rect, 24f, 24f, ink)
-            canvas.drawText(noticeText, w / 2f, rect.centerY() + 13f, text)
+            canvas.drawTr(noticeText, w / 2f, rect.centerY() + 13f, text)
         }
         // 낚시줄 조종하기 버튼 (기다리지 않을 때)
         controlRect.setEmpty()
@@ -537,7 +539,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
             controlRect.set(w * 0.42f - 240f, h * 0.80f, w * 0.42f + 240f, h * 0.80f + 110f)
             canvas.drawRoundRect(controlRect, 55f, 55f, controlPaint); canvas.drawRoundRect(controlRect, 55f, 55f, ink)
             text.textSize = h * 0.042f
-            canvas.drawText("🎮 낚시줄 조종 · 루비 $FISHING_PRICE", controlRect.centerX(), controlRect.centerY() + h * 0.015f, text)
+            canvas.drawTr("🎮 낚시줄 조종 · 루비 $FISHING_PRICE", controlRect.centerX(), controlRect.centerY() + h * 0.015f, text)
         }
         // 배 조종 ◀ ▶ (배를 탄 동안, 물속을 볼 때 빼고) + 배 튼튼함
         leftRect.setEmpty(); rightRect.setEmpty()
@@ -546,15 +548,15 @@ class FishingScreen(private val gameView: GameView) : Screen {
             rightRect.set(leftRect.right + 30f, leftRect.top, leftRect.right + 180f, leftRect.bottom)
             for ((r, s) in listOf(leftRect to "◀", rightRect to "▶")) {
                 canvas.drawRoundRect(r, 40f, 40f, steerPaint); canvas.drawRoundRect(r, 40f, 40f, ink)
-                text.textSize = h * 0.07f; canvas.drawText(s, r.centerX(), r.centerY() + h * 0.025f, text)
+                text.textSize = h * 0.07f; canvas.drawTr(s, r.centerX(), r.centerY() + h * 0.025f, text)
             }
             heartPaint.textSize = h * 0.045f
-            canvas.drawText("배 " + "♥".repeat(boatHp.coerceAtLeast(0)) + "♡".repeat((BOAT_HP - boatHp).coerceAtLeast(0)), rightRect.right + 30f, rightRect.centerY() + h * 0.015f, heartPaint)
+            canvas.drawTr("배 " + "♥".repeat(boatHp.coerceAtLeast(0)) + "♡".repeat((BOAT_HP - boatHp).coerceAtLeast(0)), rightRect.right + 30f, rightRect.centerY() + h * 0.015f, heartPaint)
         }
         exitRect.set(w - w * 0.03f - 240f, h * 0.04f, w - w * 0.03f, h * 0.04f + 90f)
         canvas.drawRoundRect(exitRect, 45f, 45f, card); canvas.drawRoundRect(exitRect, 45f, 45f, ink)
         text.textSize = 40f
-        canvas.drawText("나가기", exitRect.centerX(), exitRect.centerY() + 14f, text)
+        canvas.drawTr("나가기", exitRect.centerX(), exitRect.centerY() + 14f, text)
     }
 
     private val deepWater = Paint().apply { color = Color.rgb(60, 130, 180) }

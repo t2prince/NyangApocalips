@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.CatTeam
@@ -256,9 +258,9 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         if (cats.isEmpty()) {
             clearBodyRects()
             emptyPaint.textSize = h * 0.055f
-            canvas.drawText("아직 팀 냥이가 없어요", w / 2f, h * 0.44f, emptyPaint)
+            canvas.drawTr("아직 팀 냥이가 없어요", w / 2f, h * 0.44f, emptyPaint)
             emptyPaint.textSize = h * 0.042f
-            canvas.drawText("스테이지에서 감옥에 갇힌 냥이를 구해 보세요!", w / 2f, h * 0.52f, emptyPaint)
+            canvas.drawTr("스테이지에서 감옥에 갇힌 냥이를 구해 보세요!", w / 2f, h * 0.52f, emptyPaint)
         } else {
             val cat = selected
             if (cat != null) {
@@ -299,10 +301,10 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
 
     private fun drawHeader(canvas: Canvas, w: Float, h: Float) {
         titlePaint.textSize = h * 0.058f
-        canvas.drawText("캣타워", w / 2f, h * 0.058f, titlePaint)
+        canvas.drawTr("캣타워", w / 2f, h * 0.058f, titlePaint)
 
         partyCountPaint.textSize = h * 0.036f
-        canvas.drawText(
+        canvas.drawTr(
             "출전 ${CatTeam.party.size} / ${CatTeam.PARTY_MAX}", w * 0.022f, h * 0.045f, partyCountPaint
         )
 
@@ -332,10 +334,10 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         val paint = if (enabled) btnTextPaint else btnTextOffPaint
         paint.textSize = textSize
         // 긴 글씨는 버튼 폭에 맞게 줄인다
-        while (paint.textSize > textSize * 0.6f && paint.measureText(label) > rect.width() - 16f) {
+        while (paint.textSize > textSize * 0.6f && paint.measureTr(label) > rect.width() - 16f) {
             paint.textSize -= textSize * 0.05f
         }
-        canvas.drawText(label, rect.centerX(), rect.centerY() + paint.textSize * 0.36f, paint)
+        canvas.drawTr(label, rect.centerX(), rect.centerY() + paint.textSize * 0.36f, paint)
     }
 
     // ===================== 가운데: 크게 그린 냥이 =====================
@@ -361,13 +363,13 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
                 else -> "감옥에서 구함"
             }
             val label = "새끼 · $from · Lv ${CatTeam.GROW_UP_LEVEL} 이면 다 자라요"
-            canvas.drawText(label, cx, h * 0.140f, centerSmallPaint)
+            canvas.drawTr(label, cx, h * 0.140f, centerSmallPaint)
         }
 
         // 타워가 가운데를 채우면 안내 문구는 생략한다 (그림과 겹친다)
         if (!cat.gone && tower == null) {
             centerSmallPaint.textSize = h * 0.026f
-            canvas.drawText("냥이를 누르면 쓰다듬어요", cx, h * 0.690f, centerSmallPaint)
+            canvas.drawTr("냥이를 누르면 쓰다듬어요", cx, h * 0.690f, centerSmallPaint)
         }
     }
 
@@ -382,17 +384,17 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         leftBoldPaint.textSize = h * 0.042f
         // 칸을 넘치는 긴 이름은 줄인다
         while (leftBoldPaint.textSize > h * 0.026f &&
-            leftBoldPaint.measureText(cat.name) > (r - l) - h * 0.045f
+            leftBoldPaint.measureTr(cat.name) > (r - l) - h * 0.045f
         ) {
             leftBoldPaint.textSize -= h * 0.002f
         }
-        canvas.drawText(cat.name, l, h * 0.164f, leftBoldPaint)
+        canvas.drawTr(cat.name, l, h * 0.164f, leftBoldPaint)
 
         if (!cat.gone) {
-            val nameW = leftBoldPaint.measureText(cat.name)
+            val nameW = leftBoldPaint.measureTr(cat.name)
             drawPencil(canvas, l + nameW + h * 0.026f, h * 0.152f, h * 0.017f)
             leftSmallPaint.textSize = h * 0.022f
-            canvas.drawText("이름 바꾸기", l, h * 0.258f, leftSmallPaint)
+            canvas.drawTr("이름 바꾸기", l, h * 0.258f, leftSmallPaint)
             nameRect.set(l, h * 0.136f, r, h * 0.266f)
         } else {
             nameRect.setEmpty()
@@ -415,14 +417,14 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
             }
         }
         leftBoldPaint.textSize = h * 0.030f
-        canvas.drawText(info, l, h * 0.198f, leftBoldPaint)
+        canvas.drawTr(info, l, h * 0.198f, leftBoldPaint)
 
         // 지금 공격력 (Lv업으로 올린 몫은 따로 덧붙인다)
         if (!cat.gone) {
             val total = CatTeam.totalAttackOf(cat)
             val extra = if (cat.attackBonus > 0) " (+${cat.attackBonus})" else ""
             leftBoldPaint.textSize = h * 0.028f
-            canvas.drawText("공격 $total$extra", l, h * 0.228f, leftBoldPaint)
+            canvas.drawTr("공격 $total$extra", l, h * 0.228f, leftBoldPaint)
         }
     }
 
@@ -593,7 +595,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
 
         // 포만감은 막대가 아니라 하트 다섯 개 (게임 안에서 한 시간을 보내면 하나씩 닳는다)
         val fTop = h * 0.282f
-        canvas.drawText("포만감", l, fTop + h * 0.028f, leftBoldPaint)
+        canvas.drawTr("포만감", l, fTop + h * 0.028f, leftBoldPaint)
         drawHeartRow(
             canvas, l + (r - l) * 0.36f, r, fTop + h * 0.020f,
             CatTeam.heartsOf(cat), (r - l) * 0.055f
@@ -601,7 +603,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         // 다음 하트가 닳기까지 남은 시간 — 규칙이 눈에 보이도록
         val left = CatTeam.secondsToNextHeart()
         leftSmallPaint.textSize = h * 0.022f
-        canvas.drawText(
+        canvas.drawTr(
             "다음 하트까지 %d:%02d".format(left / 60, left % 60), l, fTop + h * 0.056f, leftSmallPaint
         )
 
@@ -612,8 +614,8 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         )
         for ((i, g) in gauges.withIndex()) {
             val top = h * (0.354f + 0.072f * i)
-            canvas.drawText(g.first, l, top + h * 0.028f, leftBoldPaint)
-            canvas.drawText("${g.second}", r, top + h * 0.028f, rightBoldPaint)
+            canvas.drawTr(g.first, l, top + h * 0.028f, leftBoldPaint)
+            canvas.drawTr("${g.second}", r, top + h * 0.028f, rightBoldPaint)
             val gTop = top + h * 0.036f
             val gH = h * 0.020f
             barRect.set(l, gTop, r, gTop + gH)
@@ -628,11 +630,11 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
 
         // 경험치 막대
         leftBoldPaint.textSize = h * 0.028f
-        canvas.drawText("경험치", l, h * 0.618f, leftBoldPaint)
+        canvas.drawTr("경험치", l, h * 0.618f, leftBoldPaint)
         rightSmallPaint.textSize = h * 0.026f
         val expLabel =
             if (cat.level >= CatTeam.MAX_LEVEL) "MAX" else "${cat.exp}/${CatTeam.expToNext(cat.level)}"
-        canvas.drawText(expLabel, r, h * 0.618f, rightSmallPaint)
+        canvas.drawTr(expLabel, r, h * 0.618f, rightSmallPaint)
         val eTop = h * 0.627f
         val eH = h * 0.020f
         barRect.set(l, eTop, r, eTop + eH)
@@ -667,7 +669,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
                 btnWhitePaint, pressedKey == "revive", true
             )
             leftSmallPaint.textSize = h * 0.024f
-            canvas.drawText(
+            canvas.drawTr(
                 "부활 약 보유 ${GameProgress.itemCount("revive_potion")}개",
                 l, top + bh + h * 0.032f, leftSmallPaint
             )
@@ -701,7 +703,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
                 fillFirst = waiting
             )
             leftSmallPaint.textSize = h * 0.022f
-            canvas.drawText(
+            canvas.drawTr(
                 if (waiting) "3초 안에 한 번 더 누르면 칸이 비어요" else "칸을 비우고 작별해요",
                 l, rTop + bh + h * 0.030f, leftSmallPaint
             )
@@ -742,7 +744,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
 
         // 가진 아이템 수를 한 줄로
         leftSmallPaint.textSize = h * 0.023f
-        canvas.drawText(
+        canvas.drawTr(
             "갑옷 ${GameProgress.itemCount("cat_armor")} · Lv업 ${GameProgress.itemCount("attack_up")} · GPS ${GameProgress.itemCount("cat_gps")}",
             l, uTop + bh + h * 0.030f, leftSmallPaint
         )
@@ -768,7 +770,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
                 stripPage < pages - 1
             )
             centerSmallPaint.textSize = h * 0.022f
-            canvas.drawText("${stripPage + 1}/$pages", w / 2f, stripB + h * 0.018f, centerSmallPaint)
+            canvas.drawTr("${stripPage + 1}/$pages", w / 2f, stripB + h * 0.018f, centerSmallPaint)
         } else {
             prevRect.setEmpty(); nextRect.setEmpty()
         }
@@ -821,31 +823,31 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         val k = (rect.height() / (h * 0.178f)).coerceIn(0.6f, 1f)   // 예전 한 줄 카드 높이 대비 비율
         nameCenterPaint.textSize = h * 0.026f * k
         while (nameCenterPaint.textSize > h * 0.016f &&
-            nameCenterPaint.measureText(cat.name) > rect.width() - 12f
+            nameCenterPaint.measureTr(cat.name) > rect.width() - 12f
         ) {
             nameCenterPaint.textSize -= h * 0.002f
         }
-        canvas.drawText(cat.name, cx, rect.bottom - rect.height() * 0.44f, nameCenterPaint)
+        canvas.drawTr(cat.name, cx, rect.bottom - rect.height() * 0.44f, nameCenterPaint)
 
         if (cat.gone) {
             // 무덤·떠난 냥이는 수치 대신 한 줄 설명
             centerSmallPaint.textSize = h * 0.022f * k
             val line = if (cat.isDead) "스테이지 ${cat.diedAtStage}에서 잠들다" else "배고파서 떠났다..."
             while (centerSmallPaint.textSize > h * 0.014f &&
-                centerSmallPaint.measureText(line) > rect.width() - 10f
+                centerSmallPaint.measureTr(line) > rect.width() - 10f
             ) {
                 centerSmallPaint.textSize -= h * 0.002f
             }
-            canvas.drawText(line, cx, rect.bottom - rect.height() * 0.18f, centerSmallPaint)
+            canvas.drawTr(line, cx, rect.bottom - rect.height() * 0.18f, centerSmallPaint)
             return
         }
 
         // Lv 과 '포만감' 라벨을 한 줄에
         leftBoldPaint.textSize = h * 0.023f * k
-        canvas.drawText("Lv ${cat.level}", rect.left + rect.width() * 0.07f,
+        canvas.drawTr("Lv ${cat.level}", rect.left + rect.width() * 0.07f,
             rect.bottom - rect.height() * 0.27f, leftBoldPaint)
         rightSmallPaint.textSize = h * 0.021f * k
-        canvas.drawText("포만감", rect.right - rect.width() * 0.07f,
+        canvas.drawTr("포만감", rect.right - rect.width() * 0.07f,
             rect.bottom - rect.height() * 0.27f, rightSmallPaint)
 
         // 포만감 하트 다섯 개
@@ -915,7 +917,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         canvas.drawRoundRect(snackBoxRect, 18f, 18f, edgePaint)
 
         nameCenterPaint.textSize = h * 0.028f
-        canvas.drawText("간식 주기 (빈 곳을 누르면 닫혀요)", (boxL + boxR) / 2f, boxT + h * 0.032f, nameCenterPaint)
+        canvas.drawTr("간식 주기 (빈 곳을 누르면 닫혀요)", (boxL + boxR) / 2f, boxT + h * 0.032f, nameCenterPaint)
 
         val ids = CatTeam.foodIds
         val innerL = boxL + w * 0.015f
@@ -947,9 +949,9 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
 
             val name = ShopCatalog.items.firstOrNull { it.id == id }?.name ?: id
             leftBoldPaint.textSize = h * 0.026f
-            canvas.drawText(name, rect.left + cw * 0.44f, rect.centerY() - h * 0.002f, leftBoldPaint)
+            canvas.drawTr(name, rect.left + cw * 0.44f, rect.centerY() - h * 0.002f, leftBoldPaint)
             leftSmallPaint.textSize = h * 0.023f
-            canvas.drawText(
+            canvas.drawTr(
                 "x${GameProgress.itemCount(id)} · +${CatTeam.fullnessOfFood(id)}",
                 rect.left + cw * 0.44f, rect.centerY() + h * 0.028f, leftSmallPaint
             )
@@ -968,7 +970,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
                 Fx.TEXT -> {
                     fxTextPaint.textSize = h * 0.044f
                     fxTextPaint.alpha = a
-                    canvas.drawText(p.text, p.x, p.y, fxTextPaint)
+                    canvas.drawTr(p.text, p.x, p.y, fxTextPaint)
                     fxTextPaint.alpha = 255
                 }
                 Fx.SLASH -> {
@@ -983,7 +985,7 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
                 Fx.NOTE -> {
                     notePaint.textSize = h * 0.040f
                     notePaint.alpha = a
-                    canvas.drawText(p.text, p.x, p.y, notePaint)
+                    canvas.drawTr(p.text, p.x, p.y, notePaint)
                     notePaint.alpha = 255
                 }
             }
@@ -1063,11 +1065,11 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         noticeTextPaint.alpha = alpha
         noticeTextPaint.textSize = h * 0.032f
         while (noticeTextPaint.textSize > h * 0.020f &&
-            noticeTextPaint.measureText(noticeText) > boxW - 24f
+            noticeTextPaint.measureTr(noticeText) > boxW - 24f
         ) {
             noticeTextPaint.textSize -= h * 0.002f
         }
-        canvas.drawText(
+        canvas.drawTr(
             noticeText, noticeRect.centerX(), noticeRect.centerY() + h * 0.012f, noticeTextPaint
         )
         noticeTextPaint.alpha = 255
@@ -1321,9 +1323,9 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         canvas.drawOval(featherX - 30f, featherY + 14f, featherX + 6f, featherY + 56f, featherPaint)
         canvas.restore()
         playText.textSize = h * 0.05f
-        canvas.drawText("${cat.name}와 놀기 — 손가락으로 낚싯대를 움직여요!", w / 2f, h * 0.09f, playText)
+        canvas.drawTr("${cat.name}와 놀기 — 손가락으로 낚싯대를 움직여요!", w / 2f, h * 0.09f, playText)
         playText.textSize = h * 0.036f
-        canvas.drawText("깃털을 잡았다 $playCatches 번 · 즐거움 ${cat.joy}", w / 2f, h * 0.15f, playText)
+        canvas.drawTr("깃털을 잡았다 $playCatches 번 · 즐거움 ${cat.joy}", w / 2f, h * 0.15f, playText)
         playDoneRect.set(w * 0.03f, h * 0.04f, w * 0.03f + 260f, h * 0.04f + 100f)
         drawButton(canvas, playDoneRect, "그만 놀기", 38f, btnPaint, false, true)
     }

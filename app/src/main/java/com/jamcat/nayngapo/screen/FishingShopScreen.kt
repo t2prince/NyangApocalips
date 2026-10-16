@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.GameProgress
@@ -41,10 +43,10 @@ class FishingShopScreen(private val gameView: GameView) : Screen {
         val w = gameView.screenWidth.toFloat(); val h = gameView.screenHeight.toFloat()
         canvas.drawRect(0f, 0f, w, h, bg)
         text.textAlign = Paint.Align.CENTER; text.textSize = h * 0.065f
-        canvas.drawText("낚시 상점", w / 2f, h * 0.10f, text)
+        canvas.drawTr("낚시 상점", w / 2f, h * 0.10f, text)
         drawRubyIcon(canvas, w * 0.06f, h * 0.09f, h * 0.025f, gem)
         text.textAlign = Paint.Align.LEFT; text.textSize = h * 0.04f
-        canvas.drawText("${GameProgress.rubies}", w * 0.06f + h * 0.04f, h * 0.105f, text)
+        canvas.drawTr("${GameProgress.rubies}", w * 0.06f + h * 0.04f, h * 0.105f, text)
 
         val top = h * 0.17f; val rowH = h * 0.155f
         for (i in 0..baits.size) {
@@ -61,9 +63,9 @@ class FishingShopScreen(private val gameView: GameView) : Screen {
             text.textAlign = Paint.Align.LEFT
             text.textSize = h * 0.042f
             val lv = GameProgress.fishingLineLevel
-            canvas.drawText(if (i == 0) "낚싯대 Lv $lv (한 번에 ${lv}마리)" else "${baits[i - 1].name}  (가진 수 ${GameProgress.itemCount(id)})", tx, r.top + r.height() * 0.42f, text)
+            canvas.drawTr(if (i == 0) "낚싯대 Lv $lv (한 번에 ${lv}마리)" else "${baits[i - 1].name}  (가진 수 ${GameProgress.itemCount(id)})", tx, r.top + r.height() * 0.42f, text)
             text.textSize = h * 0.03f
-            canvas.drawText(if (i == 0) "Lv업 하면 한 번에 잡는 물고기가 한 마리 늘어난다" else baits[i - 1].desc, tx, r.top + r.height() * 0.75f, text)
+            canvas.drawTr(if (i == 0) "Lv업 하면 한 번에 잡는 물고기가 한 마리 늘어난다" else baits[i - 1].desc, tx, r.top + r.height() * 0.75f, text)
             val b = btnRects[i]
             b.set(r.right - 380f, r.centerY() - 50f, r.right - 24f, r.centerY() + 50f)
             canvas.drawRoundRect(b, 50f, 50f, btn); canvas.drawRoundRect(b, 50f, 50f, ink)
@@ -73,18 +75,18 @@ class FishingShopScreen(private val gameView: GameView) : Screen {
                 i == 0 -> "Lv업 · 루비 ${GameProgress.lineLevelUpPrice()}"
                 else -> "사기 · 루비 ${baits[i - 1].price}"
             }
-            canvas.drawText(label, b.centerX(), b.centerY() + h * 0.012f, text)
+            canvas.drawTr(label, b.centerX(), b.centerY() + h * 0.012f, text)
         }
         backRect.set(w / 2f - 180f, h * 0.88f, w / 2f + 180f, h * 0.88f + 90f)
         canvas.drawRoundRect(backRect, 45f, 45f, card); canvas.drawRoundRect(backRect, 45f, 45f, ink)
         text.textSize = h * 0.035f
-        canvas.drawText("나가기", backRect.centerX(), backRect.centerY() + h * 0.012f, text)
+        canvas.drawTr("나가기", backRect.centerX(), backRect.centerY() + h * 0.012f, text)
         if (noticeTimer > 0f) {
             text.textSize = 40f
-            val nw = text.measureText(noticeText) + 70f
+            val nw = text.measureTr(noticeText) + 70f
             rect.set(w / 2f - nw / 2f, h * 0.44f, w / 2f + nw / 2f, h * 0.44f + 80f)
             canvas.drawRoundRect(rect, 24f, 24f, btn); canvas.drawRoundRect(rect, 24f, 24f, ink)
-            canvas.drawText(noticeText, w / 2f, rect.centerY() + 14f, text)
+            canvas.drawTr(noticeText, w / 2f, rect.centerY() + 14f, text)
         }
     }
 

@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.CatDex
@@ -83,11 +85,11 @@ class DexScreen(private val gameView: GameView) : Screen {
         canvas.drawRect(0f, 0f, w, h, bgPaint)
 
         titlePaint.textSize = h * 0.075f
-        canvas.drawText("고양이 도감", w / 2f, h * 0.095f, titlePaint)
+        canvas.drawTr("고양이 도감", w / 2f, h * 0.095f, titlePaint)
 
         val found = CatDex.entries.count { GameProgress.isDiscovered(it.id) }
         countPaint.textSize = h * 0.042f
-        canvas.drawText("$found / ${CatDex.entries.size}", w - 30f, h * 0.09f, countPaint)
+        canvas.drawTr("$found / ${CatDex.entries.size}", w - 30f, h * 0.09f, countPaint)
 
         // 카드 격자: 8 x 3 (22종 — 빨강·주황·노랑냥이까지)
         val cols = 8
@@ -115,7 +117,7 @@ class DexScreen(private val gameView: GameView) : Screen {
         canvas.drawRoundRect(backRect, 20f, 20f, backPaint)
         canvas.drawRoundRect(backRect, 20f, 20f, cardEdgePaint)
         backTextPaint.textSize = bh * 0.42f
-        canvas.drawText("돌아가기", backRect.centerX(), backRect.centerY() + bh * 0.15f, backTextPaint)
+        canvas.drawTr("돌아가기", backRect.centerX(), backRect.centerY() + bh * 0.15f, backTextPaint)
     }
 
     private fun drawCard(canvas: Canvas, entry: CatDex.Entry, rect: RectF, h: Float, index: Int) {
@@ -149,16 +151,16 @@ class DexScreen(private val gameView: GameView) : Screen {
             }
             drawNote(canvas, rect, dstRect, h, index)
             namePaint.textSize = h * 0.040f
-            canvas.drawText(entry.name, cx, rect.bottom - rect.height() * 0.17f, namePaint)
+            canvas.drawTr(entry.name, cx, rect.bottom - rect.height() * 0.17f, namePaint)
             hintPaint.textSize = h * 0.027f
-            canvas.drawText(entry.hint, cx, rect.bottom - rect.height() * 0.06f, hintPaint)
+            canvas.drawTr(entry.hint, cx, rect.bottom - rect.height() * 0.06f, hintPaint)
         } else {
             // 실루엣 + 물음표
             canvas.drawBitmap(bmp, srcRect, dstRect, silhouettePaint)
             qPaint.textSize = rect.height() * 0.30f
-            canvas.drawText("?", cx, cy + rect.height() * 0.1f, qPaint)
+            canvas.drawTr("?", cx, cy + rect.height() * 0.1f, qPaint)
             namePaint.textSize = h * 0.040f
-            canvas.drawText("???", cx, rect.bottom - rect.height() * 0.17f, namePaint)
+            canvas.drawTr("???", cx, rect.bottom - rect.height() * 0.17f, namePaint)
         }
 
         // NEW 배지 (아직 도감에서 확인 안 한 새 발견)
@@ -170,7 +172,7 @@ class DexScreen(private val gameView: GameView) : Screen {
             newBadgePaint.alpha = (200 + 55 * pulse).toInt()
             canvas.drawCircle(bx, by, r, newBadgePaint)
             newTextPaint.textSize = r * 0.72f
-            canvas.drawText("N", bx, by + r * 0.26f, newTextPaint)
+            canvas.drawTr("N", bx, by + r * 0.26f, newTextPaint)
         }
     }
 
@@ -181,7 +183,7 @@ class DexScreen(private val gameView: GameView) : Screen {
         val y = sprite.top - card.height() * 0.02f - p * card.height() * 0.30f
         notePaint.textSize = h * 0.030f
         notePaint.alpha = (140 * (1f - p)).toInt().coerceIn(0, 255)
-        canvas.drawText(if (index % 2 == 0) "\u266a" else "\u266b", x, y, notePaint)
+        canvas.drawTr(if (index % 2 == 0) "\u266a" else "\u266b", x, y, notePaint)
         notePaint.alpha = 255
     }
 

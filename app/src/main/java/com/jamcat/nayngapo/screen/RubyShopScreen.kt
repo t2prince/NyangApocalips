@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.GameProgress
@@ -107,7 +109,7 @@ class RubyShopScreen(private val gameView: GameView, private val fromShop: Boole
         canvas.drawRect(0f, 0f, w, h, bgPaint)
 
         titlePaint.textSize = h * 0.075f
-        canvas.drawText("루비 상점", w / 2f, h * 0.095f, titlePaint)
+        canvas.drawTr("루비 상점", w / 2f, h * 0.095f, titlePaint)
 
         // 정보 칸 둘: 왼쪽 쌓아온 점수 / 오른쪽 보유 루비
         val gap = w * 0.03f
@@ -123,35 +125,35 @@ class RubyShopScreen(private val gameView: GameView, private val fromShop: Boole
 
         canvas.drawRoundRect(scorePanel, 18f, 18f, panelPaint)
         canvas.drawRoundRect(scorePanel, 18f, 18f, edgePaint)
-        canvas.drawText("쌓아온 점수", scorePanel.centerX(), scorePanel.top + panelH * 0.28f, panelLabelPaint)
-        canvas.drawText(
+        canvas.drawTr("쌓아온 점수", scorePanel.centerX(), scorePanel.top + panelH * 0.28f, panelLabelPaint)
+        canvas.drawTr(
             String.format("%,d", GameProgress.bankScore),
             scorePanel.centerX(), scorePanel.top + panelH * 0.72f, bigNumPaint
         )
 
         canvas.drawRoundRect(rubyPanel, 18f, 18f, panelPaint)
         canvas.drawRoundRect(rubyPanel, 18f, 18f, edgePaint)
-        canvas.drawText("보유 루비", rubyPanel.centerX(), rubyPanel.top + panelH * 0.28f, panelLabelPaint)
+        canvas.drawTr("보유 루비", rubyPanel.centerX(), rubyPanel.top + panelH * 0.28f, panelLabelPaint)
 
         // 보석 모양 + 개수를 한 덩어리로 가운데 맞춤
         val rubyText = "${GameProgress.rubies}"
         val gemR = h * 0.038f
-        val numW = bigNumPaint.measureText(rubyText)
+        val numW = bigNumPaint.measureTr(rubyText)
         val blockW = gemR * 2f + h * 0.014f + numW
         val blockLeft = rubyPanel.centerX() - blockW / 2f
         val numBase = rubyPanel.top + panelH * 0.72f
         drawRubyIcon(canvas, blockLeft + gemR, numBase - h * 0.026f, gemR, gemPaint)
         bigNumPaint.textAlign = Paint.Align.LEFT
-        canvas.drawText(rubyText, blockLeft + gemR * 2f + h * 0.014f, numBase, bigNumPaint)
+        canvas.drawTr(rubyText, blockLeft + gemR * 2f + h * 0.014f, numBase, bigNumPaint)
         bigNumPaint.textAlign = Paint.Align.CENTER
         // 빚 칸: 도둑냥이한테 뺏긴 게 지갑보다 많으면 여기 쌓인다 (새 루비로 먼저 갚는다)
         if (GameProgress.rubyDebt > 0) {
             debtPaint.textSize = h * 0.034f
-            canvas.drawText("빚 ${GameProgress.rubyDebt} 루비", rubyPanel.centerX(), rubyPanel.bottom + h * 0.045f, debtPaint)
+            canvas.drawTr("빚 ${GameProgress.rubyDebt} 루비", rubyPanel.centerX(), rubyPanel.bottom + h * 0.045f, debtPaint)
         }
 
         ratePaint.textSize = h * 0.040f
-        canvas.drawText("${GameProgress.SCORE_PER_RUBY}점 = 1루비", w / 2f, h * 0.505f, ratePaint)
+        canvas.drawTr("${GameProgress.SCORE_PER_RUBY}점 = 1루비", w / 2f, h * 0.505f, ratePaint)
 
         // 환전 버튼 세 개
         val btnGap = w * 0.03f
@@ -172,7 +174,7 @@ class RubyShopScreen(private val gameView: GameView, private val fromShop: Boole
             }
             canvas.drawRoundRect(buttonRects[i], 20f, 20f, fill)
             canvas.drawRoundRect(buttonRects[i], 20f, 20f, edgePaint)
-            canvas.drawText(
+            canvas.drawTr(
                 btn.label, buttonRects[i].centerX(),
                 buttonRects[i].centerY() + btnH * 0.12f,
                 if (enabled) btnTextPaint else btnTextOffPaint
@@ -188,7 +190,7 @@ class RubyShopScreen(private val gameView: GameView, private val fromShop: Boole
         canvas.drawRoundRect(backRect, 20f, 20f, backPaint)
         canvas.drawRoundRect(backRect, 20f, 20f, edgePaint)
         btnTextPaint.textSize = bh * 0.42f
-        canvas.drawText("돌아가기", backRect.centerX(), backRect.centerY() + bh * 0.15f, btnTextPaint)
+        canvas.drawTr("돌아가기", backRect.centerX(), backRect.centerY() + bh * 0.15f, btnTextPaint)
 
         drawNotice(canvas, w, h)
     }
@@ -215,7 +217,7 @@ class RubyShopScreen(private val gameView: GameView, private val fromShop: Boole
 
         noticeTextPaint.alpha = alpha
         noticeTextPaint.textSize = h * 0.042f
-        canvas.drawText(
+        canvas.drawTr(
             noticeText, noticeRect.centerX(), noticeRect.centerY() + h * 0.015f, noticeTextPaint
         )
         noticeTextPaint.alpha = 255

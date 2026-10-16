@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.GameProgress
@@ -40,10 +42,10 @@ class RobotShopScreen(private val gameView: GameView) : Screen {
         val h = gameView.screenHeight.toFloat()
         canvas.drawRect(0f, 0f, w, h, bg)
         text.textSize = h * 0.065f
-        canvas.drawText("로봇 상점", w / 2f, h * 0.11f, text)
+        canvas.drawTr("로봇 상점", w / 2f, h * 0.11f, text)
         drawRubyIcon(canvas, w * 0.06f, h * 0.09f, h * 0.025f, gemPaint)
         text.textAlign = Paint.Align.LEFT; text.textSize = h * 0.04f
-        canvas.drawText("${GameProgress.rubies}", w * 0.06f + h * 0.04f, h * 0.105f, text)
+        canvas.drawTr("${GameProgress.rubies}", w * 0.06f + h * 0.04f, h * 0.105f, text)
         text.textAlign = Paint.Align.CENTER
 
         // 왼쪽: 로봇 그림
@@ -60,12 +62,12 @@ class RobotShopScreen(private val gameView: GameView) : Screen {
         val lv = GameProgress.robotLevel
         val x = w * 0.72f
         text.textSize = h * 0.055f
-        canvas.drawText(if (lv == 0) "아직 로봇이 없어요" else "내 로봇 Lv $lv", x, h * 0.26f, text)
+        canvas.drawTr(if (lv == 0) "아직 로봇이 없어요" else "내 로봇 Lv $lv", x, h * 0.26f, text)
         text.textSize = h * 0.04f
-        if (lv > 0) canvas.drawText("피 ${RobotCatalog.hpOf(lv)} · 공격 ${RobotCatalog.attackOf(lv)}", x, h * 0.34f, text)
+        if (lv > 0) canvas.drawTr("피 ${RobotCatalog.hpOf(lv)} · 공격 ${RobotCatalog.attackOf(lv)}", x, h * 0.34f, text)
         if (lv < RobotCatalog.MAX_LEVEL) {
             text.textSize = h * 0.034f
-            canvas.drawText("Lv ${lv + 1}: 피 ${RobotCatalog.hpOf(lv + 1)} · 공격 ${RobotCatalog.attackOf(lv + 1)}", x, h * 0.42f, text)
+            canvas.drawTr("Lv ${lv + 1}: 피 ${RobotCatalog.hpOf(lv + 1)} · 공격 ${RobotCatalog.attackOf(lv + 1)}", x, h * 0.42f, text)
         }
         buyRect.set(x - w * 0.2f, h * 0.48f, x + w * 0.2f, h * 0.48f + 100f)
         canvas.drawRoundRect(buyRect, 50f, 50f, yellow); canvas.drawRoundRect(buyRect, 50f, 50f, ink)
@@ -75,23 +77,23 @@ class RobotShopScreen(private val gameView: GameView) : Screen {
             lv == 0 -> "로봇 사기 · 루비 ${RobotCatalog.priceOf(1)}"
             else -> "Lv ${lv + 1}로 올리기 · 루비 ${RobotCatalog.priceOf(lv + 1)}"
         }
-        canvas.drawText(buyLabel, buyRect.centerX(), buyRect.centerY() + h * 0.014f, text)
+        canvas.drawTr(buyLabel, buyRect.centerX(), buyRect.centerY() + h * 0.014f, text)
         rideRect.setEmpty()
         if (lv > 0) {
             rideRect.set(x - w * 0.2f, h * 0.62f, x + w * 0.2f, h * 0.62f + 100f)
             canvas.drawRoundRect(rideRect, 50f, 50f, if (GameProgress.rideRobot) green else card); canvas.drawRoundRect(rideRect, 50f, 50f, ink)
-            canvas.drawText(if (GameProgress.rideRobot) "로봇 타기 ✓ (스테이지)" else "로봇 안 타기", rideRect.centerX(), rideRect.centerY() + h * 0.014f, text)
+            canvas.drawTr(if (GameProgress.rideRobot) "로봇 타기 ✓ (스테이지)" else "로봇 안 타기", rideRect.centerX(), rideRect.centerY() + h * 0.014f, text)
         }
         backRect.set(w / 2f - 180f, h * 0.86f, w / 2f + 180f, h * 0.86f + 90f)
         canvas.drawRoundRect(backRect, 45f, 45f, card); canvas.drawRoundRect(backRect, 45f, 45f, ink)
-        canvas.drawText("나가기", backRect.centerX(), backRect.centerY() + h * 0.014f, text)
+        canvas.drawTr("나가기", backRect.centerX(), backRect.centerY() + h * 0.014f, text)
 
         if (noticeTimer > 0f) {
             text.textSize = 42f
-            val nw = text.measureText(noticeText) + 70f
+            val nw = text.measureTr(noticeText) + 70f
             rect.set(w / 2f - nw / 2f, h * 0.40f, w / 2f + nw / 2f, h * 0.40f + 80f)
             canvas.drawRoundRect(rect, 24f, 24f, yellow); canvas.drawRoundRect(rect, 24f, 24f, ink)
-            canvas.drawText(noticeText, w / 2f, rect.centerY() + 15f, text)
+            canvas.drawTr(noticeText, w / 2f, rect.centerY() + 15f, text)
         }
     }
 

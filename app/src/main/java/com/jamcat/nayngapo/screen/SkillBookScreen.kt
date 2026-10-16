@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.CatSkills
@@ -125,23 +127,23 @@ open class SkillBookScreen(
         canvas.drawRect(0f, 0f, w, h, bgPaint)
 
         titlePaint.textSize = h * 0.072f
-        canvas.drawText(title, w / 2f, h * 0.092f, titlePaint)
+        canvas.drawTr(title, w / 2f, h * 0.092f, titlePaint)
 
         // 오른쪽 위: 가진 루비
         rubyCountPaint.textSize = h * 0.046f
         val rubyText = "${GameProgress.rubies}"
         val gemR = h * 0.025f
-        val textW = rubyCountPaint.measureText(rubyText)
+        val textW = rubyCountPaint.measureTr(rubyText)
         val gemCx = w - 30f - textW - gemR * 1.5f
         drawRubyIcon(canvas, gemCx, h * 0.072f, gemR, gemPaint)
-        canvas.drawText(rubyText, gemCx + gemR * 1.4f, h * 0.089f, rubyCountPaint)
+        canvas.drawTr(rubyText, gemCx + gemR * 1.4f, h * 0.089f, rubyCountPaint)
 
         if (book.all.isEmpty()) {
             // 아직 정해진 기술이 없다 — 껍데기만 남겨 둔다
             emptyPaint.textSize = h * 0.055f
-            canvas.drawText("아직 기술이 없어요", w / 2f, h * 0.44f, emptyPaint)
+            canvas.drawTr("아직 기술이 없어요", w / 2f, h * 0.44f, emptyPaint)
             emptyPaint.textSize = h * 0.038f
-            canvas.drawText("곧 새로운 기술이 생길 거예요", w / 2f, h * 0.52f, emptyPaint)
+            canvas.drawTr("곧 새로운 기술이 생길 거예요", w / 2f, h * 0.52f, emptyPaint)
             drawBackButton(canvas, w, h)
             drawNotice(canvas, w, h)
             return
@@ -164,7 +166,7 @@ open class SkillBookScreen(
         }
 
         hintPaint.textSize = h * 0.030f
-        canvas.drawText(hint, w / 2f, h * 0.856f, hintPaint)
+        canvas.drawTr(hint, w / 2f, h * 0.856f, hintPaint)
 
         drawBackButton(canvas, w, h)
         drawSparks(canvas)
@@ -178,7 +180,7 @@ open class SkillBookScreen(
         canvas.drawRoundRect(backRect, 20f, 20f, backPaint)
         canvas.drawRoundRect(backRect, 20f, 20f, edgePaint)
         toggleTextPaint.textSize = bh * 0.42f
-        canvas.drawText("돌아가기", backRect.centerX(), backRect.centerY() + bh * 0.15f, toggleTextPaint)
+        canvas.drawTr("돌아가기", backRect.centerX(), backRect.centerY() + bh * 0.15f, toggleTextPaint)
     }
 
     private fun drawCard(canvas: Canvas, index: Int, skill: CatSkills.Skill, rect: RectF, h: Float) {
@@ -207,15 +209,15 @@ open class SkillBookScreen(
         }
 
         namePaint.textSize = h * 0.036f
-        canvas.drawText(skill.name, rect.centerX(), rect.bottom - rect.height() * 0.29f, namePaint)
+        canvas.drawTr(skill.name, rect.centerX(), rect.bottom - rect.height() * 0.29f, namePaint)
         descPaint.textSize = h * 0.026f
-        canvas.drawText(skill.desc, rect.centerX(), rect.bottom - rect.height() * 0.19f, descPaint)
+        canvas.drawTr(skill.desc, rect.centerX(), rect.bottom - rect.height() * 0.19f, descPaint)
 
         if (learned) {
             // 배운 기술은 전투 중 버튼으로 쓴다 (켜고 끄지 않는다)
             toggleRects[index].setEmpty()
             hintPaint.textSize = h * 0.030f
-            canvas.drawText(
+            canvas.drawTr(
                 "전투에서 사용", rect.centerX(), rect.bottom - rect.height() * 0.075f, hintPaint
             )
 
@@ -223,23 +225,23 @@ open class SkillBookScreen(
             badgeTextPaint.textSize = h * 0.024f
             val label = "배움"
             val pad = h * 0.012f
-            val bwid = badgeTextPaint.measureText(label) + pad * 2f
+            val bwid = badgeTextPaint.measureTr(label) + pad * 2f
             val bhei = h * 0.038f
             badgeRect.set(rect.right - bwid - 8f, rect.top + 8f, rect.right - 8f, rect.top + 8f + bhei)
             canvas.drawRoundRect(badgeRect, bhei / 2f, bhei / 2f, badgePaint)
-            canvas.drawText(label, badgeRect.centerX(), badgeRect.centerY() + bhei * 0.30f, badgeTextPaint)
+            canvas.drawTr(label, badgeRect.centerX(), badgeRect.centerY() + bhei * 0.30f, badgeTextPaint)
         } else {
             toggleRects[index].setEmpty()
             // 아직 못 배운 기술은 값을 보여 준다
             pricePaint.textSize = h * 0.032f
             val priceText = "${skill.price} 루비"
             val gemR = h * 0.017f
-            val priceW = pricePaint.measureText(priceText)
+            val priceW = pricePaint.measureTr(priceText)
             val blockW = gemR * 2f + h * 0.008f + priceW
             val startX = rect.centerX() - blockW / 2f
             val baseY = rect.bottom - rect.height() * 0.07f
             drawRubyIcon(canvas, startX + gemR, baseY - h * 0.011f, gemR, gemPaint)
-            canvas.drawText(priceText, startX + gemR * 2f + h * 0.008f, baseY, pricePaint)
+            canvas.drawTr(priceText, startX + gemR * 2f + h * 0.008f, baseY, pricePaint)
         }
     }
 
@@ -276,7 +278,7 @@ open class SkillBookScreen(
         edgePaint.alpha = 255
         noticeTextPaint.alpha = alpha
         noticeTextPaint.textSize = h * 0.038f
-        canvas.drawText(noticeText, noticeRect.centerX(), noticeRect.centerY() + h * 0.013f, noticeTextPaint)
+        canvas.drawTr(noticeText, noticeRect.centerX(), noticeRect.centerY() + h * 0.013f, noticeTextPaint)
         noticeTextPaint.alpha = 255
     }
 

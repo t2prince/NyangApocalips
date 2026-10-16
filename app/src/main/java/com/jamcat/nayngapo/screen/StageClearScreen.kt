@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.GameProgress
@@ -120,7 +122,7 @@ class StageClearScreen(
         drawScoreBoard(canvas, w, h)
 
         titlePaint.textSize = h * 0.085f
-        canvas.drawText("스테이지 $stageNumber 클리어!", w / 2f, h * 0.36f, titlePaint)
+        canvas.drawTr("스테이지 $stageNumber 클리어!", w / 2f, h * 0.36f, titlePaint)
 
         // 결과 정리: 처치·구출·레벨
         labelPaint.textSize = h * 0.040f
@@ -135,26 +137,26 @@ class StageClearScreen(
             "도달 레벨" to "Lv.$playerLevel",
         )
         for ((label, value) in rows) {
-            canvas.drawText(label, cxL, rowY, labelPaint)
-            canvas.drawText(value, cxR, rowY, numPaint)
+            canvas.drawTr(label, cxL, rowY, labelPaint)
+            canvas.drawTr(value, cxR, rowY, numPaint)
             rowY += rowGap
         }
 
         when (stageNumber) {
             10 -> {
                 endPaint.textSize = h * 0.048f
-                canvas.drawText("순간냥이를 타도했습니다!", w / 2f, h * 0.66f, endPaint)
-                canvas.drawText("다음은 하늘이다 — 날개냥이를 타고 날아오르자!", w / 2f, h * 0.72f, endPaint)
+                canvas.drawTr("순간냥이를 타도했습니다!", w / 2f, h * 0.66f, endPaint)
+                canvas.drawTr("다음은 하늘이다 — 날개냥이를 타고 날아오르자!", w / 2f, h * 0.72f, endPaint)
             }
             11 -> {
                 endPaint.textSize = h * 0.048f
-                canvas.drawText("하늘의 왕 왕왕냥이를 타도했습니다!", w / 2f, h * 0.66f, endPaint)
-                canvas.drawText("저 아래 울창한 정글이 기다린다!", w / 2f, h * 0.72f, endPaint)
+                canvas.drawTr("하늘의 왕 왕왕냥이를 타도했습니다!", w / 2f, h * 0.66f, endPaint)
+                canvas.drawTr("저 아래 울창한 정글이 기다린다!", w / 2f, h * 0.72f, endPaint)
             }
             20 -> {
                 endPaint.textSize = h * 0.048f
-                canvas.drawText("마법사 냥이 삼형제를 타도했습니다!", w / 2f, h * 0.66f, endPaint)
-                canvas.drawText("정글에 평화가 찾아왔다!", w / 2f, h * 0.72f, endPaint)
+                canvas.drawTr("마법사 냥이 삼형제를 타도했습니다!", w / 2f, h * 0.66f, endPaint)
+                canvas.drawTr("정글에 평화가 찾아왔다!", w / 2f, h * 0.72f, endPaint)
             }
         }
 
@@ -171,13 +173,13 @@ class StageClearScreen(
         canvas.drawRoundRect(boardRect, 16f, 16f, boardFramePaint)
 
         boardLabelPaint.textSize = bh * 0.24f
-        canvas.drawText("점수", boardRect.centerX(), boardRect.top + bh * 0.30f, boardLabelPaint)
+        canvas.drawTr("점수", boardRect.centerX(), boardRect.top + bh * 0.30f, boardLabelPaint)
 
         // 켜지는 연출: 잠깐 깜빡이다가 점수가 올라간다
         val shown = if (timer < 0.5f && (timer * 8).toInt() % 2 == 0) ""
         else "${(score * ((timer - 0.3f) / 1.2f).coerceIn(0f, 1f)).toInt()}"
         digitPaint.textSize = bh * 0.46f
-        canvas.drawText(shown, boardRect.centerX(), boardRect.bottom - bh * 0.18f, digitPaint)
+        canvas.drawTr(shown, boardRect.centerX(), boardRect.bottom - bh * 0.18f, digitPaint)
     }
 
     /** 눌러야 끝나는 STAGE CLEAR 버튼 */
@@ -190,7 +192,7 @@ class StageClearScreen(
         canvas.drawRoundRect(buttonRect, 22f, 22f, buttonPaint)
         canvas.drawRoundRect(buttonRect, 22f, 22f, buttonEdgePaint)
         buttonTextPaint.textSize = bh * 0.42f
-        canvas.drawText("STAGE CLEAR", buttonRect.centerX(),
+        canvas.drawTr("STAGE CLEAR", buttonRect.centerX(),
             buttonRect.centerY() + bh * 0.15f, buttonTextPaint)
     }
 

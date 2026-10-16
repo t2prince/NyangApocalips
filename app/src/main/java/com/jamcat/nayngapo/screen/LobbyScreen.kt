@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.CatTeam
@@ -33,7 +35,8 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
     private val slots = listOf(
         // 왼쪽 세로줄
         // '고양이 상점' 칸은 뺐다 — 고양이 상점은 상점 마을의 천막 중 하나 (대표님 2026-09-27)
-        Slot("character", "캐릭터 변경", 0.015f, 0.100f, 0.245f, 0.470f),
+        // '캐릭터 변경' 칸을 지우고 뽑기 (대표님 2026-10-17 「캐릭터 변경을 지우고 뽑기 만들어 줘」) — 상점 마을 집 앞 뽑기와 같은 뽑기
+        Slot("gacha", "뽑기", 0.015f, 0.100f, 0.245f, 0.470f),
         Slot("cat_skill", "고양이 기술", 0.015f, 0.490f, 0.245f, 0.855f),
         // 가운데 스테이지 길
         Slot("worldmap", "", 0.260f, 0.100f, 0.735f, 0.855f),
@@ -165,7 +168,7 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
         if (mapOnly) { drawMapOnly(canvas, w, h); return }
 
         titlePaint.textSize = h * 0.072f
-        canvas.drawText("냥이 아포칼립스", w / 2f, h * 0.077f, titlePaint)
+        canvas.drawTr("냥이 아포칼립스", w / 2f, h * 0.077f, titlePaint)
 
         hintPaint.textSize = h * 0.030f
 
@@ -186,7 +189,7 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
         if (slot.label.isNotEmpty()) {
             labelPaint.textSize = if (slot.compact) h * 0.030f else h * 0.042f
             val baseline = rect.top + if (slot.compact) h * 0.036f else h * 0.052f
-            canvas.drawText(slot.label, rect.centerX(), baseline, labelPaint)
+            canvas.drawTr(slot.label, rect.centerX(), baseline, labelPaint)
             iconTop = baseline + h * 0.008f
         }
 
@@ -200,7 +203,7 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
         val bottomInset = when (slot.id) {
             "battle" -> h * 0.038f
             "cat_manage" -> h * 0.038f  // 아래에 팀 냥이 수를 적어 준다
-            "character" -> h * 0.038f   // 아래에 지금 고른 인간 이름을 적어 준다
+            "gacha" -> h * 0.038f       // 아래에 뽑기 값을 적어 준다
             "cat_skill" -> h * 0.038f   // 아래에 배운 기술 수를 적어 준다
             "ruby_shop" -> h * 0.030f   // 아래에 지금 가진 루비를 적어 준다
             "skill" -> h * 0.030f       // 아래에 배운 인간 기술 수를 적어 준다
@@ -231,7 +234,7 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
         if (slot.id == "skill") {
             hintPaint.textSize = h * 0.022f
             val hs = com.jamcat.nayngapo.engine.HumanSkills.all
-            canvas.drawText(
+            canvas.drawTr(
                 if (hs.isEmpty()) "준비 중"
                 else "배운 기술 ${com.jamcat.nayngapo.engine.HumanSkills.learnedCount()} / ${hs.size}",
                 rect.centerX(), rect.bottom - h * 0.008f, hintPaint
@@ -242,26 +245,23 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
         if (slot.id == "cat_skill") {
             hintPaint.textSize = h * 0.028f
             val skills = com.jamcat.nayngapo.engine.CatSkills.all
-            canvas.drawText(
+            canvas.drawTr(
                 if (skills.isEmpty()) "준비 중"
                 else "배운 기술 ${com.jamcat.nayngapo.engine.CatSkills.learnedCount()} / ${skills.size}",
                 rect.centerX(), rect.bottom - h * 0.014f, hintPaint
             )
         }
 
-        // 캐릭터 변경 칸 아래에는 지금 고른 인간 이름을 적어 준다
-        if (slot.id == "character") {
+        // 뽑기 칸 아래에는 한 번 값을 적어 준다
+        if (slot.id == "gacha") {
             hintPaint.textSize = h * 0.028f
-            canvas.drawText(
-                com.jamcat.nayngapo.engine.Heroes.selected().name,
-                rect.centerX(), rect.bottom - h * 0.014f, hintPaint
-            )
+            canvas.drawTr("한 번 루비 ${GachaScreen.PRICE}", rect.centerX(), rect.bottom - h * 0.014f, hintPaint)
         }
 
         // 고양이 관리 칸 아래에는 팀 냥이 수와 출전 인원을 적어 준다
         if (slot.id == "cat_manage") {
             hintPaint.textSize = h * 0.028f
-            canvas.drawText(
+            canvas.drawTr(
                 "냥이 ${CatTeam.living.size}마리 · 출전 ${CatTeam.party.size}",
                 rect.centerX(), rect.bottom - h * 0.014f, hintPaint
             )
@@ -272,12 +272,12 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
             rubyHintPaint.textSize = h * 0.030f
             val text = "${GameProgress.rubies}"
             val gemR = h * 0.014f
-            val textW = rubyHintPaint.measureText(text)
+            val textW = rubyHintPaint.measureTr(text)
             val blockW = gemR * 2f + 6f + textW
             val startX = rect.centerX() - blockW / 2f
             val baseY = rect.bottom - h * 0.008f
             drawRubyIcon(canvas, startX + gemR, baseY - h * 0.010f, gemR, gemPaint)
-            canvas.drawText(text, startX + gemR * 2f + 6f, baseY, rubyHintPaint)
+            canvas.drawTr(text, startX + gemR * 2f + 6f, baseY, rubyHintPaint)
         }
 
         // 전투 칸에는 지금 출격할 스테이지 번호를 적어 준다
@@ -285,7 +285,7 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
             hintPaint.textSize = h * 0.028f
             val next = GameProgress.nextBattleStage()
             val text = if (next != null) "스테이지 $next 출격!" else "모두 깼다냥!"
-            canvas.drawText(text, rect.centerX(), rect.bottom - h * 0.014f, hintPaint)
+            canvas.drawTr(text, rect.centerX(), rect.bottom - h * 0.014f, hintPaint)
         }
 
         canvas.drawRoundRect(rect, 14f, 14f, borderPaint)
@@ -330,7 +330,7 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
             canvas.drawCircle(cx, cy, stoneR, stoneOutlinePaint)
 
             if (stage <= current) {
-                canvas.drawText("$stage", cx, cy + stoneR * 0.40f, stoneNumPaint)
+                canvas.drawTr("$stage", cx, cy + stoneR * 0.40f, stoneNumPaint)
             } else if (GameProgress.hasData(stage)) {
                 canvas.drawCircle(cx, cy, stoneR * 0.30f, stoneLockPaint)
             }
@@ -339,7 +339,7 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
                 val pulse = (sin(timer.toDouble() * 4.0) * 0.5 + 0.5).toFloat()
                 stoneRingPaint.alpha = (110 + 145 * pulse).toInt()
                 canvas.drawCircle(cx, cy, stoneR + 6f + pulse * 5f, stoneRingPaint)
-                canvas.drawText("여기", cx, cy - stoneR - 12f, hereTagPaint)
+                canvas.drawTr("여기", cx, cy - stoneR - 12f, hereTagPaint)
             }
         }
 
@@ -356,7 +356,7 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
         }
 
         hintPaint.textSize = h * 0.028f
-        canvas.drawText(
+        canvas.drawTr(
             "지도 ${mapPage + 1}/$pageCount (${mapPage * PAGE_SIZE + 1}~${minOf(GameProgress.TOTAL_STAGES, (mapPage + 1) * PAGE_SIZE)})  ·  스테이지 ${GameProgress.unlockedStage} / ${GameProgress.TOTAL_STAGES}  —  돌을 누르면 출발!",
             rect.centerX(), rect.bottom - h * 0.012f, hintPaint
         )
@@ -405,7 +405,7 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
 
         labelPaint.alpha = alpha
         labelPaint.textSize = h * 0.042f
-        canvas.drawText(noticeText, rect.centerX(), rect.centerY() + h * 0.015f, labelPaint)
+        canvas.drawTr(noticeText, rect.centerX(), rect.centerY() + h * 0.015f, labelPaint)
         labelPaint.alpha = 255
     }
 
@@ -419,7 +419,7 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
     /** 로비와 같은 원안 지도(돌마다 스테이지)를 화면 가득 + 왼쪽 위 '상점 마을로' · 오른쪽 위 '스토리 보기' */
     private fun drawMapOnly(canvas: Canvas, w: Float, h: Float) {
         titlePaint.textSize = h * 0.06f
-        canvas.drawText("스테이지 지도", w / 2f, h * 0.07f, titlePaint)
+        canvas.drawTr("스테이지 지도", w / 2f, h * 0.07f, titlePaint)
         mapOnlyRect.set(w * 0.04f, h * 0.10f, w * 0.96f, h * 0.98f)
         drawStageMap(canvas, mapOnlyRect, h)
         labelPaint.textSize = h * 0.032f
@@ -427,7 +427,7 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
         storyRect.set(w * 0.98f - 300f, h * 0.015f, w * 0.98f, h * 0.015f + 80f)
         for ((r, t) in listOf(backRect to "◀ 상점 마을로", storyRect to "📖 스토리 보기")) {
             canvas.drawRoundRect(r, 40f, 40f, btnFill); canvas.drawRoundRect(r, 40f, 40f, btnInk)
-            canvas.drawText(t, r.centerX(), r.centerY() + h * 0.011f, labelPaint)
+            canvas.drawTr(t, r.centerX(), r.centerY() + h * 0.011f, labelPaint)
         }
         drawNotice(canvas, w, h)
     }
@@ -515,8 +515,8 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
             "cat_skill" -> gameView.showCatSkills()
             // 기술: 인간이 직접 쓰는 기술
             "skill" -> gameView.showHumanSkills()
-            // 캐릭터 변경: 네 명의 인간 중 하나를 고른다
-            "character" -> gameView.showCharacterSelect()
+            // 뽑기 (나오면 로비로)
+            "gacha" -> gameView.showGacha(fromLobby = true)
             // 고양이 관리 = 내 팀 냥이를 돌보는 곳 (도감은 그 화면에서 따로 들어간다)
             "cat_manage" -> gameView.showTeam()
             // 쌓아온 점수를 루비로 바꾸는 곳

@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.entity
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.Canvas
 import android.graphics.RectF
 import com.jamcat.nayngapo.engine.CarCatalog
@@ -176,7 +178,7 @@ class CarRide(val car: CarCatalog.Car) {
         btn.set(BTN_LEFT, BTN_CY - 44f, BTN_LEFT + BTN_W, BTN_CY + 44f)
         canvas.drawRoundRect(btn, 44f, 44f, btnPaint)
         canvas.drawRoundRect(btn, 44f, 44f, btnInk)
-        canvas.drawText(if (riding) "🚗 내리기" else "🚗 자동차 타기", btn.centerX(), btn.centerY() + 12f, btnText)
+        canvas.drawTr(if (riding) "🚗 내리기" else "🚗 자동차 타기", btn.centerX(), btn.centerY() + 12f, btnText)
     }
 
     /** 버튼을 눌렀으면 내리거나 탄다 — 버튼으로 탈 때는 어디서든 차가 인간에게 온다 */

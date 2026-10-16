@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.CatTeam
@@ -249,27 +251,27 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
         enterRect.setEmpty()
         nearSpot?.let { s ->
             val bx = s.x - cameraX
-            val bw = bubbleText.measureText(s.label) + 60f
+            val bw = bubbleText.measureTr(s.label) + 60f
             val by = gy - 360f + sin(timer * 4f) * 6f
             enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
             canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
             canvas.drawRoundRect(enterRect, 38f, 38f, ink)
-            canvas.drawText(s.label, bx, enterRect.centerY() + 15f, bubbleText)
+            canvas.drawTr(s.label, bx, enterRect.centerY() + 15f, bubbleText)
         }
 
         // 위 가운데: 어느 층인지
         val info = if (floor == 0) "집 · 1층" else "집 · 위층 — 냥이 ${residents.size}마리 (출전 중인 냥이는 따라다녀요)"
-        val iw = hudText.measureText(info) + 60f
+        val iw = hudText.measureTr(info) + 60f
         rect.set(w / 2f - iw / 2f, 24f, w / 2f + iw / 2f, 92f)
         canvas.drawRoundRect(rect, 34f, 34f, hudBg)
-        canvas.drawText(info, w / 2f, 72f, hudText)
+        canvas.drawTr(info, w / 2f, 72f, hudText)
 
         touchControls.draw(canvas, w.toInt(), h.toInt())
         // 왼쪽 위: 나가기 (상점 마을 집 앞으로)
         canvas.drawCircle(EXIT_BTN_X, MENU_BTN_Y, MENU_BTN_R, btnPaint)
         canvas.drawLine(EXIT_BTN_X - 14f, MENU_BTN_Y - 14f, EXIT_BTN_X + 14f, MENU_BTN_Y + 14f, btnIcon)
         canvas.drawLine(EXIT_BTN_X + 14f, MENU_BTN_Y - 14f, EXIT_BTN_X - 14f, MENU_BTN_Y + 14f, btnIcon)
-        canvas.drawText("나가기", EXIT_BTN_X, MENU_BTN_Y + MENU_BTN_R + 30f, btnLabel)
+        canvas.drawTr("나가기", EXIT_BTN_X, MENU_BTN_Y + MENU_BTN_R + 30f, btnLabel)
     }
 
     private fun drawResident(canvas: Canvas, r: Resident, gy: Float) {
@@ -284,16 +286,16 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
         canvas.drawBitmap(bmp, null, rect, null)
         // 머리 위 이름
         val name = r.cat.name
-        val nw = namePaint.measureText(name) + 28f
+        val nw = namePaint.measureTr(name) + 28f
         val ny = gy - ch - 26f
         rect.set(r.x - nw / 2f, ny - 34f, r.x + nw / 2f, ny + 8f)
         canvas.drawRoundRect(rect, 18f, 18f, nameBg)
-        canvas.drawText(name, r.x, ny - 2f, namePaint)
+        canvas.drawTr(name, r.x, ny - 2f, namePaint)
         // 떠드는 새끼 냥이: 이름 위 말풍선 (나타날 때 살짝 튄다)
         if (r === chatter && chatTimer > 0.3f) {
             val pop = 1f + 0.12f * ((chatTimer - (CHAT_TIME - 0.25f)) / 0.25f).coerceIn(0f, 1f)
             chatPaint.textSize = 30f * pop
-            val bw = chatPaint.measureText(chatText) + 36f
+            val bw = chatPaint.measureTr(chatText) + 36f
             val by = ny - 48f
             rect.set(r.x - bw / 2f, by - 50f * pop, r.x + bw / 2f, by)
             canvas.drawRoundRect(rect, 22f, 22f, bubblePaint)
@@ -301,7 +303,7 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
             path.reset()
             path.moveTo(r.x - 12f, by - 2f); path.lineTo(r.x + 2f, by + 18f); path.lineTo(r.x + 14f, by - 2f); path.close()
             canvas.drawPath(path, bubblePaint)
-            canvas.drawText(chatText, r.x, by - 25f * pop + 11f, chatPaint)
+            canvas.drawTr(chatText, r.x, by - 25f * pop + 11f, chatPaint)
         }
     }
     private var chatter: Resident? = null

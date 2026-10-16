@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.Constants
@@ -183,26 +185,26 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 rect.set(w * 0.16f, h * 0.30f, w * 0.84f, h * 0.58f)
                 canvas.drawRoundRect(rect, 40f, 40f, warnBox)
                 warnBig.textSize = h * 0.11f
-                canvas.drawText("⚠ 경고 ⚠", w / 2f, rect.top + rect.height() * 0.45f, warnBig)
+                canvas.drawTr("⚠ 경고 ⚠", w / 2f, rect.top + rect.height() * 0.45f, warnBig)
                 warnBig.textSize = h * 0.055f
-                canvas.drawText("냥이 군단의 기습! 상점 마을을 지켜라!", w / 2f, rect.top + rect.height() * 0.80f, warnBig)
+                canvas.drawTr("냥이 군단의 기습! 상점 마을을 지켜라!", w / 2f, rect.top + rect.height() * 0.80f, warnBig)
             }
             return
         }
         if (raid) {
             val t = "⚠ 기습! 냥이 ${raiders.count { !it.isDead }}/$RAID_CATS · 남은 시간 ${kotlin.math.ceil(raidTime.coerceAtLeast(0f)).toInt()}초 · ♥ ${player.hp.coerceAtLeast(0)}"
-            val tw = raidText.measureText(t) + 60f
+            val tw = raidText.measureTr(t) + 60f
             rect.set(w / 2f - tw / 2f, 100f, w / 2f + tw / 2f, 170f)
             canvas.drawRoundRect(rect, 34f, 34f, raidBanner)
-            canvas.drawText(t, w / 2f, rect.centerY() + 15f, raidText)
+            canvas.drawTr(t, w / 2f, rect.centerY() + 15f, raidText)
         }
         raidResult?.let { r ->
             raidText.textSize = 54f
-            val tw = raidText.measureText(r) + 80f
+            val tw = raidText.measureTr(r) + 80f
             rect.set(w / 2f - tw / 2f, h * 0.36f, w / 2f + tw / 2f, h * 0.36f + 100f)
             canvas.drawRoundRect(rect, 40f, 40f, if (raidLost) raidBanner else bubblePaint)
             raidText.color = if (raidLost) Color.WHITE else Color.rgb(40, 36, 32)
-            canvas.drawText(r, w / 2f, rect.centerY() + 19f, raidText)
+            canvas.drawTr(r, w / 2f, rect.centerY() + 19f, raidText)
             raidText.color = Color.WHITE; raidText.textSize = 42f
         }
     }
@@ -229,10 +231,10 @@ class ShopScreen(private val gameView: GameView) : Screen {
         canvas.drawRoundRect(panelRect, 28f, 28f, panelPaint)
         canvas.drawRoundRect(panelRect, 28f, 28f, ink)
         panelTitle.textSize = h * 0.05f
-        canvas.drawText("고양이 기술 — ${student.name}에게 가르치기", panelRect.centerX(), panelRect.top + h * 0.075f, panelTitle)
+        canvas.drawTr("고양이 기술 — ${student.name}에게 가르치기", panelRect.centerX(), panelRect.top + h * 0.075f, panelTitle)
         rowDesc.textSize = h * 0.028f
         rowDesc.textAlign = Paint.Align.CENTER
-        canvas.drawText("보유 루비 ${GameProgress.rubies} · 데려온 냥이 1마리만 배워요", panelRect.centerX(), panelRect.top + h * 0.12f, rowDesc)
+        canvas.drawTr("보유 루비 ${GameProgress.rubies} · 데려온 냥이 1마리만 배워요", panelRect.centerX(), panelRect.top + h * 0.12f, rowDesc)
         rowDesc.textAlign = Paint.Align.LEFT
         // 닫기
         closeRect.set(panelRect.right - h * 0.09f, panelRect.top + h * 0.02f, panelRect.right - h * 0.02f, panelRect.top + h * 0.09f)
@@ -255,21 +257,21 @@ class ShopScreen(private val gameView: GameView) : Screen {
             }
             val tx = r.left + r.height() + 14f
             rowName.textSize = r.height() * 0.30f
-            canvas.drawText(sk.name, tx, r.top + r.height() * 0.42f, rowName)
+            canvas.drawTr(sk.name, tx, r.top + r.height() * 0.42f, rowName)
             rowDesc.textSize = r.height() * 0.20f
-            canvas.drawText(sk.desc, tx, r.top + r.height() * 0.78f, rowDesc)
+            canvas.drawTr(sk.desc, tx, r.top + r.height() * 0.78f, rowDesc)
             // 오른쪽: 가격 + 가르치기 버튼
             val b = skillBtns[i]
             b.set(r.right - w * 0.15f, r.top + r.height() * 0.18f, r.right - 14f, r.bottom - r.height() * 0.18f)
             canvas.drawRoundRect(b, 20f, 20f, if (has) learnedPaint else bubblePaint)
             canvas.drawRoundRect(b, 20f, 20f, ink)
             bubbleText.textSize = b.height() * 0.42f
-            if (has) canvas.drawText("배움", b.centerX(), b.centerY() + b.height() * 0.15f, bubbleText)
+            if (has) canvas.drawTr("배움", b.centerX(), b.centerY() + b.height() * 0.15f, bubbleText)
             else {
                 val label = "${sk.price} 가르치기"
-                val lw = bubbleText.measureText(label)
+                val lw = bubbleText.measureTr(label)
                 drawRubyIcon(canvas, b.centerX() - lw / 2f - b.height() * 0.18f, b.centerY(), b.height() * 0.17f, gemPaint)
-                canvas.drawText(label, b.centerX() + b.height() * 0.1f, b.centerY() + b.height() * 0.15f, bubbleText)
+                canvas.drawTr(label, b.centerX() + b.height() * 0.1f, b.centerY() + b.height() * 0.15f, bubbleText)
             }
         }
     }
@@ -290,7 +292,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
             ChooseFor.TRAINING -> "누가 체력 훈련을 할까요? (1마리)"
             ChooseFor.SKILL -> "누구에게 기술을 가르칠까요? (1마리)"
         }
-        canvas.drawText(title, panelRect.centerX(), panelRect.top + h * 0.08f, panelTitle)
+        canvas.drawTr(title, panelRect.centerX(), panelRect.top + h * 0.08f, panelTitle)
         val n = list.size.coerceAtMost(3)
         val cw = (panelRect.width() - w * 0.04f) / n
         for (k in 0 until n) {
@@ -305,7 +307,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 canvas.drawBitmap(bmp, null, rect, null)
             }
             rowName.textSize = h * 0.04f; rowName.textAlign = Paint.Align.CENTER
-            canvas.drawText(c.name, r.centerX(), r.bottom - r.height() * 0.12f, rowName)
+            canvas.drawTr(c.name, r.centerX(), r.bottom - r.height() * 0.12f, rowName)
             rowName.textAlign = Paint.Align.LEFT
         }
     }
@@ -342,7 +344,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         panelRect.set(w * 0.24f, h * 0.10f, w * 0.76f, h * 0.92f)
         canvas.drawRoundRect(panelRect, 28f, 28f, panelPaint); canvas.drawRoundRect(panelRect, 28f, 28f, ink)
         panelTitle.textSize = h * 0.05f
-        canvas.drawText("동물 병원 — ${c.name}", panelRect.centerX(), panelRect.top + h * 0.08f, panelTitle)
+        canvas.drawTr("동물 병원 — ${c.name}", panelRect.centerX(), panelRect.top + h * 0.08f, panelTitle)
         closeRect.set(panelRect.right - h * 0.09f, panelRect.top + h * 0.02f, panelRect.right - h * 0.02f, panelRect.top + h * 0.09f)
         canvas.drawRoundRect(closeRect, 16f, 16f, rowPaint); canvas.drawRoundRect(closeRect, 16f, 16f, ink)
         canvas.drawLine(closeRect.left + 14f, closeRect.top + 14f, closeRect.right - 14f, closeRect.bottom - 14f, ink)
@@ -355,7 +357,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         // 수술 두 가지: 중성화(빨라진다, 1번) · HP 수술(체력 +5, 최대 5번) — 각 57루비
         rowDesc.textAlign = Paint.Align.CENTER
         rowDesc.textSize = h * 0.03f
-        canvas.drawText("보유 루비 ${GameProgress.rubies}", panelRect.centerX(), panelRect.top + h * 0.45f, rowDesc)
+        canvas.drawTr("보유 루비 ${GameProgress.rubies}", panelRect.centerX(), panelRect.top + h * 0.45f, rowDesc)
         val rows = listOf(
             Triple("중성화 수술", "빨라진다 (+${(T.SURGERY_SPEED * 100).toInt()}%)", c.surgeries >= T.SURGERY_MAX),
             Triple("HP 수술", "피가 ${T.HP_SURGERY_HP} 늘어난다 (${c.hpSurgeries}/${T.HP_SURGERY_MAX})", c.hpSurgeries >= T.HP_SURGERY_MAX),
@@ -366,19 +368,19 @@ class ShopScreen(private val gameView: GameView) : Screen {
             r.set(panelRect.left + w * 0.03f, panelRect.top + h * (0.47f + k * 0.11f), panelRect.right - w * 0.03f, panelRect.top + h * (0.565f + k * 0.11f))
             canvas.drawRoundRect(r, 18f, 18f, if (row.third) learnedPaint else rowPaint); canvas.drawRoundRect(r, 18f, 18f, ink)
             rowName.textSize = r.height() * 0.32f
-            canvas.drawText(row.first, r.left + 20f, r.top + r.height() * 0.42f, rowName)
+            canvas.drawTr(row.first, r.left + 20f, r.top + r.height() * 0.42f, rowName)
             rowDesc.textAlign = Paint.Align.LEFT; rowDesc.textSize = r.height() * 0.24f
-            canvas.drawText(row.second, r.left + 20f, r.top + r.height() * 0.8f, rowDesc)
+            canvas.drawTr(row.second, r.left + 20f, r.top + r.height() * 0.8f, rowDesc)
             val btn = surgeryBtns[k]
             btn.set(r.right - w * 0.15f, r.top + r.height() * 0.15f, r.right - 12f, r.bottom - r.height() * 0.15f)
             canvas.drawRoundRect(btn, 20f, 20f, if (row.third) learnedPaint else bubblePaint); canvas.drawRoundRect(btn, 20f, 20f, ink)
             bubbleText.textSize = btn.height() * 0.4f
-            if (row.third) canvas.drawText("다 했어요", btn.centerX(), btn.centerY() + btn.height() * 0.14f, bubbleText)
+            if (row.third) canvas.drawTr("다 했어요", btn.centerX(), btn.centerY() + btn.height() * 0.14f, bubbleText)
             else {
                 val label = "${T.SURGERY_PRICE} 수술"
-                val lw = bubbleText.measureText(label)
+                val lw = bubbleText.measureTr(label)
                 drawRubyIcon(canvas, btn.centerX() - lw / 2f - btn.height() * 0.18f, btn.centerY(), btn.height() * 0.16f, gemPaint)
-                canvas.drawText(label, btn.centerX() + btn.height() * 0.1f, btn.centerY() + btn.height() * 0.14f, bubbleText)
+                canvas.drawTr(label, btn.centerX() + btn.height() * 0.1f, btn.centerY() + btn.height() * 0.14f, bubbleText)
             }
         }
         rowDesc.textAlign = Paint.Align.LEFT
@@ -640,7 +642,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
             carShopRect.set(carShopX - tw / 2f, groundY + 20f - th, carShopX + tw / 2f, groundY + 20f)
             canvas.drawBitmap(bmp, null, carShopRect, null)
             signText.textSize = 46f
-            canvas.drawText("자동차 매장", carShopX, carShopRect.top + th * 0.12f, signText)
+            canvas.drawTr("자동차 매장", carShopX, carShopRect.top + th * 0.12f, signText)
         }
         drawFishingSpot(canvas, fishingX, groundY)
         SpriteManager.fishShop?.let { bmp ->
@@ -648,7 +650,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
             rect.set(fishShopX - tw / 2f, groundY + 16f - th, fishShopX + tw / 2f, groundY + 16f)
             canvas.drawBitmap(bmp, null, rect, null)
             signText.textSize = 36f
-            canvas.drawText("낚시 상점", fishShopX, rect.top - 10f, signText)
+            canvas.drawTr("낚시 상점", fishShopX, rect.top - 10f, signText)
         }
         for ((k, car) in com.jamcat.nayngapo.engine.CarCatalog.cars.withIndex()) {
             val bmp = SpriteManager.cars[car.id] ?: continue
@@ -685,21 +687,21 @@ class ShopScreen(private val gameView: GameView) : Screen {
             if (nearTent < openCount) {
                 val label = "▼ ${tentName(nearTent)} 들어가기"
                 bubbleText.textSize = 44f
-                val bw = bubbleText.measureText(label) + 60f
+                val bw = bubbleText.measureTr(label) + 60f
                 val bob = sin(timer * 4f) * 6f
                 enterRect.set(bx - bw / 2f, by - 46f + bob, bx + bw / 2f, by + 30f + bob)
                 canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
                 canvas.drawRoundRect(enterRect, 38f, 38f, ink)
-                canvas.drawText(label, bx, enterRect.centerY() + 15f, bubbleText)
+                canvas.drawTr(label, bx, enterRect.centerY() + 15f, bubbleText)
             } else {
                 val need = nearTent + 1 - GameProgress.humansRescued
                 val label = "잠겨 있어요 · 인간을 ${need}명 더 구하면 열려요"
                 bubbleText.textSize = 36f
-                val bw = bubbleText.measureText(label) + 50f
+                val bw = bubbleText.measureTr(label) + 50f
                 rect.set(bx - bw / 2f, by - 40f, bx + bw / 2f, by + 24f)
                 canvas.drawRoundRect(rect, 30f, 30f, lockedBubble)
                 canvas.drawRoundRect(rect, 30f, 30f, ink)
-                canvas.drawText(label, bx, rect.centerY() + 12f, bubbleText)
+                canvas.drawTr(label, bx, rect.centerY() + 12f, bubbleText)
             }
         }
 
@@ -708,12 +710,12 @@ class ShopScreen(private val gameView: GameView) : Screen {
             val bx = towerX - cameraX
             val label = "▼ 집 들어가기 (캣타워)"
             bubbleText.textSize = 44f
-            val bw = bubbleText.measureText(label) + 60f
+            val bw = bubbleText.measureTr(label) + 60f
             val by = groundY - HOUSE_H - 50f + sin(timer * 4f) * 6f
             enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
             canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
             canvas.drawRoundRect(enterRect, 38f, 38f, ink)
-            canvas.drawText(label, bx, enterRect.centerY() + 15f, bubbleText)
+            canvas.drawTr(label, bx, enterRect.centerY() + 15f, bubbleText)
         }
 
         // 낚시 상점 앞: 말풍선
@@ -721,12 +723,12 @@ class ShopScreen(private val gameView: GameView) : Screen {
             val bx = fishShopX - cameraX
             val label = "▼ 낚시 상점 들어가기"
             bubbleText.textSize = 44f
-            val bw = bubbleText.measureText(label) + 60f
+            val bw = bubbleText.measureTr(label) + 60f
             val by = groundY - 470f + sin(timer * 4f) * 6f
             enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
             canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
             canvas.drawRoundRect(enterRect, 38f, 38f, ink)
-            canvas.drawText(label, bx, enterRect.centerY() + 15f, bubbleText)
+            canvas.drawTr(label, bx, enterRect.centerY() + 15f, bubbleText)
         }
 
         // 낚시터 앞: 말풍선
@@ -734,12 +736,12 @@ class ShopScreen(private val gameView: GameView) : Screen {
             val bx = fishingX - cameraX
             val label = "▼ 낚시하기"
             bubbleText.textSize = 44f
-            val bw = bubbleText.measureText(label) + 60f
+            val bw = bubbleText.measureTr(label) + 60f
             val by = groundY - 360f + sin(timer * 4f) * 6f
             enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
             canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
             canvas.drawRoundRect(enterRect, 38f, 38f, ink)
-            canvas.drawText(label, bx, enterRect.centerY() + 15f, bubbleText)
+            canvas.drawTr(label, bx, enterRect.centerY() + 15f, bubbleText)
         }
 
         // 자동차 매장 앞: 말풍선
@@ -747,12 +749,12 @@ class ShopScreen(private val gameView: GameView) : Screen {
             val bx = carShopX - cameraX
             val label = "▼ 자동차 매장 들어가기"
             bubbleText.textSize = 44f
-            val bw = bubbleText.measureText(label) + 60f
+            val bw = bubbleText.measureTr(label) + 60f
             val by = groundY - CAR_SHOP_H - 40f + sin(timer * 4f) * 6f
             enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
             canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
             canvas.drawRoundRect(enterRect, 38f, 38f, ink)
-            canvas.drawText(label, bx, enterRect.centerY() + 15f, bubbleText)
+            canvas.drawTr(label, bx, enterRect.centerY() + 15f, bubbleText)
         }
 
         // 스테이지 깨기 앞: 말풍선
@@ -760,12 +762,12 @@ class ShopScreen(private val gameView: GameView) : Screen {
             val bx = stageGateX - cameraX
             val label = "▼ 스테이지 깨기"
             bubbleText.textSize = 44f
-            val bw = bubbleText.measureText(label) + 60f
+            val bw = bubbleText.measureTr(label) + 60f
             val by = groundY - SIGN_TOP - 70f + sin(timer * 4f) * 6f
             enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
             canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
             canvas.drawRoundRect(enterRect, 38f, 38f, ink)
-            canvas.drawText(label, bx, enterRect.centerY() + 15f, bubbleText)
+            canvas.drawTr(label, bx, enterRect.centerY() + 15f, bubbleText)
         }
 
         // 뽑기 기계 앞: 말풍선
@@ -773,12 +775,12 @@ class ShopScreen(private val gameView: GameView) : Screen {
             val bx = GACHA_X - cameraX
             val label = "▼ 뽑기 하기 (루비 ${GachaScreen.PRICE})"
             bubbleText.textSize = 44f
-            val bw = bubbleText.measureText(label) + 60f
+            val bw = bubbleText.measureTr(label) + 60f
             val by = groundY - 300f + sin(timer * 4f) * 6f
             enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
             canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
             canvas.drawRoundRect(enterRect, 38f, 38f, ink)
-            canvas.drawText(label, bx, enterRect.centerY() + 15f, bubbleText)
+            canvas.drawTr(label, bx, enterRect.centerY() + 15f, bubbleText)
         }
 
         // 돈쟁이 아저씨 앞: '루비 환전' 말풍선
@@ -786,12 +788,12 @@ class ShopScreen(private val gameView: GameView) : Screen {
             val bx = MONEY_X - cameraX
             val label = "▼ 루비 환전"
             bubbleText.textSize = 44f
-            val bw = bubbleText.measureText(label) + 60f
+            val bw = bubbleText.measureTr(label) + 60f
             val by = groundY - 330f + sin(timer * 4f) * 6f
             enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
             canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
             canvas.drawRoundRect(enterRect, 38f, 38f, ink)
-            canvas.drawText(label, bx, enterRect.centerY() + 15f, bubbleText)
+            canvas.drawTr(label, bx, enterRect.centerY() + 15f, bubbleText)
         }
 
         // 밤이면 하늘이 어두워지고 '밤' 글자 (2026-10-17)
@@ -802,10 +804,10 @@ class ShopScreen(private val gameView: GameView) : Screen {
         hudText.textSize = 40f
         val info = if (openCount == 0) "인간을 구하면 가게 문이 열려요!"
             else "구한 인간 ${GameProgress.humansRescued}명 · 열린 가게 $openCount / $TENT_COUNT"
-        val iw = hudText.measureText(info) + 60f
+        val iw = hudText.measureTr(info) + 60f
         rect.set(w / 2f - iw / 2f, 24f, w / 2f + iw / 2f, 92f)
         canvas.drawRoundRect(rect, 34f, 34f, hudBg)
-        canvas.drawText(info, w / 2f, 72f, hudText)
+        canvas.drawTr(info, w / 2f, 72f, hudText)
 
         // 스테이지와 같은 패드·버튼
         touchControls.draw(canvas, w.toInt(), h.toInt())
@@ -819,16 +821,16 @@ class ShopScreen(private val gameView: GameView) : Screen {
         if (carRide == null && robotRide == null && abandonedAt > 0) {
             hudText.textSize = 32f
             val t = "🚗 차는 ${abandonedAt}스테이지에 두고 왔어요"
-            val tw = hudText.measureText(t) + 40f
+            val tw = hudText.measureTr(t) + 40f
             rect.set(300f, 100f, 300f + tw, 176f)   // 위 가운데 안내판(24~92) 아래
             canvas.drawRoundRect(rect, 38f, 38f, hudBg)
-            canvas.drawText(t, rect.centerX(), rect.centerY() + 11f, hudText)
+            canvas.drawTr(t, rect.centerX(), rect.centerY() + 11f, hudText)
         }
 
         if (paused) {
             canvas.drawRect(0f, 0f, w, h, pauseVeil)
-            canvas.drawText("PAUSED", w / 2f, h / 2f - 6f, pauseText)
-            canvas.drawText("멈추기 버튼을 다시 누르면 이어서 진행합니다", w / 2f, h / 2f + 44f, pauseHint)
+            canvas.drawTr("PAUSED", w / 2f, h / 2f - 6f, pauseText)
+            canvas.drawTr("멈추기 버튼을 다시 누르면 이어서 진행합니다", w / 2f, h / 2f + 44f, pauseHint)
             drawMenuButtons(canvas)
             return
         }
@@ -837,11 +839,11 @@ class ShopScreen(private val gameView: GameView) : Screen {
         drawChooser(canvas, w, h)
         if (noticeTimer > 0f) {
             noticeTextPaint.textSize = 42f
-            val nw = noticeTextPaint.measureText(noticeText) + 70f
+            val nw = noticeTextPaint.measureTr(noticeText) + 70f
             rect.set(w / 2f - nw / 2f, h * 0.30f, w / 2f + nw / 2f, h * 0.30f + 80f)
             canvas.drawRoundRect(rect, 24f, 24f, noticeBg)
             canvas.drawRoundRect(rect, 24f, 24f, ink)
-            canvas.drawText(noticeText, w / 2f, rect.centerY() + 15f, noticeTextPaint)
+            canvas.drawTr(noticeText, w / 2f, rect.centerY() + 15f, noticeTextPaint)
         }
     }
 
@@ -874,12 +876,12 @@ class ShopScreen(private val gameView: GameView) : Screen {
             canvas.drawRect(PAUSE_BTN_X - 13f, MENU_BTN_Y - 16f, PAUSE_BTN_X - 5f, MENU_BTN_Y + 16f, menuIconPaint)
             canvas.drawRect(PAUSE_BTN_X + 5f, MENU_BTN_Y - 16f, PAUSE_BTN_X + 13f, MENU_BTN_Y + 16f, menuIconPaint)
         }
-        canvas.drawText("멈추기", PAUSE_BTN_X, MENU_BTN_Y + MENU_BTN_R + 30f, menuLabelPaint)
+        canvas.drawTr("멈추기", PAUSE_BTN_X, MENU_BTN_Y + MENU_BTN_R + 30f, menuLabelPaint)
         canvas.drawCircle(EXIT_BTN_X, MENU_BTN_Y, MENU_BTN_R, exitBtnPaint)
         canvas.drawCircle(EXIT_BTN_X, MENU_BTN_Y, MENU_BTN_R, menuBtnEdgePaint)
         canvas.drawLine(EXIT_BTN_X - 14f, MENU_BTN_Y - 14f, EXIT_BTN_X + 14f, MENU_BTN_Y + 14f, menuIconStrokePaint)
         canvas.drawLine(EXIT_BTN_X + 14f, MENU_BTN_Y - 14f, EXIT_BTN_X - 14f, MENU_BTN_Y + 14f, menuIconStrokePaint)
-        canvas.drawText("나가기", EXIT_BTN_X, MENU_BTN_Y + MENU_BTN_R + 30f, menuLabelPaint)
+        canvas.drawTr("나가기", EXIT_BTN_X, MENU_BTN_Y + MENU_BTN_R + 30f, menuLabelPaint)
     }
 
     private fun tentName(i: Int) = TENT_NAMES[i] ?: "${i + 1}번 가게"
@@ -906,7 +908,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         val text = ads[phase.toInt() % ads.size]
         val pop = 1f + 0.08f * (1f - ((phase % 1f) * 6f).coerceAtMost(1f))
         adText.textSize = 30f * pop
-        val bw = adText.measureText(text) + 36f
+        val bw = adText.measureTr(text) + 36f
         val by = groundY - sh - 30f
         rect.set(x - bw / 2f, by - 50f * pop, x + bw / 2f, by)
         canvas.drawRoundRect(rect, 22f, 22f, adBubble)
@@ -914,7 +916,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         path.reset()
         path.moveTo(x - 12f, by - 2f); path.lineTo(x + 4f, by + 20f); path.lineTo(x + 14f, by - 2f); path.close()
         canvas.drawPath(path, adBubble)
-        canvas.drawText(text, x, by - 25f * pop + 11f, adText)
+        canvas.drawTr(text, x, by - 25f * pop + 11f, adText)
     }
 
     /**
@@ -965,7 +967,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         val text = ads[phase.toInt() % ads.size]
         val pop = 1f + 0.08f * (1f - ((phase % 1f) * 6f).coerceAtMost(1f))
         adText.textSize = 30f * pop
-        val bw = adText.measureText(text) + 36f
+        val bw = adText.measureTr(text) + 36f
         val by = groundY - sh - 30f
         rect.set(x - bw / 2f, by - 50f * pop, x + bw / 2f, by)
         canvas.drawRoundRect(rect, 22f, 22f, adBubble)
@@ -973,7 +975,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         path.reset()
         path.moveTo(x - 12f, by - 2f); path.lineTo(x + 4f, by + 20f); path.lineTo(x + 14f, by - 2f); path.close()
         canvas.drawPath(path, adBubble)
-        canvas.drawText(text, x, by - 25f * pop + 11f, adText)
+        canvas.drawTr(text, x, by - 25f * pop + 11f, adText)
     }
 
     // ===== 상점가 끝 '스테이지 깨기' (대표님 2026-10-09) =====
@@ -1005,11 +1007,11 @@ class ShopScreen(private val gameView: GameView) : Screen {
         // 팻말
         signText.textSize = 38f
         val label = "낚시터"
-        val lw = signText.measureText(label) + 40f
+        val lw = signText.measureTr(label) + 40f
         canvas.drawRect(cx + 200f, groundY - 200f, cx + 214f, groundY - 30f, pierPaint)
         rect.set(cx + 207f - lw / 2f, groundY - 260f, cx + 207f + lw / 2f, groundY - 196f)
         canvas.drawRoundRect(rect, 10f, 10f, signPaint); canvas.drawRoundRect(rect, 10f, 10f, ink)
-        canvas.drawText(label, rect.centerX(), rect.centerY() + 13f, signText)
+        canvas.drawTr(label, rect.centerX(), rect.centerY() + 13f, signText)
     }
     private val ladderPaintThin = Paint().apply { color = Color.rgb(120, 80, 40); strokeWidth = 7f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
     private val fishLine = Paint().apply { color = Color.WHITE; strokeWidth = 2.5f; isAntiAlias = true }
@@ -1030,16 +1032,16 @@ class ShopScreen(private val gameView: GameView) : Screen {
         for (k in 1..2) canvas.drawLine(rect.left + 10f, top + SIGN_H * k / 3f, rect.right - 10f, top + SIGN_H * k / 3f, boardDark)
         canvas.drawRoundRect(rect, 18f, 18f, ink)
         boardText.textSize = 64f
-        canvas.drawText("스테이지 깨기", cx, top + SIGN_H * 0.42f, boardText)
+        canvas.drawTr("스테이지 깨기", cx, top + SIGN_H * 0.42f, boardText)
         // 스테이지 돌 세 개 + 화살표
         for (k in -1..1) {
             val sx = cx + k * 70f - 30f; val sy = top + SIGN_H * 0.72f
             canvas.drawCircle(sx, sy + 4f, 24f, stoneDark); canvas.drawCircle(sx, sy, 24f, stonePaint); canvas.drawCircle(sx, sy, 24f, ink)
             boardText.textSize = 26f
-            canvas.drawText("${k + 2}", sx, sy + 9f, boardText)
+            canvas.drawTr("${k + 2}", sx, sy + 9f, boardText)
         }
         boardText.textSize = 54f
-        canvas.drawText("▶", cx + 150f, top + SIGN_H * 0.72f + 18f, boardText)
+        canvas.drawTr("▶", cx + 150f, top + SIGN_H * 0.72f + 18f, boardText)
     }
 
     /** 오른쪽 맨 위 설정 버튼 (톱니) */
@@ -1054,7 +1056,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         }
         canvas.drawCircle(cx, cy, 15f, menuIconPaint)
         canvas.drawCircle(cx, cy, 6f, menuBtnPaint)
-        canvas.drawText("설정", cx, cy + MENU_BTN_R + 30f, menuLabelPaint)
+        canvas.drawTr("설정", cx, cy + MENU_BTN_R + 30f, menuLabelPaint)
     }
     private val gearPaint = Paint().apply { color = Color.argb(230, 238, 242, 250); strokeWidth = 8f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
 
@@ -1103,11 +1105,11 @@ class ShopScreen(private val gameView: GameView) : Screen {
             }
             val inner = if (TENT_NAMES[i] != null) "어서 오세요" else "준비 중"
             signText.textSize = 30f
-            val sw = signText.measureText(inner) + 30f
+            val sw = signText.measureTr(inner) + 30f
             rect.set(cx - sw / 2f, baseY - th * 0.22f, cx + sw / 2f, baseY - th * 0.22f + 50f)
             canvas.drawRoundRect(rect, 10f, 10f, signPaint)
             canvas.drawRoundRect(rect, 10f, 10f, ink)
-            canvas.drawText(inner, cx, rect.centerY() + 11f, signText)
+            canvas.drawTr(inner, cx, rect.centerY() + 11f, signText)
         } else {
             fill.color = c1
             canvas.drawPath(path, fill)
@@ -1157,11 +1159,11 @@ class ShopScreen(private val gameView: GameView) : Screen {
         // 이름 팻말 (처마 위)
         signText.textSize = 34f
         val label = name ?: tentName(i)
-        val lw = signText.measureText(label) + 36f
+        val lw = signText.measureTr(label) + 36f
         rect.set(cx - lw / 2f, eaveY - th * 0.13f - 54f, cx + lw / 2f, eaveY - th * 0.13f)
         canvas.drawRoundRect(rect, 10f, 10f, signPaint)
         canvas.drawRoundRect(rect, 10f, 10f, ink)
-        canvas.drawText(label, cx, rect.centerY() + 12f, signText)
+        canvas.drawTr(label, cx, rect.centerY() + 12f, signText)
     }
 
     private fun enterTent(i: Int) {

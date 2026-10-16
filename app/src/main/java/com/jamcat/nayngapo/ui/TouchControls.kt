@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.ui
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.Constants
@@ -402,7 +404,7 @@ class TouchControls {
             // 고양이 기술은 출전한 냥이가 없으면 흐리게 두고 이유를 적는다 (눌러도 기술은 나가지 않는다)
             if (requiresCaster && !skillsHaveCaster) {
                 canvas.drawCircle(cx, cy, SKILL_RADIUS, cooldownDimPaint)
-                canvas.drawText("냥이 없음", cx, cy + SKILL_RADIUS + 26f, noCasterPaint)
+                canvas.drawTr("냥이 없음", cx, cy + SKILL_RADIUS + 26f, noCasterPaint)
                 continue
             }
 
@@ -416,7 +418,7 @@ class TouchControls {
                 cx + SKILL_RADIUS - 8f, cy + SKILL_RADIUS - 8f
             )
             canvas.drawArc(cooldownArcRect, -90f, 360f * filled, false, cooldownArcPaint)
-            canvas.drawText(
+            canvas.drawTr(
                 coolLabel(cool), cx, cy + 20f, cooldownTextPaint
             )
         }
@@ -451,7 +453,7 @@ class TouchControls {
         canvas.drawPath(earPath, orderCatPaint)
 
         // 지시 이름
-        canvas.drawText(
+        canvas.drawTr(
             orderLabel,
             (orderRect.left + orderRect.height() * 1.15f + orderRect.right) / 2f,
             orderRect.centerY() + 12f, orderTextPaint
@@ -503,7 +505,7 @@ class TouchControls {
         canvas.drawArc(cooldownArcRect, -90f, 360f * filled, false, cooldownArcPaint)
 
         // 남은 초(올림)
-        canvas.drawText(
+        canvas.drawTr(
             kotlin.math.ceil(cooldown).toInt().toString(), cx, cy + 24f, cooldownTextPaint
         )
     }
@@ -567,7 +569,7 @@ class TouchControls {
                 canvas.drawLine(cx + 12f, cy + 6f, cx + 22f, cy + 20f, iconPaint)
                 canvas.drawLine(cx - 6f, cy + 16f, cx, cy + 28f, iconPaint); canvas.drawLine(cx + 6f, cy + 16f, cx, cy + 28f, iconPaint)
             }
-            else -> canvas.drawText(kind, cx, cy + 14f, btnTextPaint)
+            else -> canvas.drawTr(kind, cx, cy + 14f, btnTextPaint)
         }
     }
 

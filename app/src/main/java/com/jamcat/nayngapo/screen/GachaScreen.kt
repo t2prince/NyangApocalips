@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.GameProgress
@@ -14,7 +16,7 @@ import kotlin.math.sin
  * 루비 10개로 한 번 뽑는다: 기계가 덜컹거리고 손잡이가 돌아가 캡슐이 굴러 나오고, 열리면 상품이 나온다(가방에 들어간다).
  * 값·상품·확률은 Claude 판단 (PRIZES), 기계 그림 GPT(gacha_machine).
  */
-class GachaScreen(private val gameView: GameView) : Screen {
+class GachaScreen(private val gameView: GameView, private val fromLobby: Boolean = false) : Screen {
 
     /** id: 물건 id (루비면 null), rubies: 루비 상품 개수, weight: 뽑힐 몫(합 100) */
     private class Prize(val id: String?, val name: String, val rubies: Int, val weight: Int, val rare: Boolean = false)
@@ -73,10 +75,10 @@ class GachaScreen(private val gameView: GameView) : Screen {
         val h = gameView.screenHeight.toFloat()
         canvas.drawRect(0f, 0f, w, h, bg)
         title.textSize = h * 0.065f
-        canvas.drawText("뽑기 가게", w / 2f, h * 0.10f, title)
+        canvas.drawTr("뽑기 가게", w / 2f, h * 0.10f, title)
         drawRubyIcon(canvas, w * 0.06f, h * 0.09f, h * 0.025f, gemPaint)
         title.textAlign = Paint.Align.LEFT; title.textSize = h * 0.04f
-        canvas.drawText("${GameProgress.rubies}", w * 0.06f + h * 0.04f, h * 0.105f, title)
+        canvas.drawTr("${GameProgress.rubies}", w * 0.06f + h * 0.04f, h * 0.105f, title)
         title.textAlign = Paint.Align.CENTER
 
         // 기계: 돌리는 동안 덜컹덜컹
@@ -105,22 +107,22 @@ class GachaScreen(private val gameView: GameView) : Screen {
         pullRect.set(w * 0.68f - 260f, h * 0.80f, w * 0.68f + 260f, h * 0.80f + 110f)
         canvas.drawRoundRect(pullRect, 55f, 55f, pullPaint); canvas.drawRoundRect(pullRect, 55f, 55f, ink)
         white.textSize = h * 0.045f
-        canvas.drawText(if (phase == Phase.OPEN) "한 번 더! · 루비 $PRICE" else "뽑기! · 루비 $PRICE", pullRect.centerX(), pullRect.centerY() + h * 0.016f, white)
+        canvas.drawTr(if (phase == Phase.OPEN) "한 번 더! · 루비 $PRICE" else "뽑기! · 루비 $PRICE", pullRect.centerX(), pullRect.centerY() + h * 0.016f, white)
         backRect.set(w * 0.04f, h * 0.84f, w * 0.04f + 240f, h * 0.84f + 90f)
         canvas.drawRoundRect(backRect, 45f, 45f, card); canvas.drawRoundRect(backRect, 45f, 45f, ink)
         title.textSize = h * 0.032f
-        canvas.drawText("◀ 나가기", backRect.centerX(), backRect.centerY() + h * 0.012f, title)
+        canvas.drawTr("◀ 나가기", backRect.centerX(), backRect.centerY() + h * 0.012f, title)
         if (phase == Phase.IDLE) {
             title.textSize = h * 0.034f
-            canvas.drawText("무엇이 나올까요?", w * 0.68f, h * 0.48f, title)
+            canvas.drawTr("무엇이 나올까요?", w * 0.68f, h * 0.48f, title)
         }
 
         if (noticeTimer > 0f) {
             title.textSize = 40f
-            val nw = title.measureText(noticeText) + 70f
+            val nw = title.measureTr(noticeText) + 70f
             rect.set(w / 2f - nw / 2f, h * 0.40f, w / 2f + nw / 2f, h * 0.40f + 80f)
             canvas.drawRoundRect(rect, 24f, 24f, card); canvas.drawRoundRect(rect, 24f, 24f, ink)
-            canvas.drawText(noticeText, w / 2f, rect.centerY() + 14f, title)
+            canvas.drawTr(noticeText, w / 2f, rect.centerY() + 14f, title)
         }
     }
 
@@ -149,20 +151,22 @@ class GachaScreen(private val gameView: GameView) : Screen {
             canvas.drawBitmap(icon, null, rect, null)
         } else drawRubyIcon(canvas, cx, cy - h * 0.06f, size * 0.35f, gemPaint)
         title.textSize = h * 0.05f
-        canvas.drawText((if (p.rare) "✨ " else "") + p.name + " 나왔다!", cx, cy + h * 0.25f, title)
+        canvas.drawTr((if (p.rare) "✨ " else "") + p.name + " 나왔다!", cx, cy + h * 0.25f, title)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.actionMasked != MotionEvent.ACTION_UP) return true
-        if (backRect.contains(event.x, event.y)) { gameView.showShop(); return true }
+        if (backRect.contains(event.x, event.y)) { leave(); return true }
         if (pullRect.contains(event.x, event.y) || machineRect.contains(event.x, event.y)) pull()
         return true
     }
 
     private fun notice(t: String) { noticeText = t; noticeTimer = 1.8f }
 
+    private fun leave() { if (fromLobby) gameView.showLobby() else gameView.showShop() }
+
     override fun onBack(): Boolean {
-        gameView.showShop()
+        leave()
         return true
     }
 

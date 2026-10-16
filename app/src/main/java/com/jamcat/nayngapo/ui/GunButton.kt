@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.ui
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -24,7 +26,7 @@ class GunButton {
         rect.set(LEFT, CY - 44f, LEFT + W, CY + 44f)
         canvas.drawRoundRect(rect, 44f, 44f, fill)
         canvas.drawRoundRect(rect, 44f, 44f, ink)
-        canvas.drawText(if (p.gunOut) "🔫 총 넣기" else "🔫 총 꺼내기", rect.centerX(), rect.centerY() + 12f, text)
+        canvas.drawTr(if (p.gunOut) "🔫 총 넣기" else "🔫 총 꺼내기", rect.centerX(), rect.centerY() + 12f, text)
     }
 
     /** 눌렀으면 총을 넣거나 꺼내고 true */

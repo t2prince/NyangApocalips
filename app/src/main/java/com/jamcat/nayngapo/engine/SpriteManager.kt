@@ -324,6 +324,7 @@ object SpriteManager {
 
         lobbyIcons = mapOf(
             "character" to BitmapFactory.decodeResource(res, R.drawable.lobby_character),
+            "gacha" to (gachaMachine ?: BitmapFactory.decodeResource(res, R.drawable.lobby_character)),   // 로비 뽑기 칸 = 뽑기 기계 그림
             "cat_skill" to BitmapFactory.decodeResource(res, R.drawable.lobby_cat_skill),
             "worldmap" to BitmapFactory.decodeResource(res, R.drawable.lobby_map),
             "battle" to BitmapFactory.decodeResource(res, R.drawable.lobby_battle),

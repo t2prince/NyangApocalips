@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.GameProgress
@@ -97,16 +99,16 @@ class CatShopScreen(
         canvas.drawRect(0f, 0f, w, h, bgPaint)
 
         titlePaint.textSize = h * 0.075f
-        canvas.drawText(title, w / 2f, h * 0.095f, titlePaint)
+        canvas.drawTr(title, w / 2f, h * 0.095f, titlePaint)
 
         // 오른쪽 위: 지금 가진 루비
         rubyCountPaint.textSize = h * 0.048f
         val rubyText = "${GameProgress.rubies}"
         val gemR = h * 0.026f
-        val textW = rubyCountPaint.measureText(rubyText)
+        val textW = rubyCountPaint.measureTr(rubyText)
         val gemCx = w - 30f - textW - gemR * 1.5f
         drawRubyIcon(canvas, gemCx, h * 0.075f, gemR, gemPaint)
-        canvas.drawText(rubyText, gemCx + gemR * 1.4f, h * 0.092f, rubyCountPaint)
+        canvas.drawTr(rubyText, gemCx + gemR * 1.4f, h * 0.092f, rubyCountPaint)
 
         // 카드 격자: 8 x 2 = 16칸 — 물건이 15개라 한 화면에 다 들어간다 (쪽 넘김 없음)
         val cols = 8
@@ -126,7 +128,7 @@ class CatShopScreen(
         }
 
         hintPaint.textSize = h * 0.030f
-        canvas.drawText("루비는 루비 상점에서 점수로 바꿀 수 있어요", w / 2f, h * 0.855f, hintPaint)
+        canvas.drawTr("루비는 루비 상점에서 점수로 바꿀 수 있어요", w / 2f, h * 0.855f, hintPaint)
 
         // 돌아가기 버튼
         val bw = w * 0.18f
@@ -135,7 +137,7 @@ class CatShopScreen(
         canvas.drawRoundRect(backRect, 20f, 20f, backPaint)
         canvas.drawRoundRect(backRect, 20f, 20f, cardEdgePaint)
         backTextPaint.textSize = bh * 0.42f
-        canvas.drawText("돌아가기", backRect.centerX(), backRect.centerY() + bh * 0.15f, backTextPaint)
+        canvas.drawTr("돌아가기", backRect.centerX(), backRect.centerY() + bh * 0.15f, backTextPaint)
 
         drawNotice(canvas, w, h)
     }
@@ -164,21 +166,21 @@ class CatShopScreen(
         // 이름이 길면("낚싯대 장난감") 카드 폭에 맞게 글자를 줄인다
         namePaint.textSize = h * 0.030f
         val maxNameW = rect.width() - 14f
-        while (namePaint.textSize > h * 0.020f && namePaint.measureText(item.name) > maxNameW) {
+        while (namePaint.textSize > h * 0.020f && namePaint.measureTr(item.name) > maxNameW) {
             namePaint.textSize -= h * 0.002f
         }
-        canvas.drawText(item.name, rect.centerX(), rect.bottom - rect.height() * 0.18f, namePaint)
+        canvas.drawTr(item.name, rect.centerX(), rect.bottom - rect.height() * 0.18f, namePaint)
 
         // 값: 루비 모양 + "N 루비"
         pricePaint.textSize = h * 0.026f
         val priceText = "${item.price} 루비"
         val gemR = h * 0.017f
-        val priceW = pricePaint.measureText(priceText)
+        val priceW = pricePaint.measureTr(priceText)
         val blockW = gemR * 2f + h * 0.008f + priceW
         val startX = rect.centerX() - blockW / 2f
         val baseY = rect.bottom - rect.height() * 0.055f
         drawRubyIcon(canvas, startX + gemR, baseY - h * 0.011f, gemR, gemPaint)
-        canvas.drawText(priceText, startX + gemR * 2f + h * 0.008f, baseY, pricePaint)
+        canvas.drawTr(priceText, startX + gemR * 2f + h * 0.008f, baseY, pricePaint)
 
         // 이미 가지고 있으면 오른쪽 위에 개수 배지
         val owned = GameProgress.itemCount(item.id)
@@ -186,11 +188,11 @@ class CatShopScreen(
             ownedTextPaint.textSize = h * 0.019f
             val label = "보유 $owned"
             val padding = h * 0.012f
-            val bw = ownedTextPaint.measureText(label) + padding * 2f
+            val bw = ownedTextPaint.measureTr(label) + padding * 2f
             val bh = h * 0.038f
             badgeRect.set(rect.right - bw - 6f, rect.top + 6f, rect.right - 6f, rect.top + 6f + bh)
             canvas.drawRoundRect(badgeRect, bh / 2f, bh / 2f, ownedBadgePaint)
-            canvas.drawText(
+            canvas.drawTr(
                 label, badgeRect.centerX(), badgeRect.centerY() + bh * 0.30f, ownedTextPaint
             )
         }
@@ -212,7 +214,7 @@ class CatShopScreen(
 
         noticeTextPaint.alpha = alpha
         noticeTextPaint.textSize = h * 0.042f
-        canvas.drawText(
+        canvas.drawTr(
             noticeText, noticeRect.centerX(), noticeRect.centerY() + h * 0.015f, noticeTextPaint
         )
         noticeTextPaint.alpha = 255

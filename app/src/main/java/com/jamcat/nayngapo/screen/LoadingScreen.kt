@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.GameProgress
@@ -51,7 +53,7 @@ class LoadingScreen(private val gameView: GameView) : Screen {
 
         // LOADING (점이 하나씩 늘어난다)
         val dots = ((timer * 2.5f).toInt() % 4)
-        canvas.drawText("LOADING", w / 2f, h * 0.88f, textPaint)
+        canvas.drawTr("LOADING", w / 2f, h * 0.88f, textPaint)
         for (i in 0 until dots) {
             canvas.drawCircle(w / 2f + 190f + i * 26f, h * 0.88f - 22f, 7f, dotPaint)
         }

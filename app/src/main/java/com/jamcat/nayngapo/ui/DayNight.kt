@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.ui
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -48,9 +50,9 @@ object DayNight {
         canvas.drawCircle(mx + 20f, my - 10f, 40f, moonCut)
         // '밤' 글자
         val text = "🌙 밤"
-        val tw = label.measureText(text) + 40f
+        val tw = label.measureTr(text) + 40f
         rect.set(w / 2f - tw / 2f, labelY - 40f, w / 2f + tw / 2f, labelY + 16f)
         canvas.drawRoundRect(rect, 28f, 28f, labelBg)
-        canvas.drawText(text, w / 2f, labelY + 2f, label)
+        canvas.drawTr(text, w / 2f, labelY + 2f, label)
     }
 }

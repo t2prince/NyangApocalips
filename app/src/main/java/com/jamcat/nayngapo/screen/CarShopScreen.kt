@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.CarCatalog
@@ -43,14 +45,14 @@ class CarShopScreen(private val gameView: GameView) : Screen {
         val h = gameView.screenHeight.toFloat()
         canvas.drawRect(0f, 0f, w, h, bg)
         title.textSize = h * 0.065f
-        canvas.drawText("자동차 매장 · 자동차 선택", w / 2f, h * 0.11f, title)
+        canvas.drawTr("자동차 매장 · 자동차 선택", w / 2f, h * 0.11f, title)
         text.textSize = h * 0.032f
-        canvas.drawText("고른 차를 땅 스테이지에서 타고 다녀요 (바다·하늘은 빼고)", w / 2f, h * 0.17f, text)
+        canvas.drawTr("고른 차를 땅 스테이지에서 타고 다녀요 (바다·하늘은 빼고)", w / 2f, h * 0.17f, text)
 
         // 루비
         drawRubyIcon(canvas, w * 0.06f, h * 0.09f, h * 0.025f, gemPaint)
         text.textAlign = Paint.Align.LEFT; text.textSize = h * 0.04f
-        canvas.drawText("${GameProgress.rubies}", w * 0.06f + h * 0.04f, h * 0.105f, text)
+        canvas.drawTr("${GameProgress.rubies}", w * 0.06f + h * 0.04f, h * 0.105f, text)
         text.textAlign = Paint.Align.CENTER
 
         val n = CarCatalog.cars.size
@@ -68,9 +70,9 @@ class CarShopScreen(private val gameView: GameView) : Screen {
                 canvas.drawBitmap(bmp, null, rect, null)
             }
             text.textSize = h * 0.042f
-            canvas.drawText(car.name, r.centerX(), r.top + r.height() * 0.58f, text)
+            canvas.drawTr(car.name, r.centerX(), r.top + r.height() * 0.58f, text)
             text.textSize = h * 0.032f
-            canvas.drawText("빠르기 ×${car.speedMul}", r.centerX(), r.top + r.height() * 0.67f, text)
+            canvas.drawTr("빠르기 ×${car.speedMul}", r.centerX(), r.top + r.height() * 0.67f, text)
             // 아래 버튼: 사기(루비) / 타기 / 타는 중
             val b = buttons[i]
             b.set(r.left + 24f, r.bottom - r.height() * 0.22f, r.right - 24f, r.bottom - 24f)
@@ -83,7 +85,7 @@ class CarShopScreen(private val gameView: GameView) : Screen {
                 selected?.id == car.id -> "타는 중 ✓"
                 else -> "이 차 타기"
             }
-            canvas.drawText(label, b.centerX(), b.centerY() + h * 0.012f, text)
+            canvas.drawTr(label, b.centerX(), b.centerY() + h * 0.012f, text)
         }
 
         // 안 타기 · 나가기
@@ -92,15 +94,15 @@ class CarShopScreen(private val gameView: GameView) : Screen {
         for ((rr, label) in listOf(noneRect to (if (selected == null) "걸어 다니는 중 ✓" else "안 타기 (걸어 다니기)"), backRect to "나가기")) {
             canvas.drawRoundRect(rr, 45f, 45f, cardPaint); canvas.drawRoundRect(rr, 45f, 45f, ink)
             text.textSize = h * 0.034f
-            canvas.drawText(label, rr.centerX(), rr.centerY() + h * 0.012f, text)
+            canvas.drawTr(label, rr.centerX(), rr.centerY() + h * 0.012f, text)
         }
 
         if (noticeTimer > 0f) {
             text.textSize = 42f
-            val nw = text.measureText(noticeText) + 70f
+            val nw = text.measureTr(noticeText) + 70f
             rect.set(w / 2f - nw / 2f, h * 0.40f, w / 2f + nw / 2f, h * 0.40f + 80f)
             canvas.drawRoundRect(rect, 24f, 24f, chosenPaint); canvas.drawRoundRect(rect, 24f, 24f, ink)
-            canvas.drawText(noticeText, w / 2f, rect.centerY() + 15f, text)
+            canvas.drawTr(noticeText, w / 2f, rect.centerY() + 15f, text)
         }
     }
 

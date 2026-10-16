@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.entity
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -83,7 +85,7 @@ class Prison(
         val top = y - height
         if (isOpen) {
             canvas.drawRect(x, top, x + width, y, openPaint)
-            canvas.drawText("★", x + width / 2, top - 10f, starPaint)
+            canvas.drawTr("★", x + width / 2, top - 10f, starPaint)
             return
         }
 

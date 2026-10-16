@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.GameView
@@ -57,8 +59,8 @@ class TitleScreen(private val gameView: GameView) : Screen {
         }
 
         // Title
-        canvas.drawText("냥이 아포칼립스", w / 2f, h * 0.15f, titlePaint)
-        canvas.drawText("Cat Apocalypse", w / 2f, h * 0.15f + 45f, subtitlePaint)
+        canvas.drawTr("냥이 아포칼립스", w / 2f, h * 0.15f, titlePaint)
+        canvas.drawTr("Cat Apocalypse", w / 2f, h * 0.15f + 45f, subtitlePaint)
 
         // 양 끝에서 춤추는 냥이 두 마리 (몸을 좌우로 흔들며 폴짝폴짝)
         drawDancingCat(canvas, w * 0.13f, h * 0.66f, timer * 7f)
@@ -67,7 +69,7 @@ class TitleScreen(private val gameView: GameView) : Screen {
         // Tap to start (blinking)
         val alpha = ((sin(timer.toDouble() * 3.0) * 0.5 + 0.5) * 255).toInt()
         tapPaint.alpha = alpha
-        canvas.drawText("TAP TO START", w / 2f, h * 0.88f, tapPaint)
+        canvas.drawTr("TAP TO START", w / 2f, h * 0.88f, tapPaint)
 
         // Decorative border
         canvas.drawRect(10f, 10f, w - 10f, h - 10f, outlinePaint)

@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.CatTeam
@@ -81,15 +83,15 @@ class PlayroomScreen(private val gameView: GameView) : Screen {
             canvas.drawBitmap(bmp, null, rect, null)
         }
         text.textSize = h * 0.065f
-        canvas.drawText("고양이 놀이방", w / 2f, h * 0.10f, text)
+        canvas.drawTr("고양이 놀이방", w / 2f, h * 0.10f, text)
         text.textSize = h * 0.03f
-        canvas.drawText("출전한 냥이는 '맡기기' · 맡긴 냥이는 늘 배불러요 · '맡기지 않기'로 데려가요", w / 2f, h * 0.16f, text)
+        canvas.drawTr("출전한 냥이는 '맡기기' · 맡긴 냥이는 늘 배불러요 · '맡기지 않기'로 데려가요", w / 2f, h * 0.16f, text)
 
         val cats = roomCats()
         buttons.clear()
         if (cats.isEmpty()) {
             text.textSize = h * 0.045f
-            canvas.drawText("놀고 있는 냥이가 없어요 (캣타워에서 출전시키면 와요)", w / 2f, h * 0.45f, text)
+            canvas.drawTr("놀고 있는 냥이가 없어요 (캣타워에서 출전시키면 와요)", w / 2f, h * 0.45f, text)
         }
         for (c in cats) {
             val k = kitties[c.id] ?: continue
@@ -103,32 +105,32 @@ class PlayroomScreen(private val gameView: GameView) : Screen {
             // 이름 (맡긴 냥이는 하트 = 배부름)
             nameText.textSize = h * 0.028f
             val label = if (c.inDaycare) "♥ ${c.name}" else c.name
-            val nw = nameText.measureText(label) + 24f
+            val nw = nameText.measureTr(label) + 24f
             val ny = floorY - ch - h * 0.035f
             rect.set(k.x - nw / 2f, ny - h * 0.035f, k.x + nw / 2f, ny + 6f)
             canvas.drawRoundRect(rect, 16f, 16f, nameBg)
-            canvas.drawText(label, k.x, ny - 4f, nameText)
+            canvas.drawTr(label, k.x, ny - 4f, nameText)
             // 아래 버튼
             val bw = h * 0.21f; val bh = h * 0.07f
             val br = RectF(k.x - bw / 2f, floorY + h * 0.04f, k.x + bw / 2f, floorY + h * 0.04f + bh)
             canvas.drawRoundRect(br, bh / 2f, bh / 2f, if (c.inDaycare) backBtn else leaveBtn)
             canvas.drawRoundRect(br, bh / 2f, bh / 2f, ink)
             text.textSize = h * 0.028f
-            canvas.drawText(if (c.inDaycare) "맡기지 않기" else "맡기기", br.centerX(), br.centerY() + h * 0.01f, text)
+            canvas.drawTr(if (c.inDaycare) "맡기지 않기" else "맡기기", br.centerX(), br.centerY() + h * 0.01f, text)
             buttons.add(c.id to br)
         }
 
         exitRect.set(w - w * 0.03f - 240f, h * 0.04f, w - w * 0.03f, h * 0.04f + 90f)
         canvas.drawRoundRect(exitRect, 45f, 45f, card); canvas.drawRoundRect(exitRect, 45f, 45f, ink)
         text.textSize = 40f
-        canvas.drawText("나가기", exitRect.centerX(), exitRect.centerY() + 14f, text)
+        canvas.drawTr("나가기", exitRect.centerX(), exitRect.centerY() + 14f, text)
 
         if (noticeTimer > 0f) {
             text.textSize = 40f
-            val nw = text.measureText(noticeText) + 70f
+            val nw = text.measureTr(noticeText) + 70f
             rect.set(w / 2f - nw / 2f, h * 0.24f, w / 2f + nw / 2f, h * 0.24f + 80f)
             canvas.drawRoundRect(rect, 24f, 24f, card); canvas.drawRoundRect(rect, 24f, 24f, ink)
-            canvas.drawText(noticeText, w / 2f, rect.centerY() + 14f, text)
+            canvas.drawTr(noticeText, w / 2f, rect.centerY() + 14f, text)
         }
     }
 

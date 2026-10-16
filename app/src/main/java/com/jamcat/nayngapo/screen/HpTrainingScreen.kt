@@ -1,5 +1,7 @@
 package com.jamcat.nayngapo.screen
 
+import com.jamcat.nayngapo.engine.drawTr
+import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.CatTeam
@@ -73,12 +75,12 @@ class HpTrainingScreen(private val gameView: GameView, catId: Int) : Screen {
         val floorY = h * 0.82f
         canvas.drawRect(0f, floorY, w, h, floor)
         text.textSize = h * 0.07f
-        canvas.drawText("체력 훈련장", w / 2f, h * 0.10f, text)
+        canvas.drawTr("체력 훈련장", w / 2f, h * 0.10f, text)
 
         val c = cat
         if (c == null || c.gone || sprite == null) {
             text.textSize = h * 0.05f
-            canvas.drawText("훈련할 냥이가 없어요", w / 2f, h / 2f, text)
+            canvas.drawTr("훈련할 냥이가 없어요", w / 2f, h / 2f, text)
             drawExit(canvas, w, h); return
         }
 
@@ -111,17 +113,17 @@ class HpTrainingScreen(private val gameView: GameView, catId: Int) : Screen {
         canvas.drawRoundRect(rect, 22f, 22f, card); canvas.drawRoundRect(rect, 22f, 22f, ink)
         text.textAlign = Paint.Align.LEFT
         text.textSize = h * 0.05f
-        canvas.drawText(c.name, rect.left + 28f, rect.top + h * 0.065f, text)
+        canvas.drawTr(c.name, rect.left + 28f, rect.top + h * 0.065f, text)
         text.textSize = h * 0.042f
         val hp = CatTeam.maxHpFor(c.level) + CatTeam.hpBonusOf(c)
-        canvas.drawText("체력 $hp", rect.left + 28f, rect.top + h * 0.125f, text)
-        if (gained > 0) canvas.drawText("이번에 +$gained", rect.left + 28f, rect.top + h * 0.185f, text)
+        canvas.drawTr("체력 $hp", rect.left + 28f, rect.top + h * 0.125f, text)
+        if (gained > 0) canvas.drawTr("이번에 +$gained", rect.left + 28f, rect.top + h * 0.185f, text)
         text.textAlign = Paint.Align.CENTER
 
         if (popTimer > 0f) {
             pop.textSize = h * 0.09f
             pop.alpha = (popTimer.coerceAtMost(0.5f) / 0.5f * 255).toInt()
-            canvas.drawText("체력 +${CatTeam.hpTrainGain}!", w / 2f, h * 0.36f - (2f - popTimer) * 40f, pop)
+            canvas.drawTr("체력 +${CatTeam.hpTrainGain}!", w / 2f, h * 0.36f - (2f - popTimer) * 40f, pop)
         }
 
         // 아래: 다음 +5 까지
@@ -131,20 +133,20 @@ class HpTrainingScreen(private val gameView: GameView, catId: Int) : Screen {
         rect.set(bx, by, bx + bw * (trained / CatTeam.HP_TRAIN_SECONDS).coerceIn(0f, 1f), by + bh); canvas.drawRoundRect(rect, bh / 2f, bh / 2f, barFill)
         rect.set(bx, by, bx + bw, by + bh); canvas.drawRoundRect(rect, bh / 2f, bh / 2f, ink)
         text.textSize = h * 0.038f
-        canvas.drawText("다음 체력 +${CatTeam.hpTrainGain}까지 ${left}초", w / 2f, by - h * 0.02f, text)
+        canvas.drawTr("다음 체력 +${CatTeam.hpTrainGain}까지 ${left}초", w / 2f, by - h * 0.02f, text)
 
         // 루비 1개 = 1분
         val sec = kotlin.math.ceil(timeLeft).toInt()
         if (timeLeft <= 0f) {
             canvas.drawRect(0f, 0f, w, h, veil)
             pop.textSize = h * 0.06f; pop.alpha = 255; pop.color = Color.WHITE
-            canvas.drawText("루비 1개를 내면 1분 달릴 수 있어요", w / 2f, h * 0.48f, pop)
+            canvas.drawTr("루비 1개를 내면 1분 달릴 수 있어요", w / 2f, h * 0.48f, pop)
             pop.color = Color.rgb(60, 200, 90)
         }
         timeBtn.set(w / 2f - 300f, h * 0.15f, w / 2f + 300f, h * 0.15f + 96f)
         canvas.drawRoundRect(timeBtn, 48f, 48f, timeBtnPaint); canvas.drawRoundRect(timeBtn, 48f, 48f, ink)
         text.textSize = 40f
-        canvas.drawText("⏱ ${sec / 60}:${"%02d".format(sec % 60)}   +1분 (루비 1)", timeBtn.centerX(), timeBtn.centerY() + 14f, text)
+        canvas.drawTr("⏱ ${sec / 60}:${"%02d".format(sec % 60)}   +1분 (루비 1)", timeBtn.centerX(), timeBtn.centerY() + 14f, text)
 
         drawExit(canvas, w, h)
         // 러닝머신 업그레이드 (나가기 아래)
@@ -152,14 +154,14 @@ class HpTrainingScreen(private val gameView: GameView, catId: Int) : Screen {
         upRect.set(w - w * 0.03f - 440f, h * 0.05f + 116f, w - w * 0.03f, h * 0.05f + 206f)
         canvas.drawRoundRect(upRect, 45f, 45f, timeBtnPaint); canvas.drawRoundRect(upRect, 45f, 45f, ink)
         text.textSize = 32f
-        canvas.drawText(if (lv >= GameProgress.TREADMILL_MAX) "러닝머신 Lv $lv (최대)" else "러닝머신 Lv $lv → ${lv + 1} · 루비 ${GameProgress.treadmillUpPrice()}",
+        canvas.drawTr(if (lv >= GameProgress.TREADMILL_MAX) "러닝머신 Lv $lv (최대)" else "러닝머신 Lv $lv → ${lv + 1} · 루비 ${GameProgress.treadmillUpPrice()}",
             upRect.centerX(), upRect.centerY() + 11f, text)
         if (noticeTimer > 0f) {
             text.textSize = 40f
-            val nw = text.measureText(noticeText) + 70f
+            val nw = text.measureTr(noticeText) + 70f
             rect.set(w / 2f - nw / 2f, h * 0.30f, w / 2f + nw / 2f, h * 0.30f + 80f)
             canvas.drawRoundRect(rect, 24f, 24f, card); canvas.drawRoundRect(rect, 24f, 24f, ink)
-            canvas.drawText(noticeText, w / 2f, rect.centerY() + 14f, text)
+            canvas.drawTr(noticeText, w / 2f, rect.centerY() + 14f, text)
         }
     }
 
@@ -167,7 +169,7 @@ class HpTrainingScreen(private val gameView: GameView, catId: Int) : Screen {
         exitRect.set(w - w * 0.03f - 240f, h * 0.05f, w - w * 0.03f, h * 0.05f + 96f)
         canvas.drawRoundRect(exitRect, 48f, 48f, card); canvas.drawRoundRect(exitRect, 48f, 48f, ink)
         text.textSize = 42f
-        canvas.drawText("나가기", exitRect.centerX(), exitRect.centerY() + 15f, text)
+        canvas.drawTr("나가기", exitRect.centerX(), exitRect.centerY() + 15f, text)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {

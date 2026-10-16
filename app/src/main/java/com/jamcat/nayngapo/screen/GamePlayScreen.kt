@@ -2445,7 +2445,6 @@ class GamePlayScreen(
 
         // Draw HUD (screen space)
         // 밤이면 하늘이 어두워지고 '밤' 글자 (2026-10-17)
-        com.jamcat.nayngapo.ui.DayNight.drawNight(canvas, sw.toFloat(), sh.toFloat(), elapsed, labelY = 140f)
         hud.draw(canvas, player, level, sw, sh)
 
         // 멈추기 / 나가기 버튼

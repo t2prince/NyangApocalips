@@ -256,6 +256,11 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
     // 캣타워에서 출전시킨 냥이들이 어선에 같이 탄다 — 갑판에 서 있다가, 건너온 선원 냥이에게 다가가 때린다 (1초마다 1, Claude 판단).
     private class Mate(val cat: com.jamcat.nayngapo.engine.CatTeam.TeamCat, val sprite: Bitmap, val home: Float) {
         var u = home; var cool = 0f; var dir = 1f
+        /** 어디 있나: 어선 · 점프 중 · 해적선 (선원 냥이와 같은 구분을 쓴다) */
+        var at = CrewAt.BOAT
+        var x = 0f; var y = 0f; var vx = 0f; var vy = 0f; var t = 0f; var toShip = false; var landU = 0f
+        /** 스스로 낚시: 다음 입질까지 */
+        var fishT = 0f
     }
     private val mates = mutableListOf<Mate>()
 
@@ -272,34 +277,119 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         mates.clear()
         val homes = floatArrayOf(0.84f, 0.76f, 0.63f)
         for ((k, c) in com.jamcat.nayngapo.engine.CatTeam.party.filter { !it.gone }.take(homes.size).withIndex())
-            mates.add(Mate(c, allySprite(c), homes[k]))
+            mates.add(Mate(c, allySprite(c), homes[k]).apply { fishT = MATE_FISH_MIN + k * 4f })
     }
 
+    /**
+     * 같이 탄 냥이들 (대표님 2026-10-17 「아군들도 스스로 낚시를 하고 해적을 공격해」):
+     * - 해적이 없으면 갑판 자리에서 **스스로 낚시** — MATE_FISH_MIN~MAX 초마다 한 마리 낚아 가방에 (루비 안 듦, 바다 생물 반 — Claude 판단)
+     * - 선원 냥이가 우리 배에 올라오면 다가가 때린다
+     * - 해적선이 멈춰 있으면 **해적선으로 뛰어 건너가** 선원 냥이부터, 다 쓰러지면 해적냥이(선장)를 때린다 (1초마다 1)
+     * - 해적냥이가 쓰러지거나 해적선이 떠나면 다시 어선으로 (떠날 때는 헤엄쳐서)
+     */
     private fun updateMates(dt: Float, w: Float) {
+        val h = gameView.screenHeight.toFloat()
+        val pirateHere = !pirateX.isNaN() && !pirateCatDead && !pirateLeaving
+        val stopped = pirateHere && pirateX <= w - shipWidth(h) * 0.95f + 1f
         for (m in mates) {
             if (m.cool > 0f) m.cool -= dt
-            val target = crew.filter { it.at == CrewAt.BOAT && it.boom <= 0f }.minByOrNull { kotlin.math.abs(it.u - m.u) }
-            val goal = target?.u ?: m.home
-            val d = goal - m.u
-            if (kotlin.math.abs(d) > 0.05f) { m.dir = if (d > 0f) 1f else -1f; m.u = (m.u + m.dir * CREW_WALK_U * 1.2f * dt).coerceIn(DECK_MIN, DECK_MAX) }
-            else if (target == null) m.dir = 1f
-            if (target != null && kotlin.math.abs(target.u - m.u) <= 0.07f && m.cool <= 0f) {
-                m.cool = MATE_HIT_GAP
-                target.hp -= MATE_DAMAGE
-                SoundManager.playCatHit()
-                if (target.hp <= 0) { target.boom = 0.5f; noticeText = "${m.cat.name}이(가) 선원 냥이를 쓰러뜨렸다!"; noticeTimer = 1.2f }
+            when (m.at) {
+                CrewAt.AIR -> {
+                    m.t += dt; m.vy += JUMP_G * dt; m.x += m.vx * dt; m.y += m.vy * dt
+                    if (m.t >= CREW_JUMP_T) {
+                        if (m.toShip && pirateHere) { m.at = CrewAt.SHIP; m.u = m.landU }
+                        else { m.at = CrewAt.BOAT; m.u = m.home }
+                    }
+                }
+                CrewAt.SHIP -> {
+                    if (!pirateHere) {
+                        // 선장이 쓰러졌으면 뛰어서, 해적선이 떠나면 헤엄쳐서 돌아온다
+                        if (!pirateX.isNaN() && pirateCatDead) mateJump(m, w, h, toShip = false)
+                        else { m.at = CrewAt.BOAT; m.u = m.home; splashes.add(Splash(deckScreenX(w, m.home), h * 0.55f, 0f, false)) }
+                        continue
+                    }
+                    val foe = crew.filter { it.at == CrewAt.SHIP && it.boom <= 0f }.minByOrNull { kotlin.math.abs(it.u - m.u) }
+                    val goal = foe?.u ?: PIRATE_CAT_U
+                    val d = goal - m.u
+                    if (kotlin.math.abs(d) > 0.06f) { m.dir = if (d > 0f) 1f else -1f; m.u = (m.u + m.dir * CREW_WALK_U * 0.6f * dt).coerceIn(PIRATE_DECK_MIN, PIRATE_DECK_MAX) }
+                    else if (m.cool <= 0f) {
+                        m.cool = MATE_HIT_GAP
+                        SoundManager.playCatHit()
+                        if (foe != null) {
+                            foe.hp -= MATE_DAMAGE
+                            if (foe.hp <= 0) { foe.boom = 0.5f; noticeText = "${m.cat.name}이(가) 선원 냥이를 쓰러뜨렸다!"; noticeTimer = 1.2f }
+                        } else {
+                            pirateHp -= MATE_DAMAGE
+                            if (pirateHp <= 0) pirateDefeated()
+                            else { noticeText = "${m.cat.name}의 공격! 해적냥이 ♥ $pirateHp/$PIRATE_HP"; noticeTimer = 0.8f }
+                        }
+                    }
+                }
+                CrewAt.BOAT -> {
+                    val target = crew.filter { it.at == CrewAt.BOAT && it.boom <= 0f }.minByOrNull { kotlin.math.abs(it.u - m.u) }
+                    if (target == null && stopped) { mateJump(m, w, h, toShip = true); continue }
+                    val goal = target?.u ?: m.home
+                    val d = goal - m.u
+                    if (kotlin.math.abs(d) > 0.05f) { m.dir = if (d > 0f) 1f else -1f; m.u = (m.u + m.dir * CREW_WALK_U * 1.2f * dt).coerceIn(DECK_MIN, DECK_MAX) }
+                    else if (target == null) m.dir = 1f
+                    if (target != null && kotlin.math.abs(target.u - m.u) <= 0.07f && m.cool <= 0f) {
+                        m.cool = MATE_HIT_GAP
+                        target.hp -= MATE_DAMAGE
+                        SoundManager.playCatHit()
+                        if (target.hp <= 0) { target.boom = 0.5f; noticeText = "${m.cat.name}이(가) 선원 냥이를 쓰러뜨렸다!"; noticeTimer = 1.2f }
+                    }
+                    // 스스로 낚시 (해적이 없고 제자리에 있을 때)
+                    if (target == null && pirateX.isNaN() && kotlin.math.abs(m.u - m.home) <= 0.05f) {
+                        m.fishT -= dt
+                        if (m.fishT <= 0f) {
+                            m.fishT = MATE_FISH_MIN + (Math.random() * (MATE_FISH_MAX - MATE_FISH_MIN)).toFloat()
+                            val id = if (Math.random() < 0.5) seaCreature() else fishIdAtDepth(0.1f)
+                            GameProgress.addItem(id)
+                            val first = GameProgress.recordCatch(id)
+                            noticeText = "${m.cat.name}이(가) ${NAMES[id]}을(를) 낚았다!" + (if (first) " (처음! 루비 +${GameProgress.FIRST_CATCH_RUBIES})" else "")
+                            noticeTimer = 1.8f
+                            SoundManager.playCatHit()
+                        }
+                    }
+                }
             }
         }
     }
 
-    private fun drawMates(canvas: Canvas, w: Float, h: Float, footY: Float) {
+    /** 같이 탄 냥이가 해적선으로(또는 어선으로) 뛴다 */
+    private fun mateJump(m: Mate, w: Float, h: Float, toShip: Boolean) {
+        m.x = if (m.at == CrewAt.SHIP) pirateX + shipWidth(h) * m.u else deckScreenX(w, m.u)
+        m.y = if (m.at == CrewAt.SHIP) pirateFootY(h) + 12f else deckFootY(h) - 55f
+        val tx: Float; val ty: Float
+        if (toShip) {
+            m.landU = 0.40f + Math.random().toFloat() * 0.45f
+            tx = pirateX + shipWidth(h) * m.landU; ty = pirateFootY(h) + 12f
+        } else { tx = deckScreenX(w, m.home); ty = deckFootY(h) - 55f }
+        val tt = CREW_JUMP_T
+        m.vx = (tx - m.x) / tt; m.vy = (ty - m.y) / tt - 0.5f * JUMP_G * tt
+        m.t = 0f; m.toShip = toShip; m.at = CrewAt.AIR; m.dir = if (tx > m.x) 1f else -1f
+    }
+
+    private val mateRod = Paint().apply { color = Color.rgb(120, 80, 40); strokeWidth = 4f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+
+    /** 같이 탄 냥이 그리기 — where 에 있는 냥이만 (AIR 면 footY 는 쓰지 않는다) */
+    private fun drawMates(canvas: Canvas, w: Float, h: Float, footY: Float, where: CrewAt = CrewAt.BOAT) {
         for (m in mates) {
+            if (m.at != where) continue
             val ch = h * 0.12f * (if (m.cat.isKitten) com.jamcat.nayngapo.entity.AllyCat.KITTEN_SCALE else 1f)
             val cw = m.sprite.width * ch / m.sprite.height
-            val x = deckScreenX(w, m.u)
-            val sd = m.dir * boatFacing
-            rect.set(x - cw / 2f, footY - ch, x + cw / 2f, footY)
+            val x = when (where) { CrewAt.BOAT -> deckScreenX(w, m.u); CrewAt.SHIP -> pirateX + shipWidth(h) * m.u; CrewAt.AIR -> m.x }
+            val fy = if (where == CrewAt.AIR) m.y else footY
+            val sd = if (where == CrewAt.BOAT) m.dir * boatFacing else m.dir
+            rect.set(x - cw / 2f, fy - ch, x + cw / 2f, fy)
             canvas.drawBitmap(if (sd < 0f) SpriteManager.getFlipped(m.sprite) else m.sprite, null, rect, null)
+            // 스스로 낚시하는 중이면 작은 낚싯대와 줄
+            if (where == CrewAt.BOAT && pirateX.isNaN() && kotlin.math.abs(m.u - m.home) <= 0.05f && crew.none { it.at == CrewAt.BOAT }) {
+                val side = boatFacing
+                val tipX = x + side * cw * 0.9f; val tipY = fy - ch * 1.1f
+                canvas.drawLine(x + side * cw * 0.3f, fy - ch * 0.5f, tipX, tipY, mateRod)
+                canvas.drawLine(tipX, tipY, tipX + side * 10f, h * 0.55f + sin(timer * 3f + m.home * 10f) * 4f, line)
+            }
         }
     }
 
@@ -684,6 +774,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
             else if (catBoomT > 0f) { boomPaint.alpha = (catBoomT / 0.7f * 255).toInt(); canvas.drawCircle(cx2, rect.centerY(), 60f + (0.7f - catBoomT) * 120f, boomPaint) }
             // 해적선에 올라탄 인간 (다리는 뱃전이 가린다)
             drawCrew(canvas, w, h, CrewAt.SHIP, top + sh * PIRATE_DECK_V + 12f)
+            drawMates(canvas, w, h, top + sh * PIRATE_DECK_V + 12f, CrewAt.SHIP)
             if (pos == Pos.PIRATE) drawHero(canvas, pirateX + sw * pirU, top + sh * PIRATE_DECK_V + 40f, h * 0.30f)
             rect.set(pirateX, top, pirateX + sw, top + sh)
             canvas.drawBitmap(SpriteManager.pirateShip, null, rect, null)
@@ -981,7 +1072,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         if (onBoat && state != State.CONTROL && state != State.REEL && villageShoreX(w) > 0f) drawVillageShore(canvas, w, h, waterY)
         if (state != State.CONTROL && state != State.REEL) drawSea(canvas, w, h, waterY)
         // 점프 중인 인간은 배들 앞에
-        if (onBoat) drawCrew(canvas, w, h, CrewAt.AIR, 0f)
+        if (onBoat) { drawCrew(canvas, w, h, CrewAt.AIR, 0f); drawMates(canvas, w, h, 0f, CrewAt.AIR) }
         if (onBoat && pos == Pos.AIR) drawHero(canvas, airX, airY, hh)
         // 낚싯대 끝 → 찌
         val rodBaseX = hx + hw * 0.25f; val rodBaseY = footY - hh * 0.61f
@@ -1026,8 +1117,6 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         }
 
         canvas.restore()   // 여기까지 물속(camY)과 함께 움직인다
-        // 낚시터도 밤이 된다 (대표님 2026-10-17 「낚시터도 밤의 영향을 받아」) — 물속을 볼 때는 위 하늘이 안 보여도 같이 어둡다
-        com.jamcat.nayngapo.ui.DayNight.drawNight(canvas, w, h, timer, labelY = h * 0.34f)
 
         // 잡은 물고기
         if (state == State.CAUGHT) catchId?.let { id ->
@@ -1352,6 +1441,9 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         /** 같이 탄 팀 냥이가 선원을 때리는 힘 · 간격 */
         private const val MATE_DAMAGE = 1
         private const val MATE_HIT_GAP = 1.0f
+        /** 같이 탄 냥이가 스스로 한 마리 낚는 간격 (초) */
+        private const val MATE_FISH_MIN = 15f
+        private const val MATE_FISH_MAX = 30f
         /** 바다 끝(상점마을2 항구)까지의 거리 (배 빠르기 420 으로 약 30초) · 항구 땅에서 걷는 폭 (화면 폭 비율) — Claude 판단 */
         private const val ISLAND_AT = 12600f
         private const val ISLAND_W = 0.26f

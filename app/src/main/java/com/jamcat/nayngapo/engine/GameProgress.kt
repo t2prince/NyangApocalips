@@ -40,7 +40,6 @@ object GameProgress {
     private const val KEY_LINE_LEVEL = "fishing_line_level"
     private const val KEY_ROD_LEVEL = "fishing_rod_level"
     private const val KEY_CAUGHT_KINDS = "caught_kinds"
-    private const val KEY_DAY_CLOCK = "day_clock"
     private const val KEY_TREADMILL = "treadmill_level"
     private const val KEY_RIDE_ROBOT = "ride_robot"
     private const val KEY_AB_CAR = "abandoned_car"
@@ -183,19 +182,6 @@ object GameProgress {
         treadmillLevel++
         prefs?.edit()?.putInt(KEY_TREADMILL, treadmillLevel)?.apply()
         return true
-    }
-
-    /** 밤낮 시계 — 플레이 시간 1시간마다 낮 ↔ 밤 (대표님 2026-10-17). 0~3600 낮, 3600~7200 밤 */
-    var dayClock = 0f
-        private set
-    private var dayClockSaveT = 0f
-    const val DAY_LENGTH = 3600f
-    val isNight: Boolean get() = dayClock >= DAY_LENGTH
-
-    fun tickDayClock(dt: Float) {
-        dayClock = (dayClock + dt.coerceIn(0f, 1f)) % (DAY_LENGTH * 2)
-        dayClockSaveT += dt
-        if (dayClockSaveT >= 30f) { dayClockSaveT = 0f; prefs?.edit()?.putFloat(KEY_DAY_CLOCK, dayClock)?.apply() }
     }
 
     /** 낚시로 한 번이라도 잡아 본 종류 — 처음 잡으면 루비 50 (대표님 2026-10-16) */
@@ -350,7 +336,6 @@ object GameProgress {
             ?: java.math.BigInteger.valueOf((prefs?.getInt(KEY_LINE_LEVEL, 1) ?: 1).toLong())
         if (fishingLineLevel < java.math.BigInteger.ONE) fishingLineLevel = java.math.BigInteger.ONE
         if (fishingLineLevel > LINE_LEVEL_MAX) fishingLineLevel = LINE_LEVEL_MAX
-        dayClock = (prefs?.getFloat(KEY_DAY_CLOCK, 0f) ?: 0f).coerceIn(0f, DAY_LENGTH * 2)
         treadmillLevel = (prefs?.getInt(KEY_TREADMILL, 1) ?: 1).coerceIn(1, TREADMILL_MAX)
         caughtKinds.clear(); prefs?.getString(KEY_CAUGHT_KINDS, "")?.split(',')?.filter { it.isNotBlank() }?.let { caughtKinds.addAll(it) }
         rideRobot = prefs?.getBoolean(KEY_RIDE_ROBOT, false) ?: false

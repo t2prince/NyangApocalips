@@ -177,7 +177,6 @@ class Village2Screen(private val gameView: GameView) : Screen {
             canvas.drawRoundRect(rect, 24f, 24f, sign); canvas.drawRoundRect(rect, 24f, 24f, ink)
             canvas.drawTr(noticeText, w / 2f, rect.centerY() + 13f, text)
         }
-        com.jamcat.nayngapo.ui.DayNight.drawNight(canvas, w, h, timer, labelY = 150f)   // 상점마을2도 밤이 된다
         touchControls.draw(canvas, gameView.screenWidth, gameView.screenHeight)
         com.jamcat.nayngapo.ui.MenuButtons.draw(canvas, paused)
         if (paused) {

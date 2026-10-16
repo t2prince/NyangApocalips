@@ -318,7 +318,6 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         // 냥이의 배고픔은 '게임을 켜 둔 시간'으로만 흐른다.
         // 이 루프는 앱이 내려가면 멈추므로 꺼 둔 시간은 세지 않는다.
         CatTeam.tickPlayTime(deltaTime)
-        GameProgress.tickDayClock(deltaTime)   // 1시간마다 낮 ↔ 밤 (2026-10-17)
         currentScreen?.update(deltaTime)
     }
 

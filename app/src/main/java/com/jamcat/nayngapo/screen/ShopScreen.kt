@@ -800,7 +800,6 @@ class ShopScreen(private val gameView: GameView) : Screen {
         }
 
         // 밤이면 하늘이 어두워지고 '밤' 글자 (2026-10-17)
-        com.jamcat.nayngapo.ui.DayNight.drawNight(canvas, w, h, timer, labelY = 150f)
         drawRaidHud(canvas, w, h)
 
         // 위 가운데: 구한 인간 · 열린 가게

@@ -119,6 +119,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
         if (!onBoat) { pirateX = Float.NaN; balls.clear(); return }
         // 물속을 보는 동안(낚시줄 조종)에는 바다 위가 멈춘다
         if (state == State.CONTROL || state == State.REEL) return
+        val seaBefore = seaDist
         updateHero(dt, w, h, waterY)
         if (!onBoat) return
         val shipW = shipWidth(h)
@@ -132,7 +133,14 @@ class FishingScreen(private val gameView: GameView) : Screen {
         } else {
             val stopX = w - shipW * 0.95f
             if (catBoomT > 0f) catBoomT -= dt
-            if (pirateLeaving) {
+            if (pirateCatDead) {
+                // 선장(해적냥이)이 없는 해적선은 가만히 있다 (대표님 2026-10-17) — 떠나지 않고, 배가 멀리 가면 바다와 함께 뒤로 흘러간다
+                pirateX -= seaDist - seaBefore
+                if (pirateX + shipW < -100f || pirateX > w * 3f) {
+                    if (pos == Pos.PIRATE) swimBack("헤엄쳐서 배로 돌아왔다")
+                    pirateX = Float.NaN; pirateWait = PIRATE_EVERY * (0.6f + Math.random().toFloat() * 0.8f)
+                }
+            } else if (pirateLeaving) {
                 pirateX += 260f * dt
                 if (pirateX > w + 40f && balls.isEmpty()) {
                     pirateX = Float.NaN; pirateWait = PIRATE_EVERY * (0.6f + Math.random().toFloat() * 0.8f)

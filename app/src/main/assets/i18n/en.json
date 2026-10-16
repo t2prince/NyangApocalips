@@ -773,5 +773,11 @@
  "◀ ▶ 걷기": "◀ ▶ Walk",
  "조타실에 들어왔다! ◀ ▶ 로 배를 움직여요": "In the wheelhouse! Steer with ◀ ▶",
  "갑판으로 나왔다 · 여기서 낚시해요": "On deck · Fish from here",
- "조타실에서는 낚시를 못 해요 · 갑판으로 나가요": "Can't fish in the wheelhouse · Go to the deck"
+ "조타실에서는 낚시를 못 해요 · 갑판으로 나가요": "Can't fish in the wheelhouse · Go to the deck",
+ "🏴‍☠️ 해적선이다! 그물을 던져 공격하고 대포알은 피해요!": "🏴‍☠️ Pirates! Throw nets and dodge the cannonballs!",
+ "해적선을 물리쳤다!": "Pirate ship defeated!",
+ "그물 명중! 해적선 ♥ {0}/{1}": "Net hit! Pirate ship ♥ {0}/{1}",
+ "쾅! 배가 맞았다 (배 ♥ {0}/{1})": "Boom! Boat hit (Boat ♥ {0}/{1})",
+ "배 ♥ {0}/{1} · 공격력 {2}": "Boat ♥ {0}/{1} · Atk {2}",
+ "🕸 그물 던지기": "🕸 Throw net"
 }

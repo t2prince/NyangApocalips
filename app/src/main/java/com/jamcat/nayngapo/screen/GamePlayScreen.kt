@@ -327,6 +327,11 @@ class GamePlayScreen(
         }
         // 자동차를 타고 시작하면 냥이들도 뒷자리에 탄다 (2026-10-09)
         carRide?.attach(level.allies)
+        // 이 스테이지에 머무는 떠난 냥이들 — 이름표를 달고 어슬렁거린다 (채집통으로 데려온다, 2026-10-17)
+        for ((i, c) in com.jamcat.nayngapo.engine.CatTeam.strayCatsIn(stageNumber).withIndex()) {
+            val sx = level.playerStartX + 900f + ((level.areaWidth - level.playerStartX - 1800f).coerceAtLeast(400f)) * ((i + 0.5f) / 3f).coerceAtMost(0.9f)
+            level.enemies.add(com.jamcat.nayngapo.entity.StrayTeamCat(c, sx))
+        }
     }
 
     private var elapsed = 0f   // GO → 표시 깜빡임용
@@ -1030,7 +1035,7 @@ class GamePlayScreen(
         // 클리어 판정: 필드의 냥이를 전부 무찌르면 스테이지 클리어
         // 곧바로 넘어가지 않고 3초 동안 여운을 준 뒤 페이드로 결과 화면에 간다
         // 30: 냥이를 다 잡았는데 배냥이를 아직 안 구했으면 한 번 알려 준다
-        if (stageNumber == 30 && !boatHintShown && level.enemies.all { it.isDead || it is com.jamcat.nayngapo.entity.MudCat } &&
+        if (stageNumber == 30 && !boatHintShown && level.enemies.all { it.isDead || it is com.jamcat.nayngapo.entity.MudCat || it is com.jamcat.nayngapo.entity.StrayTeamCat } &&
             level.prisons.any { it.catKind == com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT && !it.isOpen }) {
             boatHintShown = true
             showWaveText("앞에 갇힌 배냥이를 구하자!")
@@ -1489,7 +1494,7 @@ class GamePlayScreen(
                 // 화면 안(없으면 인간과 가까운) 냥이들을 노리고, 떨어지는 동안 냥이가 움직일 자리까지 셈해서 그쪽으로 비스듬히 쏜다
                 val sw = gameView.screenWidth.toFloat()
                 val top = camera.y - 80f
-                val alive = level.enemies.filter { !it.isDead }
+                val alive = level.enemies.filter { !it.isDead && it !is com.jamcat.nayngapo.entity.StrayTeamCat }   // 떠난 냥이는 노리지 않는다
                 val onScreen = alive.filter { it.x + it.width > camera.x && it.x < camera.x + sw }
                 val targets = (if (onScreen.isNotEmpty()) onScreen
                     else alive.sortedBy { kotlin.math.abs(it.x - player.x) }.take(4)).take(ARROW_MAX_TARGETS)
@@ -3427,6 +3432,15 @@ class GamePlayScreen(
      */
     private fun tryCapture(enemy: com.jamcat.nayngapo.entity.Enemy): Boolean {
         if (!bringBugbox || enemy.isDead || enemy.isBoss) return false
+        // 떠난 냥이: 채집통으로 다시 데려온다 (새로 들어오는 게 아니라 그 냥이가 돌아온다)
+        if (enemy is com.jamcat.nayngapo.entity.StrayTeamCat) {
+            if (!GameProgress.consumeItem("h_bugbox")) return false
+            enemy.capture()
+            com.jamcat.nayngapo.engine.CatTeam.bringBack(enemy.teamCat.id)
+            SoundManager.playCatHit()
+            hitEffects.add(HitEffect(enemy.x, enemy.y - enemy.height - 40f, 1.8f, "${enemy.teamCat.name} 돌아왔다! (캣타워)"))
+            return true
+        }
         if (!GameProgress.consumeItem("h_bugbox")) return false
         val coat = when (enemy) {
             is com.jamcat.nayngapo.entity.NormalCat -> enemy.coat

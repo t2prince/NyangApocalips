@@ -64,6 +64,8 @@ object CatTeam {
         var diedAtStage: Int = 0,
         /** 너무 배고파서 팀을 떠난 냥이 */
         var hasLeft: Boolean = false,
+        /** 떠난 냥이가 머무는 스테이지 — 거기서 이름표를 단 채 돌아다니고, 채집통으로 데려올 수 있다 (대표님 2026-10-17). 0 = 없음 */
+        var leftStage: Int = 0,
         /** 'Lv업' 아이템으로 영구히 올린 공격력 (되살아나도 남는다) */
         var attackBonus: Int = 0,
         /** 새끼인가 — 교배로 태어나거나 감옥에서 구한 새끼 (대표님 2026-09-27). 키워서 GROW_UP_LEVEL 이 되면 어른이 된다 */
@@ -230,6 +232,7 @@ object CatTeam {
                             isDead = o.optBoolean("isDead", false),
                             diedAtStage = o.optInt("diedAtStage", 0),
                             hasLeft = o.optBoolean("hasLeft", false),
+                            leftStage = o.optInt("leftStage", 0),
                             attackBonus = o.optInt("attackBonus", 0).coerceAtLeast(0),
                             isKitten = o.optBoolean("isKitten", false),
                             parents = o.optString("parents", ""),
@@ -296,6 +299,7 @@ object CatTeam {
                     .put("isDead", c.isDead)
                     .put("diedAtStage", c.diedAtStage)
                     .put("hasLeft", c.hasLeft)
+                    .put("leftStage", c.leftStage)
                     .put("attackBonus", c.attackBonus)
                     .put("isKitten", c.isKitten)
                     .put("parents", c.parents)
@@ -365,6 +369,7 @@ object CatTeam {
                 cat.hasLeft = true
                 cat.inParty = false
                 cat.hasArmor = false
+                cat.leftStage = randomLeaveStage()
                 pendingLeaveNotices.add(cat.name)
             }
         }
@@ -428,6 +433,30 @@ object CatTeam {
 
     /** 배고파서 떠난 냥이 수 */
     fun leftCount() = roster.count { it.hasLeft }
+
+    /** 떠난 냥이가 머물 스테이지: 이미 열린 땅 스테이지 중 하나 (하늘·바다 빼고) */
+    private fun randomLeaveStage(): Int {
+        val last = minOf(GameProgress.unlockedStage, GameProgress.PLAYABLE_STAGES)
+        val pool = (1..last).filter { !GameProgress.isSkyStage(it) && it != 31 }
+        return if (pool.isEmpty()) 1 else pool[(Math.random() * pool.size).toInt()]
+    }
+
+    /** 이 스테이지에 머물고 있는 떠난 냥이들 */
+    fun strayCatsIn(stage: Int): List<TeamCat> {
+        // 예전에 떠난 냥이는 머물 스테이지가 없으니 지금 정해 준다
+        var changed = false
+        for (c in roster) if (c.hasLeft && !c.isDead && c.leftStage == 0) { c.leftStage = randomLeaveStage(); changed = true }
+        if (changed) save()
+        return roster.filter { it.hasLeft && !it.isDead && it.leftStage == stage }
+    }
+
+    /** 채집통으로 떠난 냥이를 데려왔다 — 다시 팀으로 (배는 반쯤 채워 준다, Claude 판단) */
+    fun bringBack(id: Int) {
+        val c = cat(id) ?: return
+        c.hasLeft = false; c.leftStage = 0
+        c.fullness = CARE_MAX / 2
+        save()
+    }
 
     /** 떠난 냥이 이름들 — 로비에서 한 번 알려 준 뒤 비운다 */
     fun takePendingLeaveNotices(): List<String> {

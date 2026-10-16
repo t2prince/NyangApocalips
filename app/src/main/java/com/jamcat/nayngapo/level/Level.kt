@@ -65,7 +65,7 @@ class Level(val stageNumber: Int) {
     var totalEnemies = 0
     var defeatedEnemies = 0
     // 늪 속에 숨은 머드냥이는 인간이 늪에 빠져야만 나오므로 클리어 조건에서 뺀다 (대표님 2026-09-27 기획9)
-    val stageCleared: Boolean get() = enemies.isNotEmpty() && enemies.all { it.isDead || it is MudCat } &&
+    val stageCleared: Boolean get() = enemies.isNotEmpty() && enemies.all { it.isDead || it is MudCat || it is StrayTeamCat } &&   // 떠난 냥이는 세지 않는다
         // 30: 끝에 갇힌 배냥이를 구해야 끝난다 (31 바다에 타고 나갈 배냥이, 2026-10-09)
         prisons.none { it.catKind == AllyCat.Kind.BOAT && !it.isOpen }
 

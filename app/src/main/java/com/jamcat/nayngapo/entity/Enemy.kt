@@ -941,6 +941,67 @@ class BeeCat(x: Float, y: Float) : Enemy(x, y, 3, 10) {
 }
 
 /**
+ * 떠난 냥이 (대표님 2026-10-17 「떠난 고양이는 특정한 스테이지에 이름표가 있는 채로 남아 있어, 채집통으로 데려올 수 있어」).
+ * 배고파서 떠난 내 팀 냥이가 그 스테이지를 이름표를 단 채 어슬렁거린다. 싸우지 않고(닿아도 안 다침, 때려도 안 다침),
+ * 채집통을 가지고 인간이 때리면 다시 내 팀으로 돌아온다. 스테이지를 깨는 데는 세지 않는다.
+ */
+class StrayTeamCat(val teamCat: com.jamcat.nayngapo.engine.CatTeam.TeamCat, x: Float) : Enemy(x, Constants.GROUND_Y, 1, 0) {
+    override val width = 80f
+    override val height = 92f
+    override val contactDamage = 0
+    private val home = x
+    private var dir = if (Math.random() < 0.5) 1f else -1f
+    private var wait = 0f
+    private var hop = 0f
+    private val sprite: Bitmap = AllyCat(0f, 0f, teamCat.kind, level = teamCat.level, teamId = teamCat.id,
+        coat = teamCat.coat, kitten = teamCat.isKitten).spriteNow()
+
+    /** 싸우지 않는다 — 인간·냥이와 부딪히지 않고 우리 냥이도 노리지 않는다 */
+    override val isTangible: Boolean get() = false
+
+    override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
+        animTime += deltaTime
+        if (wait > 0f) { wait -= deltaTime; velocityX = 0f }
+        else {
+            velocityX = dir * 70f
+            if (abs(x - home) > 220f) { dir = -sign(x - home); wait = 1f + (Math.random() * 2f).toFloat() }
+            else if (Math.random() < deltaTime * 0.3) wait = 1f + (Math.random() * 1.5f).toFloat()
+        }
+        hop = if (abs(velocityX) > 1f) -abs(sin(animTime * 8f)) * 6f else 0f
+        jumpZ = hop
+        x += velocityX * deltaTime
+        y = Terrain.groundY(x + width / 2f)
+        if (velocityX != 0f) facingRight = velocityX > 0f
+    }
+
+    override fun takeDamage(amount: Int) { /* 떠난 냥이는 다치지 않는다 — 채집통으로만 데려온다 */ }
+
+    override fun draw(canvas: Canvas) {
+        val scale = if (teamCat.isKitten) AllyCat.KITTEN_SCALE else 1f
+        val bmp = if (facingRight) sprite else SpriteManager.getFlipped(sprite)
+        val bw = bmp.width * scale; val bh = bmp.height * scale
+        val cx = x + width / 2f
+        val by = y + jumpZ + 8f
+        tagRect.set(cx - bw / 2f, by - bh, cx + bw / 2f, by)
+        canvas.drawBitmap(bmp, null, tagRect, tagSpritePaint)
+        // 이름표: '이름 (떠난 냥이)'
+        val label = "${teamCat.name} · 떠난 냥이"
+        tagText.textSize = 26f
+        val tw = tagText.measureText(label) + 24f
+        tagRect.set(cx - tw / 2f, by - bh - 44f, cx + tw / 2f, by - bh - 10f)
+        canvas.drawRoundRect(tagRect, 14f, 14f, tagBg)
+        canvas.drawText(label, cx, tagRect.bottom - 9f, tagText)
+    }
+
+    companion object {
+        private val tagRect = RectF()
+        private val tagSpritePaint = Paint().apply { isFilterBitmap = true; alpha = 230 }
+        private val tagBg = Paint().apply { color = Color.argb(190, 80, 60, 50); isAntiAlias = true }
+        private val tagText = Paint().apply { color = Color.WHITE; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
+    }
+}
+
+/**
  * 여왕 벌냥이 — 30스테이지 보스 (대표님 2026-10-10 「30스테이지 보스는 여왕 벌냥이야」). GPT 그림 `queen_bee_cat`(금관을 쓴 큰 벌냥이).
  * 높이 떠서 인간 위를 따라다니다가 2.8초마다 엉덩이 침으로 내려와 찌르고(내려왔을 때만 맞는다), 7초마다 벌냥이 둘을 불러낸다(한 번에 최대 6마리까지).
  * **HP 25 · 공격 3** (대표님 2026-10-16) · 닿으면 하트 3(보스) · 간격·높이·부르는 수는 Claude 판단.

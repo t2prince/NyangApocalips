@@ -14,6 +14,8 @@ import kotlin.math.sin
  * 늦거나 너무 일찍 당기면 놓친다. 잡은 물고기는 캣타워 '간식 주기'에서 냥이에게 준다.
  * **'낚시줄 조종하기'**(대표님 2026-10-16): 누르면 낚시줄이 물속으로 내려가고, 물속을 헤엄치는 물고기들 사이로 손가락을 대고 움직여
  * 낚싯바늘을 옮긴다 — 바늘이 물고기에 닿으면 그 물고기가 물려 끌려 올라온다(한 번에 한 마리만). 헤엄치는 마릿수·빠르기는 Claude 판단.
+ * **낚시줄이 심해까지 내려간다**(2026-10-16): 화면이 바늘을 따라 아래로 내려가고(깊이 3000), 깊을수록 물빛이 어두운 심해·빛나는 알갱이,
+ * 맨 아래 바닥엔 바위. 깊은 곳일수록 큰 물고기·황금 물고기가 많다 (깊이·비율은 Claude 판단).
  * 포만감 = 작은 3 · 큰 6 · 황금 10 (대표님 2026-10-10). 확률·시간·공짜는 Claude 판단 (작은 물고기 60% · 큰 물고기 32% · 황금 물고기 8%).
  */
 class FishingScreen(private val gameView: GameView) : Screen {
@@ -29,10 +31,20 @@ class FishingScreen(private val gameView: GameView) : Screen {
     private var hookTX = 0f
     private var hookTY = 0f
     private val controlRect = RectF()
+    /** 물속을 내려다보는 화면 높이 (바늘을 따라 심해까지 내려간다) */
+    private var camY = 0f
+    private val seabedY: Float get() = gameView.screenHeight * 0.55f + DEPTH + gameView.screenHeight * 0.35f
 
     private fun randomFishId(): String {
         val r = Math.random()
         return when { r < 0.08 -> "fish_gold"; r < 0.40 -> "fish_big"; else -> "fish_small" }
+    }
+
+    /** 깊이(0 얕음 → 1 심해)에 따라: 깊을수록 큰 물고기·황금 물고기가 많다 */
+    private fun fishIdAtDepth(d: Float): String {
+        val r = Math.random()
+        val gold = 0.05 + 0.30 * d; val bigger = gold + 0.25 + 0.30 * d
+        return when { r < gold -> "fish_gold"; r < bigger -> "fish_big"; else -> "fish_small" }
     }
 
     /** 낚시줄을 물속으로 내리고 물고기들을 헤엄치게 한다 */
@@ -42,9 +54,13 @@ class FishingScreen(private val gameView: GameView) : Screen {
         state = State.CONTROL; t = 0f; catchId = null; hooked = null
         hookX = w * 0.62f; hookY = waterY + 60f; hookTX = hookX; hookTY = hookY
         swimmers.clear()
-        repeat(SWIMMERS) {
-            swimmers.add(Swimmer(randomFishId(), w * (0.35f + Math.random().toFloat() * 0.6f),
-                waterY + 90f + Math.random().toFloat() * (h * 0.24f), if (Math.random() < 0.5) 1f else -1f, 60f + Math.random().toFloat() * 90f))
+        val bottom = seabedY - 60f
+        repeat(SWIMMERS) { k ->
+            // 얕은 곳부터 심해까지 고르게 흩어 놓는다
+            val y = waterY + 90f + (bottom - waterY - 90f) * ((k + Math.random().toFloat()) / SWIMMERS)
+            val d = ((y - waterY) / (bottom - waterY)).coerceIn(0f, 1f)
+            swimmers.add(Swimmer(fishIdAtDepth(d), w * (0.35f + Math.random().toFloat() * 0.6f), y,
+                if (Math.random() < 0.5) 1f else -1f, 60f + Math.random().toFloat() * 90f))
         }
     }
 
@@ -81,6 +97,10 @@ class FishingScreen(private val gameView: GameView) : Screen {
     override fun update(deltaTime: Float) {
         timer += deltaTime
         t += deltaTime
+        // 화면이 바늘을 따라 물속으로 내려간다 (조종할 때만)
+        val h = gameView.screenHeight.toFloat()
+        val camTarget = if (state == State.CONTROL || state == State.REEL) (hookY - h * 0.55f).coerceIn(0f, seabedY - h * 0.92f) else 0f
+        camY += (camTarget - camY) * (deltaTime * 5f).coerceAtMost(1f)
         when (state) {
             State.CAST -> if (t >= 0.5f) { state = State.WAIT; t = 0f; waitTime = 2f + (Math.random() * 3f).toFloat() }
             State.WAIT -> if (t >= waitTime) { state = State.BITE; t = 0f; SoundManager.playCatHit() }
@@ -91,7 +111,8 @@ class FishingScreen(private val gameView: GameView) : Screen {
                     f.x += f.dir * f.speed * deltaTime
                     if (f.x < w * 0.33f || f.x > w * 0.97f) { f.dir = -f.dir; f.x = f.x.coerceIn(w * 0.33f, w * 0.97f) }
                 }
-                // 바늘은 손가락 쪽으로 따라간다
+                // 바늘은 물고기가 잡힐 때까지 저절로 가라앉는다 (대표님 2026-10-16 「심해까지 내려가, 물고기가 잡힐 때까지」) — 좌우는 손가락으로
+                hookTY = (hookTY + SINK_SPEED * deltaTime).coerceAtMost(seabedY - 30f)
                 val dx = hookTX - hookX; val dy = hookTY - hookY
                 val d = kotlin.math.hypot(dx, dy)
                 val step = HOOK_SPEED * deltaTime
@@ -104,7 +125,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
             State.REEL -> {
                 // 물고기를 문 바늘이 물 위로 끌려 올라온다
                 val waterY = gameView.screenHeight * 0.55f
-                hookY -= 420f * deltaTime
+                hookY -= 900f * deltaTime   // 심해에서 끌어 올린다
                 if (hookY <= waterY - 40f) {
                     val id = hooked?.id ?: "fish_small"
                     GameProgress.addItem(id)
@@ -139,8 +160,17 @@ class FishingScreen(private val gameView: GameView) : Screen {
         val waterY = h * 0.55f
         if (skyShader == null) skyShader = LinearGradient(0f, 0f, 0f, waterY, Color.rgb(120, 190, 245), Color.rgb(220, 240, 255), Shader.TileMode.CLAMP)
         sky.shader = skyShader
-        canvas.drawRect(0f, 0f, w, waterY, sky)
-        canvas.drawRect(0f, waterY, w, h, water)
+        canvas.save()
+        canvas.translate(0f, -camY)
+        canvas.drawRect(0f, -h, w, waterY, sky)
+        canvas.drawRect(0f, waterY, w, h + camY, water)
+        if (camY > 1f || state == State.CONTROL || state == State.REEL) {
+            // 얕은 강물 → 깊은 심해로 점점 어두워진다
+            if (deepShader == null) deepShader = LinearGradient(0f, waterY, 0f, seabedY,
+                intArrayOf(Color.rgb(90, 170, 230), Color.rgb(40, 90, 160), Color.rgb(12, 24, 60)), floatArrayOf(0f, 0.35f, 1f), Shader.TileMode.CLAMP)
+            deepPaint.shader = deepShader
+            canvas.drawRect(0f, waterY, w, seabedY + h, deepPaint)
+        }
         var wx = -((timer * 40f) % 160f)
         while (wx < w) { canvas.drawLine(wx, waterY + 40f, wx + 60f, waterY + 42f, waterDark); canvas.drawLine(wx + 80f, waterY + 140f, wx + 140f, waterY + 142f, waterDark); wx += 160f }
 
@@ -196,6 +226,8 @@ class FishingScreen(private val gameView: GameView) : Screen {
             path.reset(); path.moveTo(tipX, tipY); path.lineTo(tipX, tipY + 60f); canvas.drawPath(path, line)
         }
 
+        canvas.restore()   // 여기까지 물속(camY)과 함께 움직인다
+
         // 잡은 물고기
         if (state == State.CAUGHT) catchId?.let { id ->
             val icon = SpriteManager.shopIcons[id]
@@ -235,7 +267,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
             State.CAST, State.WAIT -> "기다리는 중…"
             State.BITE -> "당기기!"
             State.CAUGHT, State.MISSED -> "🎣 다시 던지기"
-            State.CONTROL -> "손가락으로 바늘 움직이기"
+            State.CONTROL -> "↔ 바늘 움직이기 (내려가는 중)"
             State.REEL -> "끌어 올리는 중!"
         }
         btnRect.set(w * 0.75f - 230f, h * 0.80f, w * 0.75f + 230f, h * 0.80f + 110f)
@@ -264,32 +296,44 @@ class FishingScreen(private val gameView: GameView) : Screen {
     private val current = Paint().apply { color = Color.argb(110, 200, 235, 255); strokeWidth = 5f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
     private val bubble = Paint().apply { color = Color.argb(150, 230, 245, 255); style = Paint.Style.STROKE; strokeWidth = 3f; isAntiAlias = true }
 
-    /** 강 물속: 물빛을 깊게, 바닥에 모래·조약돌·흔들리는 수초, 오른쪽으로 흘러가는 물살, 올라가는 거품 */
+    private val deepPaint = Paint()
+    private var deepShader: Shader? = null
+    private val glow = Paint().apply { color = Color.argb(170, 160, 255, 230); isAntiAlias = true }
+    private val rock = Paint().apply { color = Color.rgb(60, 60, 72); isAntiAlias = true }
+
+    /** 강 물속 → 심해: 얕은 곳엔 흐르는 물살·수초, 깊은 곳엔 빛나는 알갱이, 맨 아래 바닥엔 바위 (월드 좌표, camY 로 옮겨 그린다) */
     private fun drawRiverUnderwater(canvas: Canvas, w: Float, h: Float, waterY: Float) {
-        canvas.drawRect(w * 0.30f, waterY + 8f, w, h, deepWater)
-        val bed = h * 0.92f
-        canvas.drawRect(w * 0.30f, bed, w, h, sand)
-        for (k in 0 until 9) {
-            val px = w * (0.33f + k * 0.075f); val r = 14f + (k * 37 % 5) * 4f
-            canvas.drawOval(px - r, bed - r * 0.6f, px + r, bed + r * 0.5f, pebble)
-        }
-        for (k in 0 until 6) {
-            val bx = w * (0.36f + k * 0.11f)
-            path.reset(); path.moveTo(bx, bed)
-            val sway = sin(timer * 2f + k) * 18f
-            path.quadTo(bx + sway, bed - 70f, bx + sway * 1.6f, bed - 140f - (k % 3) * 30f)
-            canvas.drawPath(path, weed)
-        }
-        // 물살: 흐르는 짧은 줄 (강은 오른쪽으로 흐른다)
+        val bed = seabedY
+        // 얕은 강: 물살 (오른쪽으로 흐른다)
         for (k in 0 until 10) {
-            val y = waterY + 60f + (k * 53 % 9) * (h * 0.035f)
+            val y = waterY + 60f + (k * 53 % 9) * (h * 0.04f)
             val x = w * 0.30f + ((timer * 260f + k * 210f) % (w * 0.72f))
             canvas.drawLine(x, y, x + 70f, y, current)
+        }
+        // 강가 수초 (얕은 곳 양옆)
+        for (k in 0 until 4) {
+            val bx = w * (0.34f + k * 0.2f); val by = waterY + h * 0.42f
+            path.reset(); path.moveTo(bx, by)
+            val sway = sin(timer * 2f + k) * 18f
+            path.quadTo(bx + sway, by - 70f, bx + sway * 1.6f, by - 140f)
+            canvas.drawPath(path, weed)
+        }
+        // 심해: 빛나는 알갱이가 천천히 떠오른다
+        for (k in 0 until 24) {
+            val gx = w * (0.32f + (k * 97 % 66) / 100f)
+            val gy = waterY + DEPTH * 0.35f + ((k * 131) % 100) / 100f * (bed - waterY - DEPTH * 0.35f) - (timer * 20f + k * 13f) % 120f
+            canvas.drawCircle(gx, gy, 3f + (k % 3), glow)
+        }
+        // 맨 아래 바닥: 모래와 바위
+        canvas.drawRect(0f, bed, w, bed + h, sand)
+        for (k in 0 until 9) {
+            val px = w * (0.33f + k * 0.075f); val r = 26f + (k * 37 % 5) * 8f
+            canvas.drawOval(px - r, bed - r * 0.7f, px + r, bed + r * 0.4f, rock)
         }
         for (k in 0 until 6) {
             val u = (timer * 0.4f + k * 0.17f) % 1f
             val bx = w * (0.4f + k * 0.1f) + sin(timer * 3f + k) * 8f
-            canvas.drawCircle(bx, bed - u * (bed - waterY - 20f), 6f + k % 3 * 2f, bubble)
+            canvas.drawCircle(bx, bed - u * 400f, 6f + k % 3 * 2f, bubble)
         }
     }
 
@@ -308,8 +352,8 @@ class FishingScreen(private val gameView: GameView) : Screen {
         // 조종 중: 물속을 누르거나 끌면 바늘이 그쪽으로
         if (state == State.CONTROL && (event.actionMasked == MotionEvent.ACTION_DOWN || event.actionMasked == MotionEvent.ACTION_MOVE)) {
             if (exitRect.contains(event.x, event.y)) { gameView.showShop(); return true }
+            // 좌우만 손가락으로 (깊이는 저절로 가라앉는다)
             hookTX = event.x.coerceIn(gameView.screenWidth * 0.3f, gameView.screenWidth * 0.98f)
-            hookTY = event.y.coerceIn(h * 0.58f, h * 0.95f)
             return true
         }
         if (event.actionMasked != MotionEvent.ACTION_DOWN) return true
@@ -329,7 +373,11 @@ class FishingScreen(private val gameView: GameView) : Screen {
         /** '!' 뜨고 당길 수 있는 시간 */
         private const val BITE_WINDOW = 1.0f
         /** 낚시줄 조종: 헤엄치는 물고기 수 · 바늘 빠르기 */
-        private const val SWIMMERS = 5
+        private const val SWIMMERS = 12
+        /** 물 위에서 심해 바닥까지 깊이 */
+        private const val DEPTH = 3000f
+        /** 바늘이 가라앉는 빠르기 (심해 바닥까지 약 15초) */
+        private const val SINK_SPEED = 220f
         private const val HOOK_SPEED = 700f
         private val NAMES = mapOf("fish_small" to "작은 물고기", "fish_big" to "큰 물고기", "fish_gold" to "✨황금 물고기")
     }

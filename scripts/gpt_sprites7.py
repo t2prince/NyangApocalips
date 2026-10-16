@@ -19,6 +19,7 @@ ITEMS = {
     'boat_cat': ('cat_boat', 92),
     'honey_cat': ('cat_honey', 86),     # 꿀냥이 (꿀 늪, 2026-10-09)
     'pirate_ship': ('pirate_ship', 760),
+    'fishing_boat': ('fishing_boat', 420),   # 낚시터 어선 (2026-10-17 「배는 일반적인 어선」)
     'queen_bee_cat': ('cat_queen_bee', 190),   # 30스테이지 보스 여왕 벌냥이 (2026-10-10)
     'cat_house': ('cat_house', 600),
     'straw_cat': ('straw_cat', 360),    # 투기장 밀짚 가짜 냥이 (2026-10-09)

@@ -89,6 +89,13 @@ class ShopScreen(private val gameView: GameView) : Screen {
     // 상점에서 구했던 아이템을 다 잃어버려. 25초 안에 고양이를 다 잡아야 해, 나오는 고양이는 19마리」) =====
     private var raid = false
     private var raidTime = 0f
+    /** 기습 경고 — 냥이들이 쳐들어오기 전에 빨간 경고가 깜빡인다 (대표님 2026-10-17 「기습이 시작되면 경고가 떠」). 길이는 Claude 판단 */
+    private var raidWarnT = 0f
+    private val RAID_WARN_TIME = 2.5f
+    private var raidSirenT = 0f
+    private val warnEdge = Paint().apply { style = Paint.Style.STROKE; strokeWidth = 46f; color = Color.RED; isAntiAlias = true }
+    private val warnBig = Paint().apply { color = Color.WHITE; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true; textSize = 96f }
+    private val warnBox = Paint().apply { color = Color.rgb(200, 20, 20); isAntiAlias = true }
     private val raiders = mutableListOf<com.jamcat.nayngapo.entity.Enemy>()
     /** 기습이 끝난 뒤 결과 글자 (이겼으면 막아냄, 졌으면 털림 → 잠시 뒤 상점 마을을 새로 그린다) */
     private var raidResult: String? = null
@@ -96,7 +103,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
     private var raidLost = false
 
     private fun startRaid() {
-        raid = true; raidTime = RAID_TIME
+        raid = true; raidTime = RAID_TIME; raidWarnT = RAID_WARN_TIME; raidSirenT = 0f
         raiders.clear()
         repeat(RAID_CATS) { k ->
             val side = if (k % 2 == 0) -1f else 1f
@@ -109,7 +116,6 @@ class ShopScreen(private val gameView: GameView) : Screen {
             raiders.add(e)
         }
         touchControls.releaseAll()
-        showNotice("⚠ 기습! 나쁜 편 냥이들이 쳐들어왔다! ${RAID_TIME.toInt()}초 안에 다 잡아라!")
     }
 
     private fun updateRaid(deltaTime: Float) {
@@ -119,6 +125,14 @@ class ShopScreen(private val gameView: GameView) : Screen {
             return
         }
         if (!raid) return
+        if (raidWarnT > 0f) {
+            // 경고가 끝날 때까지 냥이들은 화면 밖에서 기다리고 시간도 흐르지 않는다
+            raidWarnT -= deltaTime
+            raidSirenT -= deltaTime
+            if (raidSirenT <= 0f) { com.jamcat.nayngapo.engine.SoundManager.playPlayerHurt(); raidSirenT = 0.6f }
+            if (raidWarnT <= 0f) showNotice("나쁜 편 냥이들이 쳐들어왔다! ${RAID_TIME.toInt()}초 안에 다 잡아라!")
+            return
+        }
         raidTime -= deltaTime
         for (e in raiders) {
             if (e.isDead) { e.updateDeath(deltaTime); continue }
@@ -160,6 +174,21 @@ class ShopScreen(private val gameView: GameView) : Screen {
     private val raidText = Paint().apply { color = Color.WHITE; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; textSize = 42f; isAntiAlias = true }
 
     private fun drawRaidHud(canvas: Canvas, w: Float, h: Float) {
+        if (raid && raidWarnT > 0f) {
+            // 빨간 테두리 + 큰 경고판이 깜빡인다
+            val on = ((RAID_WARN_TIME - raidWarnT) * 4f).toInt() % 2 == 0
+            warnEdge.alpha = if (on) 220 else 90
+            canvas.drawRect(23f, 23f, w - 23f, h - 23f, warnEdge)
+            if (on) {
+                rect.set(w * 0.16f, h * 0.30f, w * 0.84f, h * 0.58f)
+                canvas.drawRoundRect(rect, 40f, 40f, warnBox)
+                warnBig.textSize = h * 0.11f
+                canvas.drawText("⚠ 경고 ⚠", w / 2f, rect.top + rect.height() * 0.45f, warnBig)
+                warnBig.textSize = h * 0.055f
+                canvas.drawText("냥이 군단의 기습! 상점 마을을 지켜라!", w / 2f, rect.top + rect.height() * 0.80f, warnBig)
+            }
+            return
+        }
         if (raid) {
             val t = "⚠ 기습! 냥이 ${raiders.count { !it.isDead }}/$RAID_CATS · 남은 시간 ${kotlin.math.ceil(raidTime.coerceAtLeast(0f)).toInt()}초 · ♥ ${player.hp.coerceAtLeast(0)}"
             val tw = raidText.measureText(t) + 60f

@@ -38,6 +38,7 @@ object GameProgress {
     private const val KEY_SELECTED_CAR = "selected_car"
     private const val KEY_ROBOT_LEVEL = "robot_level"
     private const val KEY_LINE_LEVEL = "fishing_line_level"
+    private const val KEY_ROD_LEVEL = "fishing_rod_level"
     private const val KEY_CAUGHT_KINDS = "caught_kinds"
     private const val KEY_DAY_CLOCK = "day_clock"
     private const val KEY_RIDE_ROBOT = "ride_robot"
@@ -145,22 +146,27 @@ object GameProgress {
     }
 
     /**
-     * 낚시줄 Lv (대표님 2026-10-16 「낚시줄 Lv업이 있어, 누르면 Lv2가 되면서 두 배가 돼」) — Lv 마다 낚시줄 길이(내려가는 깊이)가 두 배.
-     * 값 = 루비 20 × 지금 Lv · 최대 Lv 4 는 Claude 판단.
+     * 낚싯대 Lv (대표님 2026-10-17 「Lv2 낚싯대는 물고기를 2마리 잡을 수 있어, Lv3 하나 추가 3, Lv4 하나 추가 4,
+     * 낚싯대 레벨은 100000000000000000000000000000까지」) — **Lv = 한 번에 잡는 물고기 수**. 수가 너무 커서 BigInteger 로 둔다.
+     * (2026-10-16 에는 'Lv 마다 깊이 두 배'로 했다가 대표님 설명대로 바꿈) 값 = 루비 20 × 지금 Lv 는 Claude 판단.
      */
-    var fishingLineLevel = 1
+    var fishingLineLevel: java.math.BigInteger = java.math.BigInteger.ONE
         private set
-    const val LINE_LEVEL_MAX = 4
+    val LINE_LEVEL_MAX: java.math.BigInteger = java.math.BigInteger("100000000000000000000000000000")
 
-    fun lineLevelUpPrice() = 20 * fishingLineLevel
+    fun lineLevelUpPrice(): java.math.BigInteger = fishingLineLevel.multiply(java.math.BigInteger.valueOf(20))
 
     fun levelUpFishingLine(): Boolean {
         if (fishingLineLevel >= LINE_LEVEL_MAX) return false
-        if (!spendRubies(lineLevelUpPrice())) return false
-        fishingLineLevel++
-        prefs?.edit()?.putInt(KEY_LINE_LEVEL, fishingLineLevel)?.apply()
+        val price = lineLevelUpPrice()
+        if (price > java.math.BigInteger.valueOf(Int.MAX_VALUE.toLong()) || !spendRubies(price.toInt())) return false
+        fishingLineLevel = fishingLineLevel.add(java.math.BigInteger.ONE)
+        prefs?.edit()?.putString(KEY_ROD_LEVEL, fishingLineLevel.toString())?.apply()
         return true
     }
+
+    /** 한 번에 잡는 물고기 수 (Lv, 아주 크면 cap 까지만) */
+    fun catchesPerCast(cap: Int): Int = fishingLineLevel.min(java.math.BigInteger.valueOf(cap.toLong())).toInt()
 
     /** 밤낮 시계 — 플레이 시간 1시간마다 낮 ↔ 밤 (대표님 2026-10-17). 0~3600 낮, 3600~7200 밤 */
     var dayClock = 0f
@@ -315,7 +321,11 @@ object GameProgress {
         dummyLevel = (prefs?.getInt(KEY_DUMMY_LEVEL, 1) ?: 1).coerceIn(1, DUMMY_LEVEL_MAX)
         selectedCar = prefs?.getString(KEY_SELECTED_CAR, "") ?: ""
         robotLevel = (prefs?.getInt(KEY_ROBOT_LEVEL, 0) ?: 0).coerceIn(0, RobotCatalog.MAX_LEVEL)
-        fishingLineLevel = (prefs?.getInt(KEY_LINE_LEVEL, 1) ?: 1).coerceIn(1, LINE_LEVEL_MAX)
+        // 낚싯대 Lv (예전 Int 저장도 읽는다)
+        fishingLineLevel = prefs?.getString(KEY_ROD_LEVEL, null)?.toBigIntegerOrNull()
+            ?: java.math.BigInteger.valueOf((prefs?.getInt(KEY_LINE_LEVEL, 1) ?: 1).toLong())
+        if (fishingLineLevel < java.math.BigInteger.ONE) fishingLineLevel = java.math.BigInteger.ONE
+        if (fishingLineLevel > LINE_LEVEL_MAX) fishingLineLevel = LINE_LEVEL_MAX
         dayClock = (prefs?.getFloat(KEY_DAY_CLOCK, 0f) ?: 0f).coerceIn(0f, DAY_LENGTH * 2)
         caughtKinds.clear(); prefs?.getString(KEY_CAUGHT_KINDS, "")?.split(',')?.filter { it.isNotBlank() }?.let { caughtKinds.addAll(it) }
         rideRobot = prefs?.getBoolean(KEY_RIDE_ROBOT, false) ?: false

@@ -72,11 +72,11 @@ class Level(val stageNumber: Int) {
     var replay = false
     var reachedEnd = false
 
-    /** 냥이를 모두 빼고 감옥을 다 깨 둔다 — 다시 하는 스테이지 */
+    /**
+     * 다시 하는 스테이지: 감옥은 다 깨져 있다. 냥이들은 그대로 있다 (2026-10-17 「한 번 깬 스테이지에도 고양이들이 있어」 —
+     * 처음엔 냥이도 없앴다가 되돌림). 깨는 법은 처음과 같다(냥이를 다 잡기).
+     */
     fun emptyForReplay() {
-        replay = true
-        enemies.clear()
-        totalEnemies = 0
         for (p in prisons) p.isOpen = true
     }
 

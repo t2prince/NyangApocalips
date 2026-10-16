@@ -301,7 +301,7 @@ class GamePlayScreen(
         if (!isSea && loadout.lifePotion && GameProgress.consumeItem("h_life")) player.lives += 1
         if (loadout.heartPotion && GameProgress.consumeItem("h_heal")) { player.maxHp += 2; player.hp = player.maxHp }
         player.hasGun = player.hasGun && loadout.gun
-        showWaveText(if (level.replay) "STAGE $stageNumber - 이미 깬 스테이지 (끝까지 가면 클리어)" else "STAGE $stageNumber - START!")
+        showWaveText("STAGE $stageNumber - START!")
 
         // 관리 화면에서 출전으로 골라 둔 팀 냥이들이 플레이어 뒤에 줄지어 함께 출발한다.
         // 여기서 쓰러져도 명단에서 사라지지는 않는다 (이번 판만 못 싸운다).

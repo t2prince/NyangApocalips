@@ -167,7 +167,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     fun launchStage(stageNumber: Int) {
         fadeTo {
             if (GameProgress.isSkyStage(stageNumber)) SkyStageScreen(this, stageNumber)
-            else GamePlayScreen(this, stageNumber)
+            else {
+                // 야간 전투: 이 스테이지의 냥이들은 공격력·체력 두 배, 눈이 하얗다 (Level 이 냥이를 만들기 전에 켠다)
+                com.jamcat.nayngapo.entity.Enemy.nightBattle = BattleLoadout.night && GameProgress.doctorRescued && stageNumber != 31
+                GamePlayScreen(this, stageNumber)
+            }
         }
     }
 
@@ -307,7 +311,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
                 if (fadeAlpha >= 1f) {
                     // 완전히 어두워진 순간에 화면 교체 → 전환이 보이지 않는다
                     fadeAlpha = 1f
-                    pendingScreen?.let { currentScreen = it() }
+                    pendingScreen?.let { com.jamcat.nayngapo.entity.Enemy.nightBattle = false; currentScreen = it() }   // 야간 전투는 그 스테이지에서만
                     pendingScreen = null
                     fadeDir = -1
                 }

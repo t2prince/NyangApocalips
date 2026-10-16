@@ -33,6 +33,8 @@ class BattlePrepScreen(private val gameView: GameView, private val stage: Int) :
     private val rideRects = Ride.values().map { RectF() }
     private val goRect = RectF()
     private val backRect = RectF()
+    /** 야간 전투 켜기·끄기 (의사를 구해야) */
+    private val nightRect = RectF()
     private var noticeText = ""
     private var noticeTimer = 0f
 
@@ -126,6 +128,18 @@ class BattlePrepScreen(private val gameView: GameView, private val stage: Int) :
         canvas.drawRoundRect(goRect, 55f, 55f, goPaint); canvas.drawRoundRect(goRect, 55f, 55f, ink)
         title.textSize = h * 0.055f
         canvas.drawTr("출발!", goRect.centerX(), goRect.centerY() + h * 0.02f, title)
+        // 야간 전투 (대표님 2026-10-17): 상점마을2에서 의사를 구하면 고를 수 있다 — 냥이들이 공격력·체력 두 배, 눈이 하얗다
+        nightRect.set(w * 0.96f - 420f, h * 0.84f, w * 0.96f, h * 0.84f + 90f)
+        val nightOk = GameProgress.doctorRescued && !isSea
+        val nightOn = nightOk && BattleLoadout.night
+        canvas.drawRoundRect(nightRect, 45f, 45f, if (!nightOk) off else if (nightOn) chosen else card); canvas.drawRoundRect(nightRect, 45f, 45f, ink)
+        text.textSize = h * 0.030f
+        canvas.drawTr(when {
+            !GameProgress.doctorRescued -> "🌙 야간 전투 (의사를 구하면)"
+            isSea -> "🌙 바다는 야간 전투 없음"
+            nightOn -> "🌙 야간 전투 ✓"
+            else -> "🌙 야간 전투 끔"
+        }, nightRect.centerX(), nightRect.centerY() + h * 0.011f, text)
         backRect.set(w * 0.04f, h * 0.84f, w * 0.04f + 240f, h * 0.84f + 90f)
         canvas.drawRoundRect(backRect, 45f, 45f, card); canvas.drawRoundRect(backRect, 45f, 45f, ink)
         text.textSize = h * 0.032f
@@ -145,6 +159,14 @@ class BattlePrepScreen(private val gameView: GameView, private val stage: Int) :
         val x = event.x; val y = event.y
         if (goRect.contains(x, y)) { gameView.launchStage(stage); return true }
         if (backRect.contains(x, y)) { gameView.leaveStage(); return true }
+        if (nightRect.contains(x, y)) {
+            when {
+                !GameProgress.doctorRescued -> notice("상점마을2 감옥의 의사를 구하면 야간 전투를 할 수 있어요")
+                isSea -> notice("바다(31)에서는 야간 전투를 못 해요")
+                else -> { BattleLoadout.night = !BattleLoadout.night; if (BattleLoadout.night) notice("야간 전투! 냥이들이 공격력·체력 두 배, 눈이 하얘져요") }
+            }
+            return true
+        }
         val i = itemRects.indexOfFirst { it.contains(x, y) }
         if (i >= 0) {
             val id = items[i].id

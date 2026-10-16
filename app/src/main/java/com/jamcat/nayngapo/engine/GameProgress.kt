@@ -276,6 +276,9 @@ object GameProgress {
     /** 상점마을2 (바다 끝): 가게마다 앞 감옥의 사람을 구하면 그 가게가 문을 연다 (2026-10-17) */
     fun isVillage2Open(i: Int): Boolean = prefs?.getBoolean("village2_open_$i", false) ?: false
     fun openVillage2(i: Int) { prefs?.edit()?.putBoolean("village2_open_$i", true)?.apply() }
+    /** 상점마을2 감옥에 갇힌 의사를 구했나 — 구하면 야간 전투를 할 수 있다 (2026-10-17). 의사 감옥 = 상점마을2 DOCTOR_SHOP 번 가게 앞 */
+    const val DOCTOR_SHOP = 2
+    val doctorRescued: Boolean get() = isVillage2Open(DOCTOR_SHOP)
     /** 화면 언어 ("ko" 한국어 · "en" English) — 설정에서 고른다 (2026-10-17) */
     var language: String
         get() = prefs?.getString("language", "ko") ?: "ko"

@@ -81,7 +81,8 @@ class Village2Screen(private val gameView: GameView) : Screen {
                     p.open()
                     GameProgress.openVillage2(i)
                     SoundManager.playSpecial()
-                    showNotice("인간 ${p.rescueCount}명 구출! 사람이 생겨 ${i + 1}번 가게가 문을 열었다")
+                    if (i == GameProgress.DOCTOR_SHOP) showNotice("의사를 구했다! 이제 야간 전투를 할 수 있어요 (출전 준비에서 🌙)")
+                    else showNotice("인간 ${p.rescueCount}명 구출! 사람이 생겨 ${i + 1}번 가게가 문을 열었다")
                 }
             }
         }
@@ -113,6 +114,7 @@ class Village2Screen(private val gameView: GameView) : Screen {
     private val pauseVeil = Paint().apply { color = Color.argb(185, 8, 10, 16) }
     private val pauseBig = Paint().apply { color = Color.WHITE; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true; textSize = 96f }
     private val pauseHint = Paint().apply { color = Color.argb(200, 230, 234, 244); textAlign = Paint.Align.CENTER; isAntiAlias = true; textSize = 34f }
+    private val crossPaint = Paint().apply { color = Color.rgb(220, 40, 40); isAntiAlias = true }
     private val counter = Paint().apply { color = Color.argb(170, 20, 22, 30); isAntiAlias = true }
     private val counterText = Paint().apply { color = Color.WHITE; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true; textSize = 36f }
 
@@ -149,6 +151,16 @@ class Village2Screen(private val gameView: GameView) : Screen {
         // 가게들
         for (i in 0 until SHOP_COUNT) drawHut(canvas, i, shopX[i], groundY - 30f, GameProgress.isVillage2Open(i))
         for (p in prisons) if (p != null && !p.isOpen) p.draw(canvas)
+        // 의사가 갇힌 감옥: 위에 빨간 십자 + '의사' 팻말 (대표님 2026-10-17 「의사를 구하면 야간 전투를 할 수 있어」)
+        prisons.getOrNull(GameProgress.DOCTOR_SHOP)?.takeIf { !it.isOpen }?.let { p ->
+            val cx = p.x + p.width / 2f; val top = p.y - p.height - 20f
+            text.textSize = 34f
+            rect.set(cx - 70f, top - 60f, cx + 70f, top - 8f)
+            canvas.drawRoundRect(rect, 12f, 12f, sign); canvas.drawRoundRect(rect, 12f, 12f, ink)
+            canvas.drawTr("의사", cx + 14f, rect.centerY() + 12f, text)
+            canvas.drawRect(cx - 50f, rect.centerY() - 5f, cx - 26f, rect.centerY() + 5f, crossPaint)
+            canvas.drawRect(cx - 43f, rect.centerY() - 12f, cx - 33f, rect.centerY() + 12f, crossPaint)
+        }
         player.draw(canvas)
         // 가게 앞 말풍선
         if (nearShop >= 0) {

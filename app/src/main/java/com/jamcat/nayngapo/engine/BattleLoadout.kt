@@ -15,6 +15,8 @@ object BattleLoadout {
     var bugbox = true
     /** 레이저 총을 들고 갈지 */
     var gun = true
+    /** 야간 전투로 갈지 — 상점마을2에서 의사를 구해야 고를 수 있다 (2026-10-17). 기본은 낮 */
+    var night = false
     /** 무엇을 타고 갈지 (없는 건 걷기로) */
     var ride: Ride? = null
 

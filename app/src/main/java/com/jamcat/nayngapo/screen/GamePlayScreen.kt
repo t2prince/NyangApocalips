@@ -960,7 +960,7 @@ class GamePlayScreen(
                     if (enemy.halfHeart) player.takeHalfDamage()      // 새끼 고양이: 하트 반 칸
                     else {
                         val before = player.hp + player.robotHp
-                        player.takeDamage(enemy.contactDamage)   // 잡몹 1, 보스 3 (기획4)
+                        player.takeDamage(enemy.contactDamage * (if (com.jamcat.nayngapo.entity.Enemy.nightBattle) 2 else 1))   // 잡몹 1, 보스 3 (기획4) · 야간 전투 두 배
                         // 여왕 벌냥이 침에 맞으면 독 — 계속 2초마다 하트 한 칸 (2026-10-16)
                         if (enemy is com.jamcat.nayngapo.entity.QueenBeeCatBoss && player.hp + player.robotHp < before && !player.poisoned) {
                             player.poisoned = true
@@ -1360,7 +1360,8 @@ class GamePlayScreen(
 
         shake(0.1f, 5f)                          // 타격감: 살짝 흔들림
         hitEffects.add(HitEffect(enemy.x + enemy.width / 2f, enemy.y - enemy.height, 0.5f, "$dmg"))
-        if (enemy.isDead) SoundManager.playCatDie() else SoundManager.playCatHit()
+        if (enemy.isDead) { if (!com.jamcat.nayngapo.entity.Enemy.nightBattle) SoundManager.playCatDie() }   // 야간 전투: 쓰러질 땐 소리 없이 가루로
+        else SoundManager.playCatHit()
 
         if (enemy.isDead) {
             shake(0.15f, 9f)                     // 처치 시 더 크게
@@ -2196,6 +2197,31 @@ class GamePlayScreen(
         }
     }
 
+    // ===== 야간 전투 (대표님 2026-10-17 「의사를 구하면 야간 전투를 할 수 있어」) =====
+    private val nightVeil = Paint()
+    private var nightVeilH = 0f
+    private val nightStar = Paint().apply { color = Color.argb(220, 255, 255, 230); isAntiAlias = true }
+    private val nightMoon = Paint().apply { color = Color.rgb(255, 244, 190); isAntiAlias = true }
+    private val nightMoonCut = Paint().apply { color = Color.rgb(30, 34, 70); isAntiAlias = true }
+
+    /** 배경·바닥 위에 짙은 남색 + 별·달 — 냥이·인간은 그 위에 그대로 그려 또렷하다 (어둡기 Claude 판단) */
+    private fun drawNightBattle(canvas: Canvas) {
+        val w = gameView.screenWidth.toFloat(); val h = gameView.screenHeight.toFloat()
+        if (nightVeilH != h) {
+            nightVeilH = h
+            nightVeil.shader = LinearGradient(0f, 0f, 0f, h, Color.argb(200, 12, 16, 46), Color.argb(130, 12, 16, 46), Shader.TileMode.CLAMP)
+        }
+        canvas.drawRect(0f, 0f, w, h, nightVeil)
+        for (k in 0 until 40) {
+            val sx = ((k * 211) % 1000) / 1000f * w
+            val sy = ((k * 137) % 1000) / 1000f * h * 0.42f
+            nightStar.alpha = (120 + 120 * (0.5f + 0.5f * kotlin.math.sin(elapsed * 2f + k))).toInt()
+            canvas.drawCircle(sx, sy, 2f + (k % 3), nightStar)
+        }
+        canvas.drawCircle(w * 0.82f, h * 0.14f, 46f, nightMoon)
+        canvas.drawCircle(w * 0.82f + 20f, h * 0.14f - 10f, 40f, nightMoonCut)
+    }
+
     override fun draw(canvas: Canvas) {
         val sw = gameView.screenWidth
         val sh = gameView.screenHeight
@@ -2244,6 +2270,7 @@ class GamePlayScreen(
         }
         drawFloor(canvas)
         drawStormSky(canvas)
+        if (com.jamcat.nayngapo.entity.Enemy.nightBattle) drawNightBattle(canvas)
 
         // Apply camera transform for game objects (+타격 셰이크)
         var shakeX = 0f

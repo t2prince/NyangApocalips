@@ -11,8 +11,11 @@ import kotlin.math.abs
 import kotlin.math.sin
 
 abstract class Enemy(
-    override var x: Float, var y: Float, val maxHp: Int, val attackPower: Int
+    override var x: Float, var y: Float, baseHp: Int, baseAttack: Int
 ) : Crowdable {
+    /** 야간 전투면 체력·공격력 두 배 (대표님 2026-10-17 「의사를 구하면 야간 전투를 할 수 있어, 냥이들의 공격력이랑 피가 두 배가 돼」) */
+    val maxHp = if (nightBattle) baseHp * 2 else baseHp
+    val attackPower = if (nightBattle) baseAttack * 2 else baseAttack
     override var crowdTimer = 0f
     override val width = 50f
     open val height = 50f
@@ -47,9 +50,40 @@ abstract class Enemy(
     fun updateDeath(deltaTime: Float) = death.update(deltaTime)
 
     fun drawDeath(canvas: Canvas) {
+        if (nightBattle) { drawDust(canvas); return }
         death.draw(canvas, lastSprite ?: SpriteManager.normalCat, facingRight,
             x + width / 2f, y + jumpZ + windLift)
     }
+
+    /** 야간 전투에서 쓰러지면 뒤집히지 않고 그 자리에서 가루가 되어 흩어진다 (대표님 2026-10-17 「죽을 때는 아무 소리 안 나게, 뒤집히는 거 없이 가루가 나옴」) */
+    private fun drawDust(canvas: Canvas) {
+        val t = (1f - death.timer / CatDeathAnim.DURATION).coerceIn(0f, 1f)
+        val cx = x + width / 2f
+        val h = (lastSprite?.height?.toFloat() ?: height).coerceAtLeast(40f)
+        val bw = (lastSprite?.width?.toFloat() ?: width)
+        val baseY = y + jumpZ + windLift
+        // 처음 잠깐은 몸이 옅어지며 사라지고, 가루가 위·옆으로 흩날린다
+        lastSprite?.let { sp ->
+            val face = nightEyes(sp, bigEyes)
+            val bmp = if (facingRight) face else SpriteManager.getFlipped(face)
+            dustPaint.alpha = (255 * (1f - t * 2.5f)).toInt().coerceIn(0, 255)
+            if (dustPaint.alpha > 0) canvas.drawBitmap(bmp, cx - bmp.width / 2f, baseY - bmp.height + 8f, dustPaint)
+        }
+        for (k in 0 until DUST_COUNT) {
+            val fx = ((k * 37) % 100) / 100f - 0.5f
+            val fy = ((k * 61) % 100) / 100f
+            val px = cx + fx * bw + fx * 140f * t + sin(k + t * 6f) * 10f
+            val py = baseY - fy * h - t * (60f + (k % 5) * 30f)
+            dustDot.alpha = (220 * (1f - t)).toInt().coerceIn(0, 255)
+            dustDot.color = if (k % 3 == 0) Color.argb(dustDot.alpha, 255, 255, 255) else Color.argb(dustDot.alpha, 200, 196, 186)
+            canvas.drawCircle(px, py, 3f + (k % 3) * 1.5f * (1f - t * 0.5f), dustDot)
+        }
+    }
+    private val dustPaint = Paint()
+    private val dustDot = Paint().apply { isAntiAlias = true }
+
+    /** 야간 전투 눈: 큰 흰 눈을 가진 냥이(똥·털뭉·모루)는 눈동자를 하얗게 */
+    open val bigEyes: Boolean get() = false
 
     /** 몸에 닿았을 때 플레이어가 잃는 체력 (잡몹 1, 보스 3 — 기획4) */
     open val contactDamage = 1
@@ -151,7 +185,9 @@ abstract class Enemy(
         canvas.drawOval(scratchRect, shadowPaint)
 
         // 원안 스프라이트는 오른쪽을 본다 — 왼쪽을 볼 때만 뒤집는다 (머리 방향 = 이동 방향)
-        val drawBmp = if (facingRight) sprite else SpriteManager.getFlipped(sprite)
+        // 야간 전투: 눈이 하얗게 변한다 (눈동자를 하얗게 칠한 그림)
+        val face = if (nightBattle) nightEyes(sprite, bigEyes) else sprite
+        val drawBmp = if (facingRight) face else SpriteManager.getFlipped(face)
         val sx = cx - drawBmp.width / 2f
         val sy = drawY - drawBmp.height + 8f
         canvas.drawBitmap(drawBmp, sx, sy, null)
@@ -182,6 +218,106 @@ abstract class Enemy(
     }
 
     companion object {
+        /** 지금 야간 전투인가 — 땅 스테이지에 들어갈 때 GameView 가 정한다 (다른 화면으로 가면 꺼진다) */
+        @JvmStatic var nightBattle = false
+
+        private val nightCache = HashMap<Bitmap, Bitmap>()
+        private const val DARK = 90
+        private const val WHITE = 225
+        private const val DUST_COUNT = 36
+
+        /**
+         * 야간 전투의 눈이 하얀 그림 (그림마다 한 번 만들어 둔다).
+         * - 보통 냥이: 눈은 흰 주둥이(가장 큰 흰 덩어리) 바로 위, 털에 둘러싸인 작은 검은 점 두 개 → 하얗게
+         * - 큰 흰 눈 냥이(bigEyes: 똥·털뭉·모루냥이): 큰 흰 눈 안의 검은 눈동자 → 하얗게
+         */
+        fun nightEyes(src: Bitmap, bigEyes: Boolean = false): Bitmap = nightCache.getOrPut(src) {
+            val w = src.width; val h = src.height
+            val px = IntArray(w * h)
+            src.getPixels(px, 0, w, 0, 0, w, h)
+            fun op(i: Int) = (px[i] ushr 24) > 200
+            val dark = BooleanArray(w * h) { op(it) && Color.red(px[it]) < DARK && Color.green(px[it]) < DARK && Color.blue(px[it]) < DARK }
+            val white = BooleanArray(w * h) { op(it) && Color.red(px[it]) > WHITE && Color.green(px[it]) > WHITE && Color.blue(px[it]) > WHITE }
+            fun comps(mask: BooleanArray): List<IntArray> {
+                val seen = BooleanArray(w * h); val out = mutableListOf<IntArray>()
+                val q = IntArray(w * h)
+                for (s0 in 0 until w * h) {
+                    if (!mask[s0] || seen[s0]) continue
+                    var head = 0; var tail = 0; q[tail++] = s0; seen[s0] = true
+                    while (head < tail) {
+                        val i = q[head++]; val x = i % w; val y = i / w
+                        if (x > 0 && mask[i - 1] && !seen[i - 1]) { seen[i - 1] = true; q[tail++] = i - 1 }
+                        if (x < w - 1 && mask[i + 1] && !seen[i + 1]) { seen[i + 1] = true; q[tail++] = i + 1 }
+                        if (y > 0 && mask[i - w] && !seen[i - w]) { seen[i - w] = true; q[tail++] = i - w }
+                        if (y < h - 1 && mask[i + w] && !seen[i + w]) { seen[i + w] = true; q[tail++] = i + w }
+                    }
+                    out.add(q.copyOf(tail))
+                }
+                return out
+            }
+            val out = px.copyOf()
+            val whites = comps(white).filter { it.size >= 20 }.sortedByDescending { it.size }
+            if (bigEyes) {
+                // 큰 흰 눈(가장 큰 흰 덩어리 두 개) 안에서, 네 방향 중 셋 이상이 흰색으로 이어지는 검은 칸 = 눈동자
+                val reach = (w * 0.15f).toInt().coerceAtLeast(6)
+                fun hits(x0: Int, y0: Int, dx: Int, dy: Int): Boolean {
+                    var x = x0; var y = y0
+                    for (k in 0 until reach) {
+                        x += dx; y += dy
+                        if (x !in 0 until w || y !in 0 until h) return false
+                        val i = y * w + x
+                        if (dark[i]) continue
+                        return white[i]
+                    }
+                    return false
+                }
+                for (m in whites.take(2)) {
+                    var l = w; var r = 0; var t = h; var b = 0
+                    for (i in m) { val x = i % w; val y = i / w; if (x < l) l = x; if (x > r) r = x; if (y < t) t = y; if (y > b) b = y }
+                    for (y in t..b) for (x in l..r) {
+                        val i = y * w + x
+                        if (!dark[i]) continue
+                        var n = 0
+                        if (hits(x, y, 1, 0)) n++; if (hits(x, y, -1, 0)) n++; if (hits(x, y, 0, 1)) n++; if (hits(x, y, 0, -1)) n++
+                        if (n >= 3) out[i] = Color.WHITE
+                    }
+                }
+            } else if (whites.isNotEmpty()) {
+                val m = whites[0]
+                var l = w; var r = 0; var top = h
+                for (i in m) { val x = i % w; val y = i / w; if (x < l) l = x; if (x > r) r = x; if (y < top) top = y }
+                val mcx = (l + r) / 2f
+                val maxA = (w * h * 0.006f).toInt().coerceAtLeast(6); val maxD = (w * 0.10f).toInt().coerceAtLeast(4)
+                val cand = mutableListOf<Pair<Float, IntArray>>()
+                for (c in comps(dark)) {
+                    if (c.size < 3 || c.size > maxA) continue
+                    var cl = w; var cr = 0; var ct = h; var cb = 0; var sx = 0f; var sy = 0f
+                    for (i in c) { val x = i % w; val y = i / w; if (x < cl) cl = x; if (x > cr) cr = x; if (y < ct) ct = y; if (y > cb) cb = y; sx += x; sy += y }
+                    val bw = cr - cl + 1; val bh = cb - ct + 1
+                    if (bw > maxD || bh > maxD || maxOf(bw, bh) > 2.5f * minOf(bw, bh)) continue
+                    // 둘레가 모두 털(어둡지도 희지도 않은 불투명)이어야 한다
+                    var furAround = true
+                    loop@ for (i in c) {
+                        val x = i % w; val y = i / w
+                        for ((dx, dy) in NB) {
+                            val xx = x + dx; val yy = y + dy
+                            if (xx !in 0 until w || yy !in 0 until h) { furAround = false; break@loop }
+                            val j = yy * w + xx
+                            if (dark[j]) continue
+                            if (white[j] || !op(j)) { furAround = false; break@loop }
+                        }
+                    }
+                    if (!furAround) continue
+                    val cx = sx / c.size; val cy = sy / c.size
+                    if (cy in (top - 0.30f * h)..(top + 2f) && cx in (l - 0.12f * w)..(r + 0.06f * w))
+                        cand.add(((cx - mcx) * (cx - mcx) + (cy - top) * (cy - top)) to c)
+                }
+                for ((_, c) in cand.sortedBy { it.first }.take(2)) for (i in c) out[i] = Color.WHITE
+            }
+            Bitmap.createBitmap(out, w, h, Bitmap.Config.ARGB_8888)
+        }
+        private val NB = arrayOf(1 to 0, -1 to 0, 0 to 1, 0 to -1)
+
         /** 한 번의 공격이 한 번만 적중하도록 하는 피격 간격(초) */
         const val HIT_COOLDOWN = 0.35f
 
@@ -1510,6 +1646,7 @@ class FlyingCat(x: Float, y: Float) : Enemy(x, y, 25, 15) {
 // ============ 털뭉냥이 (HP 50, 대미지 10) ============
 /** 털이 두꺼워 단단하다. 몸을 부풀렸다가 뾰족한 털을 발사한다 */
 class FluffyCat(x: Float, y: Float) : Enemy(x, y, 50, 10) {
+    override val bigEyes: Boolean get() = true   // 야간 전투: 큰 흰 눈의 눈동자가 하얗게
     override val width = 100f
     override val height = 105f
     private var rollPhase = (Math.random() * Math.PI).toFloat()
@@ -1551,6 +1688,7 @@ class FluffyCat(x: Float, y: Float) : Enemy(x, y, 50, 10) {
 // ============ 모루냥이 (HP 75, 대미지 10) ============
 /** 쇳덩이 같은 몸. 아주 느리지만 가장 단단하다 */
 class AnvilCat(x: Float, y: Float) : Enemy(x, y, 75, 10) {   // 시트: 모루냥이 HP75, 대미지 10
+    override val bigEyes: Boolean get() = true   // 야간 전투: 큰 흰 눈의 눈동자가 하얗게
     override val width = 112f
     override val height = 110f
 
@@ -1569,6 +1707,7 @@ class AnvilCat(x: Float, y: Float) : Enemy(x, y, 75, 10) {   // 시트: 모루�
 // ============ 똥냥이 (HP 30, 대미지 3) ============
 /** 느릿느릿 다가와 고약한 냄새를 풍긴다 */
 class PoopCat(x: Float, y: Float) : Enemy(x, y, 30, 3) {
+    override val bigEyes: Boolean get() = true   // 야간 전투: 큰 흰 눈의 눈동자가 하얗게
     override val width = 92f
     override val height = 100f
     private var wobble = (Math.random() * Math.PI).toFloat()

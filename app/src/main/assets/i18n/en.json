@@ -827,5 +827,14 @@
  "{0}의 공격! 해적냥이 ♥ {1}/{2}": "{0} attacks! Pirate cat ♥ {1}/{2}",
  "{0}이(가) {1}을(를) 낚았다!": "{0} caught a {1}!",
  "{0}이(가) {1}을(를) 낚았다!{2}": "{0} caught a {1}!{2}",
- " (처음! 루비 +{0})": " (First! +{0} Rubies)"
+ " (처음! 루비 +{0})": " (First! +{0} Rubies)",
+ "의사를 구했다! 이제 야간 전투를 할 수 있어요 (출전 준비에서 🌙)": "Rescued the doctor! Night battles unlocked (🌙 in battle prep)",
+ "의사": "Doctor",
+ "🌙 야간 전투 (의사를 구하면)": "🌙 Night battle (rescue the doctor)",
+ "🌙 바다는 야간 전투 없음": "🌙 No night battle at sea",
+ "🌙 야간 전투 ✓": "🌙 Night battle ✓",
+ "🌙 야간 전투 끔": "🌙 Night battle off",
+ "상점마을2 감옥의 의사를 구하면 야간 전투를 할 수 있어요": "Rescue the doctor in Village 2 to unlock night battles",
+ "바다(31)에서는 야간 전투를 못 해요": "No night battles at sea (31)",
+ "야간 전투! 냥이들이 공격력·체력 두 배, 눈이 하얘져요": "Night battle! Cats get double attack & HP, and white eyes"
 }

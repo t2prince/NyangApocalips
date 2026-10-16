@@ -803,5 +803,15 @@
  "그물 명중! 해적냥이 ♥ {0}/{1}": "Net hit! Pirate cat ♥ {0}/{1}",
  "퍽! 해적냥이 ♥ {0}/{1}": "Pow! Pirate cat ♥ {0}/{1}",
  "해적냥이를 물리쳤다! 이제 해적선은 안전해": "Pirate cat defeated! The ship is safe now",
- "낚시터 · 바다": "Fishing · Sea"
+ "낚시터 · 바다": "Fishing · Sea",
+ "상점마을2": "Village 2",
+ "▼ 상점마을2 가기": "▼ Go to Village 2",
+ "🏝 상점마을2 도착": "🏝 Arrived at Village 2",
+ "🏝 상점마을2까지 {0}%": "🏝 {0}% to Village 2",
+ "상점마을2에 왔다! 가게가 다 닫혀 있다 — 갇힌 사람을 구하면 문을 연다": "Welcome to Village 2! All shops are closed — rescue the captives to open them",
+ "인간 {0}명 구출! 사람이 생겨 {1}번 가게가 문을 열었다": "Rescued {0} humans! Shop {1} is now open",
+ "{0}번 가게 · 준비 중": "Shop {0} · Coming soon",
+ "{0}번 가게 · 닫힘 (감옥의 사람을 구해요)": "Shop {0} · Closed (rescue the captives)",
+ "상점마을2 · 열린 가게 {0} / {1}": "Village 2 · Shops open {0} / {1}",
+ "{0}번 가게 · 닫힘": "Shop {0} · Closed"
 }

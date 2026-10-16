@@ -228,8 +228,14 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     }
 
     /** 낚시터 (상점 마을 맨 끝) — 잡은 물고기는 냥이 먹이 */
-    fun showFishing() {
-        fadeTo { FishingScreen(this) }
+    /** atSeaEnd: 상점마을2에서 나오면 바다 끝의 어선 위로 (배 값은 다시 안 낸다) */
+    fun showFishing(atSeaEnd: Boolean = false) {
+        fadeTo { FishingScreen(this, atSeaEnd) }
+    }
+
+    /** 상점마을2 — 바다 끝에서 '상점마을2 가기' (2026-10-17) */
+    fun showVillage2() {
+        fadeTo { Village2Screen(this) }
     }
 
     /** 뽑기 가게 (상점 마을 집 앞) — 나오면 상점 마을 기계 앞 */

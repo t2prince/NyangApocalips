@@ -114,3 +114,5 @@ hi = trim(clean_frame(raw, outline_min_area=1200, stripe_min=40, noise_max=22, h
 hi.save('Plan/cat_sprites6_auto_normal_cat.png')
 hi.resize((int(hi.width * 91 / hi.height), 91), Image.LANCZOS).save('app/src/main/res/drawable-nodpi/cat_normal.png')
 ```
+
+- (2026-10-17) 언어 설정 도입: 화면 글자는 모두 `drawTr`/`measureTr`(engine/I18n.kt)로 그린다 — 새 화면도 `drawText` 대신 이것을 쓴다. 새 한국어 글자를 넣으면 `python3 scripts/i18n_extract.py app/src/main/java/com/jamcat/nayngapo Plan/i18n_ko_strings.json` 후 `assets/i18n/en.json` 에 없는 것을 채운다.

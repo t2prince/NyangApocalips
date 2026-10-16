@@ -31,6 +31,10 @@ class FishingScreen(private val gameView: GameView) : Screen {
     private var hookTX = 0f
     private var hookTY = 0f
     private val controlRect = RectF()
+    /** 배를 타고 바다로 나왔다 (대표님 2026-10-17 「낚시터에는 배를 탈 수 있어, 5루비를 주면 타고 낚시를 갈 수 있어」) —
+     *  배 위에서는 얕은 곳부터 바다 생물이 나오고 던지기로도 절반은 바다 생물이 잡힌다. 한 번 타면 '돌아오기'까지 (Claude 판단) */
+    private var onBoat = false
+    private val boatRect = RectF()
     private val lvRect = RectF()
     private var noticeText = ""
     private var noticeTimer = 0f
@@ -95,7 +99,7 @@ class FishingScreen(private val gameView: GameView) : Screen {
             val y = waterY + 90f + (bottom - waterY - 90f) * ((k + Math.random().toFloat()) / SWIMMERS)
             // 깊이 비율은 가장 긴 낚시줄(Lv4) 기준 — 줄이 길수록 더 깊은 곳의 좋은 물고기를 만난다
             val d = ((y - waterY) / (BASE_DEPTH * 8f)).coerceIn(0f, 1f)
-            val inSea = y - waterY > SEA_START && Math.random() < 0.7
+            val inSea = (onBoat || y - waterY > SEA_START) && Math.random() < 0.7   // 배를 타면 얕은 곳도 바다
             swimmers.add(Swimmer(if (inSea) seaCreature() else fishIdAtDepth(d), w * (0.35f + Math.random().toFloat() * 0.6f), y,
                 if (Math.random() < 0.5) 1f else -1f, 60f + Math.random().toFloat() * 90f))
         }
@@ -191,7 +195,8 @@ class FishingScreen(private val gameView: GameView) : Screen {
             State.CAST, State.WAIT -> { state = State.MISSED; t = 0f }   // 너무 일찍 당기면 놓친다
             State.BITE -> {
                 val r = Math.random()
-                val id = when { r < 0.08 -> "fish_gold"; r < 0.40 -> "fish_big"; else -> "fish_small" }
+                val id = if (onBoat && Math.random() < 0.5) seaCreature()   // 배 위에서는 바다 생물도 문다
+                    else when { r < 0.08 -> "fish_gold"; r < 0.40 -> "fish_big"; else -> "fish_small" }
                 onCatch(id)
                 state = State.CAUGHT; t = 0f
                 SoundManager.playSpecial()
@@ -220,16 +225,28 @@ class FishingScreen(private val gameView: GameView) : Screen {
         var wx = -((timer * 40f) % 160f)
         while (wx < w) { canvas.drawLine(wx, waterY + 40f, wx + 60f, waterY + 42f, waterDark); canvas.drawLine(wx + 80f, waterY + 140f, wx + 140f, waterY + 142f, waterDark); wx += 160f }
 
-        // 왼쪽 나무 부두 + 인간 + 낚싯대
-        val pierTop = waterY - 20f
-        rect.set(0f, pierTop, w * 0.30f, pierTop + 40f)
-        canvas.drawRect(rect, wood); canvas.drawRect(rect, ink)
-        for (k in 1..3) { val px = w * 0.30f * k / 4f; canvas.drawRect(px - 12f, pierTop + 40f, px + 12f, h, wood); canvas.drawRect(px - 12f, pierTop + 40f, px + 12f, h, ink) }
+        // 왼쪽 나무 부두(또는 바다 위 작은 배) + 인간 + 낚싯대
+        val boatBob = if (onBoat) sin(timer * 2f) * 6f else 0f
+        val pierTop = waterY - 20f + boatBob
         val hero = SpriteManager.playerIdle[0]
         val hh = h * 0.30f; val hw = hero.width * hh / hero.height
         val hx = w * 0.18f
-        rect.set(hx - hw / 2f, pierTop - hh + 6f, hx + hw / 2f, pierTop + 6f)
-        canvas.drawBitmap(hero, null, rect, null)
+        if (!onBoat) {
+            rect.set(0f, pierTop, w * 0.30f, pierTop + 40f)
+            canvas.drawRect(rect, wood); canvas.drawRect(rect, ink)
+            for (k in 1..3) { val px = w * 0.30f * k / 4f; canvas.drawRect(px - 12f, pierTop + 40f, px + 12f, h, wood); canvas.drawRect(px - 12f, pierTop + 40f, px + 12f, h, ink) }
+            rect.set(hx - hw / 2f, pierTop - hh + 6f, hx + hw / 2f, pierTop + 6f)
+            canvas.drawBitmap(hero, null, rect, null)
+        } else {
+            // 배: 인간이 배 안에 서 있고(다리는 뱃전이 가린다) 물결 따라 출렁인다
+            rect.set(hx - hw / 2f, pierTop - hh + 50f, hx + hw / 2f, pierTop + 50f)
+            canvas.drawBitmap(hero, null, rect, null)
+            path.reset()
+            path.moveTo(hx - w * 0.13f, pierTop - 10f); path.lineTo(hx + w * 0.13f, pierTop - 10f)
+            path.lineTo(hx + w * 0.09f, pierTop + 50f); path.lineTo(hx - w * 0.09f, pierTop + 50f); path.close()
+            canvas.drawPath(path, wood); canvas.drawPath(path, ink)
+            canvas.drawLine(hx - w * 0.12f, pierTop + 10f, hx + w * 0.12f, pierTop + 10f, ink)
+        }
         // 낚싯대 끝 → 찌
         val rodBaseX = hx + hw * 0.25f; val rodBaseY = pierTop - hh * 0.55f
         val tipX = hx + w * 0.16f; val tipY = pierTop - hh * 1.05f
@@ -322,6 +339,14 @@ class FishingScreen(private val gameView: GameView) : Screen {
         canvas.drawRoundRect(btnRect, 55f, 55f, ink)
         text.textSize = h * 0.048f
         canvas.drawText(label, btnRect.centerX(), btnRect.centerY() + h * 0.017f, text)
+        // 배 타기 / 돌아오기 (왼쪽 아래, 낚시줄 조종 버튼 왼쪽 — 기다리지 않을 때만)
+        boatRect.setEmpty()
+        if (state == State.READY || state == State.CAUGHT || state == State.MISSED) {
+            boatRect.set(w * 0.04f, h * 0.80f, w * 0.04f + 400f, h * 0.80f + 110f)
+            canvas.drawRoundRect(boatRect, 55f, 55f, if (onBoat) btnPaint else controlPaint); canvas.drawRoundRect(boatRect, 55f, 55f, ink)
+            text.textSize = h * 0.04f
+            canvas.drawText(if (onBoat) "⛵ 돌아오기" else "⛵ 배 타기 · 루비 $BOAT_PRICE", boatRect.centerX(), boatRect.centerY() + h * 0.014f, text)
+        }
         // 낚시줄 Lv업 (오른쪽 위, 나가기 아래)
         lvRect.set(w - w * 0.03f - 380f, h * 0.04f + 110f, w - w * 0.03f, h * 0.04f + 200f)
         canvas.drawRoundRect(lvRect, 45f, 45f, controlPaint); canvas.drawRoundRect(lvRect, 45f, 45f, ink)
@@ -421,6 +446,14 @@ class FishingScreen(private val gameView: GameView) : Screen {
         }
         if (event.actionMasked != MotionEvent.ACTION_DOWN) return true
         if (exitRect.contains(event.x, event.y)) { gameView.showShop(); return true }
+        if (!boatRect.isEmpty && boatRect.contains(event.x, event.y)) {
+            if (onBoat) { onBoat = false; noticeText = "부두로 돌아왔어요" }
+            else if (GameProgress.spendRubies(BOAT_PRICE)) { onBoat = true; noticeText = "배를 타고 바다로! 바다 생물이 잡혀요" }
+            else noticeText = "배를 타려면 루비 ${BOAT_PRICE}개가 있어야 해요"
+            noticeTimer = 2f
+            state = State.READY; catchId = null
+            return true
+        }
         if (lvRect.contains(event.x, event.y)) {
             val lv = GameProgress.fishingLineLevel
             noticeText = when {
@@ -447,6 +480,8 @@ class FishingScreen(private val gameView: GameView) : Screen {
         private const val BITE_WINDOW = 1.0f
         /** 낚시 한 번 값 (루비) */
         const val FISHING_PRICE = 2
+        /** 배 타기 값 (루비) */
+        const val BOAT_PRICE = 5
         /** 낚시줄 조종: 헤엄치는 물고기 수 · 바늘 빠르기 */
         private const val SWIMMERS = 12
         /** Lv1 낚시줄 길이(물 위에서 바닥까지) · Lv1 가라앉는 빠르기 (바닥까지 약 7초) */

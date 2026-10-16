@@ -47,6 +47,8 @@ object ShopCatalog {
         Item("sea_rockfish", "우럭", 0, "바다에서 잡은 우럭"),
         Item("sea_turtle", "거북이", 0, "바다에서 잡은 거북이"),
         Item("sea_shark", "상어", 0, "바다에서 잡은 상어!"),
+        // 고양이 GPS (대표님 2026-10-17 「그게 있으면 고양이가 떠나도 어디에 있는지 알 수 있어, 없으면 몰라」) — 값 50·1개는 Claude 판단
+        Item("cat_gps", "고양이 GPS", 50, "떠난 냥이가 어느 스테이지에 있는지 알려 준다", max = 1),
         Item("feed_all", "다 먹이기", 10, "내 팀 냥이들 포만감이 다 찬다 (사면 바로)"),   // 대표님 2026-10-10
         Item("revive_all", "다부활", 500, "내 팀 냥이를 전부 되살린다 (사면 바로)"),   // 대표님 2026-09-20
         Item("attack_up", "공격력 Lv업", 200, "냥이 공격력 +60 (영구)"),
@@ -79,7 +81,7 @@ object ShopCatalog {
 
     /** 처음 고양이 상점(1번 천막)에 진열하는 물건 — 예전 그대로 */
     val catShopIds: List<String> = listOf("churu", "tuna_can", "feed", "catnip", "ball", "fish_toy", "brush", "water_bowl",
-        "cushion", "scratcher", "litter", "cat_tower", "cat_armor", "revive_potion", "revive_all", "attack_up", "feed_all")
+        "cushion", "scratcher", "litter", "cat_tower", "cat_armor", "revive_potion", "revive_all", "attack_up", "feed_all", "cat_gps")
 
     /** 상점가 천막별 가게 (천막 번호 0부터) → (가게 이름, 진열 물건). 1번(0) 고양이 상점, 2번(1) 고양이 기술, 6번(5) 동물 병원은 따로 */
     val tentShops: Map<Int, Pair<String, List<String>>> = mapOf(

@@ -391,7 +391,12 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         // 잘 돌본 냥이는 전투에서 체력이 더 붙는다 — 그 몫을 (+N)으로 보여 준다
         val info = when {
             cat.isDead -> "스테이지 ${cat.diedAtStage}에서 잠들다"
-            cat.hasLeft -> if (cat.leftStage > 0) "배고파서 떠났다... ${cat.leftStage}스테이지에 있어요 (채집통으로 데려와요)" else "배고파서 떠났다..."
+            // 어디에 있는지는 고양이 GPS 가 있어야 안다 (2026-10-17)
+            cat.hasLeft -> when {
+                GameProgress.itemCount("cat_gps") <= 0 -> "배고파서 떠났다... 어디 있는지 몰라요 (고양이 GPS가 있으면 알 수 있어요)"
+                cat.leftStage > 0 -> "배고파서 떠났다... 📍${cat.leftStage}스테이지에 있어요 (채집통으로 데려와요)"
+                else -> "배고파서 떠났다... (아직 어느 스테이지인지 몰라요)"
+            }
             else -> {
                 val base = CatTeam.maxHpFor(cat.level) + CatTeam.hpBonusOf(cat)   // HP 수술 몫 포함
                 val bonus = Math.round(base * CatTeam.careMultiplier(cat)) - base

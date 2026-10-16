@@ -414,7 +414,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
             val f = frames[((timer * 8f).toInt() + crew.indexOf(c)) % frames.size]
             val sd = if (c.at == CrewAt.BOAT) c.dir * boatFacing else c.dir   // 배 위에서는 u 쪽 → 화면 쪽
             val bmp = if (sd < 0f) SpriteManager.getFlipped(f) else f
-            val ch = h * 0.13f; val cw = bmp.width * ch / bmp.height
+            val ch = h * 0.09f; val cw = bmp.width * ch / bmp.height   // 선원은 선장(해적냥이)보다 작다 (대표님 2026-10-17)
             rect.set(x - cw / 2f, fy - ch, x + cw / 2f, fy)
             canvas.drawBitmap(bmp, null, rect, null)
         }

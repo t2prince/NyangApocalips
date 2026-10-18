@@ -339,6 +339,9 @@ class GamePlayScreen(
     }
 
     private var elapsed = 0f   // GO → 표시 깜빡임용
+    /** 이번 판에 냥이를 쓰러뜨려 번 루비 · 야간 전투 승리 덤 */
+    private var stageRubies = 0
+    private var nightBonus = 0
 
     // 타격감용 카메라 셰이크
     private var shakeTimer = 0f
@@ -1053,6 +1056,12 @@ class GamePlayScreen(
             // 미션 '살아남아라': 목숨을 하나도 안 잃고 20스테이지를 깼다
             if (stageNumber == 20 && player.lives >= Constants.MAX_LIVES) GameProgress.markStage20NoDeath()
             showWaveText("STAGE CLEAR!")
+            // 야간 전투에서 이기면 이번 판에 번 루비가 두 배 (대표님 2026-10-17) — 같은 만큼 한 번 더
+            if (com.jamcat.nayngapo.entity.Enemy.nightBattle && stageRubies > 0) {
+                nightBonus = stageRubies
+                GameProgress.addRubies(nightBonus)
+                hitEffects.add(HitEffect(player.x, player.y - player.height - 80f, 2.5f, "🌙 야간 전투 승리! 루비 두 배 +$nightBonus"))
+            }
         }
         if (clearTimer > 0f) {
             clearTimer -= deltaTime
@@ -1060,7 +1069,7 @@ class GamePlayScreen(
                 leaveCar()
                 gameView.showStageClear(
                     stageNumber, player.score, player.rescueCount,
-                    level.defeatedEnemies, level.totalEnemies, player.level
+                    level.defeatedEnemies, level.totalEnemies, player.level, nightBonus
                 )
                 return
             }
@@ -1374,6 +1383,7 @@ class GamePlayScreen(
             val stolenBack = (enemy as? com.jamcat.nayngapo.entity.ThiefCat)?.stolen ?: 0
             val reward = com.jamcat.nayngapo.engine.Rewards.rubyRewardOf(enemy) + stolenBack
             GameProgress.addRubies(reward)
+            stageRubies += reward
             hitEffects.add(
                 HitEffect(
                     enemy.x + enemy.width / 2f, enemy.y - enemy.height - 40f, 0.8f, "+$reward 루비"

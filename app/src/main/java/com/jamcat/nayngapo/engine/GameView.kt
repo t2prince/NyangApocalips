@@ -294,12 +294,12 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     /** 스테이지 클리어: 화면이 서서히 어두워졌다가 결과 화면으로 넘어간다 */
     fun showStageClear(
         stageNumber: Int, score: Int, rescueCount: Int,
-        defeatedEnemies: Int, totalEnemies: Int, playerLevel: Int
+        defeatedEnemies: Int, totalEnemies: Int, playerLevel: Int, nightBonus: Int = 0
     ) {
         GameProgress.addScore(score)   // 이번 판에서 번 점수를 저금통에 넣는다
         fadeTo {
             StageClearScreen(
-                this, stageNumber, score, rescueCount, defeatedEnemies, totalEnemies, playerLevel
+                this, stageNumber, score, rescueCount, defeatedEnemies, totalEnemies, playerLevel, nightBonus
             )
         }
     }

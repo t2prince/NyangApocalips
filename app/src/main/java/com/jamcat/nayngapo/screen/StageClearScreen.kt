@@ -21,7 +21,9 @@ class StageClearScreen(
     private val rescueCount: Int,
     private val defeatedEnemies: Int,
     private val totalEnemies: Int,
-    private val playerLevel: Int
+    private val playerLevel: Int,
+    /** 야간 전투 승리로 더 받은 루비 (0 이면 낮 전투) */
+    private val nightBonus: Int = 0
 ) : Screen {
     private var timer = 0f
 
@@ -123,6 +125,12 @@ class StageClearScreen(
 
         titlePaint.textSize = h * 0.085f
         canvas.drawTr("스테이지 $stageNumber 클리어!", w / 2f, h * 0.36f, titlePaint)
+        if (nightBonus > 0) {
+            val ts = subPaint.textSize
+            subPaint.textSize = h * 0.042f
+            canvas.drawTr("🌙 야간 전투 승리! 루비 두 배 (+$nightBonus)", w / 2f, h * 0.27f, subPaint)
+            subPaint.textSize = ts
+        }
 
         // 결과 정리: 처치·구출·레벨
         labelPaint.textSize = h * 0.040f

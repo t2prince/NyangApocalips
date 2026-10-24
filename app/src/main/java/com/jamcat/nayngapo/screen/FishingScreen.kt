@@ -1350,7 +1350,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
                 val idx = event.actionIndex
                 when (com.jamcat.nayngapo.ui.MenuButtons.hitTest(event.getX(idx), event.getY(idx))) {
                     com.jamcat.nayngapo.ui.MenuButtons.Hit.PAUSE -> { paused = !paused; touchControls.releaseAll(); return true }
-                    com.jamcat.nayngapo.ui.MenuButtons.Hit.EXIT -> { leaveBoat(); return true }
+                    com.jamcat.nayngapo.ui.MenuButtons.Hit.EXIT -> { leaveBoat(); goLastVillage(); return true }
                     null -> Unit
                 }
                 if (paused) return true
@@ -1379,14 +1379,14 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         }
         // 조종 중: 물속을 누르거나 끌면 바늘이 그쪽으로
         if (state == State.CONTROL && (event.actionMasked == MotionEvent.ACTION_DOWN || event.actionMasked == MotionEvent.ACTION_MOVE)) {
-            if (exitRect.contains(event.x, event.y)) { gameView.showShop(); return true }
+            if (exitRect.contains(event.x, event.y)) { goLastVillage(); return true }
             // 좌우만 손가락으로 (깊이는 저절로 가라앉는다) — 땅에 박히면 못 움직인다
             if (!stuck) hookTX = event.x.coerceIn(gameView.screenWidth * 0.3f, gameView.screenWidth * 0.98f)
             return true
         }
         if (event.actionMasked != MotionEvent.ACTION_DOWN && event.actionMasked != MotionEvent.ACTION_POINTER_DOWN) return true
         if (event.actionMasked == MotionEvent.ACTION_POINTER_DOWN) return true
-        if (exitRect.contains(event.x, event.y)) { gameView.showShop(); return true }
+        if (exitRect.contains(event.x, event.y)) { goLastVillage(); return true }
         if (!boatRect.isEmpty && boatRect.contains(event.x, event.y)) {
             if (onBoat) leaveBoat()
             else if (GameProgress.itemCount(ShopScreen.BOAT_ID) > 0) { boardBoat(); noticeText = "어선을 타고 바다로! 바다 생물이 잡혀요 · 가끔 해적선이 와요" }
@@ -1401,9 +1401,14 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         return true
     }
 
+    /** 나가기 = 제일 최근에 있던 상점 마을로 (대표님 2026-10-24 「배 타기에서 나가기를 누르면 제일 최근에 쓴 상점으로 가져」) */
+    private fun goLastVillage() {
+        if (GameProgress.lastVillage == 2) gameView.showVillage2() else gameView.showShop()
+    }
+
     override fun onBack(): Boolean {
         if (onBoat && state != State.CONTROL && state != State.REEL) { paused = !paused; touchControls.releaseAll(); return true }   // 스테이지처럼 뒤로가기 = 멈추기
-        gameView.showShop()
+        goLastVillage()
         return true
     }
 

@@ -60,6 +60,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     init {
         Terrain.stage = Terrain.SHOP            // 상점 마을은 평평한 초원
+        GameProgress.setLastVillage(1)
         // 천막(가게)에서 나오면 그 가게 앞에 서 있다 (대표님 2026-10-09)
         // 상점 마을에서 나갔다 와도 있던 자리 그대로 (대표님 2026-10-24) — 처음 한 번만 처음 자리
         player = Player(returnX ?: GameProgress.village1X.takeIf { it > 0f } ?: START_X, Constants.GROUND_Y)

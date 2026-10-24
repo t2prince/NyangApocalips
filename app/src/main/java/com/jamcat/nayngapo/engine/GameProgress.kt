@@ -47,6 +47,7 @@ object GameProgress {
     private const val KEY_AB_X = "abandoned_car_x"
     private const val KEY_VILLAGE1_X = "village1_x"
     private const val KEY_VILLAGE2_X = "village2_x"
+    private const val KEY_LAST_VILLAGE = "last_village"
     private const val KEY_MISSIONS_CLAIMED = "missions_claimed"
     private const val KEY_STAGE20_NO_DEATH = "stat_stage20_no_death"
     private const val KEY_BGM = "setting_bgm"
@@ -146,6 +147,16 @@ object GameProgress {
         private set
     var village2X = 0f
         private set
+
+    /** 제일 최근에 있던 상점 마을 (1·2) — 배에서 나가기를 누르면 여기로 (대표님 2026-10-24) */
+    var lastVillage = 1
+        private set
+
+    fun setLastVillage(v: Int) {
+        if (lastVillage == v) return
+        lastVillage = v
+        prefs?.edit()?.putInt(KEY_LAST_VILLAGE, v)?.apply()
+    }
 
     fun saveVillageX(village: Int, x: Float) {
         if (village == 2) { if (kotlin.math.abs(village2X - x) < 1f) return; village2X = x; prefs?.edit()?.putFloat(KEY_VILLAGE2_X, x)?.apply() }
@@ -360,6 +371,7 @@ object GameProgress {
         abandonedCarX = prefs?.getFloat(KEY_AB_X, 0f) ?: 0f
         village1X = prefs?.getFloat(KEY_VILLAGE1_X, 0f) ?: 0f
         village2X = prefs?.getFloat(KEY_VILLAGE2_X, 0f) ?: 0f
+        lastVillage = prefs?.getInt(KEY_LAST_VILLAGE, 1) ?: 1
         bgmEnabled = prefs?.getBoolean(KEY_BGM, true) ?: true
         sfxEnabled = prefs?.getBoolean(KEY_SFX, true) ?: true
         shakeEnabled = prefs?.getBoolean(KEY_SHAKE, true) ?: true

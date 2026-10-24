@@ -50,6 +50,7 @@ class Village2Screen(private val gameView: GameView) : Screen {
 
     init {
         Terrain.stage = Terrain.SHOP   // 평평한 땅
+        GameProgress.setLastVillage(2)
         // 나갔다 와도 있던 자리 그대로 (대표님 2026-10-24) — 처음 한 번만 항구 앞
         player = Player(GameProgress.village2X.takeIf { it > 0f } ?: (HARBOR_X + 200f), Constants.GROUND_Y)
         player.facingRight = true

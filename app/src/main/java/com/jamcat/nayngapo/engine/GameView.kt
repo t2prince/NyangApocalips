@@ -53,6 +53,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         post { p(done) }
     }
 
+    /** 조선소 (상점 마을, 2026-10-24) — 나오면 조선소 앞 */
+    fun showShipyard() {
+        fadeTo { ShipyardScreen(this) }
+    }
+
     fun showCharacterCreate() {
         fadeTo { CharacterCreateScreen(this) }
     }

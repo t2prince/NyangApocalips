@@ -85,8 +85,10 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
     private val heartPath = Path()
     /** 배 튼튼함 — 대포알에 3번 맞으면 가라앉아 부두로 돌아온다 (Claude 판단) */
     /** 배 용품 가게(상점마을2)의 배 철판·배 작살만큼 튼튼하고 세다 (2026-10-24) */
-    private val boatMaxHp: Int get() = BOAT_HP + 2 * GameProgress.itemCount("boat_plate")
-    private val boatAttack: Int get() = BOAT_ATTACK + GameProgress.itemCount("boat_harpoon")
+    private val boatMaxHp: Int get() = (boat?.hp ?: BOAT_HP) + 2 * GameProgress.itemCount("boat_plate")
+    private val boatAttack: Int get() = (boat?.attack ?: BOAT_ATTACK) + GameProgress.itemCount("boat_harpoon")
+    /** 지금 탄 배 (조선소에서 고른 배, 2026-10-24) */
+    private var boat: com.jamcat.nayngapo.engine.BoatCatalog.Boat? = com.jamcat.nayngapo.engine.BoatCatalog.current
     private var boatHp = boatMaxHp
     private var hurtT = 0f
     /** 다음 해적선이 올 때까지 (배를 탄 동안만 흐른다) */
@@ -215,7 +217,8 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
     private fun sinkBoat() {
         onBoat = false; pirateX = Float.NaN; balls.clear(); nets.clear(); crew.clear(); pos = Pos.DECK; atHelm = false; touchControls.releaseAll()
         if (state != State.CONTROL && state != State.REEL) { state = State.READY; catchId = null }
-        GameProgress.consumeItem(ShopScreen.BOAT_ID)   // 가라앉으면 배를 잃는다 (대표님 2026-10-24) — 조선소에서 다시 사야 한다
+        boat?.let { com.jamcat.nayngapo.engine.BoatCatalog.lose(it) }   // 가라앉으면 탄 배를 잃는다 (대표님 2026-10-24) — 조선소에서 다시 사야 한다
+        boat = com.jamcat.nayngapo.engine.BoatCatalog.current
         noticeText = "배가 가라앉았다! 배를 잃고 겨우 부두로 돌아왔어요"; noticeTimer = 2.5f
     }
 
@@ -548,7 +551,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
             Pos.DECK -> if (atHelm) {
                     // 화면 오른쪽 60% 를 넘으면 배 대신 바다가 흘러간다 — 멀리 간다
                     if (dir != 0f) boatFacing = dir   // 모는 쪽으로 뱃머리가 돈다
-                    val nx = boatX + dir * BOAT_SPEED * dt
+                    val nx = boatX + dir * BOAT_SPEED * (boat?.speed ?: 1f) * dt
                     when {
                         nx > w * 0.60f && seaDist < ISLAND_AT -> { seaDist = (seaDist + nx - w * 0.60f).coerceAtMost(ISLAND_AT); boatX = w * 0.60f }
                         nx < w * 0.22f && seaDist > 0f -> { seaDist = (seaDist - (w * 0.22f - nx)).coerceAtLeast(0f); boatX = w * 0.22f }
@@ -834,7 +837,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         val left = boatLeft(w)
         rect.set(left, deckY - bh * BOAT_DECK_V, left + bw, deckY - bh * BOAT_DECK_V + bh)
         if (hurtT > 0f && ((hurtT * 12f).toInt() % 2 == 0)) return   // 맞으면 깜빡
-        canvas.drawBitmap(if (boatFacing > 0f) bmp else SpriteManager.getFlipped(bmp), null, rect, null)
+        canvas.drawBitmap(if (boatFacing > 0f) bmp else SpriteManager.getFlipped(bmp), null, rect, boat?.paint)   // 배마다 색
     }
     private val lvRect = RectF()
     private var noticeText = ""
@@ -1187,7 +1190,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
             boatRect.set(w * 0.04f, h * 0.80f, w * 0.04f + 400f, h * 0.80f + 110f)
             canvas.drawRoundRect(boatRect, 55f, 55f, if (onBoat) btnPaint else controlPaint); canvas.drawRoundRect(boatRect, 55f, 55f, ink)
             text.textSize = h * 0.04f
-            canvas.drawTr(if (onBoat) "🚤 돌아오기" else (if (GameProgress.itemCount(ShopScreen.BOAT_ID) > 0) "🚤 어선 타기" else "🚤 어선 없음 · 조선소"), boatRect.centerX(), boatRect.centerY() + h * 0.014f, text)
+            canvas.drawTr(if (onBoat) "🚤 돌아오기" else (com.jamcat.nayngapo.engine.BoatCatalog.current?.let { "🚤 ${it.name} 타기" } ?: "🚤 배 없음 · 조선소"), boatRect.centerX(), boatRect.centerY() + h * 0.014f, text)
         }
         // 낚시줄 Lv업 (오른쪽 위, 나가기 아래)
         // 낚싯대 Lv·미끼 표시 (Lv업·미끼는 낚시 상점에서)
@@ -1402,8 +1405,8 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         if (exitRect.contains(event.x, event.y)) { goLastVillage(); return true }
         if (!boatRect.isEmpty && boatRect.contains(event.x, event.y)) {
             if (onBoat) leaveBoat()
-            else if (GameProgress.itemCount(ShopScreen.BOAT_ID) > 0) { boardBoat(); noticeText = "어선을 타고 바다로! 바다 생물이 잡혀요 · 가끔 해적선이 와요" }
-            else noticeText = "배가 없어요 — 상점 마을 조선소에서 어선을 사요"
+            else if (com.jamcat.nayngapo.engine.BoatCatalog.current != null) { boat = com.jamcat.nayngapo.engine.BoatCatalog.current; boardBoat(); noticeText = "${boat?.name}을(를) 타고 바다로! 바다 생물이 잡혀요 · 가끔 해적선이 와요" }
+            else noticeText = "배가 없어요 — 상점 마을 조선소에서 배를 사요"
             noticeTimer = 2f
             state = State.READY; catchId = null
             return true

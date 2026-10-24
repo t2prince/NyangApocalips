@@ -748,7 +748,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         // 조선소 앞: 말풍선 — 어선이 없으면 사기
         if (nearShipyard) {
             val bx = shipyardX - cameraX
-            val label = if (GameProgress.itemCount(BOAT_ID) > 0) "⚓ 내 어선이 부두에 있어요" else "▼ 어선 사기 · 루비 $BOAT_PRICE"
+            val label = "▼ 조선소 들어가기"
             bubbleText.textSize = 44f
             val bw = bubbleText.measureTr(label) + 60f
             val by = groundY - 430f + sin(timer * 4f) * 6f
@@ -1048,12 +1048,13 @@ class ShopScreen(private val gameView: GameView) : Screen {
             px += 160f
         }
         // 부두 끝에 매어 둔 어선 — 조선소에서 산 내 배가 있을 때만
-        if (GameProgress.itemCount(BOAT_ID) > 0) {
+        val myBoat = com.jamcat.nayngapo.engine.BoatCatalog.current
+        if (myBoat != null) {
             val boat = SpriteManager.fishingBoat
             val bh = 210f; val bw = boat.width * bh / boat.height
             val bob = sin(timer * 1.8f) * 5f
             rect.set(walkMaxX + 70f, groundY - bh * 0.80f + 30f + bob, walkMaxX + 70f + bw, groundY + bh * 0.20f + 30f + bob)
-            canvas.drawBitmap(boat, null, rect, null)
+            canvas.drawBitmap(boat, null, rect, myBoat.paint)
         }
         // 부두 위 낚싯대 + 줄 + 찌
         canvas.drawLine(cx + 60f, groundY - 54f, cx + 190f, groundY - 230f, ladderPaintThin)
@@ -1095,7 +1096,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         canvas.drawRoundRect(rect, 10f, 10f, signPaint); canvas.drawRoundRect(rect, 10f, 10f, ink)
         canvas.drawTr(label, cx, rect.centerY() + 14f, signText)
         // 아직 안 샀으면 받침대 위의 새 어선
-        if (GameProgress.itemCount(BOAT_ID) == 0) {
+        run {   // 조선소 앞 받침대 위에는 늘 새 배 하나
             for (side in intArrayOf(-1, 1)) {
                 rect.set(cx + side * 90f - 14f, groundY - 50f, cx + side * 90f + 14f, groundY)
                 canvas.drawRect(rect, boardDark); canvas.drawRect(rect, ink)
@@ -1353,12 +1354,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 touchControls.releaseAll(); returnX = player.x; gameView.showFishingShop(); return true
             }
             if (nearShipyard && !enterRect.isEmpty && enterRect.contains(px, py)) {
-                when {
-                    GameProgress.itemCount(BOAT_ID) > 0 -> showNotice("벌써 어선이 있어요 — 낚시터에서 타요")
-                    GameProgress.buyItem(BOAT_ID, BOAT_PRICE) -> showNotice("어선을 샀어요! 낚시터에서 언제든 탈 수 있어요")
-                    else -> showNotice("어선은 루비 ${BOAT_PRICE}개예요 (지금 ${GameProgress.rubies}개)")
-                }
-                return true
+                touchControls.releaseAll(); returnX = player.x; gameView.showShipyard(); return true
             }
             if (nearFishing && !enterRect.isEmpty && enterRect.contains(px, py)) {
                 touchControls.releaseAll(); returnX = player.x; gameView.showFishing(); return true
@@ -1407,10 +1403,6 @@ class ShopScreen(private val gameView: GameView) : Screen {
     }
 
     companion object {
-        /** 조선소에서 파는 어선 — 가방의 물건 하나로 센다, 해적선에 가라앉으면 잃는다 (대표님 2026-10-24) */
-        const val BOAT_ID = "fishing_boat"
-        /** 어선 값 (루비) — Claude 판단 */
-        const val BOAT_PRICE = 30
         /** 천막 수 — 대표님이 정할 때까지 임시 6개 (Claude 판단) */
         const val TENT_COUNT = 14
         /** 기습: 들어올 때 일어날 확률 · 잡아야 하는 시간 · 쳐들어오는 냥이 수 (대표님 2026-10-17) */

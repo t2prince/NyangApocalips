@@ -95,6 +95,22 @@ class Player(var x: Float, var y: Float) {
     var hasGun: Boolean = com.jamcat.nayngapo.engine.GameProgress.itemCount("h_gun") > 0   // 스테이지에서는 출전 준비에서 고른 대로
     /** 총을 꺼내 들고 있는가 — '총 넣기'로 넣으면 손에서 사라지고 주먹으로 싸운다 (2026-10-10) */
     var gunOut = true
+    /**
+     * 대검 (대표님 2026-10-24 「대검을 만들어 줘」 — 그림: 큰 파란 칼을 들어 올렸다 땅에 내려찍으면 불이 난다).
+     * 가지고 있으면 공격 = 대검 내려찍기 (총을 꺼내 들었으면 총이 먼저). 값·데미지·거리는 Claude 판단.
+     */
+    var hasGreatsword: Boolean = com.jamcat.nayngapo.engine.GameProgress.itemCount("h_greatsword") > 0
+    /** 지금 공격이 대검 내려찍기인가 */
+    var swordSwing = false
+        private set
+    /** 내려찍는 순간 한 번 — 화면 쪽에서 불길 피해를 준다 */
+    private var swordSlamPending = false
+    private var swordSlamDone = false
+    /** 땅에서 올라오는 불길 (그리기용) */
+    private var slamFireT = 0f
+    var slamFireX = 0f
+        private set
+    private var slamFireY = 0f
     private val handPt = android.graphics.PointF()
     private val gunDst = RectF()
     /** 꽃가루에 숨이 막혀 느려진 남은 시간 (꽃냥이, 2026-09-27) */
@@ -233,8 +249,16 @@ class Player(var x: Float, var y: Float) {
 
         if (isAttacking) {
             attackTimer -= deltaTime
-            if (attackTimer <= 0f) { isAttacking = false; isJumpAttacking = false }
+            // 대검: 동작 60% 에서 땅을 찍는다 → 앞에 불길
+            if (swordSwing && !swordSlamDone && attackTimer <= attackTotal * 0.4f) {
+                swordSlamDone = true; swordSlamPending = true
+                slamFireT = SLAM_FIRE_TIME
+                slamFireX = x + width / 2f + (if (facingRight) 1f else -1f) * SWORD_FIRE_AHEAD
+                slamFireY = y
+            }
+            if (attackTimer <= 0f) { isAttacking = false; isJumpAttacking = false; swordSwing = false }
         }
+        if (slamFireT > 0f) slamFireT -= deltaTime
 
         // 애니메이션 위상 갱신
         animTime += deltaTime
@@ -305,6 +329,13 @@ class Player(var x: Float, var y: Float) {
      * 착지 충격파가 이번 프레임에 터졌는지 1회만 알려준다 (호출 즉시 소비).
      * GamePlayScreen이 이걸 받아 광역 피해·화면 흔들림을 적용한다.
      */
+    /** 대검이 땅을 찍었으면 한 번 true (불길 피해는 slamFireX 둘레) */
+    fun consumeSwordSlam(): Boolean {
+        if (!swordSlamPending) return false
+        swordSlamPending = false
+        return true
+    }
+
     fun consumeShockwave(): Boolean {
         if (!shockwavePending) return false
         shockwavePending = false
@@ -313,6 +344,7 @@ class Player(var x: Float, var y: Float) {
 
     fun draw(canvas: Canvas) {
         if (isDead) return
+        if (slamFireT > 0f) drawSlamFire(canvas)
         if (isInvincible && ((invincibilityTimer * 8).toInt() % 2 == 0)) return
 
         val drawY = y + jumpZ + snowSink - rideLift       // 눈에 잠긴 만큼 아래로, 배냥이를 타면 그만큼 위로
@@ -365,6 +397,67 @@ class Player(var x: Float, var y: Float) {
         canvas.drawBitmap(g, null, gunDst, null)
     }
 
+    private val bladePaint = Paint().apply { color = Color.rgb(70, 130, 235); isAntiAlias = true }
+    private val bladeLight = Paint().apply { color = Color.rgb(170, 210, 255); isAntiAlias = true }
+    private val hiltPaint = Paint().apply { color = Color.rgb(60, 70, 90); isAntiAlias = true }
+    private val swordInk = Paint().apply { color = Color.rgb(30, 28, 26); style = Paint.Style.STROKE; strokeWidth = 4f; strokeJoin = Paint.Join.ROUND; isAntiAlias = true }
+    private val bladePath = android.graphics.Path()
+    private val firePaint = Paint().apply { isAntiAlias = true }
+
+    /**
+     * 앞손에 큰 파란 대검. swing 0→1: 머리 위 뒤쪽(-120°)에서 앞 아래(+35°)로 내려찍는다, -1 = 들고 서 있기(칼끝이 위).
+     * 각도는 오른쪽을 볼 때 기준 (0° = 앞, -90° = 위).
+     */
+    private fun drawGreatsword(canvas: Canvas, bmp: Bitmap, swing: Float) {
+        if (!com.jamcat.nayngapo.ui.frontHand(bmp, heroDst, facingRight, handPt)) return
+        val len = heroDst.height() * 0.78f
+        val ang = when {
+            swing < 0f -> -70f
+            swing < 0.35f -> -70f + (-120f + 70f) * (swing / 0.35f)          // 치켜든다
+            swing < 0.6f -> -120f + (35f + 120f) * ((swing - 0.35f) / 0.25f) // 내려찍기
+            else -> 35f
+        }
+        canvas.save()
+        canvas.translate(handPt.x, handPt.y)
+        if (!facingRight) canvas.scale(-1f, 1f)
+        canvas.rotate(ang)
+        val bw = len * 0.075f
+        // 칼날 (손잡이 위로 길게, 끝은 뾰족)
+        bladePath.reset()
+        bladePath.moveTo(len * 0.16f, -bw); bladePath.lineTo(len * 0.88f, -bw)
+        bladePath.lineTo(len, 0f); bladePath.lineTo(len * 0.88f, bw); bladePath.lineTo(len * 0.16f, bw); bladePath.close()
+        canvas.drawPath(bladePath, bladePaint)
+        canvas.drawRect(len * 0.18f, -bw * 0.25f, len * 0.86f, bw * 0.15f, bladeLight)
+        canvas.drawPath(bladePath, swordInk)
+        // 코등이 + 손잡이
+        canvas.drawRect(len * 0.12f, -bw * 2.0f, len * 0.16f, bw * 2.0f, hiltPaint)
+        canvas.drawRect(len * 0.12f, -bw * 2.0f, len * 0.16f, bw * 2.0f, swordInk)
+        canvas.drawRect(-len * 0.10f, -bw * 0.55f, len * 0.12f, bw * 0.55f, hiltPaint)
+        canvas.drawRect(-len * 0.10f, -bw * 0.55f, len * 0.12f, bw * 0.55f, swordInk)
+        canvas.restore()
+    }
+
+    /** 대검이 찍은 자리에서 올라오는 불길 */
+    private fun drawSlamFire(canvas: Canvas) {
+        val u = 1f - slamFireT / SLAM_FIRE_TIME            // 0→1
+        val rise = kotlin.math.sin(u * Math.PI.toFloat())   // 솟았다 사그라든다
+        for (k in -3..3) {
+            val fx = slamFireX + k * 34f
+            val fh = (150f - kotlin.math.abs(k) * 28f) * rise * (0.85f + 0.15f * kotlin.math.sin(animTime * 30f + k))
+            if (fh <= 4f) continue
+            for ((col, sc) in listOf(Color.rgb(240, 70, 30) to 1f, Color.rgb(255, 170, 40) to 0.68f, Color.rgb(255, 240, 150) to 0.36f)) {
+                firePaint.color = col
+                bladePath.reset()
+                val hw = 26f * sc; val hh = fh * sc
+                bladePath.moveTo(fx - hw, slamFireY)
+                bladePath.quadTo(fx - hw * 0.9f, slamFireY - hh * 0.6f, fx, slamFireY - hh)
+                bladePath.quadTo(fx + hw * 0.9f, slamFireY - hh * 0.6f, fx + hw, slamFireY)
+                bladePath.close()
+                canvas.drawPath(bladePath, firePaint)
+            }
+        }
+    }
+
     /** 상태에 맞는 졸라맨 프레임을 골라 발끝(drawY)에 맞춰 그린다 */
     private fun drawSprite(canvas: Canvas, cx: Float, drawY: Float, dir: Float) {
         // 공격 진행 0→1 을 7프레임 연속 동작에 그대로 태운다
@@ -378,6 +471,7 @@ class Player(var x: Float, var y: Float) {
 
         val frame: Bitmap = when {
             seatedInCar -> SpriteManager.playerIdle[0]   // 차에 고정: 늘 같은 자세 (공격 판정은 그대로)
+            isAttacking && swordSwing -> { striking = true; attackFrame(SpriteManager.playerPunch) }
             isAttacking && isJumpAttacking -> { striking = true; attackFrame(SpriteManager.playerJumpKick) }
             isAttacking && comboStep == 2 -> { striking = true; strikeHigh = true; attackFrame(SpriteManager.playerKick) }
             isAttacking && comboStep == 1 -> { striking = true; attackFrame(SpriteManager.playerCross) }
@@ -407,6 +501,7 @@ class Player(var x: Float, var y: Float) {
         com.jamcat.nayngapo.ui.drawHero(canvas, bmp, heroDst, hero, facingRight, animTime)
         // 총을 들고 있으면 앞손에 쥔다 (차를 타면 총은 차에 달려 있다)
         if (hasGun && gunOut && !seatedInCar) drawGunInHand(canvas, bmp)
+        else if (hasGreatsword && !seatedInCar) drawGreatsword(canvas, bmp, if (swordSwing) prog else -1f)
 
         // 피격 이펙트: 실제로 맞췄고 타격 프레임일 때만 뻗은 팔·다리 끝에
         if (hitSparkTimer > 0f && striking && prog in 0.45f..0.80f) {
@@ -418,6 +513,14 @@ class Player(var x: Float, var y: Float) {
 
 
     companion object {
+        /** 대검: 내려찍기 시간 · 공격력 더하기 · 더 닿는 거리 · 불길 자리(앞)·반경·피해·시간 — Claude 판단 */
+        const val SWORD_DURATION = 0.45f
+        const val SWORD_BONUS = 5
+        const val SWORD_EXTRA_RANGE = 110f
+        const val SWORD_FIRE_AHEAD = 190f
+        const val SWORD_FIRE_RADIUS = 130f
+        const val SWORD_FIRE_DAMAGE = 5
+        const val SLAM_FIRE_TIME = 0.6f
         /** 한 프레임에 이보다 높이 바뀌는 턱은 걸어서 못 오른다 (지형 언덕은 이보다 훨씬 완만하다) */
         const val STEP_MAX = 40f
         /** 독: 하트 한 칸이 닳는 간격(초) */
@@ -618,7 +721,13 @@ class Player(var x: Float, var y: Float) {
             if (hero.carriesFirework) pendingFirework = true
             // 닌자 인간은 공격할 때마다 표창을 던진다
             if (hero.throwsShuriken) pendingShuriken = true
-            if (isJumpAttacking) {
+            swordSwing = hasGreatsword && !(hasGun && gunOut) && !seatedInCar
+            if (swordSwing) {
+                // 대검: 콤보 없이 늘 같은 내려찍기 (조금 느리다)
+                comboStep = 0; comboResetTimer = 0f
+                swordSlamDone = false
+                attackTimer = SWORD_DURATION
+            } else if (isJumpAttacking) {
                 // 점프 공격은 콤보와 무관
                 comboStep = 0
                 attackTimer = Constants.ATTACK_DURATION
@@ -655,6 +764,7 @@ class Player(var x: Float, var y: Float) {
 
     fun getCurrentAttackPower(): Int = when {
         stompPhase != StompPhase.NONE -> specialPower
+        swordSwing -> attackPower + SWORD_BONUS
         isJumpAttacking -> (attackPower * 1.5f).toInt()
         comboStep == 2 -> (attackPower * 1.4f).toInt()   // 킥 마무리
         else -> attackPower
@@ -670,6 +780,13 @@ class Player(var x: Float, var y: Float) {
         if (!isAttacking) return null
         // 파이어 펀치는 화면 쪽에서 따로 때린다 (평소 주먹 판정까지 겹쳐 두 번 맞지 않게)
         if (isFirePunching) return null
+        if (swordSwing) {
+            // 대검은 길다 — 칼이 내려오는 동작 후반에만 맞는다
+            if (attackTimer > attackTotal * 0.55f) return null
+            val r = Constants.ATTACK_RANGE + SWORD_EXTRA_RANGE
+            return if (facingRight) RectF(x + width, y - 120f, x + width + r, y + 120f)
+            else RectF(x - r, y - 120f, x, y + 120f)
+        }
         val range = when {
             isJumpAttacking -> 125f
             comboStep == 2 -> Constants.KICK_RANGE       // 킥 마무리 사거리

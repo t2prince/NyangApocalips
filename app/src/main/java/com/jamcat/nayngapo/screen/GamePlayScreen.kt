@@ -178,6 +178,10 @@ class GamePlayScreen(
         com.jamcat.nayngapo.engine.CatSkills.Skill("robot_wing", "날개", 0, "하늘을 난다", 0, 0.4f),
     )
     private val robotSkillCooldowns = FloatArray(robotSkills.size)
+    /** 벌냥이 주인공의 '날기' 버튼 — 로봇 날개처럼 누르면 날아오르고 다시 누르면 내려앉는다 (대표님 2026-10-24 「벌냥이가 날아다니려면 버튼을 눌러야 돼, 로봇처럼」) */
+    private val beeSkills = listOf(com.jamcat.nayngapo.engine.CatSkills.Skill("bee_fly", "날기", 0, "하늘을 난다", 0, 0.4f))
+    private val beeSkillCooldowns = FloatArray(beeSkills.size)
+    private val playerIsBee get() = player.playerCat?.kind == com.jamcat.nayngapo.entity.AllyCat.Kind.BEE
 
     // ===== 파이어 펀치 =====
     /** 주먹이 아직 적에게 닿지 않았다 (타격 프레임에서 한 번 때린다) */
@@ -460,9 +464,13 @@ class GamePlayScreen(
             if (humanSkillCooldowns[i] > 0f) humanSkillCooldowns[i] -= deltaTime
         }
         for (i in robotSkillCooldowns.indices) if (robotSkillCooldowns[i] > 0f) robotSkillCooldowns[i] -= deltaTime
+        for (i in beeSkillCooldowns.indices) if (beeSkillCooldowns[i] > 0f) beeSkillCooldowns[i] -= deltaTime
         if (robotRide?.riding == true) {
             touchControls.humanSkills = robotSkills
             touchControls.humanSkillCooldowns = robotSkillCooldowns
+        } else if (playerIsBee) {
+            touchControls.humanSkills = beeSkills
+            touchControls.humanSkillCooldowns = beeSkillCooldowns
         } else {
             touchControls.humanSkills = humanBattleSkills
             touchControls.humanSkillCooldowns = humanSkillCooldowns
@@ -2189,7 +2197,14 @@ class GamePlayScreen(
         // 인간 기술 쓰기 (인간이 직접 쓴다 — 냥이가 없어도 된다)
         input.useHumanSkill?.let { id ->
             input.useHumanSkill = null
-            if (robotRide?.riding == true) useRobotSkill(id) else useHumanSkill(id)
+            if (robotRide?.riding == true) useRobotSkill(id)
+            else if (id == "bee_fly") {
+                if (beeSkillCooldowns[0] <= 0f) {
+                    beeSkillCooldowns[0] = beeSkills[0].cooldown
+                    hitEffects.add(HitEffect(player.x, player.y - player.height - 80f, 0.7f, if (player.toggleBeeFly()) "날아오른다!" else "내려앉기"))
+                }
+            }
+            else useHumanSkill(id)
         }
 
         // 고양이 기술 쓰기
@@ -3643,7 +3658,7 @@ class GamePlayScreen(
      */
     private fun catKindShot(): Boolean {
         val kind = player.playerCat?.kind ?: return false
-        if (kind !in setOf(com.jamcat.nayngapo.entity.AllyCat.Kind.GUN, com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN, com.jamcat.nayngapo.entity.AllyCat.Kind.RED, com.jamcat.nayngapo.entity.AllyCat.Kind.ORANGE, com.jamcat.nayngapo.entity.AllyCat.Kind.YELLOW, com.jamcat.nayngapo.entity.AllyCat.Kind.LASER, com.jamcat.nayngapo.entity.AllyCat.Kind.FLOWER, com.jamcat.nayngapo.entity.AllyCat.Kind.BEE, com.jamcat.nayngapo.entity.AllyCat.Kind.POOP)) return false
+        if (kind !in setOf(com.jamcat.nayngapo.entity.AllyCat.Kind.GUN, com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN, com.jamcat.nayngapo.entity.AllyCat.Kind.RED, com.jamcat.nayngapo.entity.AllyCat.Kind.ORANGE, com.jamcat.nayngapo.entity.AllyCat.Kind.YELLOW, com.jamcat.nayngapo.entity.AllyCat.Kind.LASER, com.jamcat.nayngapo.entity.AllyCat.Kind.FLOWER, com.jamcat.nayngapo.entity.AllyCat.Kind.POOP)) return false   // 벌냥이는 아무것도 쏘지 않는다 (대표님 2026-10-24)
         if (gunCooldown > 0f) return true
         gunCooldown = 0.4f
         val dir = if (player.facingRight) 1f else -1f
@@ -3667,12 +3682,6 @@ class GamePlayScreen(
             com.jamcat.nayngapo.entity.AllyCat.Kind.LASER -> add(com.jamcat.nayngapo.entity.Projectile(cx, my, dir * 800f, 0f, d * 2, true, tint = Color.rgb(92, 208, 108), radius = 9f))
             com.jamcat.nayngapo.entity.AllyCat.Kind.FLOWER -> repeat(3) { add(com.jamcat.nayngapo.entity.Projectile(cx + dir * 30f, my, dir * (300f + Math.random().toFloat() * 120f),
                 60f + (Math.random().toFloat() - 0.5f) * 180f, d, true, tint = Color.rgb(250, 220, 80), radius = 9f, fuse = 0.8f, isPollen = true)) }
-            com.jamcat.nayngapo.entity.AllyCat.Kind.BEE -> {
-                val tx = (target?.let { it.x + it.width / 2f } ?: (cx + dir * 400f)) - cx
-                val ty = (target?.let { it.y - it.height * 0.5f } ?: my) - my
-                val len = kotlin.math.hypot(tx, ty).coerceAtLeast(1f)
-                add(com.jamcat.nayngapo.entity.Projectile(cx, my + 10f, tx / len * 720f, ty / len * 720f, d, true, tint = Color.rgb(40, 34, 30), radius = 5f))
-            }
             com.jamcat.nayngapo.entity.AllyCat.Kind.POOP -> add(com.jamcat.nayngapo.entity.Projectile(cx, my - 20f, dir * 400f, -420f, d, true, tint = Color.rgb(130, 86, 50), radius = 12f, gravity = 1000f))
             else -> Unit
         }

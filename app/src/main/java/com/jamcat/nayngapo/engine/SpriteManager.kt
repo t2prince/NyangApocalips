@@ -364,7 +364,7 @@ object SpriteManager {
         // 로봇 기술 버튼 (로봇을 타면 인간 기술 줄에 나온다, 2026-10-10)
         val robotIcons = mutableMapOf<String, Bitmap>()
         robotFist?.let { robotIcons["robot_rocket"] = it }
-        opt("hskill_robot_wing")?.let { robotIcons["robot_wing"] = it }
+        opt("hskill_robot_wing")?.let { robotIcons["robot_wing"] = it; robotIcons["bee_fly"] = it }   // 벌냥이 '날기'도 날개 그림 (2026-10-24)
         humanSkillIcons = humanSkillIcons + robotIcons
 
         initialized = true

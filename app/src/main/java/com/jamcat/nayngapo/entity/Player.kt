@@ -21,9 +21,10 @@ class Player(var x: Float, var y: Float) {
         else -> 0f
     }
 
-    /** 벌냥이 주인공이 날고 있는가 (처음엔 땅) · 지금 떠 있는 높이 (부드럽게 오르내린다) */
+    /** 벌냥이 주인공이 날고 있는가 (처음엔 땅) · 지금 떠 있는 높이 (부드럽게 오르내린다) — '날기' 버튼으로 바꾼다 */
     var beeFlying = false
         private set
+    fun toggleBeeFly(): Boolean { beeFlying = !beeFlying; return beeFlying }
     private var beeLift = 0f
 
     /** 주인공이 된 캣타워 냥이 (고양이 주인공일 때만) */
@@ -621,8 +622,6 @@ class Player(var x: Float, var y: Float) {
 
     fun jump() {
         if (ridingVine) return          // 매달린 동안의 점프는 '놓기'라서 화면 쪽에서 처리한다
-        // 벌냥이 주인공: 점프 = 날아오르기 / 날고 있으면 내려앉기 (대표님 2026-10-24 「벌냥이는 땅에도 있을 수 있어」)
-        if (playerCat?.kind == com.jamcat.nayngapo.entity.AllyCat.Kind.BEE) { beeFlying = !beeFlying; return }
         if (inDeepSnow) return          // 눈에 발이 묶여 뛸 수 없다
         if (!isJumping && stompPhase == StompPhase.NONE) {
             onPlatform = null                                // 발판 위에서도 그대로 뛴다 (jumpZ 오프셋에서 시작)

@@ -97,7 +97,7 @@ class TitleScreen(private val gameView: GameView) : Screen {
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-            gameView.showLobby()
+            gameView.showGameSelect()   // 시작 화면 다음은 게임 고르기 (2026-10-24)
         }
         return true
     }

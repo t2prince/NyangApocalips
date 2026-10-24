@@ -123,6 +123,11 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         currentScreen = LoadingScreen(this)
     }
 
+    /** 게임 고르기 — 시작 화면 다음 (2026-10-24) */
+    fun showGameSelect() {
+        fadeTo { GameSelectScreen(this) }
+    }
+
     fun showTitle() {
         currentScreen = TitleScreen(this)
         SoundManager.resumeBgm()   // 홈으로 돌아오면 다시 노래가 흐른다

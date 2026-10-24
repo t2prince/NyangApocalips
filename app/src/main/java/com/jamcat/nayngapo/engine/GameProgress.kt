@@ -16,7 +16,6 @@ object GameProgress {
     /** 하늘 지역(날개냥이를 타고 나는 스테이지)인가 — 11 하나뿐이다 */
     fun isSkyStage(stageNumber: Int) = stageNumber == 11
 
-    private const val PREFS = "nyang_progress"
     private const val KEY_UNLOCKED = "unlocked_stage"
     private const val KEY_DEX = "dex_found"
     private const val KEY_DEX_SEEN = "dex_seen"
@@ -355,7 +354,7 @@ object GameProgress {
     private var prefs: android.content.SharedPreferences? = null
 
     fun init(context: Context) {
-        prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        prefs = context.getSharedPreferences(GameSlots.currentPrefsName(context), Context.MODE_PRIVATE)   // 게임 고르기에서 고른 게임 (2026-10-24)
         unlockedStage = prefs?.getInt(KEY_UNLOCKED, 1) ?: 1
         clearedStages.clear()
         prefs?.getStringSet(KEY_CLEARED, emptySet())?.forEach { it.toIntOrNull()?.let(clearedStages::add) }

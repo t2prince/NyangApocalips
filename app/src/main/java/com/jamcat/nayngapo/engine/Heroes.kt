@@ -68,8 +68,21 @@ object Heroes {
     /** 처음 시작할 때의 인간 */
     const val DEFAULT_ID = "black"
 
-    /** 없어진 인간(예: 게임 인간 "red")을 고른 세이브는 기본 인간으로 돌아간다 */
-    fun byId(id: String): Hero = all.firstOrNull { it.id == id } ?: all.first()
+    /**
+     * 고양이 (대표님 2026-10-24 「고양이 되기는 그냥 고양이가 주인공이 돼서 싸우는 거야」「로봇·자동차도 쓸 수 있어」):
+     * 능력은 검은 인간과 같다 (Claude 판단). 그림은 ui/CharSkin.
+     */
+    const val CAT_ID = "cat"
+    val cat = Hero(CAT_ID, "고양이", Color.rgb(20, 20, 20), "고양이가 주인공", Accessory.NONE)
+    /** 내가 만든 캐릭터 id 앞머리 (engine/CustomChars) */
+    const val CUSTOM_PREFIX = "custom_"
+
+    /** 없어진 인간(예: 게임 인간 "red")·지운 캐릭터를 고른 세이브는 기본 인간으로 돌아간다 */
+    fun byId(id: String): Hero = when {
+        id == CAT_ID -> cat
+        id.startsWith(CUSTOM_PREFIX) -> CustomChars.byId(id)?.let { Hero(it.id, it.name, Color.rgb(20, 20, 20), "내가 만든 캐릭터", Accessory.NONE) } ?: all.first()
+        else -> all.firstOrNull { it.id == id } ?: all.first()
+    }
 
     /** 지금 고른 인간 */
     fun selected(): Hero = byId(GameProgress.selectedHero)

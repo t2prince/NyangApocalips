@@ -1,235 +1,183 @@
 package com.jamcat.nayngapo.screen
 
 import com.jamcat.nayngapo.engine.drawTr
-import com.jamcat.nayngapo.engine.measureTr
 import android.graphics.*
 import android.view.MotionEvent
+import com.jamcat.nayngapo.engine.CustomChars
 import com.jamcat.nayngapo.engine.GameProgress
 import com.jamcat.nayngapo.engine.GameView
 import com.jamcat.nayngapo.engine.Heroes
 import com.jamcat.nayngapo.engine.SoundManager
 import com.jamcat.nayngapo.engine.SpriteManager
 import com.jamcat.nayngapo.ui.drawHero
+import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * 캐릭터 변경 — 네 명의 인간이 나란히 서 있고, 누르면 그 인간으로 바꾼다.
- * 그림은 모두 같은 졸라맨 시트를 쓰고 선 색과 머리 장식만 다르다 (ui/HeroDraw.kt).
+ * 캐릭터 변경 (대표님 2026-10-24, 로비 뽑기 위 작은 칸에서 들어온다):
+ * 인간 4명(공짜 — 「인간은 안 사도 돼」) · 고양이 · 내가 만든 캐릭터들 · '추가 +'(사진으로 새 캐릭터) 가 옆으로 늘어서고,
+ * 카드를 누르면 [되기]. 카드가 많으면 옆으로 밀어서 본다. 내가 만든 캐릭터는 '지우기'(두 번 눌러 확인).
  */
 class CharacterSelectScreen(private val gameView: GameView) : Screen {
 
     private var timer = 0f
-
-    /** 방금 고른 인간이 콩 뛰는 연출에 남은 시간 */
     private var hopT = 0f
     private var hopId: String? = null
 
+    /** 카드 목록: 인간들 + 고양이 + 내가 만든 캐릭터 (마지막에 '추가' 카드가 따로 붙는다) */
+    private fun heroes(): List<Heroes.Hero> = Heroes.all + Heroes.cat + CustomChars.all.map { Heroes.byId(it.id) }
+
+    private val cardRects = ArrayList<RectF>()
+    private val delRects = HashMap<String, RectF>()
+    private val addRect = RectF()
     private val backRect = RectF()
-    private val cardRects = Heroes.all.map { RectF() }
+    private var scrollX = 0f
+    private var maxScroll = 0f
+    private var downX = 0f
+    private var dragging = false
+    private var lastX = 0f
+    private var deleteArm: String? = null
+    private var deleteArmT = 0f
 
     private val bgPaint = Paint().apply { color = Color.rgb(252, 249, 240) }
-    private val titlePaint = Paint().apply {
-        color = Color.rgb(40, 36, 32); textAlign = Paint.Align.CENTER
-        typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
-    }
+    private val titlePaint = Paint().apply { color = Color.rgb(40, 36, 32); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
+    private val cardPaint = Paint().apply { color = Color.WHITE; isAntiAlias = true }
     private val highlightPaint = Paint().apply { color = Color.rgb(255, 244, 200); isAntiAlias = true }
-    private val edgePaint = Paint().apply {
-        color = Color.rgb(30, 28, 26); style = Paint.Style.STROKE
-        strokeWidth = 4.5f; isAntiAlias = true
-    }
-    private val pricePaint = Paint().apply { color = Color.rgb(255, 214, 74); isAntiAlias = true }
-    private val lockPaint = Paint().apply { isAntiAlias = true }
-    private val rubyTextPaint = Paint().apply { color = Color.rgb(40, 36, 32); textAlign = Paint.Align.RIGHT; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
-    private val gemPaint = Paint().apply { isAntiAlias = true }
-    private val noticePaint = Paint().apply { color = Color.rgb(255, 250, 225); isAntiAlias = true }
-    private val noticeTextPaint = Paint().apply { color = Color.rgb(35, 32, 30); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
-    private val noticeRect = RectF()
-    private var noticeText = ""
-    private var noticeTimer = 0f
-    private fun showNotice(t: String) { noticeText = t; noticeTimer = 1.6f }
-    private val selectEdgePaint = Paint().apply {
-        color = Color.rgb(240, 170, 20); style = Paint.Style.STROKE
-        strokeWidth = 8f; isAntiAlias = true
-    }
-    private val groundPaint = Paint().apply {
-        color = Color.rgb(196, 189, 176); strokeWidth = 5f
-        strokeCap = Paint.Cap.ROUND; isAntiAlias = true
-    }
-    private val namePaint = Paint().apply {
-        color = Color.rgb(35, 32, 30); textAlign = Paint.Align.CENTER
-        typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
-    }
-    private val descPaint = Paint().apply {
-        color = Color.rgb(140, 132, 122); textAlign = Paint.Align.CENTER; isAntiAlias = true
-    }
-    private val pipLabelPaint = Paint().apply {
-        color = Color.rgb(120, 112, 100); textAlign = Paint.Align.RIGHT; isAntiAlias = true
-    }
-    private val pipFullPaint = Paint().apply { isAntiAlias = true }
-    private val pipEmptyPaint = Paint().apply {
-        color = Color.rgb(214, 208, 198); isAntiAlias = true
-    }
+    private val edgePaint = Paint().apply { color = Color.rgb(30, 28, 26); style = Paint.Style.STROKE; strokeWidth = 4.5f; isAntiAlias = true }
+    private val selectEdgePaint = Paint().apply { color = Color.rgb(240, 170, 20); style = Paint.Style.STROKE; strokeWidth = 8f; isAntiAlias = true }
+    private val groundPaint = Paint().apply { color = Color.rgb(196, 189, 176); strokeWidth = 5f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    private val namePaint = Paint().apply { color = Color.rgb(35, 32, 30); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
+    private val descPaint = Paint().apply { color = Color.rgb(140, 132, 122); textAlign = Paint.Align.CENTER; isAntiAlias = true }
     private val tagPaint = Paint().apply { color = Color.rgb(255, 214, 74); isAntiAlias = true }
-    private val tagTextPaint = Paint().apply {
-        color = Color.rgb(60, 44, 12); textAlign = Paint.Align.CENTER
-        typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
-    }
-    private val backPaint = Paint().apply { color = Color.rgb(255, 214, 74); isAntiAlias = true }
-    private val backTextPaint = Paint().apply {
-        color = Color.rgb(60, 44, 12); textAlign = Paint.Align.CENTER
-        typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true
-    }
-
+    private val tagOffPaint = Paint().apply { color = Color.rgb(160, 220, 255); isAntiAlias = true }
+    private val delPaint = Paint().apply { color = Color.rgb(240, 120, 120); isAntiAlias = true }
+    private val tagTextPaint = Paint().apply { color = Color.rgb(60, 44, 12); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; isAntiAlias = true }
+    private val plusPaint = Paint().apply { color = Color.rgb(150, 140, 128); strokeWidth = 12f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    private val dashPaint = Paint().apply { color = Color.rgb(150, 140, 128); style = Paint.Style.STROKE; strokeWidth = 5f; isAntiAlias = true; pathEffect = DashPathEffect(floatArrayOf(18f, 12f), 0f) }
     private val heroDst = RectF()
     private val tagRect = RectF()
 
     override fun update(deltaTime: Float) {
-        if (noticeTimer > 0f) noticeTimer -= deltaTime
         timer += deltaTime
         if (hopT > 0f) hopT -= deltaTime
+        if (deleteArmT > 0f) { deleteArmT -= deltaTime; if (deleteArmT <= 0f) deleteArm = null }
     }
 
     override fun draw(canvas: Canvas) {
-        val w = canvas.width.toFloat()
-        val h = canvas.height.toFloat()
+        val w = canvas.width.toFloat(); val h = canvas.height.toFloat()
         canvas.drawRect(0f, 0f, w, h, bgPaint)
-
         titlePaint.textSize = h * 0.070f
         canvas.drawTr("캐릭터 변경", w / 2f, h * 0.090f, titlePaint)
-        rubyTextPaint.textSize = h * 0.046f
-        com.jamcat.nayngapo.ui.drawRubyIcon(canvas, w - w * 0.03f - rubyTextPaint.measureTr("${GameProgress.rubies}") - h * 0.04f, h * 0.072f, h * 0.024f, gemPaint)
-        canvas.drawTr("${GameProgress.rubies}", w - w * 0.03f, h * 0.088f, rubyTextPaint)
 
-        val groundY = h * 0.700f
-        val selectedId = GameProgress.selectedHero
+        val list = heroes()
+        val cw = w * 0.19f; val gap = w * 0.015f; val padX = w * 0.03f
+        val total = (list.size + 1) * cw + list.size * gap
+        maxScroll = (total - (w - padX * 2f)).coerceAtLeast(0f)
+        scrollX = scrollX.coerceIn(0f, maxScroll)
+        val groundY = h * 0.66f
+        val selectedId = Heroes.byId(GameProgress.selectedHero).id
+        while (cardRects.size < list.size) cardRects.add(RectF())
+        delRects.clear()
 
-        // 네 칸을 고르게 나눈다
-        val padX = w * 0.02f
-        val gap = w * 0.014f
-        val cw = (w - padX * 2f - gap * (Heroes.all.size - 1)) / Heroes.all.size
-
-        for ((i, hero) in Heroes.all.withIndex()) {
-            val l = padX + i * (cw + gap)
-            cardRects[i].set(l, h * 0.135f, l + cw, h * 0.870f)
+        for ((i, hero) in list.withIndex()) {
+            val l = padX + i * (cw + gap) - scrollX
+            val r = cardRects[i]
+            r.set(l, h * 0.14f, l + cw, h * 0.86f)
+            if (r.right < 0f || r.left > w) continue
             val chosen = hero.id == selectedId
-            val owned = GameProgress.ownsHero(hero.id)
-
-            if (chosen) {
-                canvas.drawRoundRect(cardRects[i], 20f, 20f, highlightPaint)
-                canvas.drawRoundRect(cardRects[i], 20f, 20f, selectEdgePaint)
-            }
-
-            // 바닥선
-            val cx = cardRects[i].centerX()
+            canvas.drawRoundRect(r, 20f, 20f, if (chosen) highlightPaint else cardPaint)
+            canvas.drawRoundRect(r, 20f, 20f, if (chosen) selectEdgePaint else edgePaint)
+            val cx = r.centerX()
             canvas.drawLine(l + cw * 0.10f, groundY, l + cw * 0.90f, groundY, groundPaint)
 
-            // 인간: 6프레임/초, 칸마다 조금씩 어긋나게
             val frames = SpriteManager.playerIdle
             val bmp = frames[((timer * 6f).toInt() + i) % frames.size]
-            val figH = h * 0.55f
-            val scale = min(cw * 0.72f / bmp.width, figH / bmp.height)
-            // 키가 작은 인간은 발을 바닥선에 붙인 채 작게 선다
-            val bw = bmp.width * scale * hero.scale
-            val bh = bmp.height * scale * hero.scale
-            // 방금 고른 인간은 콩 뛴다
-            val hop =
-                if (hopId == hero.id && hopT > 0f)
-                    -sin((1f - hopT / HOP_TIME).coerceIn(0f, 1f) * Math.PI.toFloat()) * h * 0.035f
-                else 0f
+            val scale = min(cw * 0.72f / bmp.width, h * 0.40f / bmp.height)
+            val bw = bmp.width * scale * hero.scale; val bh = bmp.height * scale * hero.scale
+            val hop = if (hopId == hero.id && hopT > 0f) -sin((1f - hopT / HOP_TIME).coerceIn(0f, 1f) * Math.PI.toFloat()) * h * 0.035f else 0f
             heroDst.set(cx - bw / 2f, groundY - bh + hop, cx + bw / 2f, groundY + hop)
-            if (!owned) lockPaint.alpha = 110 else lockPaint.alpha = 255
-            if (owned) drawHero(canvas, bmp, heroDst, hero, true, timer)
-            else {
-                // 아직 안 산 인간은 흐리게 (실루엣)
-                canvas.saveLayerAlpha(heroDst, 90)
-                drawHero(canvas, bmp, heroDst, hero, true, timer)
-                canvas.restore()
-            }
+            drawHero(canvas, bmp, heroDst, hero, true, timer)
 
-            // 이름 · 한 줄 설명
-            namePaint.textSize = h * 0.040f
-            canvas.drawTr(hero.name, cx, groundY + h * 0.050f, namePaint)
-            descPaint.textSize = h * 0.028f
-            canvas.drawTr(hero.desc, cx, groundY + h * 0.085f, descPaint)
+            namePaint.textSize = h * 0.038f
+            canvas.drawTr(hero.name, cx, groundY + h * 0.055f, namePaint)
+            descPaint.textSize = h * 0.026f
+            canvas.drawTr(hero.desc, cx, groundY + h * 0.092f, descPaint)
 
-            // 능력 점 세 줄
-            pipLabelPaint.textSize = h * 0.024f
-            pipFullPaint.color = hero.tint
-            drawPips(canvas, cx, groundY + h * 0.112f, cw, h, "체력", hero.hpPips)
-            drawPips(canvas, cx, groundY + h * 0.138f, cw, h, "공격", hero.atkPips)
-            drawPips(canvas, cx, groundY + h * 0.164f, cw, h, "속도", hero.speedPips)
+            // [되기] / 선택됨
+            val th = h * 0.06f; val tw = cw * 0.62f
+            tagRect.set(cx - tw / 2f, r.top + h * 0.014f, cx + tw / 2f, r.top + h * 0.014f + th)
+            canvas.drawRoundRect(tagRect, th / 2f, th / 2f, if (chosen) tagPaint else tagOffPaint)
+            canvas.drawRoundRect(tagRect, th / 2f, th / 2f, edgePaint)
+            tagTextPaint.textSize = th * 0.50f
+            canvas.drawTr(if (chosen) "선택됨" else "되기", cx, tagRect.centerY() + th * 0.18f, tagTextPaint)
 
-            if (chosen || !owned) {
-                val tw = cw * (if (owned) 0.40f else 0.62f)
-                val th = h * 0.048f
-                tagRect.set(cx - tw / 2f, cardRects[i].top + h * 0.012f, cx + tw / 2f,
-                    cardRects[i].top + h * 0.012f + th)
-                canvas.drawRoundRect(tagRect, th / 2f, th / 2f, if (owned) tagPaint else pricePaint)
-                canvas.drawRoundRect(tagRect, th / 2f, th / 2f, edgePaint)
-                tagTextPaint.textSize = th * 0.52f
-                canvas.drawTr(if (owned) "선택됨" else "${GameProgress.HERO_PRICE} 루비로 사기", cx, tagRect.centerY() + th * 0.19f, tagTextPaint)
+            // 내가 만든 캐릭터: 지우기
+            if (hero.id.startsWith(Heroes.CUSTOM_PREFIX)) {
+                val dr = RectF(cx - tw / 2f, r.bottom - th - h * 0.014f, cx + tw / 2f, r.bottom - h * 0.014f)
+                delRects[hero.id] = dr
+                canvas.drawRoundRect(dr, th / 2f, th / 2f, delPaint); canvas.drawRoundRect(dr, th / 2f, th / 2f, edgePaint)
+                canvas.drawTr(if (deleteArm == hero.id) "한 번 더!" else "지우기", cx, dr.centerY() + th * 0.18f, tagTextPaint)
             }
         }
+        // '추가 +' 카드
+        val al = padX + list.size * (cw + gap) - scrollX
+        addRect.set(al, h * 0.14f, al + cw, h * 0.86f)
+        canvas.drawRoundRect(addRect, 20f, 20f, cardPaint); canvas.drawRoundRect(addRect, 20f, 20f, dashPaint)
+        val acx = addRect.centerX(); val acy = h * 0.42f
+        canvas.drawLine(acx - 50f, acy, acx + 50f, acy, plusPaint); canvas.drawLine(acx, acy - 50f, acx, acy + 50f, plusPaint)
+        namePaint.textSize = h * 0.042f
+        canvas.drawTr("추가", acx, groundY + h * 0.055f, namePaint)
+        descPaint.textSize = h * 0.024f
+        canvas.drawTr("사진으로 캐릭터 만들기", acx, groundY + h * 0.092f, descPaint)
 
         // 돌아가기
-        val bw2 = w * 0.17f
-        val bh2 = h * 0.095f
-        backRect.set(w / 2f - bw2 / 2f, h * 0.882f, w / 2f + bw2 / 2f, h * 0.882f + bh2)
-        canvas.drawRoundRect(backRect, 20f, 20f, backPaint)
-        canvas.drawRoundRect(backRect, 20f, 20f, edgePaint)
-        backTextPaint.textSize = bh2 * 0.42f
-        canvas.drawTr("돌아가기", backRect.centerX(), backRect.centerY() + bh2 * 0.15f, backTextPaint)
-
-        if (noticeTimer > 0f) {
-            val alpha = (255f * (noticeTimer / 0.4f).coerceIn(0f, 1f)).toInt()
-            noticeRect.set(w * 0.3f, h * 0.42f, w * 0.7f, h * 0.55f)
-            noticePaint.alpha = alpha; edgePaint.alpha = alpha; noticeTextPaint.alpha = alpha
-            canvas.drawRoundRect(noticeRect, 18f, 18f, noticePaint); canvas.drawRoundRect(noticeRect, 18f, 18f, edgePaint)
-            noticeTextPaint.textSize = h * 0.042f
-            canvas.drawTr(noticeText, noticeRect.centerX(), noticeRect.centerY() + h * 0.015f, noticeTextPaint)
-            edgePaint.alpha = 255; noticeTextPaint.alpha = 255; noticePaint.alpha = 255
-        }
-    }
-
-    /** "공격 ●●○" 처럼 이름 뒤에 점 세 개 */
-    private fun drawPips(
-        canvas: Canvas, cx: Float, baseY: Float, cw: Float, h: Float, label: String, filled: Int
-    ) {
-        val dotR = h * 0.009f
-        val step = dotR * 3f
-        val dotsW = step * 3f
-        val labelRight = cx - dotsW / 2f - h * 0.010f
-        canvas.drawTr(label, labelRight, baseY, pipLabelPaint)
-        for (k in 0 until 3) {
-            val dx = cx - dotsW / 2f + step * (k + 0.5f)
-            canvas.drawCircle(dx, baseY - dotR * 0.9f, dotR, if (k < filled) pipFullPaint else pipEmptyPaint)
+        val bw2 = w * 0.17f; val bh2 = h * 0.08f
+        backRect.set(w / 2f - bw2 / 2f, h * 0.895f, w / 2f + bw2 / 2f, h * 0.895f + bh2)
+        canvas.drawRoundRect(backRect, 20f, 20f, tagPaint); canvas.drawRoundRect(backRect, 20f, 20f, edgePaint)
+        tagTextPaint.textSize = bh2 * 0.42f
+        canvas.drawTr("돌아가기", backRect.centerX(), backRect.centerY() + bh2 * 0.15f, tagTextPaint)
+        if (maxScroll > 0f) {
+            descPaint.textSize = h * 0.026f
+            canvas.drawTr("◀ 옆으로 밀어서 더 보기 ▶", w * 0.82f, h * 0.94f, descPaint)
         }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.actionMasked != MotionEvent.ACTION_UP) return true
-
-        if (backRect.contains(event.x, event.y)) {
-            gameView.showLobby()
-            return true
-        }
-        for ((i, hero) in Heroes.all.withIndex()) {
-            if (!cardRects[i].contains(event.x, event.y)) continue
-            if (!GameProgress.ownsHero(hero.id)) {
-                // 안 산 인간: 3000루비로 산다 (사면 바로 선택)
-                if (GameProgress.buyHero(hero.id)) { showNotice("${hero.name} 구매!"); SoundManager.playCatHit() }
-                else { showNotice("루비가 부족하다냥! (${GameProgress.HERO_PRICE} 필요)"); break }
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> { downX = event.x; lastX = event.x; dragging = false }
+            MotionEvent.ACTION_MOVE -> {
+                if (abs(event.x - downX) > 24f) dragging = true
+                if (dragging) { scrollX = (scrollX - (event.x - lastX)).coerceIn(0f, maxScroll) }
+                lastX = event.x
             }
+            MotionEvent.ACTION_UP -> if (!dragging) tap(event.x, event.y)
+        }
+        return true
+    }
+
+    private fun tap(x: Float, y: Float) {
+        if (backRect.contains(x, y)) { gameView.showLobby(); return }
+        if (addRect.contains(x, y)) { gameView.showCharacterCreate(); return }
+        for ((id, r) in delRects) {
+            if (!r.contains(x, y)) continue
+            if (deleteArm == id) {
+                CustomChars.remove(id); com.jamcat.nayngapo.ui.CharSkin.forget(id)
+                if (GameProgress.selectedHero == id) GameProgress.selectHero(Heroes.DEFAULT_ID)
+                deleteArm = null
+            } else { deleteArm = id; deleteArmT = 3f }
+            return
+        }
+        val list = heroes()
+        for ((i, hero) in list.withIndex()) {
+            if (i >= cardRects.size || !cardRects[i].contains(x, y)) continue
             if (hero.id != GameProgress.selectedHero) {
                 GameProgress.selectHero(hero.id)
                 SoundManager.playCatHit()
-                hopId = hero.id
-                hopT = HOP_TIME
+                hopId = hero.id; hopT = HOP_TIME
             }
-            break
+            return
         }
-        return true
     }
 
     override fun onBack(): Boolean {
@@ -238,7 +186,6 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
     }
 
     private companion object {
-        /** 고른 인간이 콩 뛰는 시간 */
         const val HOP_TIME = 0.4f
     }
 }

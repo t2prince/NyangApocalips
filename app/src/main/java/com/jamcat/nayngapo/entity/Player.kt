@@ -357,7 +357,9 @@ class Player(var x: Float, var y: Float) {
     /** 앞손에 레이저 총 — 손잡이(그림 가로 30%·세로 70%)가 손에 오게, 바라보는 쪽으로 */
     private fun drawGunInHand(canvas: Canvas, bmp: Bitmap) {
         val gun = SpriteManager.gunSide ?: return
-        if (!com.jamcat.nayngapo.ui.frontHand(bmp, heroDst, facingRight, handPt)) return
+        // 고양이·내가 만든 캐릭터는 방금 그린 앞손 자리에
+        if (com.jamcat.nayngapo.ui.CharSkin.handles(hero)) handPt.set(com.jamcat.nayngapo.ui.CharSkin.lastHand)
+        else if (!com.jamcat.nayngapo.ui.frontHand(bmp, heroDst, facingRight, handPt)) return
         val gh = heroDst.height() * 0.17f; val gw = gun.width * gh / gun.height
         val g = if (facingRight) gun else SpriteManager.getFlipped(gun)
         val gripX = if (facingRight) 0.30f else 0.70f
@@ -376,6 +378,15 @@ class Player(var x: Float, var y: Float) {
         var strikeHigh = false
         var striking = false
 
+        val skin = com.jamcat.nayngapo.ui.CharSkin.handles(hero)
+        val pose = when {
+            seatedInCar -> com.jamcat.nayngapo.ui.CharSkin.Pose.IDLE
+            isAttacking && (isJumpAttacking || comboStep == 2) -> com.jamcat.nayngapo.ui.CharSkin.Pose.KICK
+            isAttacking -> com.jamcat.nayngapo.ui.CharSkin.Pose.PUNCH
+            isJumping -> if (jumpVelocity < 0f) com.jamcat.nayngapo.ui.CharSkin.Pose.JUMP_UP else com.jamcat.nayngapo.ui.CharSkin.Pose.JUMP_DOWN
+            velocityX != 0f -> com.jamcat.nayngapo.ui.CharSkin.Pose.WALK
+            else -> com.jamcat.nayngapo.ui.CharSkin.Pose.IDLE
+        }
         val frame: Bitmap = when {
             seatedInCar -> SpriteManager.playerIdle[0]   // 차에 고정: 늘 같은 자세 (공격 판정은 그대로)
             isAttacking && isJumpAttacking -> { striking = true; attackFrame(SpriteManager.playerJumpKick) }
@@ -404,7 +415,7 @@ class Player(var x: Float, var y: Float) {
         // 시트는 오른쪽을 보고 있다 → 왼쪽을 볼 때만 뒤집는다
         val bmp = if (facingRight) frame else SpriteManager.getFlipped(frame)
         setHeroDst(bmp, cx, drawY)
-        com.jamcat.nayngapo.ui.drawHero(canvas, bmp, heroDst, hero, facingRight, animTime)
+        com.jamcat.nayngapo.ui.drawHero(canvas, bmp, heroDst, hero, facingRight, if (skin && velocityX != 0f) walkPhase / 13f else animTime, pose, prog)
         // 총을 들고 있으면 앞손에 쥔다 (차를 타면 총은 차에 달려 있다)
         if (hasGun && gunOut && !seatedInCar) drawGunInHand(canvas, bmp)
 

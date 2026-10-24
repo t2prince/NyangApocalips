@@ -55,8 +55,12 @@ fun drawHero(
     dst: RectF,
     hero: Heroes.Hero,
     facingRight: Boolean,
-    t: Float = 0f
+    t: Float = 0f,
+    /** 고양이·내가 만든 캐릭터는 졸라맨 그림 대신 이 자세로 그린다 */
+    pose: CharSkin.Pose = CharSkin.Pose.IDLE,
+    prog: Float = 0f,
 ) {
+    if (CharSkin.handles(hero)) { CharSkin.draw(canvas, hero, dst, facingRight, pose, prog, t); return }
     canvas.drawBitmap(bmp, null, dst, heroTintPaint(hero.tint))
     if (hero.accessory == Heroes.Accessory.GLOVES) {
         drawGloves(canvas, bmp, dst, facingRight)

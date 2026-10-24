@@ -41,7 +41,20 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         SoundManager.init(context)
         SoundManager.startBgm(context)   // 밝은 배경음악을 계속 반복
         GameProgress.init(context)
+        CustomChars.init(context)   // 내가 만든 캐릭터 (2026-10-24)
         I18n.init(context)   // 언어 설정 (저장된 언어를 읽는다)
+    }
+
+    /** 폰 그림 고르기 (MainActivity 가 채운다) — 결과는 UI 스레드에서, 취소하면 null */
+    var imagePicker: (((android.graphics.Bitmap?) -> Unit) -> Unit)? = null
+
+    fun pickImage(done: (android.graphics.Bitmap?) -> Unit) {
+        val p = imagePicker ?: run { done(null); return }
+        post { p(done) }
+    }
+
+    fun showCharacterCreate() {
+        fadeTo { CharacterCreateScreen(this) }
     }
 
     fun setScreen(screen: Screen) {

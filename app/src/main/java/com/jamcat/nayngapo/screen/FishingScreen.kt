@@ -760,8 +760,21 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         val bmp = if (walkDir < 0f && (walking || pos != Pos.DECK || punchT > 0f)) SpriteManager.getFlipped(body) else body
         val hw = bmp.width * hh / bmp.height
         rect.set(x - hw / 2f, footY - hh, x + hw / 2f, footY)
+        // 고양이·내가 만든 캐릭터 (캐릭터 변경, 2026-10-24)
+        if (com.jamcat.nayngapo.ui.CharSkin.handles(hero)) {
+            val pose = when {
+                pos == Pos.AIR -> if (airVY < 0f) com.jamcat.nayngapo.ui.CharSkin.Pose.JUMP_UP else com.jamcat.nayngapo.ui.CharSkin.Pose.JUMP_DOWN
+                punchT > 0f -> com.jamcat.nayngapo.ui.CharSkin.Pose.PUNCH
+                walking -> com.jamcat.nayngapo.ui.CharSkin.Pose.WALK
+                else -> com.jamcat.nayngapo.ui.CharSkin.Pose.IDLE
+            }
+            val right = !(walkDir < 0f && (walking || pos != Pos.DECK || punchT > 0f))
+            com.jamcat.nayngapo.ui.CharSkin.draw(canvas, hero, rect, right, pose, if (punchT > 0f) 1f - punchT / PUNCH_TIME else 0f, timer)
+            return
+        }
         canvas.drawBitmap(bmp, null, rect, null)
     }
+    private val hero = com.jamcat.nayngapo.engine.Heroes.selected()
 
     /** 바다 위: 해적선(해적냥이가 타고 있다)·대포알·물보라 */
     private fun drawSea(canvas: Canvas, w: Float, h: Float, waterY: Float) {

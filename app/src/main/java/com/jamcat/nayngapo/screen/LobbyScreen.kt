@@ -54,6 +54,7 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
 
     private var timer = 0f
     private var pressedId: String? = null
+    private val charRect = RectF()
 
     // 미구현 기능을 눌렀을 때 잠깐 떠오르는 쪽지
     private var noticeText = ""
@@ -176,6 +177,12 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
             slotRect.set(slot.l * w, slot.t * h, slot.r * w, slot.b * h)
             drawSlot(canvas, slot, slotRect, h)
         }
+        // 뽑기 위 작은 '캐릭터 변경' (대표님 2026-10-24 「뽑기 위에는 캐릭터 변경이 작게 있는데」)
+        charRect.set(0.015f * w, 0.022f * h, 0.245f * w, 0.088f * h)
+        canvas.drawRoundRect(charRect, 14f, 14f, if (pressedId == "char") panelPressPaint else panelPaint)
+        canvas.drawRoundRect(charRect, 14f, 14f, borderPaint)
+        labelPaint.textSize = h * 0.032f
+        canvas.drawTr("🙂 캐릭터 변경", charRect.centerX(), charRect.centerY() + h * 0.011f, labelPaint)
 
         drawNotice(canvas, w, h)
     }
@@ -448,7 +455,7 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
         if (mapOnly) return true
 
         when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> pressedId = slotAt(event.x, event.y, w, h)?.id
+            MotionEvent.ACTION_DOWN -> pressedId = if (charRect.contains(event.x, event.y)) "char" else slotAt(event.x, event.y, w, h)?.id
             MotionEvent.ACTION_UP -> {
                 // 지도 쪽 넘기기 화살표를 먼저, 그다음 돌 — 돌 하나가 스테이지 하나
                 val stage = stageAt(event.x, event.y)
@@ -458,6 +465,8 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
                     mapPage++
                 } else if (stage != null) {
                     enterStage(stage)
+                } else if (charRect.contains(event.x, event.y)) {
+                    if (pressedId == "char") gameView.showCharacterSelect()
                 } else {
                     val hit = slotAt(event.x, event.y, w, h)
                     if (hit != null && hit.id == pressedId) onSlotSelected(hit)

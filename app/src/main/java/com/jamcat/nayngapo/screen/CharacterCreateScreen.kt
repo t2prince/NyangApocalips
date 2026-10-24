@@ -30,6 +30,11 @@ class CharacterCreateScreen(private val gameView: GameView) : Screen {
     private val lasso = Path()
     private val lassoPts = ArrayList<PointF>()
     private var lassoClosed = false
+    /** 자동으로 선따기 켜짐 — 테두리를 닫으면 가까운 선에 맞춘 그림을 미리 보여 준다 */
+    private var autoSnap = false
+    private var snapped: Bitmap? = null
+    /** 선따기 버튼을 누른 손가락은 테두리로 그리지 않는다 */
+    private var skipStroke = false
     private val joints = ArrayList<PointF>()   // 그림 좌표
     private var rig: CharSkin.Rig? = null
     private var timer = 0f
@@ -80,7 +85,12 @@ class CharacterCreateScreen(private val gameView: GameView) : Screen {
         val head = when (step) {
             Step.PICKING -> "사진을 고르는 중…"
             Step.MODE -> "어떻게 쓸까요?"
-            Step.LASSO -> if (lassoClosed) "이 테두리 안만 쓸까요?" else "✂ 손가락으로 둘레를 그리거나 자동으로 선따기"
+            Step.LASSO -> when {
+                lassoClosed && autoSnap -> "가까운 선에 맞춰 땄어요 — 이대로 쓸까요?"
+                lassoClosed -> "이 테두리 안만 쓸까요?"
+                autoSnap -> "✨ 대충 둘레를 그리면 가까운 선을 테두리로 해요"
+                else -> "✂ 손가락으로 캐릭터 둘레를 그려요"
+            }
             Step.JOINTS -> "관절을 끌어서 그림에 맞춰요"
             Step.PREVIEW -> "이렇게 움직여요!"
         }
@@ -100,7 +110,7 @@ class CharacterCreateScreen(private val gameView: GameView) : Screen {
             while (xx < imgRect.right) { canvas.drawRect(xx, yy, min(xx + cell, imgRect.right), min(yy + cell, imgRect.bottom), checker); xx += cell * 2 }
             yy += cell; row++
         }
-        canvas.drawBitmap(img, null, imgRect, bmpPaint)
+        canvas.drawBitmap(if (step == Step.LASSO && lassoClosed) snapped ?: img else img, null, imgRect, bmpPaint)
         canvas.drawRect(imgRect, ink)
 
         when (step) {
@@ -110,15 +120,15 @@ class CharacterCreateScreen(private val gameView: GameView) : Screen {
                 drawBtn(canvas, btnC, w * 0.76f, h * 0.87f, w * 0.18f, "취소", btnOff, h)
             }
             Step.LASSO -> {
-                canvas.drawPath(lasso, lassoPaint)
+                if (!(lassoClosed && snapped != null)) canvas.drawPath(lasso, lassoPaint)
                 if (lassoClosed) {
                     drawBtn(canvas, btnA, w * 0.10f, h * 0.87f, w * 0.30f, "다시 그리기", btnOff, h)
                     drawBtn(canvas, btnB, w * 0.60f, h * 0.87f, w * 0.30f, "다음 ▶", btn, h)
                     btnC.setEmpty()
                 } else {
                     btnA.setEmpty(); btnB.setEmpty()
-                    // 자동으로 선따기 (대표님 2026-10-24 「스티커로 하기에서는 자동으로 선따기도 있어」)
-                    drawBtn(canvas, btnC, w * 0.33f, h * 0.87f, w * 0.34f, "✨ 자동으로 선따기", btn2, h)
+                    // 자동으로 선따기 (대표님 2026-10-24 「스티커로 하기에서는 자동으로 선따기도 있어」「대략적인 테두리를 그리면 가까운 선을 테두리로 해 줘」)
+                    drawBtn(canvas, btnC, w * 0.30f, h * 0.87f, w * 0.40f, if (autoSnap) "✨ 자동으로 선따기: 켜짐" else "✨ 자동으로 선따기: 꺼짐", if (autoSnap) btn else btn2, h)
                 }
             }
             Step.JOINTS -> {
@@ -216,7 +226,8 @@ class CharacterCreateScreen(private val gameView: GameView) : Screen {
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val x = event.x; val y = event.y
         if (step == Step.LASSO && !lassoClosed) {
-            if (event.actionMasked == MotionEvent.ACTION_DOWN && !btnC.isEmpty && btnC.contains(x, y)) { autoCut(); return true }
+            if (event.actionMasked == MotionEvent.ACTION_DOWN && !btnC.isEmpty && btnC.contains(x, y)) { autoSnap = !autoSnap; skipStroke = true; return true }
+            if (skipStroke) { if (event.actionMasked == MotionEvent.ACTION_UP) skipStroke = false; return true }
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> { lasso.reset(); lassoPts.clear(); lasso.moveTo(x, y); lassoPts.add(PointF(x, y)) }
                 MotionEvent.ACTION_MOVE -> {
@@ -225,7 +236,7 @@ class CharacterCreateScreen(private val gameView: GameView) : Screen {
                 }
                 MotionEvent.ACTION_UP -> {
                     if (lassoPts.size < 12) { notice("캐릭터 둘레를 한 바퀴 크게 그려요"); lasso.reset(); lassoPts.clear() }
-                    else { lasso.close(); lassoClosed = true }
+                    else { lasso.close(); lassoClosed = true; snapped = if (autoSnap) snapToLines() else null }
                 }
             }
             return true
@@ -261,8 +272,8 @@ class CharacterCreateScreen(private val gameView: GameView) : Screen {
                 btnC.contains(x, y) -> gameView.showCharacterSelect()
             }
             Step.LASSO -> when {
-                btnA.contains(x, y) -> { lasso.reset(); lassoPts.clear(); lassoClosed = false }
-                btnB.contains(x, y) -> cutSticker()
+                btnA.contains(x, y) -> { lasso.reset(); lassoPts.clear(); lassoClosed = false; snapped = null }
+                btnB.contains(x, y) -> { val sn = snapped; if (sn != null) useSnapped(sn) else cutSticker() }
             }
             Step.PREVIEW -> when {
                 btnA.contains(x, y) -> { rig = null; step = Step.JOINTS }   // 관절은 그대로 두고 다시 옮기기
@@ -296,46 +307,81 @@ class CharacterCreateScreen(private val gameView: GameView) : Screen {
         step = Step.JOINTS
     }
 
-    /**
-     * 자동으로 선따기: 그림 가장자리와 비슷한 색(배경)을 가장자리부터 번져 가며 지우고, 남은 것만 잘라낸다.
-     * 흰 종이·한 가지 색 배경에 그린 그림에 잘 맞는다 (허용 색 차이는 Claude 판단).
-     */
-    private fun autoCut() {
-        val img = image ?: return
-        val w = img.width; val hh = img.height
-        val px = IntArray(w * hh); img.getPixels(px, 0, w, 0, 0, w, hh)
-        // 배경색 = 가장자리 점들의 평균
-        var sr = 0L; var sg = 0L; var sb = 0L; var n = 0
-        fun addEdge(i: Int) { val c = px[i]; sr += (c shr 16) and 255; sg += (c shr 8) and 255; sb += c and 255; n++ }
-        for (x in 0 until w) { addEdge(x); addEdge((hh - 1) * w + x) }
-        for (y in 0 until hh) { addEdge(y * w); addEdge(y * w + w - 1) }
-        val br = (sr / n).toInt(); val bg = (sg / n).toInt(); val bb = (sb / n).toInt()
-        fun isBg(c: Int): Boolean {
-            if ((c ushr 24) < 20) return true
-            val dr = ((c shr 16) and 255) - br; val dg = ((c shr 8) and 255) - bg; val db = (c and 255) - bb
-            return dr * dr + dg * dg + db * db < AUTO_TOL * AUTO_TOL
+    /** 손가락 테두리를 그림 좌표 Path 로 */
+    private fun lassoInImage(): Path {
+        val path = Path()
+        for ((i, p) in lassoPts.withIndex()) {
+            val ix = (p.x - imgRect.left) / imgScale; val iy = (p.y - imgRect.top) / imgScale
+            if (i == 0) path.moveTo(ix, iy) else path.lineTo(ix, iy)
         }
-        val bgMark = BooleanArray(w * hh)
+        path.close()
+        return path
+    }
+
+    /**
+     * 자동으로 선따기 (대표님 2026-10-24 「대략적인 테두리를 그리면 가까운 선을 테두리로 해 줘」):
+     * 그린 테두리 둘레(안팎으로 띠)에서, 바깥부터 번져 들어가다 선(진한 경계)을 만나면 멈춘다 — 멈춘 자리가 새 테두리.
+     * 띠보다 깊은 안쪽은 늘 남고, 띠보다 먼 바깥은 늘 지운다. 띠 폭·선 기준은 Claude 판단. 결과는 그림과 같은 크기(바깥은 투명).
+     */
+    private fun snapToLines(): Bitmap? {
+        val img = image ?: return null
+        val w = img.width; val hh = img.height
+        val path = lassoInImage()
+        val band = (maxOf(w, hh) * 0.10f).coerceAtLeast(16f)   // 그린 테두리에서 안팎으로 이만큼 안의 선에 붙는다
+        // 안쪽(채우기)·띠(굵은 선) 마스크
+        val inside = Bitmap.createBitmap(w, hh, Bitmap.Config.ALPHA_8)
+        Canvas(inside).drawPath(path, Paint().apply { style = Paint.Style.FILL })
+        val bandBmp = Bitmap.createBitmap(w, hh, Bitmap.Config.ALPHA_8)
+        Canvas(bandBmp).drawPath(path, Paint().apply { style = Paint.Style.STROKE; strokeWidth = band * 2f; strokeJoin = Paint.Join.ROUND; strokeCap = Paint.Cap.ROUND })
+        // ALPHA_8 은 줄 끝이 채워질 수 있어 줄 길이(rowBytes)로 읽는다
+        val rbIn = inside.rowBytes; val rbBand = bandBmp.rowBytes
+        val inA = ByteArray(rbIn * hh); inside.copyPixelsToBuffer(java.nio.ByteBuffer.wrap(inA))
+        val bandA = ByteArray(rbBand * hh); bandBmp.copyPixelsToBuffer(java.nio.ByteBuffer.wrap(bandA))
+        val px = IntArray(w * hh); img.getPixels(px, 0, w, 0, 0, w, hh)
+        // 밝기 + 선(밝기 차이가 큰 곳·진한 곳)
+        val lum = IntArray(w * hh) { val c = px[it]; if ((c ushr 24) < 20) 255 else (((c shr 16) and 255) * 3 + ((c shr 8) and 255) * 6 + (c and 255)) / 10 }
+        fun isLine(i: Int): Boolean {
+            val x = i % w; val y = i / w
+            if (x == 0 || y == 0 || x == w - 1 || y == hh - 1) return false
+            val gx = lum[i + 1] - lum[i - 1]; val gy = lum[i + w] - lum[i - w]
+            return gx * gx + gy * gy > LINE_GRAD * LINE_GRAD || lum[i] < LINE_DARK
+        }
+        val bg = BooleanArray(w * hh)
         val queue = IntArray(w * hh); var head = 0; var tail = 0
-        fun push(i: Int) { if (!bgMark[i] && isBg(px[i])) { bgMark[i] = true; queue[tail++] = i } }
+        fun inBand(i: Int) = bandA[(i / w) * rbBand + i % w].toInt() != 0
+        fun isIn(i: Int) = inA[(i / w) * rbIn + i % w].toInt() != 0
+        // 띠 밖의 바깥은 모두 배경 (출발점)
+        for (i in 0 until w * hh) if (!isIn(i) && !inBand(i)) { bg[i] = true; queue[tail++] = i }
+        fun push(i: Int) {
+            if (bg[i]) return
+            if (!inBand(i)) return            // 띠 밖 안쪽은 늘 남긴다
+            if (isLine(i)) return             // 선에서 멈춘다
+            bg[i] = true; queue[tail++] = i
+        }
+        // 그림 가장자리가 띠 안이면 거기서도 출발
         for (x in 0 until w) { push(x); push((hh - 1) * w + x) }
         for (y in 0 until hh) { push(y * w); push(y * w + w - 1) }
         while (head < tail) {
             val i = queue[head++]; val x = i % w; val y = i / w
             if (x > 0) push(i - 1); if (x < w - 1) push(i + 1); if (y > 0) push(i - w); if (y < hh - 1) push(i + w)
         }
-        var l = w; var t = hh; var rr = -1; var b = -1; var kept = 0
-        for (y in 0 until hh) for (x in 0 until w) {
-            val i = y * w + x
-            if (bgMark[i]) px[i] = 0
-            else { kept++; if (x < l) l = x; if (x > rr) rr = x; if (y < t) t = y; if (y > b) b = y }
-        }
-        if (rr < 0 || kept < w * hh / 100 || kept > w * hh * 97 / 100) { notice("자동으로 못 땄어요 — 손가락으로 둘레를 그려요"); return }
-        val cut = Bitmap.createBitmap(px, w, hh, Bitmap.Config.ARGB_8888)
-        image = Bitmap.createBitmap(cut, l, t, rr - l + 1, b - t + 1)
+        var kept = 0
+        for (i in 0 until w * hh) if (bg[i]) px[i] = 0 else if ((px[i] ushr 24) >= 20) kept++
+        if (kept < 50) return null
+        return Bitmap.createBitmap(px, w, hh, Bitmap.Config.ARGB_8888)
+    }
+
+    /** 자동으로 딴 그림: 보이는 부분만 잘라 관절 단계로 */
+    private fun useSnapped(sn: Bitmap) {
+        val w = sn.width; val hh = sn.height
+        val px = IntArray(w * hh); sn.getPixels(px, 0, w, 0, 0, w, hh)
+        var l = w; var t = hh; var rr = -1; var b = -1
+        for (y in 0 until hh) for (x in 0 until w) if ((px[y * w + x] ushr 24) >= 20) { if (x < l) l = x; if (x > rr) rr = x; if (y < t) t = y; if (y > b) b = y }
+        if (rr < 0) { notice("남은 그림이 없어요 — 다시 그려요"); return }
+        image = Bitmap.createBitmap(sn, l, t, rr - l + 1, b - t + 1)
+        snapped = null
         autoJoints()
         step = Step.JOINTS
-        notice("배경을 지웠어요! 관절을 맞춰요")
     }
 
     private fun makePreview() {
@@ -356,8 +402,9 @@ class CharacterCreateScreen(private val gameView: GameView) : Screen {
     }
 
     private companion object {
-        /** 자동 선따기에서 배경으로 볼 색 차이 */
-        const val AUTO_TOL = 60
+        /** 자동 선따기: 선으로 볼 밝기 차이(이웃 점끼리) · 이보다 어두우면 선 */
+        const val LINE_GRAD = 70
+        const val LINE_DARK = 90
     }
 
     override fun onBack(): Boolean {

@@ -650,6 +650,8 @@ class Player(var x: Float, var y: Float) {
      * 발동하면 높이 솟아올랐다가 두 발로 지면을 내려찍는다 (쿨다운 15초).
      */
     fun performSpecial(): Boolean {
+        // 고양이가 주인공이면 인간 필살기(내려찍기)는 못 쓴다 — 고양이 기술만 (대표님 2026-10-24)
+        if (hero.id == com.jamcat.nayngapo.engine.Heroes.CAT_ID) return false
         if (specialCooldown > 0f || isAttacking || stompPhase != StompPhase.NONE) return false
         if (inDeepSnow) return false      // 눈에 파묻혀 있으면 솟구칠 수 없다
 

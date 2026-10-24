@@ -447,14 +447,17 @@ class ShopScreen(private val gameView: GameView) : Screen {
     private val carShopX = FIRST_TENT_X + (TENT_COUNT - 1) * TENT_GAP + 760f
     /** 낚시 상점 — 낚싯대 Lv업·미끼 (대표님 2026-10-17), 자동차 매장 뒤 */
     private val fishShopX = carShopX + 760f
+    /** 조선소 — 어선을 산다 (대표님 2026-10-24 「조선소에서 살 수 있어」), 낚시 상점과 낚시터 사이 */
+    private val shipyardX = fishShopX + 700f
     /** 맨 끝의 낚시터 = 바다 (대표님 2026-10-17 「낚시터는 끝에 바다처럼 있어」): 땅이 모래사장으로 끝나고 그 뒤는 바다, 부두가 바다로 뻗어 있다 */
-    private val fishingX = fishShopX + 700f
+    private val fishingX = shipyardX + 700f
     /** 땅이 끝나는 곳 (모래사장 끝) · 부두 끝 — 인간·냥이는 부두 끝까지만 */
     private val seaStartX = fishingX - 60f
     private val walkMaxX = fishingX + 260f
     private val worldWidth = fishingX + 1500f
     private var nearFishing = false
     private var nearFishShop = false
+    private var nearShipyard = false
     private var nearCarShop = false
     private val carShopRect = RectF()
     private var nearGate = false
@@ -562,8 +565,9 @@ class ShopScreen(private val gameView: GameView) : Screen {
         nearCarShop = abs(pcx - carShopX) < 260f
         nearFishing = abs(pcx - fishingX) < 260f
         nearFishShop = abs(pcx - fishShopX) < 200f
+        nearShipyard = abs(pcx - shipyardX) < 220f
         // 기습 중에는 가게에 못 들어간다 — 냥이부터 잡아야 한다
-        if (raid || raidResult != null) { nearTent = -1; nearTower = false; nearGacha = false; nearMoney = false; nearGate = false; nearCarShop = false; nearFishing = false; nearFishShop = false }
+        if (raid || raidResult != null) { nearTent = -1; nearTower = false; nearGacha = false; nearMoney = false; nearGate = false; nearCarShop = false; nearFishing = false; nearFishShop = false; nearShipyard = false }
     }
 
     override fun draw(canvas: Canvas) {
@@ -648,6 +652,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
             canvas.drawTr("자동차 매장", carShopX, carShopRect.top + th * 0.12f, signText)
         }
         drawFishingSpot(canvas, fishingX, groundY)
+        drawShipyard(canvas, shipyardX, groundY)
         SpriteManager.fishShop?.let { bmp ->
             val th = 380f; val tw = bmp.width * th / bmp.height
             rect.set(fishShopX - tw / 2f, groundY + 16f - th, fishShopX + tw / 2f, groundY + 16f)
@@ -728,6 +733,19 @@ class ShopScreen(private val gameView: GameView) : Screen {
             bubbleText.textSize = 44f
             val bw = bubbleText.measureTr(label) + 60f
             val by = groundY - 470f + sin(timer * 4f) * 6f
+            enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
+            canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
+            canvas.drawRoundRect(enterRect, 38f, 38f, ink)
+            canvas.drawTr(label, bx, enterRect.centerY() + 15f, bubbleText)
+        }
+
+        // 조선소 앞: 말풍선 — 어선이 없으면 사기
+        if (nearShipyard) {
+            val bx = shipyardX - cameraX
+            val label = if (GameProgress.itemCount(BOAT_ID) > 0) "⚓ 내 어선이 부두에 있어요" else "▼ 어선 사기 · 루비 $BOAT_PRICE"
+            bubbleText.textSize = 44f
+            val bw = bubbleText.measureTr(label) + 60f
+            val by = groundY - 430f + sin(timer * 4f) * 6f
             enterRect.set(bx - bw / 2f, by - 46f, bx + bw / 2f, by + 30f)
             canvas.drawRoundRect(enterRect, 38f, 38f, bubblePaint)
             canvas.drawRoundRect(enterRect, 38f, 38f, ink)
@@ -1023,12 +1041,14 @@ class ShopScreen(private val gameView: GameView) : Screen {
             canvas.drawRect(rect, pierPaint); canvas.drawRect(rect, ink)
             px += 160f
         }
-        // 부두 끝에 매어 둔 어선 (5루비로 타는 그 배)
-        val boat = SpriteManager.fishingBoat
-        val bh = 210f; val bw = boat.width * bh / boat.height
-        val bob = sin(timer * 1.8f) * 5f
-        rect.set(walkMaxX + 70f, groundY - bh * 0.80f + 30f + bob, walkMaxX + 70f + bw, groundY + bh * 0.20f + 30f + bob)
-        canvas.drawBitmap(boat, null, rect, null)
+        // 부두 끝에 매어 둔 어선 — 조선소에서 산 내 배가 있을 때만
+        if (GameProgress.itemCount(BOAT_ID) > 0) {
+            val boat = SpriteManager.fishingBoat
+            val bh = 210f; val bw = boat.width * bh / boat.height
+            val bob = sin(timer * 1.8f) * 5f
+            rect.set(walkMaxX + 70f, groundY - bh * 0.80f + 30f + bob, walkMaxX + 70f + bw, groundY + bh * 0.20f + 30f + bob)
+            canvas.drawBitmap(boat, null, rect, null)
+        }
         // 부두 위 낚싯대 + 줄 + 찌
         canvas.drawLine(cx + 60f, groundY - 54f, cx + 190f, groundY - 230f, ladderPaintThin)
         canvas.drawLine(cx + 190f, groundY - 230f, cx + 280f, groundY + 20f, fishLine)
@@ -1044,6 +1064,42 @@ class ShopScreen(private val gameView: GameView) : Screen {
         canvas.drawTr(label, rect.centerX(), rect.centerY() + 13f, signText)
     }
     private val seaDeep = Paint().apply { color = Color.rgb(60, 140, 210) }
+
+    /** 조선소 (코드 그림): 나무 창고 + 박공지붕 + 앞의 받침대 — 아직 안 산 어선이 받침대 위에 올라가 있다 */
+    private fun drawShipyard(canvas: Canvas, cx: Float, groundY: Float) {
+        val shedW = 420f; val shedH = 230f
+        rect.set(cx - shedW / 2f - 20f, groundY - 14f, cx + shedW / 2f + 20f, groundY + 20f)
+        canvas.drawOval(rect, shadowPaint)
+        // 창고 벽 + 널빤지 줄
+        rect.set(cx - shedW / 2f, groundY - shedH, cx + shedW / 2f, groundY)
+        canvas.drawRect(rect, pierPaint)
+        var lx = cx - shedW / 2f + 52f
+        while (lx < cx + shedW / 2f) { canvas.drawLine(lx, groundY - shedH, lx, groundY, ladderPaintThin); lx += 52f }
+        canvas.drawRect(rect, ink)
+        // 박공지붕
+        sandPath.reset()
+        sandPath.moveTo(cx - shedW / 2f - 40f, groundY - shedH); sandPath.lineTo(cx, groundY - shedH - 120f)
+        sandPath.lineTo(cx + shedW / 2f + 40f, groundY - shedH); sandPath.close()
+        canvas.drawPath(sandPath, boardDark); canvas.drawPath(sandPath, ink)
+        // 간판
+        signText.textSize = 40f
+        val label = "조선소"
+        val lw = signText.measureTr(label) + 50f
+        rect.set(cx - lw / 2f, groundY - shedH - 70f, cx + lw / 2f, groundY - shedH - 12f)
+        canvas.drawRoundRect(rect, 10f, 10f, signPaint); canvas.drawRoundRect(rect, 10f, 10f, ink)
+        canvas.drawTr(label, cx, rect.centerY() + 14f, signText)
+        // 아직 안 샀으면 받침대 위의 새 어선
+        if (GameProgress.itemCount(BOAT_ID) == 0) {
+            for (side in intArrayOf(-1, 1)) {
+                rect.set(cx + side * 90f - 14f, groundY - 50f, cx + side * 90f + 14f, groundY)
+                canvas.drawRect(rect, boardDark); canvas.drawRect(rect, ink)
+            }
+            val boat = SpriteManager.fishingBoat
+            val bh = 170f; val bw = boat.width * bh / boat.height
+            rect.set(cx - bw / 2f, groundY - 50f - bh * 0.80f, cx + bw / 2f, groundY - 50f + bh * 0.20f)
+            canvas.drawBitmap(boat, null, rect, null)
+        }
+    }
     private val sandPaint = Paint().apply { color = Color.rgb(236, 214, 160); isAntiAlias = true }
     private val sandPath = Path()
     private val ladderPaintThin = Paint().apply { color = Color.rgb(120, 80, 40); strokeWidth = 7f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
@@ -1290,6 +1346,14 @@ class ShopScreen(private val gameView: GameView) : Screen {
             if (nearFishShop && !enterRect.isEmpty && enterRect.contains(px, py)) {
                 touchControls.releaseAll(); returnX = player.x; gameView.showFishingShop(); return true
             }
+            if (nearShipyard && !enterRect.isEmpty && enterRect.contains(px, py)) {
+                when {
+                    GameProgress.itemCount(BOAT_ID) > 0 -> showNotice("벌써 어선이 있어요 — 낚시터에서 타요")
+                    GameProgress.buyItem(BOAT_ID, BOAT_PRICE) -> showNotice("어선을 샀어요! 낚시터에서 언제든 탈 수 있어요")
+                    else -> showNotice("어선은 루비 ${BOAT_PRICE}개예요 (지금 ${GameProgress.rubies}개)")
+                }
+                return true
+            }
             if (nearFishing && !enterRect.isEmpty && enterRect.contains(px, py)) {
                 touchControls.releaseAll(); returnX = player.x; gameView.showFishing(); return true
             }
@@ -1337,6 +1401,10 @@ class ShopScreen(private val gameView: GameView) : Screen {
     }
 
     companion object {
+        /** 조선소에서 파는 어선 — 가방의 물건 하나로 센다, 해적선에 가라앉으면 잃는다 (대표님 2026-10-24) */
+        const val BOAT_ID = "fishing_boat"
+        /** 어선 값 (루비) — Claude 판단 */
+        const val BOAT_PRICE = 30
         /** 천막 수 — 대표님이 정할 때까지 임시 6개 (Claude 판단) */
         const val TENT_COUNT = 14
         /** 기습: 들어올 때 일어날 확률 · 잡아야 하는 시간 · 쳐들어오는 냥이 수 (대표님 2026-10-17) */

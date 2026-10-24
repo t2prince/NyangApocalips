@@ -212,7 +212,8 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
     private fun sinkBoat() {
         onBoat = false; pirateX = Float.NaN; balls.clear(); nets.clear(); crew.clear(); pos = Pos.DECK; atHelm = false; touchControls.releaseAll()
         if (state != State.CONTROL && state != State.REEL) { state = State.READY; catchId = null }
-        noticeText = "배가 가라앉았다! 겨우 부두로 돌아왔어요"; noticeTimer = 2.5f
+        GameProgress.consumeItem(ShopScreen.BOAT_ID)   // 가라앉으면 배를 잃는다 (대표님 2026-10-24) — 조선소에서 다시 사야 한다
+        noticeText = "배가 가라앉았다! 배를 잃고 겨우 부두로 돌아왔어요"; noticeTimer = 2.5f
     }
 
     /** 배에서 내려 부두로 (나가기) */
@@ -1170,7 +1171,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
             boatRect.set(w * 0.04f, h * 0.80f, w * 0.04f + 400f, h * 0.80f + 110f)
             canvas.drawRoundRect(boatRect, 55f, 55f, if (onBoat) btnPaint else controlPaint); canvas.drawRoundRect(boatRect, 55f, 55f, ink)
             text.textSize = h * 0.04f
-            canvas.drawTr(if (onBoat) "🚤 돌아오기" else "🚤 어선 타기 · 루비 $BOAT_PRICE", boatRect.centerX(), boatRect.centerY() + h * 0.014f, text)
+            canvas.drawTr(if (onBoat) "🚤 돌아오기" else (if (GameProgress.itemCount(ShopScreen.BOAT_ID) > 0) "🚤 어선 타기" else "🚤 어선 없음 · 조선소"), boatRect.centerX(), boatRect.centerY() + h * 0.014f, text)
         }
         // 낚시줄 Lv업 (오른쪽 위, 나가기 아래)
         // 낚싯대 Lv·미끼 표시 (Lv업·미끼는 낚시 상점에서)
@@ -1385,8 +1386,8 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         if (exitRect.contains(event.x, event.y)) { gameView.showShop(); return true }
         if (!boatRect.isEmpty && boatRect.contains(event.x, event.y)) {
             if (onBoat) leaveBoat()
-            else if (GameProgress.spendRubies(BOAT_PRICE)) { boardBoat(); noticeText = "어선을 타고 바다로! 바다 생물이 잡혀요 · 가끔 해적선이 와요" }
-            else noticeText = "배를 타려면 루비 ${BOAT_PRICE}개가 있어야 해요"
+            else if (GameProgress.itemCount(ShopScreen.BOAT_ID) > 0) { boardBoat(); noticeText = "어선을 타고 바다로! 바다 생물이 잡혀요 · 가끔 해적선이 와요" }
+            else noticeText = "배가 없어요 — 상점 마을 조선소에서 어선을 사요"
             noticeTimer = 2f
             state = State.READY; catchId = null
             return true
@@ -1406,8 +1407,6 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
     companion object {
         /** '!' 뜨고 당길 수 있는 시간 */
         private const val BITE_WINDOW = 1.0f
-        /** 배 타기 값 (루비) */
-        const val BOAT_PRICE = 5
         /** 어선: 튼튼함 · 빠르기 · 그림에서 인간이 서는 곳(가로 비율)·갑판 높이(세로 비율) */
         private const val BOAT_HP = 10   // 대표님 2026-10-17
         private const val BOAT_ATTACK = 2   // 대표님 2026-10-17 (그물 한 번에)

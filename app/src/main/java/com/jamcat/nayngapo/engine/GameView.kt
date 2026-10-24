@@ -178,6 +178,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         // 31 해적 바다: 맨몸으로는 못 들어간다 — 30에서 구한 배냥이를 타야 한다 (2026-10-09)
         // 배냥이가 주인공이면 배냥이 없이 헤엄친다 (대표님 2026-10-24 「배냥이가 되면 31 스테이지에서 배냥이 없이 헤엄칠 수 있다」)
         stage == 31 && Heroes.playerCatKind() == com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT -> null
+        // 벌냥이·날아냥이는 바다 위를 날아서 간다 (2026-10-24)
+        stage == 31 && Heroes.playerCatKind().let { it == com.jamcat.nayngapo.entity.AllyCat.Kind.BEE || it == com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING } -> null
         stage == 31 && CatTeam.boatDead() -> "배냥이가 잠들어 있다냥! 캣타워에서 부활 약을 먹여야 바다에 나갈 수 있다"
         stage == 31 && CatTeam.boatMount() == null -> "바다라서 맨몸으로는 못 간다냥! 30스테이지에서 배냥이를 구해 오자"
         else -> null

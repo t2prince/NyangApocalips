@@ -15,11 +15,22 @@ class Player(var x: Float, var y: Float) {
      * 나는 냥이가 주인공이면 우리 팀일 때처럼 떠서 다닌다 (대표님 2026-10-24 「같은 팀 벌냥이는 날아다녀」):
      * 벌냥이는 높이(150) 떠서 오르내리고, 날아냥이는 살짝(18). 맞는 자리(발밑)는 그대로 — 우리 팀 냥이와 같다.
      */
-    private fun hoverLift(): Float = when (playerCat?.kind) {
+    private fun hoverLift(): Float = when {
+        isFlyer -> beeLift * (1f + kotlin.math.abs(kotlin.math.sin(animTime * 4f)) * 0.08f)
+        else -> when (playerCat?.kind) {
         com.jamcat.nayngapo.entity.AllyCat.Kind.BEE -> beeLift * (1f + kotlin.math.abs(kotlin.math.sin(animTime * 4f)) * 0.08f)
         com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING -> com.jamcat.nayngapo.entity.AllyCat.HOVER_LIFT - kotlin.math.abs(kotlin.math.sin(animTime * 4f)) * 6f
         else -> 0f
+        }
     }
+
+    /** 31 바다처럼 날아서만 갈 수 있는 곳 — 날아냥이도 벌냥이처럼 높이 날고 '날기' 버튼으로 오르내린다 (2026-10-24) */
+    var seaFlight = false
+    /** 높이 나는 냥이 (벌냥이, 바다의 날아냥이) */
+    val isFlyer: Boolean get() = playerCat?.kind == com.jamcat.nayngapo.entity.AllyCat.Kind.BEE ||
+        (seaFlight && playerCat?.kind == com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING)
+    /** 처음부터 날고 있다 (바다에서 시작할 때) */
+    fun startFlying() { beeFlying = true; beeLift = com.jamcat.nayngapo.entity.AllyCat.BEE_HOVER_LIFT }
 
     /** 벌냥이 주인공이 날고 있는가 (처음엔 땅) · 지금 떠 있는 높이 (부드럽게 오르내린다) — '날기' 버튼으로 바꾼다 */
     var beeFlying = false
@@ -222,7 +233,7 @@ class Player(var x: Float, var y: Float) {
         if (chokeTimer > 0f) chokeTimer -= deltaTime
         if (awakenTimer > 0f) awakenTimer -= deltaTime
         if (dashT > 0f) dashT -= deltaTime
-        if (playerCat?.kind == com.jamcat.nayngapo.entity.AllyCat.Kind.BEE) {
+        if (isFlyer) {
             val target = if (beeFlying) com.jamcat.nayngapo.entity.AllyCat.BEE_HOVER_LIFT else 0f
             val step = 600f * deltaTime
             beeLift = if (kotlin.math.abs(target - beeLift) <= step) target else beeLift + kotlin.math.sign(target - beeLift) * step

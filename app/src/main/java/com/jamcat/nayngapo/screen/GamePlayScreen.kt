@@ -39,8 +39,14 @@ class GamePlayScreen(
     private val isSea = stageNumber == 31
     /** 배냥이가 주인공이면 스스로 헤엄친다 — 따로 타지 않고, 쓰러지면 그 냥이가 무덤 (2026-10-24) */
     private val selfBoat = isSea && com.jamcat.nayngapo.engine.Heroes.playerCatKind() == com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT
+    /**
+     * 벌냥이·날아냥이가 주인공이면 배냥이 없이 바다 위를 날아서 간다 — 내려앉으면(물에 닿으면) 죽는다
+     * (대표님 2026-10-24 「벌냥이와 날아냥이는 해적 스테이지에서는 배냥이를 안 타도 갈 수 있어, 하늘을 날아서. 하지만 땅으로 내려오면 사망해」)
+     */
+    private val selfFly31 = isSea && com.jamcat.nayngapo.engine.Heroes.playerCatKind().let {
+        it == com.jamcat.nayngapo.entity.AllyCat.Kind.BEE || it == com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING }
     private val seaMount: com.jamcat.nayngapo.engine.CatTeam.TeamCat? =
-        if (selfBoat) com.jamcat.nayngapo.engine.Heroes.playerCat()
+        if (selfBoat || selfFly31) com.jamcat.nayngapo.engine.Heroes.playerCat()
         else if (isSea) com.jamcat.nayngapo.engine.CatTeam.boatMount() else null
     private var seaMountMarked = false
     /** 자동차 매장 '자동차 선택'에서 고른 차 — 땅 스테이지에서 타고 다닌다 (바다는 배냥이라 안 탄다, 2026-10-09). 차를 누르면 내리고 탄다 */
@@ -181,7 +187,7 @@ class GamePlayScreen(
     /** 벌냥이 주인공의 '날기' 버튼 — 로봇 날개처럼 누르면 날아오르고 다시 누르면 내려앉는다 (대표님 2026-10-24 「벌냥이가 날아다니려면 버튼을 눌러야 돼, 로봇처럼」) */
     private val beeSkills = listOf(com.jamcat.nayngapo.engine.CatSkills.Skill("bee_fly", "날기", 0, "하늘을 난다", 0, 0.4f))
     private val beeSkillCooldowns = FloatArray(beeSkills.size)
-    private val playerIsBee get() = player.playerCat?.kind == com.jamcat.nayngapo.entity.AllyCat.Kind.BEE
+    private val playerIsBee get() = player.isFlyer
 
     // ===== 파이어 펀치 =====
     /** 주먹이 아직 적에게 닿지 않았다 (타격 프레임에서 한 번 때린다) */
@@ -303,7 +309,8 @@ class GamePlayScreen(
         camera.forwardOnly = true   // 플랫포머식: 카메라가 뒤로 돌아가지 않는다
         // 한 번 깬 스테이지: 냥이가 없고 감옥은 깨져 있다 — 끝까지 가면 클리어 (2026-10-17)
         if (GameProgress.isCleared(stageNumber)) level.emptyForReplay()
-        if (isSea) { player.lives = 1; player.rideLift = if (selfBoat) 0f else SEA_RIDE_LIFT }
+        if (isSea) { player.lives = 1; player.rideLift = if (selfBoat || selfFly31) 0f else SEA_RIDE_LIFT }
+        if (selfFly31) { player.seaFlight = true; player.startFlying() }
         robotRide?.mount(player)
         carRide?.let { cr ->
             // 이 스테이지에 방치해 둔 차면 그 자리에 세워져 있고 걸어서 시작한다
@@ -805,6 +812,13 @@ class GamePlayScreen(
                     ally.x -= ally.velocityX * deltaTime * 0.8f
                 }
             }
+        }
+
+        // 바다를 날던 냥이가 내려앉으면 물에 빠져 죽는다 (2026-10-24)
+        if (selfFly31 && !player.isDead && !player.isAirborne) {
+            shake(0.35f, 18f)
+            hitEffects.add(HitEffect(player.x, player.y - player.height, 1f, "풍덩!"))
+            player.fallIntoPit()
         }
 
         // 구덩이 함정: 걸어서 안쪽까지 들어가면 빠져서 그대로 게임 오버 (점프로 넘어야 한다)
@@ -3091,7 +3105,7 @@ class GamePlayScreen(
 
     /** 인간이 탄 배냥이: 인간 발밑에 무늬 그대로의 배냥이(내 편)를 그린다 */
     private fun drawSeaMount(canvas: Canvas) {
-        if (selfBoat) return   // 주인공 배냥이가 곧 배
+        if (selfBoat || selfFly31) return   // 주인공 배냥이가 곧 배 · 나는 냥이는 배 없이
         val m = seaMount ?: return
         val base = m.coat.boatAlly
         val bmp = if (player.facingRight) base else SpriteManager.getFlipped(base)

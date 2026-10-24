@@ -168,7 +168,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         // 날아냥이가 죽었으면 하늘 스테이지에 못 간다 — 부활 약으로 깨워야 한다
         // 로봇을 타면 날 수 있어 날아냥이가 필요 없다 (2026-10-10)
         // 날아냥이가 주인공이면 스스로 난다 (대표님 2026-10-24 「특수 스테이지에 나오는 냥이가 되면 그 냥이의 특징을 가질 수 있어」)
-        GameProgress.isSkyStage(stage) && CatTeam.flyingDead() && RobotCatalog.rideLevel == 0 && Heroes.playerCatKind() != com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING -> "날아냥이가 잠들어 있다냥! 캣타워에서 부활 약을 먹여야 하늘에 갈 수 있다 (로봇을 타면 날아갈 수 있어요)"
+        GameProgress.isSkyStage(stage) && CatTeam.flyingDead() && RobotCatalog.rideLevel == 0 &&
+            Heroes.playerCatKind().let { it != com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING && it != com.jamcat.nayngapo.entity.AllyCat.Kind.BEE } -> "날아냥이가 잠들어 있다냥! 캣타워에서 부활 약을 먹여야 하늘에 갈 수 있다 (로봇을 타면 날아갈 수 있어요)"
         // 31 해적 바다: 맨몸으로는 못 들어간다 — 30에서 구한 배냥이를 타야 한다 (2026-10-09)
         // 배냥이가 주인공이면 배냥이 없이 헤엄친다 (대표님 2026-10-24 「배냥이가 되면 31 스테이지에서 배냥이 없이 헤엄칠 수 있다」)
         stage == 31 && Heroes.playerCatKind() == com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT -> null

@@ -154,7 +154,7 @@ class SkyStageScreen(
     /** 로봇을 타면(로봇 상점 '로봇 타기') 날아냥이 대신 로봇이 발에서 불을 뿜으며 난다 — 날아냥이가 필요 없다 (대표님 2026-10-10) */
     private val useRobot = com.jamcat.nayngapo.engine.RobotCatalog.rideLevel > 0
     /** 날아냥이가 주인공이면 스스로 난다 — 따로 타지 않고, 쓰러지면 그 냥이가 무덤 (대표님 2026-10-24) */
-    private val selfFlying = !useRobot && Heroes.playerCatKind() == com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING
+    private val selfFlying = !useRobot && Heroes.playerCatKind().let { it == com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING || it == com.jamcat.nayngapo.entity.AllyCat.Kind.BEE }   // 벌냥이도 난다 (2026-10-24)
     private val mount: com.jamcat.nayngapo.engine.CatTeam.TeamCat? =
         if (useRobot) null
         else if (selfFlying) Heroes.playerCat()
@@ -222,9 +222,10 @@ class SkyStageScreen(
             val cat = if (facingRight) mountBmp else SpriteManager.getFlipped(mountBmp)
             val rider = SpriteManager.playerIdle[((time * 6).toInt()) % SpriteManager.playerIdle.size]
             val riderBmp = if (facingRight) rider else SpriteManager.getFlipped(rider)
-            if (selfFlying) {   // 주인공 날아냥이: 등에 탄 사람 없이 날아냥이만
-                val bodyH0 = SpriteManager.flyingCatAlly.height.toFloat()
-                canvas.drawBitmap(cat, x - cat.width / 2f, y + bob - bodyH0 / 2f + bodyH0 - cat.height, bitmapPaint)
+            if (selfFlying) {   // 주인공 날아냥이·벌냥이: 등에 탄 사람 없이 그 냥이만
+                val selfBmp = if (Heroes.playerCatKind() == com.jamcat.nayngapo.entity.AllyCat.Kind.BEE) SpriteManager.beeCat else mountBmp
+                val sb = if (facingRight) selfBmp else SpriteManager.getFlipped(selfBmp)
+                canvas.drawBitmap(sb, x - sb.width / 2f, y + bob - sb.height / 2f, bitmapPaint)
                 if (falling >= 0f) canvas.restore()
                 return
             }

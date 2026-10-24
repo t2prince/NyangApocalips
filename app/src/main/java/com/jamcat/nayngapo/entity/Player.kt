@@ -11,6 +11,16 @@ class Player(var x: Float, var y: Float) {
 
     /** 로비에서 고른 인간 — 선 색·머리 장식·능력치가 여기서 온다 */
     val hero = com.jamcat.nayngapo.engine.Heroes.selected()
+    /**
+     * 나는 냥이가 주인공이면 우리 팀일 때처럼 떠서 다닌다 (대표님 2026-10-24 「같은 팀 벌냥이는 날아다녀」):
+     * 벌냥이는 높이(150) 떠서 오르내리고, 날아냥이는 살짝(18). 맞는 자리(발밑)는 그대로 — 우리 팀 냥이와 같다.
+     */
+    private fun hoverLift(): Float = when (playerCat?.kind) {
+        com.jamcat.nayngapo.entity.AllyCat.Kind.BEE -> com.jamcat.nayngapo.entity.AllyCat.BEE_HOVER_LIFT - kotlin.math.abs(kotlin.math.sin(animTime * 4f)) * 12f
+        com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING -> com.jamcat.nayngapo.entity.AllyCat.HOVER_LIFT - kotlin.math.abs(kotlin.math.sin(animTime * 4f)) * 6f
+        else -> 0f
+    }
+
     /** 주인공이 된 캣타워 냥이 (고양이 주인공일 때만) */
     val playerCat: com.jamcat.nayngapo.engine.CatTeam.TeamCat? =
         if (hero.id == com.jamcat.nayngapo.engine.Heroes.CAT_ID) com.jamcat.nayngapo.engine.Heroes.playerCat() else null
@@ -341,7 +351,7 @@ class Player(var x: Float, var y: Float) {
         if (isDead) return
         if (isInvincible && ((invincibilityTimer * 8).toInt() % 2 == 0)) return
 
-        val drawY = y + jumpZ + snowSink - rideLift       // 눈에 잠긴 만큼 아래로, 배냥이를 타면 그만큼 위로
+        val drawY = y + jumpZ + snowSink - rideLift + hoverLift()   // 눈에 잠긴 만큼 아래로, 배냥이를 타면 그만큼 위로, 나는 냥이는 떠서
         val cx = x + width / 2f
         val dir = if (facingRight) 1f else -1f   // 바라보는 방향(+1 오른쪽, -1 왼쪽)
 

@@ -86,6 +86,9 @@ object CharSkin {
     }
 
     // ===== 내가 만든 캐릭터 =====
+    // 그림을 조각내지 않고 그물(메시)처럼 휘게 한다 (대표님 2026-10-24 「관절 부분만 잘려. 원래 모양이 유지돼야 해」):
+    // 그림 위에 촘촘한 격자를 깔고, 격자점마다 가까운 뼈를 따라 움직이게(가까울수록 많이) 섞어서 관절에서 부드럽게 굽는다.
+    // 자세는 '원래 그림 + 움직인 만큼'이라 서 있을 때는 그린 모양 그대로다.
 
     /** 뼈: 시작 관절 → 끝 관절 (관절 번호는 CustomChars.JOINT_NAMES) */
     private val BONE_FROM = intArrayOf(2, 1, 1, 3, 1, 5, 2, 7, 2, 9)
@@ -93,13 +96,20 @@ object CharSkin {
     private const val TORSO = 0; private const val HEAD = 1
     private const val B_UARM = 2; private const val B_FARM = 3; private const val F_UARM = 4; private const val F_FARM = 5
     private const val B_THIGH = 6; private const val B_SHIN = 7; private const val F_THIGH = 8; private const val F_SHIN = 9
-    /** 그리는 순서: 뒤 팔·다리 → 몸 → 머리 → 앞 다리 → 앞 팔 */
-    private val DRAW_ORDER = intArrayOf(B_UARM, B_FARM, B_THIGH, B_SHIN, TORSO, HEAD, F_THIGH, F_SHIN, F_UARM, F_FARM)
+    private const val BONES = 10
+    /** 격자 칸 수 */
+    private const val MESH = 24
+
+    /** 서 있는 기본 자세 (이 자세와의 차이만큼 원래 그림의 팔다리를 돌린다) */
+    private val NEUTRAL = floatArrayOf(0f, 0f, 100f, 95f, 80f, 85f, 95f, 92f, 85f, 88f)
 
     class Rig(
+        val bmp: Bitmap,
         val joints: FloatArray,
-        val parts: Array<Bitmap?>, val partLeft: IntArray, val partTop: IntArray,
-        val restAng: FloatArray, val len: FloatArray, val figH: Float,
+        val restAng: FloatArray, val len: FloatArray,
+        /** 격자점(그림 좌표)과 점마다 뼈 무게 [점 * BONES + 뼈] */
+        val verts: FloatArray, val weights: FloatArray,
+        val figH: Float, val top: Float, val bottom: Float,
     )
 
     private val rigs = HashMap<String, Rig?>()
@@ -112,46 +122,40 @@ object CharSkin {
         buildRig(bmp, c.joints)
     }
 
-    /** 그림의 각 점을 가장 가까운 뼈에 나눠 조각 그림을 만든다 */
     fun buildRig(src: Bitmap, j: FloatArray): Rig {
         val w = src.width; val hh = src.height
+        // 보이는 부분의 위·아래 (발끝 맞추기용)
         val px = IntArray(w * hh); src.getPixels(px, 0, w, 0, 0, w, hh)
-        val owner = IntArray(w * hh) { -1 }
-        val minX = IntArray(10) { w }; val minY = IntArray(10) { hh }; val maxX = IntArray(10) { -1 }; val maxY = IntArray(10) { -1 }
         var top = hh; var bottom = 0
-        for (y in 0 until hh) for (x in 0 until w) {
-            val i = y * w + x
-            if ((px[i] ushr 24) < 20) continue
-            var best = -1; var bd = Float.MAX_VALUE
-            for (b in 0 until 10) {
-                var d = segDist(x.toFloat(), y.toFloat(), j[BONE_FROM[b] * 2], j[BONE_FROM[b] * 2 + 1], j[BONE_TO[b] * 2], j[BONE_TO[b] * 2 + 1])
-                if (b == TORSO) d *= 0.85f   // 몸통 둘레는 몸통 쪽으로 조금 더
-                if (d < bd) { bd = d; best = b }
+        for (y in 0 until hh) for (x in 0 until w) if ((px[y * w + x] ushr 24) >= 20) { if (y < top) top = y; if (y > bottom) bottom = y }
+        if (bottom < top) { top = 0; bottom = hh - 1 }
+        val n = MESH + 1
+        val verts = FloatArray(n * n * 2)
+        val weights = FloatArray(n * n * BONES)
+        val d = FloatArray(BONES)
+        for (gy in 0 until n) for (gx in 0 until n) {
+            val k = gy * n + gx
+            val vx = gx * (w - 1f) / MESH; val vy = gy * (hh - 1f) / MESH
+            verts[k * 2] = vx; verts[k * 2 + 1] = vy
+            for (b in 0 until BONES) {
+                var dist = segDist(vx, vy, j[BONE_FROM[b] * 2], j[BONE_FROM[b] * 2 + 1], j[BONE_TO[b] * 2], j[BONE_TO[b] * 2 + 1])
+                if (b == TORSO) dist *= 0.8f
+                d[b] = dist
             }
-            owner[i] = best
-            if (x < minX[best]) minX[best] = x; if (x > maxX[best]) maxX[best] = x
-            if (y < minY[best]) minY[best] = y; if (y > maxY[best]) maxY[best] = y
-            if (y < top) top = y; if (y > bottom) bottom = y
+            // 가장 가까운 두 뼈만 섞는다 — 관절 둘레는 반반, 뼈 한가운데는 그 뼈를 그대로
+            var b1 = 0; var b2 = 1
+            if (d[b2] < d[b1]) { b1 = 1; b2 = 0 }
+            for (b in 2 until BONES) { if (d[b] < d[b1]) { b2 = b1; b1 = b } else if (d[b] < d[b2]) b2 = b }
+            val w1 = 1f / (d[b1] + 1f).let { it * it * it }; val w2 = 1f / (d[b2] + 1f).let { it * it * it }
+            weights[k * BONES + b1] = w1 / (w1 + w2); weights[k * BONES + b2] = w2 / (w1 + w2)
         }
-        val parts = arrayOfNulls<Bitmap>(10); val pl = IntArray(10); val pt = IntArray(10)
-        for (b in 0 until 10) {
-            if (maxX[b] < 0) continue
-            val bw = maxX[b] - minX[b] + 1; val bh = maxY[b] - minY[b] + 1
-            val out = IntArray(bw * bh)
-            for (y in 0 until bh) for (x in 0 until bw) {
-                val i = (y + minY[b]) * w + (x + minX[b])
-                if (owner[i] == b) out[y * bw + x] = px[i]
-            }
-            parts[b] = Bitmap.createBitmap(out, bw, bh, Bitmap.Config.ARGB_8888)
-            pl[b] = minX[b]; pt[b] = minY[b]
-        }
-        val rest = FloatArray(10); val len = FloatArray(10)
-        for (b in 0 until 10) {
+        val rest = FloatArray(BONES); val len = FloatArray(BONES)
+        for (b in 0 until BONES) {
             val dx = j[BONE_TO[b] * 2] - j[BONE_FROM[b] * 2]; val dy = j[BONE_TO[b] * 2 + 1] - j[BONE_FROM[b] * 2 + 1]
             rest[b] = Math.toDegrees(atan2(dy, dx).toDouble()).toFloat()
             len[b] = hypot(dx, dy)
         }
-        return Rig(j, parts, pl, pt, rest, len, (bottom - top + 1).coerceAtLeast(1).toFloat())
+        return Rig(src, j.copyOf(), rest, len, verts, weights, (bottom - top + 1).toFloat(), top.toFloat(), bottom.toFloat())
     }
 
     private fun segDist(px: Float, py: Float, ax: Float, ay: Float, bx: Float, by: Float): Float {
@@ -161,10 +165,10 @@ object CharSkin {
         return hypot(px - (ax + vx * u), py - (ay + vy * u))
     }
 
-    private val ang = FloatArray(10)
+    private val ang = FloatArray(BONES)
     private val jx = FloatArray(11); private val jy = FloatArray(11)
 
-    /** 자세 → 뼈 각도 (오른쪽을 볼 때, 0° = 앞, 90° = 아래). 몸통·머리는 원래 각도에서 기울기만 */
+    /** 자세 → 뼈 각도 (오른쪽을 볼 때, 0° = 앞, 90° = 아래). 결과는 '원래 각도 + (자세 - 기본 자세)' */
     private fun posed(rig: Rig, pose: Pose, prog: Float, t: Float) {
         val e = sin(prog.coerceIn(0f, 1f) * Math.PI.toFloat())
         var lean = 0f
@@ -173,34 +177,30 @@ object CharSkin {
             ang[B_THIGH] = bt; ang[B_SHIN] = bs; ang[F_THIGH] = ft; ang[F_SHIN] = fs
         }
         when (pose) {
-            Pose.IDLE -> { val b = sin(t * 3f) * 3f; set(100f + b, 95f + b, 80f - b, 85f - b, 95f, 92f, 85f, 88f) }
+            Pose.IDLE -> { val b = sin(t * 3f) * 2f; set(100f + b, 95f + b, 80f - b, 85f - b, 95f, 92f, 85f, 88f) }
             Pose.WALK -> {
                 val s = sin(t * 9f); val c = cos(t * 9f)
-                set(90f - 28f * s, 70f - 28f * s, 90f + 28f * s, 70f + 28f * s,
-                    90f + 30f * s, 95f + 30f * s + 18f * (1f - c) / 2f, 90f - 30f * s, 95f - 30f * s + 18f * (1f + c) / 2f)
-                lean = 5f
+                set(100f - 22f * s, 95f - 22f * s, 80f + 22f * s, 85f + 22f * s,
+                    95f + 25f * s, 92f + 25f * s + 15f * (1f - c) / 2f, 85f - 25f * s, 88f - 25f * s + 15f * (1f + c) / 2f)
+                lean = 4f
             }
-            Pose.JUMP_UP -> { set(-130f, -110f, -50f, -70f, 115f, 150f, 30f, 100f); lean = -5f }
-            Pose.JUMP_DOWN -> { set(-160f, -140f, -20f, -10f, 100f, 120f, 60f, 95f) }
-            Pose.PUNCH -> {
-                set(100f + 30f * e, 95f - 35f * e, 70f - 70f * e, 85f - 85f * e, 115f, 100f, 70f, 100f)
-                lean = 10f * e
-            }
-            Pose.KICK -> {
-                set(60f, 20f, 120f, 60f, 100f, 95f, 85f - 90f * e, 88f - 93f * e)
-                lean = -10f * e
-            }
+            Pose.JUMP_UP -> { set(40f, 30f, 20f, 10f, 115f, 140f, 50f, 100f); lean = -4f }
+            Pose.JUMP_DOWN -> { set(60f, 50f, 40f, 30f, 100f, 115f, 70f, 95f) }
+            Pose.PUNCH -> { set(100f + 25f * e, 95f - 20f * e, 80f - 75f * e, 85f - 80f * e, 105f, 98f, 75f, 95f); lean = 8f * e }
+            Pose.KICK -> { set(80f, 60f, 110f, 80f, 100f, 95f, 85f - 80f * e, 88f - 80f * e); lean = -8f * e }
         }
+        for (b in 2 until BONES) ang[b] = rig.restAng[b] + (ang[b] - NEUTRAL[b])
         ang[TORSO] = rig.restAng[TORSO] + lean
         ang[HEAD] = rig.restAng[HEAD] + lean
     }
 
-    private val m = android.graphics.Matrix()
+    private val meshOut = FloatArray((MESH + 1) * (MESH + 1) * 2)
+    private val cosB = FloatArray(BONES); private val sinB = FloatArray(BONES)
 
     fun drawRig(canvas: Canvas, rig: Rig, footX: Float, footY: Float, h: Float, right: Boolean, pose: Pose, prog: Float, t: Float) {
         posed(rig, pose, prog, t)
         val s = h / rig.figH
-        // 골반(0,0)에서 관절 자리를 차례로 계산
+        // 골반(0,0)에서 관절 자리를 차례로
         jx[2] = 0f; jy[2] = 0f
         for (b in intArrayOf(TORSO, HEAD, B_UARM, B_FARM, F_UARM, F_FARM, B_THIGH, B_SHIN, F_THIGH, F_SHIN)) {
             val f = BONE_FROM[b]; val to = BONE_TO[b]
@@ -208,31 +208,36 @@ object CharSkin {
             jx[to] = jx[f] + (cos(r) * rig.len[b] * s).toFloat()
             jy[to] = jy[f] + (sin(r) * rig.len[b] * s).toFloat()
         }
-        // 낮은 쪽 발이 발끝 자리에 오게 (발 그림이 관절 아래로 조금 남는 것도 더한다)
-        val footPad = (rig.figH - (maxOf(rig.joints[8 * 2 + 1], rig.joints[10 * 2 + 1]) - minTop(rig))).coerceAtLeast(0f) * s
-        val oy = footY - footPad - maxOf(jy[8], jy[10])
-        canvas.save()
-        canvas.translate(footX, oy)
-        if (!right) canvas.scale(-1f, 1f)
-        for (b in DRAW_ORDER) {
-            val part = rig.parts[b] ?: continue
-            val f = BONE_FROM[b]
-            // 원래 그림의 시작 관절 → 지금 시작 관절, 원래 각도 → 지금 각도
-            m.reset()
-            m.setTranslate(rig.partLeft[b] - rig.joints[f * 2], rig.partTop[b] - rig.joints[f * 2 + 1])
-            m.postScale(s, s)
-            m.postRotate(ang[b] - rig.restAng[b])
-            m.postTranslate(jx[f], jy[f])
-            canvas.drawBitmap(part, m, bmpPaint)
+        for (b in 0 until BONES) {
+            val r = Math.toRadians((ang[b] - rig.restAng[b]).toDouble())
+            cosB[b] = cos(r).toFloat(); sinB[b] = sin(r).toFloat()
         }
+        // 격자점마다: 뼈 b 의 '원래 시작 관절 기준 → 돌리고 키우고 → 지금 시작 관절' 을 무게대로 섞는다
+        val n = MESH + 1
+        var lowest = -Float.MAX_VALUE
+        for (k in 0 until n * n) {
+            val vx = rig.verts[k * 2]; val vy = rig.verts[k * 2 + 1]
+            var ox = 0f; var oy = 0f
+            for (b in 0 until BONES) {
+                val wgt = rig.weights[k * BONES + b]
+                if (wgt == 0f) continue
+                val f = BONE_FROM[b]
+                val dx = (vx - rig.joints[f * 2]) * s; val dy = (vy - rig.joints[f * 2 + 1]) * s
+                ox += wgt * (jx[f] + dx * cosB[b] - dy * sinB[b])
+                oy += wgt * (jy[f] + dx * sinB[b] + dy * cosB[b])
+            }
+            meshOut[k * 2] = ox; meshOut[k * 2 + 1] = oy
+        }
+        // 발끝: 원래 그림에서 발 관절 아래로 남는 만큼을 더해 낮은 발이 바닥에 닿게
+        val footPad = (rig.bottom - maxOf(rig.joints[8 * 2 + 1], rig.joints[10 * 2 + 1])).coerceAtLeast(0f) * s
+        lowest = maxOf(jy[8], jy[10]) + footPad
+        val oy0 = footY - lowest
+        canvas.save()
+        canvas.translate(footX, oy0)
+        if (!right) canvas.scale(-1f, 1f)
+        canvas.drawBitmapMesh(rig.bmp, MESH, MESH, meshOut, 0, null, 0, bmpPaint)
         canvas.restore()
         val dir = if (right) 1f else -1f
-        lastHand.set(footX + dir * jx[6], oy + jy[6])
-    }
-
-    private fun minTop(rig: Rig): Float {
-        var top = Float.MAX_VALUE
-        for (b in 0 until 10) if (rig.parts[b] != null) top = minOf(top, rig.partTop[b].toFloat())
-        return top
+        lastHand.set(footX + dir * jx[6], oy0 + jy[6])
     }
 }

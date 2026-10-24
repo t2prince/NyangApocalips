@@ -186,12 +186,14 @@ class Player(var x: Float, var y: Float) {
         } else poisonT = 0f
         if (chokeTimer > 0f) chokeTimer -= deltaTime
         if (awakenTimer > 0f) awakenTimer -= deltaTime
+        if (dashT > 0f) dashT -= deltaTime
+        if (windT > 0f) windT -= deltaTime
 
         // 덩굴에 매달린 동안은 위치를 덩굴이 정한다 (화면 쪽에서 매 프레임 넣어 준다)
         if (!ridingVine) {
             // 횡뷰 플랫포머: 좌우로만 이동하고 발은 항상 지형 표면 위 (수직은 jumpZ가 담당)
             val oldX = x; val oldY = y; val oldFeet = y + jumpZ
-            x += velocityX * deltaTime
+            x += (velocityX + (if (dashT > 0f) dashDir * CAT_DASH_SPEED else 0f)) * deltaTime
             x = x.coerceIn(Constants.PLAY_AREA_LEFT + 10f, Constants.PLAY_AREA_RIGHT - width - 10f)
             y = Terrain.groundY(x + width / 2f)
             // 해적선 갑판처럼 확 높은 턱은 걸어서 못 오른다 — 점프해서 발이 갑판보다 높을 때만 올라탄다 (대표님 2026-10-09)
@@ -351,6 +353,8 @@ class Player(var x: Float, var y: Float) {
             return
         }
 
+        if (windT > 0f) drawDashWind(canvas, cx, drawY)
+
         // 각성 중: 몸 둘레에 금빛 오라가 일렁인다
         if (awakenTimer > 0f) {
             val pulse = (kotlin.math.sin(awakenTimer * 12f) * 0.5f + 0.5f)
@@ -391,6 +395,7 @@ class Player(var x: Float, var y: Float) {
         val skin = com.jamcat.nayngapo.ui.CharSkin.handles(hero)
         val pose = when {
             seatedInCar -> com.jamcat.nayngapo.ui.CharSkin.Pose.IDLE
+            dashT > 0f -> com.jamcat.nayngapo.ui.CharSkin.Pose.PUNCH
             isAttacking && (isJumpAttacking || comboStep == 2) -> com.jamcat.nayngapo.ui.CharSkin.Pose.KICK
             isAttacking -> com.jamcat.nayngapo.ui.CharSkin.Pose.PUNCH
             isJumping -> if (jumpVelocity < 0f) com.jamcat.nayngapo.ui.CharSkin.Pose.JUMP_UP else com.jamcat.nayngapo.ui.CharSkin.Pose.JUMP_DOWN
@@ -425,7 +430,7 @@ class Player(var x: Float, var y: Float) {
         // 시트는 오른쪽을 보고 있다 → 왼쪽을 볼 때만 뒤집는다
         val bmp = if (facingRight) frame else SpriteManager.getFlipped(frame)
         setHeroDst(bmp, cx, drawY)
-        com.jamcat.nayngapo.ui.drawHero(canvas, bmp, heroDst, hero, facingRight, if (skin && velocityX != 0f) walkPhase / 13f else animTime, pose, prog)
+        com.jamcat.nayngapo.ui.drawHero(canvas, bmp, heroDst, hero, facingRight, if (skin && velocityX != 0f) walkPhase / 13f else animTime, pose, if (dashT > 0f) 0.5f else prog)
         // 총을 들고 있으면 앞손에 쥔다 (차를 타면 총은 차에 달려 있다)
         if (hasGun && gunOut && !seatedInCar) drawGunInHand(canvas, bmp)
 
@@ -447,6 +452,10 @@ class Player(var x: Float, var y: Float) {
         const val AWAKEN_BONUS = 15
         /** 묭묭 진화 공격력·방어력 (냥이와 같다) */
         const val EVOLVE_POWER = 50
+        /** 고양이 돌진: 공격력 3 (대표님) · 시간·빠르기는 Claude 판단 */
+        const val CAT_DASH_POWER = 3
+        const val CAT_DASH_TIME = 0.35f
+        const val CAT_DASH_SPEED = 1500f
         const val AWAKEN_TIME = 10f
         /** 눈에 완전히 파묻히는 깊이 (몸 전체가 잠긴다) */
         const val SNOW_SINK_MAX = 155f
@@ -662,8 +671,15 @@ class Player(var x: Float, var y: Float) {
      * 발동하면 높이 솟아올랐다가 두 발로 지면을 내려찍는다 (쿨다운 15초).
      */
     fun performSpecial(): Boolean {
-        // 고양이가 주인공이면 인간 필살기(내려찍기)는 못 쓴다 — 고양이 기술만 (대표님 2026-10-24)
-        if (hero.id == com.jamcat.nayngapo.engine.Heroes.CAT_ID) return false
+        // 고양이가 주인공이면 필살기 = 앞으로 빨리 돌진해 바람을 일으킨다 (대표님 2026-10-24 「필살기는 고양이가 앞으로 빨리 돌진해서 바람이 생겨, 공격력 3」)
+        if (hero.id == com.jamcat.nayngapo.engine.Heroes.CAT_ID) {
+            if (specialCooldown > 0f || isAttacking || dashT > 0f) return false
+            dashT = CAT_DASH_TIME; windT = CAT_DASH_TIME + 0.25f
+            dashDir = if (facingRight) 1f else -1f
+            dashId++
+            specialCooldown = Constants.SPECIAL_COOLDOWN
+            return true
+        }
         if (specialCooldown > 0f || isAttacking || stompPhase != StompPhase.NONE) return false
         if (inDeepSnow) return false      // 눈에 파묻혀 있으면 솟구칠 수 없다
 
@@ -676,7 +692,37 @@ class Player(var x: Float, var y: Float) {
         return true
     }
 
-    fun isUsingSpecial(): Boolean = stompPhase != StompPhase.NONE
+    fun isUsingSpecial(): Boolean = stompPhase != StompPhase.NONE || dashT > 0f
+
+    // ===== 고양이 돌진 (필살기) =====
+    private var dashT = 0f
+    private var dashDir = 1f
+    private var windT = 0f
+    /** 돌진마다 새 번호 — 화면 쪽에서 한 번 돌진에 적 하나를 한 번만 때리려고 */
+    var dashId = 0
+        private set
+    val isDashing: Boolean get() = dashT > 0f
+    /** 돌진하며 바람이 닿는 곳 (몸 앞뒤로 넉넉히) */
+    fun dashHitBox(): RectF = RectF(x - 60f, y - 150f, x + width + 60f, y + 30f)
+    private val windPaint = Paint().apply { color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 9f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    private val windInk = Paint().apply { color = Color.rgb(120, 170, 220); style = Paint.Style.STROKE; strokeWidth = 15f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    private val windPath = Path()
+
+    /** 돌진 뒤로 휘날리는 바람 줄기 */
+    private fun drawDashWind(canvas: Canvas, cx: Float, drawY: Float) {
+        val fade = (windT / (CAT_DASH_TIME + 0.25f)).coerceIn(0f, 1f)
+        windPaint.alpha = (255 * fade).toInt(); windInk.alpha = (200 * fade).toInt()
+        val back = -dashDir
+        for (k in 0..3) {
+            val yy = drawY - 30f - k * 34f
+            val x0 = cx + back * 30f
+            val x1 = x0 + back * (140f + k * 30f)
+            windPath.reset()
+            windPath.moveTo(x0, yy)
+            windPath.quadTo((x0 + x1) / 2f, yy - 22f * (if (k % 2 == 0) 1f else -1f), x1, yy)
+            canvas.drawPath(windPath, windInk); canvas.drawPath(windPath, windPaint)
+        }
+    }
 
     fun getCurrentAttackPower(): Int = when {
         stompPhase != StompPhase.NONE -> specialPower

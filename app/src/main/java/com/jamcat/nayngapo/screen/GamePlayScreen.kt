@@ -925,6 +925,18 @@ class GamePlayScreen(
             }
         }
 
+        // 고양이 돌진 바람: 닿은 적마다 한 번씩 공격력 3 (2026-10-24)
+        if (player.isDashing) {
+            if (dashHitId != player.dashId) { dashHitId = player.dashId; dashHit.clear() }
+            val box = player.dashHitBox()
+            for (enemy in level.enemies) {
+                if (enemy.isDead || enemy in dashHit || !RectF.intersects(box, enemy.hitBox)) continue
+                dashHit.add(enemy)
+                damageEnemy(enemy, com.jamcat.nayngapo.entity.Player.CAT_DASH_POWER)
+                player.triggerHitSpark()
+            }
+        }
+
         // 필살기 내려찍기 착지: 좌우 반경 안의 모든 적에게 충격파 광역 피해 (1회)
         if (player.consumeShockwave()) {
             val cx = player.x + player.width / 2f
@@ -1503,6 +1515,8 @@ class GamePlayScreen(
     }
 
     private var autoCastT = 0f
+    private var dashHitId = -1
+    private val dashHit = HashSet<com.jamcat.nayngapo.entity.Enemy>()
 
     /**
      * 고양이 기술은 출전 냥이가 스스로 쓴다 (대표님 2026-10-24 「고양이 스킬은 고양이가 써, 인간이 버튼을 안 눌러도」):

@@ -11,6 +11,10 @@ class Player(var x: Float, var y: Float) {
 
     /** 로비에서 고른 인간 — 선 색·머리 장식·능력치가 여기서 온다 */
     val hero = com.jamcat.nayngapo.engine.Heroes.selected()
+    /** 주인공이 된 캣타워 냥이 (고양이 주인공일 때만) */
+    val playerCat: com.jamcat.nayngapo.engine.CatTeam.TeamCat? =
+        if (hero.id == com.jamcat.nayngapo.engine.Heroes.CAT_ID) com.jamcat.nayngapo.engine.Heroes.playerCat() else null
+    private var catSpeedMul = 1f
 
     var hp = 5
     /** 하트 반 칸을 잃은 상태 — 새끼 고양이에게 물리면 반 칸씩 (대표님 2026-09-27). 반 칸 두 번 = 한 칸 */
@@ -130,13 +134,23 @@ class Player(var x: Float, var y: Float) {
         // 인간 가게(무기점·갑옷점)에서 사 둔 물건 (2026-10-09)
         attackPower += com.jamcat.nayngapo.engine.ShopCatalog.humanAttackBonus()
         maxHp += com.jamcat.nayngapo.engine.ShopCatalog.humanHeartBonus()
+        // 캣타워 냥이가 주인공이면 그 냥이가 키운 만큼 (대표님 2026-10-24 「훈련한 것도 적용된다」):
+        // 공격력 = 10 + 레벨 보너스 + Lv업 아이템, 하트 = 5 + (냥이 체력 - 20) / 10 (체력 훈련·HP 수술·돌봄 포함), 빠르기 = 수술 배율 — 환산은 Claude 판단
+        playerCat?.let { c ->
+            val t = com.jamcat.nayngapo.engine.CatTeam
+            attackPower = 10 + t.damageBonusFor(c.level) + c.attackBonus
+            val catHp = t.hpBonusOf(c) + Math.round(t.maxHpFor(c.level) * t.careMultiplier(c))
+            maxHp = 5 + ((catHp - 20) / 10).coerceAtLeast(0)
+            catSpeedMul = t.speedMultiplier(c)
+        }
         hp = maxHp
     }
+
 
     /** 이 인간의 달리기 속도 */
     /** 자동차를 타면 빨라진다 (자동차 매장에서 고른 차, 2026-10-09) */
     var carSpeedMul = 1f
-    private val moveSpeed: Float get() = Constants.PLAYER_SPEED * hero.speedMul * carSpeedMul
+    private val moveSpeed: Float get() = Constants.PLAYER_SPEED * hero.speedMul * carSpeedMul * catSpeedMul
 
     // 횡뷰: 발끝(y)부터 머리까지 전신 히트박스 (투사체가 몸통 높이로 날아온다)
     private val hitBoxRect = RectF()
@@ -729,7 +743,12 @@ class Player(var x: Float, var y: Float) {
         isJumpAttacking -> (attackPower * 1.5f).toInt()
         comboStep == 2 -> (attackPower * 1.4f).toInt()   // 킥 마무리
         else -> attackPower
-    }.let { (it + (if (awakenTimer > 0f) AWAKEN_BONUS else 0)).let { p -> if (evolved) maxOf(p, EVOLVE_POWER) else p } }   // 각성: 공격력 +15 · 묭묭 진화: 최소 50
+    }.let { (it + (if (awakenTimer > 0f) AWAKEN_BONUS else 0)).let { p -> if (evolved) maxOf(p, EVOLVE_POWER) else p } }
+        .let { p -> when (playerCat?.kind) {   // 해머냥이는 2배, 모루냥이는 3배로 내려친다 (냥이일 때와 같다)
+            com.jamcat.nayngapo.entity.AllyCat.Kind.HAMMER -> p * 2
+            com.jamcat.nayngapo.entity.AllyCat.Kind.ANVIL -> p * 3
+            else -> p
+        } }   // 각성: 공격력 +15 · 묭묭 진화: 최소 50
 
     fun getAttackHitBox(): RectF? {
         // 내려찍기 낙하 중: 몸 주변(발밑 포함)에 닿는 적을 그대로 밟는다

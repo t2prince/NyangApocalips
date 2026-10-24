@@ -145,7 +145,9 @@ class GamePlayScreen(
         com.jamcat.nayngapo.engine.CatSkills.all
             .filter { sk ->
                 com.jamcat.nayngapo.engine.CatSkills.isActive(sk.id) ||   // 로비에서 배우고 켜 둔 기술
-                    com.jamcat.nayngapo.engine.CatTeam.party.any { sk.id in it.skills }   // 출전 냥이가 천막에서 배운 기술
+                    com.jamcat.nayngapo.engine.CatTeam.party.any { sk.id in it.skills }   // 출전 냥이가 천막에서 배운 기술 ||
+                    (com.jamcat.nayngapo.engine.Heroes.selected().id == com.jamcat.nayngapo.engine.Heroes.CAT_ID &&
+                        com.jamcat.nayngapo.engine.Heroes.playerCat()?.skills?.contains(sk.id) == true)   // 주인공이 된 냥이가 배운 기술 (2026-10-24)
             }
             .take(com.jamcat.nayngapo.ui.TouchControls.SKILL_SLOTS)
 
@@ -2251,6 +2253,7 @@ class GamePlayScreen(
                 if (player.performAttack()) SoundManager.playAttack()
             }
             else if (player.hasGun && player.gunOut) fireGun()   // 총을 가졌으면 공격 버튼 = 쏘기 (2026-10-09), 로봇을 타면 로봇 주먹
+            else if (catKindShot()) Unit                          // 총냥이·그린냥이 등은 그 냥이처럼 쏜다 (2026-10-24)
             else if (player.performAttack()) {
                 SoundManager.playAttack()
                 shake(0.07f, 4f)          // 휘두르는 순간의 가벼운 반동
@@ -3626,6 +3629,50 @@ class GamePlayScreen(
 
     // ===== 레이저 총 (무기점, 2026-10-09) — 들고 쏘거나, 차를 타면 차에 단 총으로 쏜다. 빠르기·간격은 Claude 판단 =====
     private var gunCooldown = 0f
+
+    /**
+     * 캣타워 냥이가 주인공이면 공격 버튼 = 그 냥이의 공격 (대표님 2026-10-24 「그 냥이가 되면 그 냥이 스킬을 쓸 수 있어, 총냥이가 되면 공격이 총알을 쏜다」):
+     * 총냥이 보라 총알 · 그린냥이 슬라임 · 빨강 불 · 주황 용암 · 노랑 번개 · 레이저 · 꽃가루 · 벌 침 · 똥 — 우리 팀일 때와 같은 탄, 피해는 주인공 공격력.
+     * 할퀴는 냥이(치즈·파랑 등)는 그대로 주먹 자리에 덮치기, 해머·모루는 세게(공격력 2·3배). 쏘는 간격 0.4초는 Claude 판단. 쐈으면 true.
+     */
+    private fun catKindShot(): Boolean {
+        val kind = player.playerCat?.kind ?: return false
+        if (kind !in setOf(com.jamcat.nayngapo.entity.AllyCat.Kind.GUN, com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN, com.jamcat.nayngapo.entity.AllyCat.Kind.RED, com.jamcat.nayngapo.entity.AllyCat.Kind.ORANGE, com.jamcat.nayngapo.entity.AllyCat.Kind.YELLOW, com.jamcat.nayngapo.entity.AllyCat.Kind.LASER, com.jamcat.nayngapo.entity.AllyCat.Kind.FLOWER, com.jamcat.nayngapo.entity.AllyCat.Kind.BEE, com.jamcat.nayngapo.entity.AllyCat.Kind.POOP)) return false
+        if (gunCooldown > 0f) return true
+        gunCooldown = 0.4f
+        val dir = if (player.facingRight) 1f else -1f
+        val cx = player.x + player.width / 2f
+        val my = player.y + player.jumpZ - 60f
+        val d = player.getCurrentAttackPower()
+        fun add(p: com.jamcat.nayngapo.entity.Projectile) { level.projectiles.add(p) }
+        val target = level.enemies.filter { !it.isDead && it.x + it.width / 2f in camera.x..(camera.x + gameView.screenWidth) }
+            .minByOrNull { kotlin.math.abs(it.x + it.width / 2f - cx) }
+        when (kind) {
+            com.jamcat.nayngapo.entity.AllyCat.Kind.GUN -> add(com.jamcat.nayngapo.entity.Projectile(cx + dir * 34f, my - 20f, 620f * dir, 0f, d, true, tint = Color.rgb(170, 70, 220), radius = 6f))
+            com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN -> add(com.jamcat.nayngapo.entity.Projectile(cx, my, 520f * dir, 0f, d, true, tint = Color.rgb(140, 220, 110), radius = 13f))
+            com.jamcat.nayngapo.entity.AllyCat.Kind.RED -> repeat(4) { i -> add(com.jamcat.nayngapo.entity.Projectile(cx + dir * 30f, my, dir * (360f + i * 30f), (i - 1.5f) * 50f, d, true,
+                tint = Color.rgb(255, 140, 30), radius = 12f, fuse = 0.55f, isFlame = true)) }
+            com.jamcat.nayngapo.entity.AllyCat.Kind.ORANGE -> add(com.jamcat.nayngapo.entity.Projectile(cx, my - 20f, dir * 430f, -560f, d, true, tint = Color.rgb(255, 110, 20), radius = 14f, gravity = 1100f, isLava = true))
+            com.jamcat.nayngapo.entity.AllyCat.Kind.YELLOW -> {
+                val tx = target?.let { it.x + it.width / 2f } ?: (cx + dir * 400f)
+                val top = (target?.y ?: player.y) - 620f
+                add(com.jamcat.nayngapo.entity.Projectile(tx - 10f, top + 20f, 0f, 3400f, d, true, tint = Color.rgb(255, 214, 40), radius = 10f, isLightning = true, boltTopY = top))
+            }
+            com.jamcat.nayngapo.entity.AllyCat.Kind.LASER -> add(com.jamcat.nayngapo.entity.Projectile(cx, my, dir * 800f, 0f, d * 2, true, tint = Color.rgb(92, 208, 108), radius = 9f))
+            com.jamcat.nayngapo.entity.AllyCat.Kind.FLOWER -> repeat(3) { add(com.jamcat.nayngapo.entity.Projectile(cx + dir * 30f, my, dir * (300f + Math.random().toFloat() * 120f),
+                60f + (Math.random().toFloat() - 0.5f) * 180f, d, true, tint = Color.rgb(250, 220, 80), radius = 9f, fuse = 0.8f, isPollen = true)) }
+            com.jamcat.nayngapo.entity.AllyCat.Kind.BEE -> {
+                val tx = (target?.let { it.x + it.width / 2f } ?: (cx + dir * 400f)) - cx
+                val ty = (target?.let { it.y - it.height * 0.5f } ?: my) - my
+                val len = kotlin.math.hypot(tx, ty).coerceAtLeast(1f)
+                add(com.jamcat.nayngapo.entity.Projectile(cx, my + 10f, tx / len * 720f, ty / len * 720f, d, true, tint = Color.rgb(40, 34, 30), radius = 5f))
+            }
+            com.jamcat.nayngapo.entity.AllyCat.Kind.POOP -> add(com.jamcat.nayngapo.entity.Projectile(cx, my - 20f, dir * 400f, -420f, d, true, tint = Color.rgb(130, 86, 50), radius = 12f, gravity = 1000f))
+            else -> Unit
+        }
+        SoundManager.playAttack()
+        return true
+    }
     private val gunButton = com.jamcat.nayngapo.ui.GunButton()
     private val muzzlePt = android.graphics.PointF()
     private fun fireGun() {

@@ -449,6 +449,7 @@ class GamePlayScreen(
         touchControls.skills = battleSkills
         touchControls.skillCooldowns = skillCooldowns
         touchControls.skillsHaveCaster = level.allies.any { !it.isDead }
+        autoCastCatSkills(deltaTime)
         for (i in humanSkillCooldowns.indices) {
             if (humanSkillCooldowns[i] > 0f) humanSkillCooldowns[i] -= deltaTime
         }
@@ -1498,6 +1499,30 @@ class GamePlayScreen(
                 shake(0.25f, 6f)
                 SoundManager.playSpecial()
             }
+        }
+    }
+
+    private var autoCastT = 0f
+
+    /**
+     * 고양이 기술은 출전 냥이가 스스로 쓴다 (대표님 2026-10-24 「고양이 스킬은 고양이가 써, 인간이 버튼을 안 눌러도」):
+     * 0.5초마다 살펴서, 쿨타임이 끝났고 그 기술을 쓸 냥이가 있고 화면 안에 적이 있으면 쓴다. 버튼으로 먼저 써도 된다.
+     * 고양이가 주인공일 때는 주인공이 버튼으로 직접 쓴다 (2026-10-24 「냥이가 되면 자기가 고양이 기술만 써」).
+     */
+    private fun autoCastCatSkills(deltaTime: Float) {
+        if (playerIsCat || battleSkills.isEmpty()) return
+        autoCastT -= deltaTime
+        if (autoCastT > 0f) return
+        autoCastT = 0.5f
+        val enemyOnScreen = level.enemies.any { !it.isDead && it.x + it.width / 2f in camera.x..(camera.x + gameView.screenWidth) }
+        if (!enemyOnScreen) return
+        for ((i, sk) in battleSkills.withIndex()) {
+            if (skillCooldowns[i] > 0f) continue
+            val global = com.jamcat.nayngapo.engine.CatSkills.isActive(sk.id)
+            val hasCaster = level.allies.any { a -> !a.isDead && (global || a.teamId?.let { id -> com.jamcat.nayngapo.engine.CatTeam.cat(id)?.skills?.contains(sk.id) } == true) }
+            if (!hasCaster) continue
+            useSkill(sk.id)
+            return   // 한 번에 하나씩
         }
     }
 

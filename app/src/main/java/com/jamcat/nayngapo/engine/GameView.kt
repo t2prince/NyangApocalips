@@ -207,8 +207,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     }
 
     /** 고양이 상점: 루비로 냥이 물건을 산다 */
-    fun showCatShop(fromTent: Boolean = false, title: String = "고양이 상점", ids: List<String> = ShopCatalog.catShopIds) {
-        fadeTo { CatShopScreen(this, fromTent, title, ids) }
+    fun showCatShop(fromTent: Boolean = false, title: String = "고양이 상점", ids: List<String> = ShopCatalog.catShopIds, onLeave: (() -> Unit)? = null) {
+        fadeTo { CatShopScreen(this, fromTent, title, ids, onLeave) }
     }
 
     /** 투기장 (상점 마을 7번 천막): 고른 냥이가 밀짚 가짜 냥이와 싸운다 — 나오면 상점 마을(천막 앞) */

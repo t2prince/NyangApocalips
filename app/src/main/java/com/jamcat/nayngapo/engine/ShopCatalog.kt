@@ -104,6 +104,18 @@ object ShopCatalog {
         11 to ("채집 가게" to listOf("h_bugbox")),
     )
 
+    /**
+     * 상점마을2 가게 5곳 (가게 번호 0부터) → (가게 이름, 진열 물건) — 대표님 2026-10-24 「상점2에 물건들 만들어줘」.
+     * 가게·물건 배정은 Claude 판단, 물건은 상점 마을1에 있는 것(그림·효과 그대로). 3번(2) 가게는 의사가 있는 병원.
+     */
+    val village2Shops: List<Pair<String, List<String>>> = listOf(
+        "바닷가 간식 가게" to listOf("churu", "tuna_can", "milk", "salmon", "cat_cake", "feed_all"),
+        "낚시 미끼 가게" to listOf("bait_worm", "bait_shrimp", "bait_gold"),
+        "병원" to listOf("revive_potion", "revive_all", "h_heal", "h_life"),
+        "해변 장난감 가게" to listOf("ball", "fish_toy", "mouse_toy", "feather_wand", "laser_pointer"),
+        "무기·갑옷 가게" to listOf("h_glove", "h_gauntlet", "h_helmet", "h_vest", "cat_armor"),
+    )
+
     /** 물건 값 — 안내 문구에 값을 박아 두지 말고 여기서 읽는다 */
     fun priceOf(id: String): Int = items.firstOrNull { it.id == id }?.price ?: 0
 }

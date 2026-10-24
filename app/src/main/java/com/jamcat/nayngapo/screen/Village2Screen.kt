@@ -7,6 +7,7 @@ import android.view.MotionEvent
 import com.jamcat.nayngapo.engine.Constants
 import com.jamcat.nayngapo.engine.GameProgress
 import com.jamcat.nayngapo.engine.GameView
+import com.jamcat.nayngapo.engine.ShopCatalog
 import com.jamcat.nayngapo.engine.SoundManager
 import com.jamcat.nayngapo.engine.SpriteManager
 import com.jamcat.nayngapo.engine.Terrain
@@ -21,7 +22,7 @@ import kotlin.math.sin
  * 「끝까지 가면 새롭지만 닫혀 있는 다른 상점이 있어. 구출하면 사람이 생겨」).
  * 어선을 타고 바다 끝까지 가서 '상점마을2 가기'를 누르면 들어온다. 왼쪽 끝은 배를 댄 항구.
  * 바닷가 마을 — 오두막 가게들이 **모두 닫혀 있고**, 가게마다 앞에 **사람이 갇힌 감옥**이 있다.
- * 감옥을 때려 구하면 **사람이 생겨 그 가게가 문을 연다**(저장). 무엇을 파는지는 아직 정하지 않았다 — 열린 가게는 '준비 중'.
+ * 감옥을 때려 구하면 **사람이 생겨 그 가게가 문을 연다**(저장). 열린 가게에 들어가면 물건을 판다 (`ShopCatalog.village2Shops`, 2026-10-24).
  * 조작은 상점 마을·스테이지와 같다 (패드·공격·점프, 멈추기·나가기). 나가기 = 다시 어선으로.
  * 가게 수·간격·색은 Claude 판단.
  */
@@ -35,6 +36,8 @@ class Village2Screen(private val gameView: GameView) : Screen {
     private var noticeText = ""
     private var noticeTimer = 0f
     private var nearShop = -1
+    /** 열린 가게 말풍선 (화면 좌표) */
+    private val enterRect = android.graphics.RectF()
     /** 있던 자리 저장 간격 */
     private var posSaveT = 0f
 
@@ -50,7 +53,7 @@ class Village2Screen(private val gameView: GameView) : Screen {
         // 나갔다 와도 있던 자리 그대로 (대표님 2026-10-24) — 처음 한 번만 항구 앞
         player = Player(GameProgress.village2X.takeIf { it > 0f } ?: (HARBOR_X + 200f), Constants.GROUND_Y)
         player.facingRight = true
-        showNotice("상점마을2에 왔다! 가게가 다 닫혀 있다 — 갇힌 사람을 구하면 문을 연다")
+        if ((0 until SHOP_COUNT).none { GameProgress.isVillage2Open(it) }) showNotice("상점마을2에 왔다! 가게가 다 닫혀 있다 — 갇힌 사람을 구하면 문을 연다")
     }
 
     private fun showNotice(t: String) { noticeText = t; noticeTimer = 2.4f }
@@ -167,15 +170,17 @@ class Village2Screen(private val gameView: GameView) : Screen {
             canvas.drawRect(cx - 43f, rect.centerY() - 12f, cx - 33f, rect.centerY() + 12f, crossPaint)
         }
         player.draw(canvas)
-        // 가게 앞 말풍선
+        // 가게 앞 말풍선 (열린 가게면 눌러서 들어간다)
+        enterRect.setEmpty()
         if (nearShop >= 0) {
             val open = GameProgress.isVillage2Open(nearShop)
-            val label = if (open) "${nearShop + 1}번 가게 · 준비 중" else "${nearShop + 1}번 가게 · 닫힘 (감옥의 사람을 구해요)"
+            val label = if (open) "▼ ${ShopCatalog.village2Shops[nearShop].first} 들어가기" else "${nearShop + 1}번 가게 · 닫힘 (감옥의 사람을 구해요)"
             text.textSize = 34f
             val tw = text.measureTr(label) + 50f
             rect.set(shopX[nearShop] - tw / 2f, groundY - 520f, shopX[nearShop] + tw / 2f, groundY - 456f)
             canvas.drawRoundRect(rect, 30f, 30f, bubble); canvas.drawRoundRect(rect, 30f, 30f, ink)
             canvas.drawTr(label, rect.centerX(), rect.centerY() + 12f, text)
+            if (open) enterRect.set(rect.left - cameraX, rect.top - 20f, rect.right - cameraX, rect.bottom + 20f)
         }
         canvas.restore()
 
@@ -265,6 +270,13 @@ class Village2Screen(private val gameView: GameView) : Screen {
                 com.jamcat.nayngapo.ui.MenuButtons.Hit.PAUSE -> { paused = !paused; touchControls.releaseAll(); return true }
                 com.jamcat.nayngapo.ui.MenuButtons.Hit.EXIT -> { touchControls.releaseAll(); gameView.showFishing(atSeaEnd = true); return true }
                 null -> Unit
+            }
+            val shop = nearShop
+            if (!paused && shop >= 0 && !enterRect.isEmpty && enterRect.contains(event.getX(idx), event.getY(idx))) {
+                touchControls.releaseAll(); GameProgress.saveVillageX(2, player.x)
+                val (title, ids) = ShopCatalog.village2Shops[shop]
+                gameView.showCatShop(title = title, ids = ids, onLeave = { gameView.showVillage2() })
+                return true
             }
         }
         if (paused) return true

@@ -24,6 +24,8 @@ class CatShopScreen(
     private val title: String = "고양이 상점",
     /** 진열할 물건 id */
     ids: List<String> = ShopCatalog.catShopIds,
+    /** 나갈 때 갈 곳 — 상점마을2 가게면 상점마을2로 (없으면 fromTent 에 따라 상점 마을/로비) */
+    private val onLeave: (() -> Unit)? = null,
 ) : Screen {
     private val shelf: List<ShopCatalog.Item> = ids.mapNotNull { id -> ShopCatalog.items.firstOrNull { it.id == id } }
 
@@ -226,7 +228,7 @@ class CatShopScreen(
             MotionEvent.ACTION_UP -> {
                 if (backRect.contains(event.x, event.y)) {
                     pressedIndex = -1
-                    if (fromTent) gameView.showShop() else gameView.showLobby()
+                    leave()
                     return true
                 }
                 val hit = itemAt(event.x, event.y)
@@ -288,8 +290,16 @@ class CatShopScreen(
         noticeTimer = 1.6f
     }
 
+    private fun leave() {
+        when {
+            onLeave != null -> onLeave.invoke()
+            fromTent -> gameView.showShop()
+            else -> gameView.showLobby()
+        }
+    }
+
     override fun onBack(): Boolean {
-        if (fromTent) gameView.showShop() else gameView.showLobby()
+        leave()
         return true
     }
 }

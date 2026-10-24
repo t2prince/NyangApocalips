@@ -3541,6 +3541,7 @@ class GamePlayScreen(
     private val muzzlePt = android.graphics.PointF()
     private fun fireGun() {
         if (gunCooldown > 0f) return
+        if (!GameProgress.consumeItem("h_ammo")) return   // 총알이 없으면 안 나간다 (대표님 2026-10-24) — 남은 수는 총 버튼에
         gunCooldown = GUN_INTERVAL
         val dir = if (player.facingRight) 1f else -1f
         val cr = carRide

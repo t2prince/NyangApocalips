@@ -73,6 +73,8 @@ object ShopCatalog {
         Item("h_gauntlet", "강철 주먹", 45, "인간 공격력 +$H_GAUNTLET_ATK (영구)", max = 5),
         // 총 (대표님 2026-10-09 「무기 상점에는 총이 있고, 그걸 들고 있다가 자동차에 달 수 있어」) — 값·한 개만·장난감 레이저 총 모양은 Claude 판단
         Item("h_gun", "레이저 총", 80, "들고 다니며 공격 버튼으로 총알을 쏜다 · 차를 타면 차에 단다", max = 1),
+        // 총알 (대표님 2026-10-24 「총에 총알을 안 넣으면 발사가 안 돼, 넣은 개수만큼」「총알은 3루비야」) — 한 발에 하나씩 쓴다
+        Item("h_ammo", "총알", 3, "레이저 총에 넣는다 · 산 개수만큼 쏜다"),
         // 채집통 (대표님 2026-10-10 「채집통을 가지고 스테이지에 가서 냥이를 때리면 자기 팀 냥이가 돼, 보스만 빼고」) — 한 마리에 하나 쓴다. 값 15·최대 3개는 Claude 판단
         Item("h_bugbox", "채집통", 15, "스테이지에서 냥이를 때리면 내 팀이 된다 (보스 빼고)", max = 3),
         Item("h_helmet", "투구", 40, "인간 하트 +1 (영구)", max = 3),
@@ -97,7 +99,7 @@ object ShopCatalog {
         3 to ("장난감 가게" to listOf("ball", "fish_toy", "mouse_toy", "feather_wand", "laser_pointer")),
         4 to ("살림 가게" to listOf("brush", "water_bowl", "cushion", "scratcher", "litter", "cat_tower")),
         // 8~10번 천막 = 인간이 가는 가게 (2026-10-09)
-        7 to ("무기점" to listOf("h_glove", "h_gauntlet", "h_gun")),
+        7 to ("무기점" to listOf("h_glove", "h_gauntlet", "h_gun", "h_ammo")),
         8 to ("갑옷점" to listOf("h_helmet", "h_vest")),
         9 to ("약국" to listOf("h_life", "h_heal")),
         // 12번 천막 (11번은 로봇 상점)
@@ -113,7 +115,7 @@ object ShopCatalog {
         "낚시 미끼 가게" to listOf("bait_worm", "bait_shrimp", "bait_gold"),
         "병원" to listOf("revive_potion", "revive_all", "h_heal", "h_life"),
         "해변 장난감 가게" to listOf("ball", "fish_toy", "mouse_toy", "feather_wand", "laser_pointer"),
-        "무기·갑옷 가게" to listOf("h_glove", "h_gauntlet", "h_helmet", "h_vest", "cat_armor"),
+        "무기·갑옷 가게" to listOf("h_glove", "h_gauntlet", "h_ammo", "h_helmet", "h_vest", "cat_armor"),
     )
 
     /** 물건 값 — 안내 문구에 값을 박아 두지 말고 여기서 읽는다 */

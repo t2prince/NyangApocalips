@@ -180,6 +180,10 @@ class SkyStageScreen(
         var time = 0f
 
         val hitBox: RectF get() = RectF(x - 70f, y - 60f, x + 70f, y + 55f)
+        /** 벌냥이 주인공: 덮치기(공격) 남은 시간 · 돌진(필살기) 남은 시간과 방향 */
+        var lungeT = 0f
+        var dashT = 0f
+        var dashDir = 1f
 
         fun update(deltaTime: Float) {
             time += deltaTime
@@ -193,6 +197,8 @@ class SkyStageScreen(
             if (input.moveUp) dy -= 1f
             if (input.moveDown) dy += 1f
             if (dx != 0f) facingRight = dx > 0f
+            if (lungeT > 0f) lungeT -= deltaTime
+            if (dashT > 0f) { dashT -= deltaTime; x += dashDir * com.jamcat.nayngapo.entity.Player.CAT_DASH_SPEED * deltaTime }
             x = (x + dx * 430f * deltaTime).coerceIn(camera + 90f, courseLength - 90f)
             y = (y + dy * 390f * deltaTime).coerceIn(flyMinY, flyMaxY)
         }
@@ -225,7 +231,14 @@ class SkyStageScreen(
             if (selfFlying) {   // 주인공 날아냥이·벌냥이: 등에 탄 사람 없이 그 냥이만
                 val selfBmp = if (Heroes.playerCatKind() == com.jamcat.nayngapo.entity.AllyCat.Kind.BEE) SpriteManager.beeCat else mountBmp
                 val sb = if (facingRight) selfBmp else SpriteManager.getFlipped(selfBmp)
-                canvas.drawBitmap(sb, x - sb.width / 2f, y + bob - sb.height / 2f, bitmapPaint)
+                val fdir = if (facingRight) 1f else -1f
+                // 돌진 바람 줄기 (땅의 고양이 돌진과 같은 모양)
+                if (dashT > 0f) for (k in 0..3) {
+                    val yy = y + bob - 40f + k * 26f; val x0 = x - dashDir * 40f; val x1 = x0 - dashDir * (130f + k * 25f)
+                    canvas.drawLine(x0, yy, x1, yy, windInk); canvas.drawLine(x0, yy, x1, yy, windPaint)
+                }
+                val lunge = if (lungeT > 0f) sin((1f - lungeT / BEE_LUNGE_TIME) * Math.PI.toFloat()) * 50f * fdir else 0f
+                canvas.drawBitmap(sb, x - sb.width / 2f + lunge, y + bob - sb.height / 2f, bitmapPaint)
                 if (falling >= 0f) canvas.restore()
                 return
             }
@@ -500,6 +513,13 @@ class SkyStageScreen(
     private var totalEnemies = 0
     private var shake = 0f
     private var fireTimer = 0f
+    /** 벌냥이 주인공 (하늘에서도 덮치기·돌진) */
+    private val beeSelf get() = selfFlying && Heroes.playerCatKind() == com.jamcat.nayngapo.entity.AllyCat.Kind.BEE
+    /** 덮치기 공격력 = 땅에서와 같은 고양이 공격력 (10 + 레벨 보너스 + Lv업 아이템) */
+    private val beeAttack: Int = Heroes.playerCat()?.let { 10 + com.jamcat.nayngapo.engine.CatTeam.damageBonusFor(it.level) + it.attackBonus } ?: 10
+    private val dashHit = HashSet<SkyEnemy>()
+    private val windPaint = Paint().apply { color = Color.WHITE; strokeWidth = 8f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    private val windInk = Paint().apply { color = Color.rgb(120, 170, 220); strokeWidth = 14f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
     private var rocketCooldown = 0f
     private var clearTimer = -1f
     private var paused = false
@@ -660,7 +680,16 @@ class SkyStageScreen(
 
         // 발사
         fireTimer -= deltaTime
-        if (touchControls.inputState.attack && fireTimer <= 0f) {
+        if (beeSelf && touchControls.inputState.attack && fireTimer <= 0f) {
+            // 벌냥이 주인공: 하늘에서도 땅에서처럼 앞으로 덮친다 (대표님 2026-10-24 「벌냥이가 하늘 스테이지에 가면 근접이야, 공격은 원래랑 똑같고 필살기도 똑같아」)
+            fireTimer = 0.35f
+            player.lungeT = BEE_LUNGE_TIME
+            val dir = if (player.facingRight) 1f else -1f
+            val box = RectF(player.x + (if (dir > 0f) 0f else -BEE_REACH), player.y - 80f, player.x + (if (dir > 0f) BEE_REACH else 0f), player.y + 80f)
+            for (enemy in enemies) if (!enemy.isDead && RectF.intersects(box, enemy.hitBox)) enemy.takeDamage(beeAttack)
+            for (prison in skyPrisons) if (!prison.isOpen && RectF.intersects(box, prison.hitBox) && prison.hit()) onSkyPrisonOpened(prison)
+            SoundManager.playAttack()
+        } else if (!beeSelf && touchControls.inputState.attack && fireTimer <= 0f) {
             fireTimer = 0.28f
             val dir = if (player.facingRight) 1f else -1f
             projectiles.add(Projectile(player.x + dir * 80f, player.y - 10f, dir * 950f, 0f,
@@ -669,7 +698,22 @@ class SkyStageScreen(
         }
         if (rocketCooldown > 0f) rocketCooldown -= deltaTime
         touchControls.specialCooldown = rocketCooldown
-        if (touchControls.inputState.special) {
+        if (beeSelf && touchControls.inputState.special) {
+            // 벌냥이 주인공 필살기 = 땅과 같은 돌진 (바람, 공격력 10, 쿨타임 15초)
+            touchControls.inputState.special = false
+            if (rocketCooldown <= 0f) {
+                rocketCooldown = Constants.SPECIAL_COOLDOWN * 0.5f
+                player.dashT = com.jamcat.nayngapo.entity.Player.CAT_DASH_TIME; player.dashDir = if (player.facingRight) 1f else -1f
+                dashHit.clear()
+                SoundManager.playSpecial()
+            }
+        }
+        if (beeSelf && player.dashT > 0f) {
+            for (enemy in enemies) if (!enemy.isDead && enemy !in dashHit && RectF.intersects(enemy.hitBox, player.hitBox)) {
+                dashHit.add(enemy); enemy.takeDamage(com.jamcat.nayngapo.entity.Player.CAT_DASH_POWER)
+            }
+        }
+        if (!beeSelf && touchControls.inputState.special) {
             touchControls.inputState.special = false
             if (rocketCooldown <= 0f) {
                 rocketCooldown = Constants.SPECIAL_COOLDOWN * 0.5f
@@ -894,5 +938,11 @@ class SkyStageScreen(
             gameView.leaveStage()
         }
         return true
+    }
+
+    private companion object {
+        /** 벌냥이 덮치기 시간 · 닿는 거리 (Claude 판단) */
+        const val BEE_LUNGE_TIME = 0.3f
+        const val BEE_REACH = 170f
     }
 }

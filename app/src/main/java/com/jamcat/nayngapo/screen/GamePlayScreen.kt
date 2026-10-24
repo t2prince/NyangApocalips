@@ -199,8 +199,8 @@ class GamePlayScreen(
     /** '연속발사'로 예약된 한 발 (delay가 0이 되면 날아간다) */
     private class PendingShot(
         var delay: Float,
-        /** 쏘는 냥이 — 매 발 그 냥이의 지금 자리에서 나간다 */
-        val caster: com.jamcat.nayngapo.entity.AllyCat,
+        /** 쏘는 냥이 — 매 발 그 냥이의 지금 자리에서 나간다 (null = 고양이 주인공이 직접) */
+        val caster: com.jamcat.nayngapo.entity.AllyCat?,
         /** 기술을 쓸 때 정한 방향 (여섯 발 모두 같은 쪽으로) */
         val dir: Float,
         val damage: Int,
@@ -225,6 +225,10 @@ class GamePlayScreen(
     private var jellyPower = 0
     /** 젤리 비를 부른 냥이 — 그 머리 위에 분홍 구름이 먼저 뜬다 */
     private var jellyCaster: com.jamcat.nayngapo.entity.AllyCat? = null
+    /** 젤리 구름을 고양이 주인공이 직접 불렀다 */
+    private var jellyByPlayer = false
+    /** 고양이가 주인공이면 고양이 기술을 자기가 직접 쓴다 (대표님 2026-10-24 「냥이가 되면 자기가 고양이 기술만 써」) */
+    private val playerIsCat = com.jamcat.nayngapo.engine.GameProgress.selectedHero == com.jamcat.nayngapo.engine.Heroes.CAT_ID
     /** 구름만 떠 있는 남은 시간 (이게 끝나야 젤리가 떨어진다) */
     private var jellyCloudT = 0f
     /** 구름이 흩어지는 연출 */
@@ -471,13 +475,14 @@ class GamePlayScreen(
                 if (shot.delay > 0f) continue
                 it.remove()
                 val c = shot.caster
-                if (c.isDead) continue          // 쏘던 냥이가 쓰러지면 남은 탄은 사라진다
+                if (c?.isDead == true || (c == null && player.isDead)) continue          // 쏘던 냥이가 쓰러지면 남은 탄은 사라진다
                 val dir = shot.dir
-                val hb = c.hitBox
+                val sx0 = if (c != null) c.x + c.width / 2f else player.x + player.width / 2f
+                val sy0 = if (c != null) c.hitBox.let { hb -> hb.top + (hb.bottom - hb.top) * 0.40f } else player.y + player.jumpZ - 60f
                 level.projectiles.add(
                     com.jamcat.nayngapo.entity.Projectile(
-                        c.x + c.width / 2f + dir * 40f,
-                        hb.top + (hb.bottom - hb.top) * 0.40f,
+                        sx0 + dir * 40f,
+                        sy0,
                         dir * 760f, 0f, shot.damage, true,
                         tint = Color.rgb(255, 214, 74), radius = 12f,
                         fuse = 1.2f, isPaw = true
@@ -1428,6 +1433,7 @@ class GamePlayScreen(
             .filter { !it.isDead }
             .filter { a -> global || a.teamId?.let { id -> com.jamcat.nayngapo.engine.CatTeam.cat(id)?.skills?.contains(skill.id) } == true }
             .minByOrNull { kotlin.math.abs(it.x + it.width / 2f - playerCx) }
+        if (playerIsCat) { usePlayerCatSkill(index, skill); return }
         if (caster == null) {
             hitEffects.add(
                 HitEffect(player.x, player.y - player.height - 40f, 1.3f, "출전한 냥이가 없어서 기술을 못 쓴다냥!")
@@ -1471,7 +1477,7 @@ class GamePlayScreen(
 
             "jelly_paw" -> {
                 // 냥이 머리 위에 분홍 구름이 먼저 뜨고, 그다음 젤리가 쏟아진다
-                jellyCaster = caster
+                jellyCaster = caster; jellyByPlayer = false
                 jellyCloudT = JELLY_CLOUD_TIME
                 jellyCloudFade = 0f
                 jellyRainT = 2.5f
@@ -1489,6 +1495,44 @@ class GamePlayScreen(
                 tornadoes.add(
                     com.jamcat.nayngapo.entity.Tornado(cx, far, Terrain.groundY(cx), skill.power)
                 )
+                shake(0.25f, 6f)
+                SoundManager.playSpecial()
+            }
+        }
+    }
+
+    /** 고양이 주인공이 고양이 기술을 직접 쓴다 — 출전 냥이가 없어도 된다 (2026-10-24) */
+    private fun usePlayerCatSkill(index: Int, skill: com.jamcat.nayngapo.engine.CatSkills.Skill) {
+        skillCooldowns[index] = skill.cooldown
+        val pcx = player.x + player.width / 2f
+        val nearest = level.enemies
+            .filter { !it.isDead && it.x + it.width / 2f in camera.x..(camera.x + gameView.screenWidth) }
+            .minByOrNull { kotlin.math.abs(it.x + it.width / 2f - pcx) }
+        val aimRight = nearest?.let { it.x + it.width / 2f >= pcx } ?: player.facingRight
+        player.facingRight = aimRight
+        val aimDir = if (aimRight) 1f else -1f
+        hitEffects.add(HitEffect(player.x, player.y - player.height - 40f, 1.1f, skill.name + "!"))
+        when (skill.id) {
+            "evolve" -> {
+                // 묭묭 진화: 출전 냥이들이 커진다 (주인공 고양이는 그대로 — 커지는 그림은 냥이 쪽에만 있다)
+                com.jamcat.nayngapo.engine.CatTeam.startEvolve(skill.cooldown)
+                for (ally in level.allies) if (!ally.isDead) {
+                    ally.evolve(skill.cooldown)
+                    hitEffects.add(HitEffect(ally.x, ally.y - ally.height - 70f, 1.3f, "묭묭!"))
+                }
+                SoundManager.playSpecial()
+                shake(0.3f, 12f)
+            }
+            "rapid_fire" -> for (i in 0 until 6) pendingShots.add(PendingShot(i * 0.1f, null, aimDir, skill.power, i))
+            "jelly_paw" -> {
+                jellyCaster = null; jellyByPlayer = true
+                jellyCloudT = JELLY_CLOUD_TIME; jellyCloudFade = 0f
+                jellyRainT = 2.5f; jellySpawnT = 0f; jellySpawned = 0
+                jellyPower = skill.power
+            }
+            "tornado" -> {
+                val far = if (aimRight) camera.x + gameView.screenWidth + 100f else camera.x - 100f
+                tornadoes.add(com.jamcat.nayngapo.entity.Tornado(pcx, far, Terrain.groundY(pcx), skill.power))
                 shake(0.25f, 6f)
                 SoundManager.playSpecial()
             }
@@ -1893,13 +1937,12 @@ class GamePlayScreen(
             while (jellySpawnT <= 0f && jellyRainT > 0f) {
                 jellySpawnT += 0.12f
                 val c = jellyCaster
-                if (jellySpawned < 3 && c != null) {
+                if (jellySpawned < 3 && (c != null || jellyByPlayer)) {
                     // 처음 세 개는 구름 바로 아래, 부른 냥이 가까이 떨어진다
-                    val ccx = c.x + c.width / 2f
                     jellies.add(
                         JellyDrop(
-                            ccx + (Math.random().toFloat() - 0.5f) * 160f,
-                            jellyCloudY(c), Math.random().toFloat() * 6f
+                            jellyCloudX() + (Math.random().toFloat() - 0.5f) * 160f,
+                            jellyCloudY(), Math.random().toFloat() * 6f
                         )
                     )
                 } else {
@@ -1952,7 +1995,8 @@ class GamePlayScreen(
     }
 
     /** 젤리 구름이 뜨는 높이 (부른 냥이 머리 위) */
-    private fun jellyCloudY(c: com.jamcat.nayngapo.entity.AllyCat) = c.y - c.height - 110f
+    private fun jellyCloudY(): Float = jellyCaster?.let { c -> c.y - c.height - 110f } ?: (player.y - player.height - 110f)
+    private fun jellyCloudX(): Float = jellyCaster?.let { c -> c.x + c.width / 2f } ?: (player.x + player.width / 2f)
 
     /** 분홍 구름 한 덩이 */
     private fun drawJellyCloud(canvas: Canvas, cx: Float, cy: Float, grow: Float, alpha: Int) {
@@ -2374,12 +2418,12 @@ class GamePlayScreen(
         for (d in drawables) d.draw()
 
         // 기술을 부른 냥이 머리 위의 분홍 구름
-        jellyCaster?.let { c ->
+        if (jellyCaster != null || jellyByPlayer) {
             if (jellyCloudT > 0f || jellyCloudFade > 0f) {
                 val a = if (jellyCloudT > 0f) 1f else (jellyCloudFade / 0.35f).coerceIn(0f, 1f)
                 val grow =
                     if (jellyCloudT > 0f) 0.6f + 0.4f * (1f - jellyCloudT / JELLY_CLOUD_TIME) else 1f
-                drawJellyCloud(canvas, c.x + c.width / 2f, jellyCloudY(c), grow, (255f * a).toInt())
+                drawJellyCloud(canvas, jellyCloudX(), jellyCloudY(), grow, (255f * a).toInt())
             }
         }
 

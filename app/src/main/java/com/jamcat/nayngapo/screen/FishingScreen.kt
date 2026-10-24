@@ -84,7 +84,10 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
     private val heartOff = Paint().apply { color = Color.argb(120, 60, 50, 50); isAntiAlias = true }
     private val heartPath = Path()
     /** 배 튼튼함 — 대포알에 3번 맞으면 가라앉아 부두로 돌아온다 (Claude 판단) */
-    private var boatHp = BOAT_HP
+    /** 배 용품 가게(상점마을2)의 배 철판·배 작살만큼 튼튼하고 세다 (2026-10-24) */
+    private val boatMaxHp: Int get() = BOAT_HP + 2 * GameProgress.itemCount("boat_plate")
+    private val boatAttack: Int get() = BOAT_ATTACK + GameProgress.itemCount("boat_harpoon")
+    private var boatHp = boatMaxHp
     private var hurtT = 0f
     /** 다음 해적선이 올 때까지 (배를 탄 동안만 흐른다) */
     private var pirateWait = 0f
@@ -116,7 +119,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
     }
 
     private fun boardBoat() {
-        onBoat = true; boatHp = BOAT_HP; boatX = gameView.screenWidth * 0.24f; heroU = BOAT_HERO_U; atHelm = false; seaDist = 0f
+        onBoat = true; boatHp = boatMaxHp; boatX = gameView.screenWidth * 0.24f; heroU = BOAT_HERO_U; atHelm = false; seaDist = 0f
         pos = Pos.DECK; paused = false; touchControls.releaseAll(); nets.clear(); boatFacing = 1f; boardMates()
         pirateX = Float.NaN; balls.clear(); pirateWait = PIRATE_FIRST + (Math.random() * PIRATE_EVERY).toFloat()
     }
@@ -184,7 +187,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
             val sh = shipHeight(h); val sw = shipWidth(h)
             val shipHit = !pirateX.isNaN() && !pirateCatDead && n.x in pirateX..(pirateX + sw) && n.y >= waterY - sh * 0.45f
             if (shipHit) {
-                pirateHp -= BOAT_ATTACK
+                pirateHp -= boatAttack
                 splashes.add(Splash(n.x, n.y, 0f, true))
                 SoundManager.playCatHit()
                 if (pirateHp <= 0) pirateDefeated()
@@ -202,7 +205,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
                     splashes.add(Splash(b.x, waterY - 40f, 0f, true))
                     SoundManager.playPlayerHurt()
                     if (boatHp <= 0) { sinkBoat(); return }
-                    noticeText = "쾅! 배가 맞았다 (배 ♥ $boatHp/$BOAT_HP)"; noticeTimer = 1.2f
+                    noticeText = "쾅! 배가 맞았다 (배 ♥ $boatHp/$boatMaxHp)"; noticeTimer = 1.2f
                 } else splashes.add(Splash(b.x, waterY, 0f, false))
                 it.remove()
             }
@@ -487,7 +490,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         val where = if (pos == Pos.PIRATE) CrewAt.SHIP else CrewAt.BOAT
         val c = crew.filter { it.at == where && it.boom <= 0f }.minByOrNull { kotlin.math.abs(crewX(it, w, h) - heroX) } ?: return false
         if (kotlin.math.abs(crewX(c, w, h) - heroX) > 200f) return false
-        c.hp -= BOAT_ATTACK
+        c.hp -= boatAttack
         SoundManager.playCatHit()
         if (c.hp <= 0) { c.boom = 0.5f; SoundManager.playCatDie(); noticeText = "선원 냥이를 쓰러뜨렸다!"; noticeTimer = 1f }
         else { noticeText = "퍽! 선원 냥이 ♥ ${c.hp}/$CREW_HP"; noticeTimer = 0.8f }
@@ -516,7 +519,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         boatHp--; hurtT = 0.8f
         SoundManager.playPlayerHurt()
         if (boatHp <= 0) { sinkBoat(); return }
-        noticeText = "$msg (♥ $boatHp/$BOAT_HP)"; noticeTimer = 1.2f
+        noticeText = "$msg (♥ $boatHp/$boatMaxHp)"; noticeTimer = 1.2f
     }
 
     private fun deckFootY(h: Float) = h * 0.55f + 90f
@@ -614,7 +617,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
                 punchT = PUNCH_TIME
                 val catX = pirateX + shipWidth(h) * PIRATE_CAT_U
                 if (kotlin.math.abs(heroWorldX(w, h) - catX) < 230f && !pirateCatDead) {
-                    pirateHp -= BOAT_ATTACK
+                    pirateHp -= boatAttack
                     splashes.add(Splash(catX, pirateFootY(h) - 120f, 0f, true))
                     SoundManager.playCatHit()
                     if (pirateHp <= 0) pirateDefeated()
@@ -1210,10 +1213,10 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
             }
             // 배 하트 (HP 10)
             val r = 17f; val gap = 46f
-            val hx0 = w / 2f - (BOAT_HP - 1) * gap / 2f
-            for (k in 0 until BOAT_HP) drawHeartShape(canvas, hx0 + k * gap, h * 0.165f, r, if (k < boatHp) heartOn else heartOff)
+            val hx0 = w / 2f - (boatMaxHp - 1) * gap / 2f
+            for (k in 0 until boatMaxHp) drawHeartShape(canvas, hx0 + k * gap, h * 0.165f, r, if (k < boatHp) heartOn else heartOff)
             text.textSize = h * 0.028f
-            canvas.drawTr(if (atHelm) "어선 · 공격력 $BOAT_ATTACK · 조타실: 패드로 배 조종" else "어선 · 공격력 $BOAT_ATTACK · 패드 걷기 · 점프로 해적선에", w / 2f, h * 0.215f, text)
+            canvas.drawTr(if (atHelm) "어선 · 공격력 $boatAttack · 조타실: 패드로 배 조종" else "어선 · 공격력 $boatAttack · 패드 걷기 · 점프로 해적선에", w / 2f, h * 0.215f, text)
             // 섬까지 남은 거리
             val u = (seaDist / ISLAND_AT).coerceIn(0f, 1f)
             rect.set(w / 2f - 260f, h * 0.24f, w / 2f + 260f, h * 0.24f + 16f)

@@ -27,7 +27,8 @@ class CatShopScreen(
     /** 나갈 때 갈 곳 — 상점마을2 가게면 상점마을2로 (없으면 fromTent 에 따라 상점 마을/로비) */
     private val onLeave: (() -> Unit)? = null,
 ) : Screen {
-    private val shelf: List<ShopCatalog.Item> = ids.mapNotNull { id -> ShopCatalog.items.firstOrNull { it.id == id } }
+    // 값이 싼 것부터 (대표님 2026-10-24 「가격 순서대로 정렬」)
+    private val shelf: List<ShopCatalog.Item> = ids.mapNotNull { id -> ShopCatalog.items.firstOrNull { it.id == id } }.sortedBy { it.price }
 
 
     private val backRect = RectF()

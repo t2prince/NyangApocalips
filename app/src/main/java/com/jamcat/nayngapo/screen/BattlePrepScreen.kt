@@ -49,7 +49,7 @@ class BattlePrepScreen(private val gameView: GameView, private val stage: Int) :
     private val dim = Paint().apply { alpha = 90; isFilterBitmap = true }
     private val rect = RectF()
 
-    private fun owned(id: String) = GameProgress.itemCount(id) > 0
+    private fun owned(id: String) = GameProgress.itemCount(id) > 0 || (id == "h_heal" && GameProgress.itemCount("h_big_heal") > 0)
     private fun selected(id: String) = when (id) {
         "h_life" -> BattleLoadout.lifePotion
         "h_heal" -> BattleLoadout.heartPotion

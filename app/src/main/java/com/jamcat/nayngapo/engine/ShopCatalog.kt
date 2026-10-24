@@ -83,17 +83,37 @@ object ShopCatalog {
         Item("h_vest", "가죽 조끼", 60, "인간 하트 +1 (영구)", max = 2),
         Item("h_life", "생명 물약", 15, "다음 스테이지 목숨 +1", max = 3),
         Item("h_heal", "하트 물약", 10, "다음 스테이지 하트 +2", max = 3),
+        // ===== 상점마을2 물건 (대표님 2026-10-24 「상점2에 물건들 만들어줘」「물건은 중복되는 게 없고 가격 순서대로 정렬」 — 이름·값·효과 Claude 판단, 그림은 코드) =====
+        Item("coconut_milk", "코코넛 우유", 5, "시원한 코코넛 우유"),
+        Item("squid", "오징어 구이", 7, "쫄깃한 오징어 한 마리"),
+        Item("fried_shrimp", "새우튀김", 10, "바삭바삭 새우튀김"),
+        Item("crab_meat", "게살", 14, "달콤한 게살 한 접시"),
+        Item("cat_sushi", "고양이 초밥", 22, "바닷가 특별 초밥"),
+        Item("beach_ball", "비치볼", 8, "통통 튀는 줄무늬 공"),
+        Item("shell_rattle", "조개 딸랑이", 12, "흔들면 딸랑딸랑"),
+        Item("crab_doll", "꽃게 인형", 16, "집게가 움직이는 인형"),
+        Item("fish_kite", "물고기 연", 22, "바닷바람에 높이 난다"),
+        Item("cat_vitamin", "고양이 비타민", 15, "먹으면 쑥쑥 큰다 (경험치 +60)"),
+        Item("h_big_heal", "큰 하트 물약", 25, "다음 스테이지 하트 +4", max = 3),
+        Item("h_coral_glove", "산호 장갑", 30, "인간 공격력 +$H_CORAL_ATK (영구)", max = 5),
+        Item("h_shell_armor", "조개 갑옷", 50, "인간 하트 +1 (영구)", max = 2),
+        Item("h_anchor", "닻 망치", 90, "인간 공격력 +$H_ANCHOR_ATK (영구)", max = 2),
+        Item("boat_plate", "배 철판", 40, "어선 하트 +2 (영구)", max = 5),
+        Item("boat_harpoon", "배 작살", 50, "어선 공격력 +1 (영구)", max = 3),
     )
 
     const val H_GLOVE_ATK = 2
     const val H_GAUNTLET_ATK = 5
+    const val H_CORAL_ATK = 3
+    const val H_ANCHOR_ATK = 8
     /** 사 둔 장갑·투구·조끼만큼 인간이 세진다 (Player 가 만들어질 때 얹는다) */
-    fun humanAttackBonus() = GameProgress.itemCount("h_glove") * H_GLOVE_ATK + GameProgress.itemCount("h_gauntlet") * H_GAUNTLET_ATK
-    fun humanHeartBonus() = GameProgress.itemCount("h_helmet") + GameProgress.itemCount("h_vest")
+    fun humanAttackBonus() = GameProgress.itemCount("h_glove") * H_GLOVE_ATK + GameProgress.itemCount("h_gauntlet") * H_GAUNTLET_ATK +
+        GameProgress.itemCount("h_coral_glove") * H_CORAL_ATK + GameProgress.itemCount("h_anchor") * H_ANCHOR_ATK
+    fun humanHeartBonus() = GameProgress.itemCount("h_helmet") + GameProgress.itemCount("h_vest") + GameProgress.itemCount("h_shell_armor")
 
     /** 처음 고양이 상점(1번 천막)에 진열하는 물건 — 예전 그대로 */
-    val catShopIds: List<String> = listOf("churu", "tuna_can", "feed", "catnip", "ball", "fish_toy", "brush", "water_bowl",
-        "cushion", "scratcher", "litter", "cat_tower", "cat_armor", "revive_potion", "revive_all", "attack_up", "feed_all", "cat_gps")
+    // 다른 천막(간식·장난감·살림 가게)에 있는 물건은 빼고 고양이 상점에만 있는 것 (2026-10-24 「물건은 중복되는 게 없다」)
+    val catShopIds: List<String> = listOf("cat_armor", "revive_potion", "revive_all", "attack_up", "cat_gps")
 
     /** 상점가 천막별 가게 (천막 번호 0부터) → (가게 이름, 진열 물건). 1번(0) 고양이 상점, 2번(1) 고양이 기술, 6번(5) 동물 병원은 따로 */
     val tentShops: Map<Int, Pair<String, List<String>>> = mapOf(
@@ -110,14 +130,14 @@ object ShopCatalog {
 
     /**
      * 상점마을2 가게 5곳 (가게 번호 0부터) → (가게 이름, 진열 물건) — 대표님 2026-10-24 「상점2에 물건들 만들어줘」.
-     * 가게·물건 배정은 Claude 판단, 물건은 상점 마을1에 있는 것(그림·효과 그대로). 3번(2) 가게는 의사가 있는 병원.
+     * 가게·물건은 Claude 판단, 상점 마을1과 겹치지 않는 새 물건 (2026-10-24 「중복되는 게 없다」). 3번(2) 가게는 의사가 있는 병원.
      */
     val village2Shops: List<Pair<String, List<String>>> = listOf(
-        "바닷가 간식 가게" to listOf("churu", "tuna_can", "milk", "salmon", "cat_cake", "feed_all"),
-        "낚시 미끼 가게" to listOf("bait_worm", "bait_shrimp", "bait_gold"),
-        "병원" to listOf("revive_potion", "revive_all", "h_heal", "h_life"),
-        "해변 장난감 가게" to listOf("ball", "fish_toy", "mouse_toy", "feather_wand", "laser_pointer"),
-        "무기·갑옷 가게" to listOf("h_glove", "h_gauntlet", "h_greatsword", "h_ammo", "h_helmet", "h_vest", "cat_armor"),
+        "바닷가 간식 가게" to listOf("coconut_milk", "squid", "fried_shrimp", "crab_meat", "cat_sushi"),
+        "해변 장난감 가게" to listOf("beach_ball", "shell_rattle", "crab_doll", "fish_kite"),
+        "병원" to listOf("cat_vitamin", "h_big_heal"),
+        "무기·갑옷 가게" to listOf("h_coral_glove", "h_shell_armor", "h_anchor"),
+        "배 용품 가게" to listOf("boat_plate", "boat_harpoon"),
     )
 
     /** 물건 값 — 안내 문구에 값을 박아 두지 말고 여기서 읽는다 */

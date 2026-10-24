@@ -301,7 +301,11 @@ class GamePlayScreen(
         // 출전 준비에서 고른 것만 (2026-10-09)
         val loadout = com.jamcat.nayngapo.engine.BattleLoadout
         if (!isSea && loadout.lifePotion && GameProgress.consumeItem("h_life")) player.lives += 1
-        if (loadout.heartPotion && GameProgress.consumeItem("h_heal")) { player.maxHp += 2; player.hp = player.maxHp }
+        // 하트 물약: 큰 하트 물약(상점마을2, +4)이 있으면 그것부터
+        if (loadout.heartPotion) {
+            if (GameProgress.consumeItem("h_big_heal")) { player.maxHp += 4; player.hp = player.maxHp }
+            else if (GameProgress.consumeItem("h_heal")) { player.maxHp += 2; player.hp = player.maxHp }
+        }
         player.hasGun = player.hasGun && loadout.gun
         showWaveText("STAGE $stageNumber - START!")
 

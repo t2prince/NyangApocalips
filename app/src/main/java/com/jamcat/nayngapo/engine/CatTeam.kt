@@ -740,6 +740,13 @@ object CatTeam {
         "sea_bream" to 60,
         "sea_rockfish" to 55,     // 우럭·조개도 먹이 (Claude 판단)
         "sea_clam" to 30,
+        // 상점마을2 간식 (2026-10-24, Claude 판단)
+        "coconut_milk" to 20,
+        "squid" to 35,
+        "fried_shrimp" to 45,
+        "crab_meat" to 55,
+        "cat_sushi" to 90,
+        "cat_vitamin" to 60,
     )
 
     /** 간식별 포만감 */
@@ -760,6 +767,12 @@ object CatTeam {
         "sea_bream" to 7,
         "sea_rockfish" to 6,
         "sea_clam" to 4,
+        "coconut_milk" to 20,
+        "squid" to 20,
+        "fried_shrimp" to 40,
+        "crab_meat" to 40,
+        "cat_sushi" to 60,
+        "cat_vitamin" to 0,
     )
 
     /** 먹이로 줄 수 있는 물건 목록 (간식 고르기 줄) */
@@ -793,7 +806,8 @@ object CatTeam {
         val cat = cat(id) ?: return null
         if (cat.gone) return null
         // 가진 장난감 중 가장 좋은 것 + 다른 장난감마다 3씩 더 (최대 40) — 새 장난감 2026-10-09
-        val toyJoy = linkedMapOf("laser_pointer" to 28, "fish_toy" to 25, "feather_wand" to 22, "mouse_toy" to 20, "ball" to 18)
+        val toyJoy = linkedMapOf("fish_kite" to 34, "crab_doll" to 30, "laser_pointer" to 28, "shell_rattle" to 26, "fish_toy" to 25, "beach_ball" to 24,
+            "feather_wand" to 22, "mouse_toy" to 20, "ball" to 18)   // 상점마을2 장난감 2026-10-24
         val owned = toyJoy.filterKeys { GameProgress.itemCount(it) > 0 }
         val gain: Int
         val withWhat: String

@@ -868,12 +868,8 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         return when { r < gold -> "fish_gold"; r < bigger -> "fish_big"; else -> "fish_small" }
     }
 
-    /** 낚시는 한 번에 루비 2개를 내고 한다 (대표님 2026-10-16) — 던지기·낚시줄 조종하기 둘 다 */
+    /** 낚시는 돈이 들지 않는다 (대표님 2026-10-24) — 던지기·낚시줄 조종하기 둘 다 */
     private fun payForFishing(): Boolean {
-        if (!GameProgress.spendRubies(FISHING_PRICE)) {
-            noticeText = "낚시는 루비 ${FISHING_PRICE}개를 내고 해요 (지금 ${GameProgress.rubies}개)"; noticeTimer = 2f
-            return false
-        }
         // 미끼: 가진 것 중 좋은 것부터 하나 쓴다 (낚시 상점, 2026-10-17)
         bait = listOf("bait_gold", "bait_shrimp", "bait_worm").firstOrNull { GameProgress.consumeItem(it) }
         return true
@@ -1154,10 +1150,10 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
 
         // 버튼
         val label = when (state) {
-            State.READY -> "🎣 던지기 · 루비 $FISHING_PRICE"
+            State.READY -> "🎣 던지기"
             State.CAST, State.WAIT -> "기다리는 중…"
             State.BITE -> "당기기!"
-            State.CAUGHT, State.MISSED -> "🎣 다시 던지기 · 루비 $FISHING_PRICE"
+            State.CAUGHT, State.MISSED -> "🎣 다시 던지기"
             State.CONTROL -> "↔ 바늘 움직이기 (내려가는 중)"
             State.REEL -> "끌어 올리는 중!"
         }
@@ -1198,7 +1194,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
             if (onBoat) controlRect.set(midX + 10f, h - 150f, midX + 330f, h - 20f)
             else controlRect.set(w * 0.42f - 240f, h * 0.80f, w * 0.42f + 240f, h * 0.80f + 110f)
             canvas.drawRoundRect(controlRect, 55f, 55f, controlPaint); canvas.drawRoundRect(controlRect, 55f, 55f, ink)
-            drawBtnLabel(canvas, "🎮 낚시줄 조종 · 루비 $FISHING_PRICE", controlRect, h, h * 0.042f)
+            drawBtnLabel(canvas, "🎮 낚시줄 조종", controlRect, h, h * 0.042f)
         }
         // 어선: 땅 스테이지와 같은 조작 버튼 + 위 가운데 배 하트 + 멈추기·나가기 (물속을 볼 때 빼고)
         helmRect.setEmpty()
@@ -1410,8 +1406,6 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
     companion object {
         /** '!' 뜨고 당길 수 있는 시간 */
         private const val BITE_WINDOW = 1.0f
-        /** 낚시 한 번 값 (루비) */
-        const val FISHING_PRICE = 2
         /** 배 타기 값 (루비) */
         const val BOAT_PRICE = 5
         /** 어선: 튼튼함 · 빠르기 · 그림에서 인간이 서는 곳(가로 비율)·갑판 높이(세로 비율) */

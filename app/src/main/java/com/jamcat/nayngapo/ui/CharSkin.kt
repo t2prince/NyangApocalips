@@ -17,7 +17,7 @@ import kotlin.math.sin
 
 /**
  * 인간 대신 주인공이 되는 캐릭터 그리기 (대표님 2026-10-24 캐릭터 변경):
- *  - 고양이: 내 편 치즈냥이 그림을 통통 튀기고 기울여 움직인다 (공격은 앞으로 덮치며 할퀴기 자국)
+ *  - 고양이: 내 편 치즈냥이 그림을 통통 튀기고 기울여 움직인다 (공격은 앞으로 덮친다)
  *  - 내가 만든 캐릭터: 찍은 관절대로 그림을 팔·다리·몸·머리 10조각으로 나눠, 조각을 돌려 인간처럼 움직인다
  * 졸라맨 그림이 놓일 자리(dst)를 받아 같은 키·같은 발끝에 그린다.
  */
@@ -45,8 +45,6 @@ object CharSkin {
     }
 
     // ===== 고양이 =====
-    private val slash = Paint().apply { color = Color.WHITE; strokeWidth = 7f; strokeCap = Paint.Cap.ROUND; style = Paint.Style.STROKE; isAntiAlias = true }
-    private val slashInk = Paint().apply { color = Color.rgb(40, 34, 30); strokeWidth = 12f; strokeCap = Paint.Cap.ROUND; style = Paint.Style.STROKE; isAntiAlias = true }
     private val bmpPaint = Paint().apply { isFilterBitmap = true; isAntiAlias = true }
     private val tmpRect = RectF()
 
@@ -71,14 +69,6 @@ object CharSkin {
         canvas.scale(1f, sy)
         tmpRect.set(-cw / 2f, -ch, cw / 2f, 0f)
         canvas.drawBitmap(bmp, null, tmpRect, bmpPaint)
-        // 할퀴기 자국 (덮치는 순간)
-        if ((pose == Pose.PUNCH || pose == Pose.KICK) && e > 0.5f) {
-            for (k in 0..2) {
-                val x0 = cw * 0.45f + k * 16f; val y0 = -ch * 0.85f + k * 10f
-                canvas.drawLine(x0, y0, x0 + 34f, y0 + ch * 0.45f, slashInk)
-                canvas.drawLine(x0, y0, x0 + 34f, y0 + ch * 0.45f, slash)
-            }
-        }
         canvas.restore()
         // 앞손 = 얼굴 앞쪽
         val dir = if (right) 1f else -1f

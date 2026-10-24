@@ -158,7 +158,7 @@ class GamePlayScreen(
     /** 이 스테이지에서 인간이 직접 쓸 수 있는 기술 (배운 것만, 최대 4개) — 고양이가 주인공이면 인간 기술은 못 쓴다 (2026-10-24 「냥이가 되면 냥이 기술만 쓸 수 있어」) */
     private val humanBattleSkills =
         com.jamcat.nayngapo.engine.HumanSkills.all
-            .filter { com.jamcat.nayngapo.engine.HumanSkills.isLearned(it.id) && com.jamcat.nayngapo.engine.GameProgress.selectedHero != com.jamcat.nayngapo.engine.Heroes.CAT_ID }
+            .filter { com.jamcat.nayngapo.engine.HumanSkills.isLearned(it.id) && com.jamcat.nayngapo.engine.Heroes.selected().id != com.jamcat.nayngapo.engine.Heroes.CAT_ID }
             .take(com.jamcat.nayngapo.ui.TouchControls.HUMAN_SKILL_SLOTS)   // 인간 기술 버튼 칸 수만큼
 
     /** 인간 기술별 남은 쿨타임 (시작할 때는 모두 준비 완료) */
@@ -228,7 +228,7 @@ class GamePlayScreen(
     /** 젤리 구름을 고양이 주인공이 직접 불렀다 */
     private var jellyByPlayer = false
     /** 고양이가 주인공이면 고양이 기술을 자기가 직접 쓴다 (대표님 2026-10-24 「냥이가 되면 자기가 고양이 기술만 써」) */
-    private val playerIsCat = com.jamcat.nayngapo.engine.GameProgress.selectedHero == com.jamcat.nayngapo.engine.Heroes.CAT_ID
+    private val playerIsCat = com.jamcat.nayngapo.engine.Heroes.selected().id == com.jamcat.nayngapo.engine.Heroes.CAT_ID
     /** 구름만 떠 있는 남은 시간 (이게 끝나야 젤리가 떨어진다) */
     private var jellyCloudT = 0f
     /** 구름이 흩어지는 연출 */

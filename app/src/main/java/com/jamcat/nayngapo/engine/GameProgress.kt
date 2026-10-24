@@ -49,6 +49,7 @@ object GameProgress {
     private const val KEY_VILLAGE2_X = "village2_x"
     private const val KEY_LAST_VILLAGE = "last_village"
     private const val KEY_SELECTED_BOAT = "selected_boat"
+    private const val KEY_PLAYER_CAT = "player_cat"
     private const val KEY_MISSIONS_CLAIMED = "missions_claimed"
     private const val KEY_STAGE20_NO_DEATH = "stat_stage20_no_death"
     private const val KEY_BGM = "setting_bgm"
@@ -148,6 +149,15 @@ object GameProgress {
         private set
     var village2X = 0f
         private set
+
+    /** 고양이 주인공이 된 캣타워 냥이 id (대표님 2026-10-24 「고양이가 되려면 먼저 캣타워에 있는 냥이로 돼」), -1 = 아직 없음 */
+    var playerCatId = -1
+        private set
+
+    fun setPlayerCat(id: Int) {
+        playerCatId = id
+        prefs?.edit()?.putInt(KEY_PLAYER_CAT, id)?.apply()
+    }
 
     /** 조선소에서 고른 탈 배 (BoatCatalog) */
     var selectedBoat = "fishing_boat"
@@ -383,6 +393,7 @@ object GameProgress {
         village2X = prefs?.getFloat(KEY_VILLAGE2_X, 0f) ?: 0f
         lastVillage = prefs?.getInt(KEY_LAST_VILLAGE, 1) ?: 1
         selectedBoat = prefs?.getString(KEY_SELECTED_BOAT, "fishing_boat") ?: "fishing_boat"
+        playerCatId = prefs?.getInt(KEY_PLAYER_CAT, -1) ?: -1
         bgmEnabled = prefs?.getBoolean(KEY_BGM, true) ?: true
         sfxEnabled = prefs?.getBoolean(KEY_SFX, true) ?: true
         shakeEnabled = prefs?.getBoolean(KEY_SHAKE, true) ?: true

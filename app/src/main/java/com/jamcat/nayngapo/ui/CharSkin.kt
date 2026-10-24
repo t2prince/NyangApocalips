@@ -49,7 +49,7 @@ object CharSkin {
     private val tmpRect = RectF()
 
     private fun drawCat(canvas: Canvas, footX: Float, footY: Float, h: Float, right: Boolean, pose: Pose, prog: Float, t: Float) {
-        val bmp = SpriteManager.allyCat
+        val bmp = Heroes.playerCat()?.let { teamCatSprite(it) } ?: SpriteManager.allyCat
         val ch = h * 0.62f; val cw = bmp.width * ch / bmp.height
         val e = sin(prog.coerceIn(0f, 1f) * Math.PI.toFloat())   // 공격 뻗기 0→1→0
         var dx = 0f; var dy = 0f; var rot = 0f; var sy = 1f
@@ -73,6 +73,17 @@ object CharSkin {
         // 앞손 = 얼굴 앞쪽
         val dir = if (right) 1f else -1f
         lastHand.set(footX + dir * (cw * 0.42f + dx), footY - ch * 0.42f + dy)
+    }
+
+    /** 캣타워 냥이의 그림 (내 편, 갑옷 없이) */
+    fun teamCatSprite(c: com.jamcat.nayngapo.engine.CatTeam.TeamCat): Bitmap = when (c.kind) {
+        com.jamcat.nayngapo.entity.AllyCat.Kind.BLUE -> SpriteManager.blueCatAlly
+        com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN -> SpriteManager.greenCatAlly
+        com.jamcat.nayngapo.entity.AllyCat.Kind.NORMAL -> c.coat.ally
+        com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING -> SpriteManager.flyingCatAlly
+        com.jamcat.nayngapo.entity.AllyCat.Kind.GUN -> SpriteManager.gunCatAlly
+        com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT -> c.coat.boatAlly
+        else -> com.jamcat.nayngapo.entity.AllyCat.extraSprite(c.kind, c.coat) ?: c.coat.ally
     }
 
     // ===== 내가 만든 캐릭터 =====

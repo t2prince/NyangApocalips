@@ -18,6 +18,7 @@ import kotlin.math.sin
  * 캐릭터 변경 (대표님 2026-10-24, 로비 뽑기 위 작은 칸에서 들어온다):
  * 인간 4명(공짜 — 「인간은 안 사도 돼」) · 고양이 · 내가 만든 캐릭터들 · '추가 +'(사진으로 새 캐릭터) 가 옆으로 늘어서고,
  * 카드를 누르면 [되기]. 카드가 많으면 옆으로 밀어서 본다. 내가 만든 캐릭터는 '지우기'(두 번 눌러 확인).
+ * 고양이는 캣타워에 있는 냥이 중 하나를 골라 그 냥이가 된다 (2026-10-24 「고양이가 되려면 먼저 캣타워에 있는 냥이로 돼」).
  */
 class CharacterSelectScreen(private val gameView: GameView) : Screen {
 
@@ -58,7 +59,17 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
     private val heroDst = RectF()
     private val tagRect = RectF()
 
+    // ===== 캣타워 냥이 고르기 창 =====
+    private var choosing = false
+    private val chooseRects = ArrayList<Pair<Int, RectF>>()
+    private val closeRect = RectF()
+    private var noticeText = ""
+    private var noticeTimer = 0f
+    private val dimPaint = Paint().apply { color = Color.argb(150, 0, 0, 0) }
+    private val bmpPaint = Paint().apply { isFilterBitmap = true }
+
     override fun update(deltaTime: Float) {
+        if (noticeTimer > 0f) noticeTimer -= deltaTime
         timer += deltaTime
         if (hopT > 0f) hopT -= deltaTime
         if (deleteArmT > 0f) { deleteArmT -= deltaTime; if (deleteArmT <= 0f) deleteArm = null }
@@ -141,6 +152,46 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
             descPaint.textSize = h * 0.026f
             canvas.drawTr("◀ 옆으로 밀어서 더 보기 ▶", w * 0.82f, h * 0.94f, descPaint)
         }
+        if (choosing) drawChooser(canvas, w, h)
+        if (noticeTimer > 0f) {
+            namePaint.textSize = h * 0.040f
+            val nw = namePaint.measureText(noticeText) + 60f
+            tagRect.set(w / 2f - nw / 2f, h * 0.44f, w / 2f + nw / 2f, h * 0.53f)
+            canvas.drawRoundRect(tagRect, 20f, 20f, cardPaint); canvas.drawRoundRect(tagRect, 20f, 20f, edgePaint)
+            canvas.drawTr(noticeText, w / 2f, tagRect.centerY() + h * 0.014f, namePaint)
+        }
+    }
+
+    /** 캣타워 냥이들을 한 줄에 여섯씩 — 누르면 그 냥이가 된다 */
+    private fun drawChooser(canvas: Canvas, w: Float, h: Float) {
+        canvas.drawRect(0f, 0f, w, h, dimPaint)
+        val panel = RectF(w * 0.06f, h * 0.08f, w * 0.94f, h * 0.92f)
+        canvas.drawRoundRect(panel, 24f, 24f, cardPaint); canvas.drawRoundRect(panel, 24f, 24f, edgePaint)
+        titlePaint.textSize = h * 0.050f
+        canvas.drawTr("어느 냥이가 될까요?", w / 2f, panel.top + h * 0.075f, titlePaint)
+        chooseRects.clear()
+        val cats = com.jamcat.nayngapo.engine.CatTeam.living
+        val cols = 6; val cw = (panel.width() - 40f) / cols; val ch = h * 0.22f
+        for ((i, c) in cats.take(18).withIndex()) {
+            val l = panel.left + 20f + (i % cols) * cw; val t = panel.top + h * 0.11f + (i / cols) * (ch + 10f)
+            val r = RectF(l + 6f, t, l + cw - 6f, t + ch)
+            chooseRects.add(c.id to r)
+            val mine = c.id == GameProgress.playerCatId && GameProgress.selectedHero == Heroes.CAT_ID
+            canvas.drawRoundRect(r, 16f, 16f, if (mine) highlightPaint else cardPaint)
+            canvas.drawRoundRect(r, 16f, 16f, if (mine) selectEdgePaint else edgePaint)
+            val bmp = com.jamcat.nayngapo.ui.CharSkin.teamCatSprite(c)
+            val sc = min((r.width() - 20f) / bmp.width, (r.height() * 0.70f) / bmp.height)
+            val bw = bmp.width * sc; val bh = bmp.height * sc
+            heroDst.set(r.centerX() - bw / 2f, r.top + r.height() * 0.76f - bh, r.centerX() + bw / 2f, r.top + r.height() * 0.76f)
+            canvas.drawBitmap(bmp, null, heroDst, bmpPaint)
+            namePaint.textSize = h * 0.030f
+            canvas.drawTr("${c.name} Lv${c.level}", r.centerX(), r.bottom - h * 0.02f, namePaint)
+        }
+        val bw2 = w * 0.16f; val bh2 = h * 0.075f
+        closeRect.set(w / 2f - bw2 / 2f, panel.bottom - bh2 - 16f, w / 2f + bw2 / 2f, panel.bottom - 16f)
+        canvas.drawRoundRect(closeRect, 20f, 20f, tagPaint); canvas.drawRoundRect(closeRect, 20f, 20f, edgePaint)
+        tagTextPaint.textSize = bh2 * 0.42f
+        canvas.drawTr("닫기", closeRect.centerX(), closeRect.centerY() + bh2 * 0.15f, tagTextPaint)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -157,6 +208,16 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
     }
 
     private fun tap(x: Float, y: Float) {
+        if (choosing) {
+            if (closeRect.contains(x, y)) { choosing = false; return }
+            val hit = chooseRects.firstOrNull { it.second.contains(x, y) } ?: return
+            GameProgress.setPlayerCat(hit.first)
+            GameProgress.selectHero(Heroes.CAT_ID)
+            SoundManager.playCatHit()
+            hopId = Heroes.CAT_ID; hopT = HOP_TIME
+            choosing = false
+            return
+        }
         if (backRect.contains(x, y)) { gameView.showLobby(); return }
         if (addRect.contains(x, y)) { gameView.showCharacterCreate(); return }
         for ((id, r) in delRects) {
@@ -171,6 +232,12 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
         val list = heroes()
         for ((i, hero) in list.withIndex()) {
             if (i >= cardRects.size || !cardRects[i].contains(x, y)) continue
+            // 고양이: 캣타워 냥이 중에서 고른다
+            if (hero.id == Heroes.CAT_ID) {
+                if (com.jamcat.nayngapo.engine.CatTeam.living.isEmpty()) { noticeText = "캣타워에 냥이가 없어요 — 먼저 냥이를 구해요"; noticeTimer = 2f }
+                else choosing = true
+                return
+            }
             if (hero.id != GameProgress.selectedHero) {
                 GameProgress.selectHero(hero.id)
                 SoundManager.playCatHit()
@@ -181,6 +248,7 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
     }
 
     override fun onBack(): Boolean {
+        if (choosing) { choosing = false; return true }
         gameView.showLobby()
         return true
     }

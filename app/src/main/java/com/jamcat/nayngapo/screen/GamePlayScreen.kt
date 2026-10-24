@@ -318,7 +318,8 @@ class GamePlayScreen(
         // 날아냥이는 하늘 스테이지에만 있다 (대표님 2026-09-20) — 땅에는 데려오지 않는다
         // 배냥이도 바다(31)에서 인간이 타는 냥이라 함께 걷지 않는다 (2026-10-09)
         val groundParty = com.jamcat.nayngapo.engine.CatTeam.party.filter {
-            it.kind != com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING && it.kind != com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT
+            it.kind != com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING && it.kind != com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT &&
+                !(playerIsCat && it.id == com.jamcat.nayngapo.engine.GameProgress.playerCatId)   // 내가 된 냥이는 따로 걷지 않는다
         }
         for ((i, cat) in groundParty.withIndex()) {
             level.allies.add(

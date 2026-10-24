@@ -73,13 +73,16 @@ object Heroes {
      * 능력은 검은 인간과 같다 (Claude 판단). 그림은 ui/CharSkin.
      */
     const val CAT_ID = "cat"
-    val cat = Hero(CAT_ID, "고양이", Color.rgb(20, 20, 20), "고양이가 주인공", Accessory.NONE)
+    val cat = Hero(CAT_ID, "고양이", Color.rgb(20, 20, 20), "캣타워 냥이가 된다", Accessory.NONE)
     /** 내가 만든 캐릭터 id 앞머리 (engine/CustomChars) */
     const val CUSTOM_PREFIX = "custom_"
 
     /** 없어진 인간(예: 게임 인간 "red")·지운 캐릭터를 고른 세이브는 기본 인간으로 돌아간다 */
+    /** 고양이 주인공이 된 캣타워 냥이 (떠나거나 무덤이면 없음) */
+    fun playerCat(): CatTeam.TeamCat? = CatTeam.cat(GameProgress.playerCatId)?.takeIf { !it.gone }
+
     fun byId(id: String): Hero = when {
-        id == CAT_ID -> cat
+        id == CAT_ID -> playerCat()?.let { cat.copy(name = it.name) } ?: all.first()   // 캣타워 냥이를 안 골랐거나 떠났으면 기본 인간
         id.startsWith(CUSTOM_PREFIX) -> CustomChars.byId(id)?.let { Hero(it.id, it.name, Color.rgb(20, 20, 20), "내가 만든 캐릭터", Accessory.NONE) } ?: all.first()
         else -> all.firstOrNull { it.id == id } ?: all.first()
     }

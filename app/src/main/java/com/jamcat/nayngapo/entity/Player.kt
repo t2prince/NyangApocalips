@@ -25,6 +25,11 @@ class Player(var x: Float, var y: Float) {
     var beeFlying = false
         private set
     fun toggleBeeFly(): Boolean { beeFlying = !beeFlying; return beeFlying }
+    /**
+     * 땅의 함정(구덩이·낭떠러지·가시·늪·눈구덩이·용암 웅덩이·토네이도 함정·폭발)을 피하는 상태: 점프 중이거나,
+     * 벌냥이 주인공이 날고 있을 때 (대표님 2026-10-24 「벌냥이가 날아서 함정 위를 지나가면 죽는데, 날고 있으면 죽지 않아」 — 절반 넘게 떠오르면)
+     */
+    val isAirborne: Boolean get() = isJumping || (beeFlying && beeLift < com.jamcat.nayngapo.entity.AllyCat.BEE_HOVER_LIFT * 0.5f)
     private var beeLift = 0f
 
     /** 주인공이 된 캣타워 냥이 (고양이 주인공일 때만) */

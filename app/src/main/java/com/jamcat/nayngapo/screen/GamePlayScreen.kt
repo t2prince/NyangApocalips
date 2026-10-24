@@ -760,7 +760,7 @@ class GamePlayScreen(
         // 가시 함정: 가시가 솟았을 때 밟으면 피해 (점프로 뛰어넘으면 안전)
         for (trap in level.traps) {
             trap.update(deltaTime)
-            if (trap.isDangerous && !player.isInvincible && !player.isJumping &&
+            if (trap.isDangerous && !player.isInvincible && !player.isAirborne &&
                 !player.ridingVine && RectF.intersects(player.hitBox, trap.hitBox)
             ) {
                 player.takeDamage(1)
@@ -809,7 +809,7 @@ class GamePlayScreen(
 
         // 구덩이 함정: 걸어서 안쪽까지 들어가면 빠져서 그대로 게임 오버 (점프로 넘어야 한다)
         for (pit in level.pits) {
-            if (player.isJumping || player.ridingVine) continue   // 덩굴에 매달려 있으면 빠지지 않는다
+            if (player.isAirborne || player.ridingVine) continue   // 덩굴에 매달려 있으면 빠지지 않는다
             if (!pit.swallows(player.x + player.width / 2f)) continue
 
             shake(0.35f, 18f)
@@ -820,7 +820,7 @@ class GamePlayScreen(
 
         // 바닥이 없는 낭떠러지: 발이 허공에 닿는 순간 그대로 떨어져 즉사한다
         for (chasm in level.chasms) {
-            if (player.isJumping || player.ridingVine || player.onPlatform != null) continue
+            if (player.isAirborne || player.ridingVine || player.onPlatform != null) continue
             if (!chasm.swallows(player.x + player.width / 2f)) continue
 
             shake(0.4f, 20f)
@@ -905,7 +905,7 @@ class GamePlayScreen(
             pool.t += deltaTime
             if (pool.t >= LAVA_POOL_TIME) { poolIt.remove(); continue }
             val pcx = player.x + player.width / 2f
-            if (!player.isJumping && kotlin.math.abs(pcx - pool.x) < LAVA_POOL_HALF + player.width * 0.3f) {
+            if (!player.isAirborne && kotlin.math.abs(pcx - pool.x) < LAVA_POOL_HALF + player.width * 0.3f) {
                 if (!player.isInvincible) {
                     player.takeDamage(1)
                     hitEffects.add(HitEffect(player.x, player.y - player.height, 0.5f, "앗 뜨거!"))
@@ -1127,7 +1127,7 @@ class GamePlayScreen(
         updateWalls(deltaTime)
 
         // 설원의 깊은 눈: 걸어 들어가면 허우적거린다 (뛰어넘으면 안전)
-        player.inDeepSnow = !player.isJumping && !player.ridingVine &&
+        player.inDeepSnow = !player.isAirborne && !player.ridingVine &&
             level.snowPits.any { it.swallows(player.x + player.width / 2f) }
 
         if (blockFx > 0f) blockFx -= deltaTime
@@ -1136,7 +1136,7 @@ class GamePlayScreen(
         for (tt in level.tornadoTraps) {
             tt.update(deltaTime)
             val pcx = player.x + player.width / 2f
-            if (!player.isJumping && !player.isInvincible && tt.hits(pcx)) {
+            if (!player.isAirborne && !player.isInvincible && tt.hits(pcx)) {
                 player.takeDamage(1)
                 player.x += if (pcx < tt.x) -260f else 260f
                 shake(0.2f, 10f)
@@ -1146,7 +1146,7 @@ class GamePlayScreen(
 
         // 늪(기획3): 빠지면 5배 느려진다. 점프로 빠져나올 수 있다.
         for (swamp in level.swamps) swamp.update(deltaTime)
-        player.inSwamp = !player.isJumping && !player.ridingVine &&
+        player.inSwamp = !player.isAirborne && !player.ridingVine &&
             level.swamps.any { it.swallows(player.x + player.width / 2f) }
         // 머드냥이는 인간이 제 늪에 빠졌을 때만 튀어나온다 (기획9)
         for (enemy in level.enemies) {
@@ -1312,7 +1312,7 @@ class GamePlayScreen(
 
         val r = Constants.BLAST_RADIUS
         // 인간: 공중에 떠 있으면 폭풍을 피한다
-        if (!player.isJumping && !player.isInvincible &&
+        if (!player.isAirborne && !player.isInvincible &&
             kotlin.math.abs(player.x + player.width / 2f - blastX) <= r
         ) {
             player.takeDamage(1)

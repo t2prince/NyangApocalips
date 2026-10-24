@@ -16,10 +16,15 @@ class Player(var x: Float, var y: Float) {
      * 벌냥이는 높이(150) 떠서 오르내리고, 날아냥이는 살짝(18). 맞는 자리(발밑)는 그대로 — 우리 팀 냥이와 같다.
      */
     private fun hoverLift(): Float = when (playerCat?.kind) {
-        com.jamcat.nayngapo.entity.AllyCat.Kind.BEE -> com.jamcat.nayngapo.entity.AllyCat.BEE_HOVER_LIFT - kotlin.math.abs(kotlin.math.sin(animTime * 4f)) * 12f
+        com.jamcat.nayngapo.entity.AllyCat.Kind.BEE -> beeLift * (1f + kotlin.math.abs(kotlin.math.sin(animTime * 4f)) * 0.08f)
         com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING -> com.jamcat.nayngapo.entity.AllyCat.HOVER_LIFT - kotlin.math.abs(kotlin.math.sin(animTime * 4f)) * 6f
         else -> 0f
     }
+
+    /** 벌냥이 주인공이 날고 있는가 (처음엔 땅) · 지금 떠 있는 높이 (부드럽게 오르내린다) */
+    var beeFlying = false
+        private set
+    private var beeLift = 0f
 
     /** 주인공이 된 캣타워 냥이 (고양이 주인공일 때만) */
     val playerCat: com.jamcat.nayngapo.engine.CatTeam.TeamCat? =
@@ -211,6 +216,11 @@ class Player(var x: Float, var y: Float) {
         if (chokeTimer > 0f) chokeTimer -= deltaTime
         if (awakenTimer > 0f) awakenTimer -= deltaTime
         if (dashT > 0f) dashT -= deltaTime
+        if (playerCat?.kind == com.jamcat.nayngapo.entity.AllyCat.Kind.BEE) {
+            val target = if (beeFlying) com.jamcat.nayngapo.entity.AllyCat.BEE_HOVER_LIFT else 0f
+            val step = 600f * deltaTime
+            beeLift = if (kotlin.math.abs(target - beeLift) <= step) target else beeLift + kotlin.math.sign(target - beeLift) * step
+        }
         if (windT > 0f) windT -= deltaTime
 
         // 덩굴에 매달린 동안은 위치를 덩굴이 정한다 (화면 쪽에서 매 프레임 넣어 준다)
@@ -611,6 +621,8 @@ class Player(var x: Float, var y: Float) {
 
     fun jump() {
         if (ridingVine) return          // 매달린 동안의 점프는 '놓기'라서 화면 쪽에서 처리한다
+        // 벌냥이 주인공: 점프 = 날아오르기 / 날고 있으면 내려앉기 (대표님 2026-10-24 「벌냥이는 땅에도 있을 수 있어」)
+        if (playerCat?.kind == com.jamcat.nayngapo.entity.AllyCat.Kind.BEE) { beeFlying = !beeFlying; return }
         if (inDeepSnow) return          // 눈에 발이 묶여 뛸 수 없다
         if (!isJumping && stompPhase == StompPhase.NONE) {
             onPlatform = null                                // 발판 위에서도 그대로 뛴다 (jumpZ 오프셋에서 시작)

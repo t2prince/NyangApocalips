@@ -155,10 +155,10 @@ class GamePlayScreen(
         if (battleSkills[i].id == "evolve") com.jamcat.nayngapo.engine.CatTeam.evolveSecondsLeft else 0f
     }
 
-    /** 이 스테이지에서 인간이 직접 쓸 수 있는 기술 (배운 것만, 최대 4개) */
+    /** 이 스테이지에서 인간이 직접 쓸 수 있는 기술 (배운 것만, 최대 4개) — 고양이가 주인공이면 인간 기술은 못 쓴다 (2026-10-24 「냥이가 되면 냥이 기술만 쓸 수 있어」) */
     private val humanBattleSkills =
         com.jamcat.nayngapo.engine.HumanSkills.all
-            .filter { com.jamcat.nayngapo.engine.HumanSkills.isLearned(it.id) }
+            .filter { com.jamcat.nayngapo.engine.HumanSkills.isLearned(it.id) && com.jamcat.nayngapo.engine.GameProgress.selectedHero != com.jamcat.nayngapo.engine.Heroes.CAT_ID }
             .take(com.jamcat.nayngapo.ui.TouchControls.HUMAN_SKILL_SLOTS)   // 인간 기술 버튼 칸 수만큼
 
     /** 인간 기술별 남은 쿨타임 (시작할 때는 모두 준비 완료) */

@@ -36,7 +36,7 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
         // 왼쪽 세로줄
         // '고양이 상점' 칸은 뺐다 — 고양이 상점은 상점 마을의 천막 중 하나 (대표님 2026-09-27)
         // '캐릭터 변경' 칸을 지우고 뽑기 (대표님 2026-10-17 「캐릭터 변경을 지우고 뽑기 만들어 줘」) — 상점 마을 집 앞 뽑기와 같은 뽑기
-        Slot("gacha", "뽑기", 0.015f, 0.100f, 0.245f, 0.470f),
+        Slot("gacha", "뽑기", 0.015f, 0.100f, 0.245f, 0.405f),   // 아래에 작은 '캐릭터 변경' 자리를 비운다 (2026-10-24)
         Slot("cat_skill", "고양이 기술", 0.015f, 0.490f, 0.245f, 0.855f),
         // 가운데 스테이지 길
         Slot("worldmap", "", 0.260f, 0.100f, 0.735f, 0.855f),
@@ -177,8 +177,8 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
             slotRect.set(slot.l * w, slot.t * h, slot.r * w, slot.b * h)
             drawSlot(canvas, slot, slotRect, h)
         }
-        // 뽑기 위 작은 '캐릭터 변경' (대표님 2026-10-24 「뽑기 위에는 캐릭터 변경이 작게 있는데」)
-        charRect.set(0.015f * w, 0.022f * h, 0.245f * w, 0.088f * h)
+        // 뽑기와 고양이 기술 사이 작은 '캐릭터 변경' (대표님 2026-10-24 「캐릭터 변경은 뽑기와 고양이 기술 사이에 있어」)
+        charRect.set(0.015f * w, 0.415f * h, 0.245f * w, 0.478f * h)
         canvas.drawRoundRect(charRect, 14f, 14f, if (pressedId == "char") panelPressPaint else panelPaint)
         canvas.drawRoundRect(charRect, 14f, 14f, borderPaint)
         labelPaint.textSize = h * 0.032f

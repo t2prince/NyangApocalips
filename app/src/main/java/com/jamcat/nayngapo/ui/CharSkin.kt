@@ -27,6 +27,9 @@ object CharSkin {
 
     fun handles(hero: Heroes.Hero) = hero.id == Heroes.CAT_ID || hero.id.startsWith(Heroes.CUSTOM_PREFIX)
 
+    /** 바다(31)에서 배냥이 주인공을 그릴 때: 배 바닥이 물(발끝)에 오고 그 아래 다리는 잘린다 */
+    var seaWaterline = false
+
     /** 마지막으로 그린 앞손 자리 — 총·대검을 쥐는 곳 */
     val lastHand = PointF()
 
@@ -62,6 +65,10 @@ object CharSkin {
             Pose.KICK -> { dx = e * h * 0.18f; dy = -e * h * 0.12f; rot = -e * 20f }
         }
         canvas.save()
+        if (seaWaterline) {
+            canvas.clipRect(footX - cw * 2f, footY - ch * 3f, footX + cw * 2f, footY + 10f)
+            dy += ch * (1f - com.jamcat.nayngapo.entity.BoatCat.BOAT_HULL_BOTTOM)
+        }
         canvas.translate(footX, footY)
         if (!right) canvas.scale(-1f, 1f)
         canvas.translate(dx, dy)

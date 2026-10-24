@@ -81,6 +81,10 @@ object Heroes {
     /** 고양이 주인공이 된 캣타워 냥이 (떠나거나 무덤이면 없음) */
     fun playerCat(): CatTeam.TeamCat? = CatTeam.cat(GameProgress.playerCatId)?.takeIf { !it.gone }
 
+    /** 고양이 주인공이 된 냥이의 종류 (아니면 null) — 특수 스테이지 냥이의 특징에 쓴다 */
+    fun playerCatKind(): com.jamcat.nayngapo.entity.AllyCat.Kind? =
+        if (GameProgress.selectedHero == CAT_ID) playerCat()?.kind else null
+
     fun byId(id: String): Hero = when {
         id == CAT_ID -> playerCat()?.let { cat.copy(name = it.name) } ?: all.first()   // 캣타워 냥이를 안 골랐거나 떠났으면 기본 인간
         id.startsWith(CUSTOM_PREFIX) -> CustomChars.byId(id)?.let { Hero(it.id, it.name, Color.rgb(20, 20, 20), "내가 만든 캐릭터", Accessory.NONE) } ?: all.first()

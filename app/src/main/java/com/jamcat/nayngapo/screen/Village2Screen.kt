@@ -35,6 +35,8 @@ class Village2Screen(private val gameView: GameView) : Screen {
     private var noticeText = ""
     private var noticeTimer = 0f
     private var nearShop = -1
+    /** 있던 자리 저장 간격 */
+    private var posSaveT = 0f
 
     private val shopX = FloatArray(SHOP_COUNT) { FIRST_SHOP_X + it * SHOP_GAP }
     private val worldWidth = FIRST_SHOP_X + (SHOP_COUNT - 1) * SHOP_GAP + 600f
@@ -45,7 +47,8 @@ class Village2Screen(private val gameView: GameView) : Screen {
 
     init {
         Terrain.stage = Terrain.SHOP   // 평평한 땅
-        player = Player(HARBOR_X + 200f, Constants.GROUND_Y)
+        // 나갔다 와도 있던 자리 그대로 (대표님 2026-10-24) — 처음 한 번만 항구 앞
+        player = Player(GameProgress.village2X.takeIf { it > 0f } ?: (HARBOR_X + 200f), Constants.GROUND_Y)
         player.facingRight = true
         showNotice("상점마을2에 왔다! 가게가 다 닫혀 있다 — 갇힌 사람을 구하면 문을 연다")
     }
@@ -71,6 +74,8 @@ class Village2Screen(private val gameView: GameView) : Screen {
         if (input.attack) { if (player.performAttack()) SoundManager.playAttack(); input.attack = false }
         player.update(deltaTime)
         player.x = player.x.coerceIn(HARBOR_X + 40f, worldWidth - player.width - 40f)
+        posSaveT -= deltaTime
+        if (posSaveT <= 0f) { posSaveT = 0.5f; GameProgress.saveVillageX(2, player.x) }
         touchControls.specialCooldown = player.specialCooldown
 
         // 감옥을 때리면 사람을 구하고 그 가게가 문을 연다

@@ -60,8 +60,9 @@ class ShopScreen(private val gameView: GameView) : Screen {
 
     init {
         Terrain.stage = Terrain.SHOP            // 상점 마을은 평평한 초원
-        // 천막(가게)에서 나오면 그 가게 앞에 서 있다 (대표님 2026-10-09) — 로비에서 들어오면 처음 자리
-        player = Player(returnX ?: START_X, Constants.GROUND_Y)
+        // 천막(가게)에서 나오면 그 가게 앞에 서 있다 (대표님 2026-10-09)
+        // 상점 마을에서 나갔다 와도 있던 자리 그대로 (대표님 2026-10-24) — 처음 한 번만 처음 자리
+        player = Player(returnX ?: GameProgress.village1X.takeIf { it > 0f } ?: START_X, Constants.GROUND_Y)
         returnX = null
         player.facingRight = true
         // 상점 마을에서도 고른 자동차를 타고 다닌다 (대표님 2026-10-09)
@@ -458,6 +459,8 @@ class ShopScreen(private val gameView: GameView) : Screen {
     private var nearFishing = false
     private var nearFishShop = false
     private var nearShipyard = false
+    /** 있던 자리 저장 간격 */
+    private var posSaveT = 0f
     private var nearCarShop = false
     private val carShopRect = RectF()
     private var nearGate = false
@@ -546,6 +549,8 @@ class ShopScreen(private val gameView: GameView) : Screen {
         player.update(deltaTime)
         updateRaid(deltaTime)
         player.x = player.x.coerceIn(40f, walkMaxX - player.width - 40f)
+        posSaveT -= deltaTime
+        if (posSaveT <= 0f) { posSaveT = 0.5f; GameProgress.saveVillageX(1, player.x) }
         for (ally in allies) {
             ally.update(deltaTime, player.x, player.y, emptyList())
             ally.x = ally.x.coerceIn(10f, walkMaxX - ally.width - 10f)

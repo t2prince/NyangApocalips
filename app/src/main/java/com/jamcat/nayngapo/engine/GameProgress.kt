@@ -45,6 +45,8 @@ object GameProgress {
     private const val KEY_AB_CAR = "abandoned_car"
     private const val KEY_AB_STAGE = "abandoned_car_stage"
     private const val KEY_AB_X = "abandoned_car_x"
+    private const val KEY_VILLAGE1_X = "village1_x"
+    private const val KEY_VILLAGE2_X = "village2_x"
     private const val KEY_MISSIONS_CLAIMED = "missions_claimed"
     private const val KEY_STAGE20_NO_DEATH = "stat_stage20_no_death"
     private const val KEY_BGM = "setting_bgm"
@@ -137,6 +139,17 @@ object GameProgress {
     fun abandonCar(id: String, stage: Int, x: Float) {
         abandonedCarId = id; abandonedCarStage = stage; abandonedCarX = x
         prefs?.edit()?.putString(KEY_AB_CAR, id)?.putInt(KEY_AB_STAGE, stage)?.putFloat(KEY_AB_X, x)?.apply()
+    }
+
+    /** 상점 마을1·2에서 인간이 서 있던 자리 — 나갔다 와도 그 자리 그대로 (대표님 2026-10-24). 0 = 아직 없음 */
+    var village1X = 0f
+        private set
+    var village2X = 0f
+        private set
+
+    fun saveVillageX(village: Int, x: Float) {
+        if (village == 2) { if (kotlin.math.abs(village2X - x) < 1f) return; village2X = x; prefs?.edit()?.putFloat(KEY_VILLAGE2_X, x)?.apply() }
+        else { if (kotlin.math.abs(village1X - x) < 1f) return; village1X = x; prefs?.edit()?.putFloat(KEY_VILLAGE1_X, x)?.apply() }
     }
 
     fun clearAbandonedCar() {
@@ -345,6 +358,8 @@ object GameProgress {
         abandonedCarId = prefs?.getString(KEY_AB_CAR, "") ?: ""
         abandonedCarStage = prefs?.getInt(KEY_AB_STAGE, 0) ?: 0
         abandonedCarX = prefs?.getFloat(KEY_AB_X, 0f) ?: 0f
+        village1X = prefs?.getFloat(KEY_VILLAGE1_X, 0f) ?: 0f
+        village2X = prefs?.getFloat(KEY_VILLAGE2_X, 0f) ?: 0f
         bgmEnabled = prefs?.getBoolean(KEY_BGM, true) ?: true
         sfxEnabled = prefs?.getBoolean(KEY_SFX, true) ?: true
         shakeEnabled = prefs?.getBoolean(KEY_SHAKE, true) ?: true

@@ -452,8 +452,8 @@ class Player(var x: Float, var y: Float) {
         const val AWAKEN_BONUS = 15
         /** 묭묭 진화 공격력·방어력 (냥이와 같다) */
         const val EVOLVE_POWER = 50
-        /** 고양이 돌진: 공격력 3 (대표님) · 시간·빠르기는 Claude 판단 */
-        const val CAT_DASH_POWER = 3
+        /** 고양이 돌진: 공격력 10 (대표님 2026-10-24, 처음엔 3) · 시간·빠르기는 Claude 판단 */
+        const val CAT_DASH_POWER = 10
         const val CAT_DASH_TIME = 0.35f
         const val CAT_DASH_SPEED = 1500f
         const val AWAKEN_TIME = 10f

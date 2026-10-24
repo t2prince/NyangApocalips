@@ -1514,8 +1514,9 @@ class GamePlayScreen(
         hitEffects.add(HitEffect(player.x, player.y - player.height - 40f, 1.1f, skill.name + "!"))
         when (skill.id) {
             "evolve" -> {
-                // 묭묭 진화: 출전 냥이들이 커진다 (주인공 고양이는 그대로 — 커지는 그림은 냥이 쪽에만 있다)
+                // 묭묭 진화: 주인공 고양이도 출전 냥이들도 커진다 (대표님 2026-10-24 「묭묭 진화도 자기가 쓸 수 있어」)
                 com.jamcat.nayngapo.engine.CatTeam.startEvolve(skill.cooldown)
+                hitEffects.add(HitEffect(player.x, player.y - player.height - 120f, 1.3f, "묭묭!"))
                 for (ally in level.allies) if (!ally.isDead) {
                     ally.evolve(skill.cooldown)
                     hitEffects.add(HitEffect(ally.x, ally.y - ally.height - 70f, 1.3f, "묭묭!"))

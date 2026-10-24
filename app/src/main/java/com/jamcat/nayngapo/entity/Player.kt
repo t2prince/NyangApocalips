@@ -21,7 +21,12 @@ class Player(var x: Float, var y: Float) {
     /** 인간 기술 '각성' 남은 시간 — 그동안 공격력 +AWAKEN_BONUS, 방어력 +AWAKEN_BONUS (2026-10-09) */
     var awakenTimer = 0f
     /** 지금 방어력: 이 값 이하 공격력의 적 공격은 막는다 (각성 중에만 생긴다) */
-    val defense: Int get() = if (awakenTimer > 0f) AWAKEN_BONUS else 0
+    val defense: Int get() = maxOf(if (awakenTimer > 0f) AWAKEN_BONUS else 0, if (evolved) EVOLVE_POWER else 0)
+    /**
+     * 묭묭 진화 중인 고양이 주인공 (대표님 2026-10-24 「묭묭 진화도 자기가 쓸 수 있어」) — 출전 냥이와 같은 진화 시간을 함께 쓴다.
+     * 엄청 커지고 공격력 최소 50 · 방어력 50 (공격력 50 이하인 적의 공격을 막는다).
+     */
+    val evolved: Boolean get() = hero.id == com.jamcat.nayngapo.engine.Heroes.CAT_ID && com.jamcat.nayngapo.engine.CatTeam.evolveSecondsLeft > 0f
     var specialPower = 20
     var specialCooldown = 0f   // 0 이하면 필살기 사용 가능
     var level = 1
@@ -146,6 +151,11 @@ class Player(var x: Float, var y: Float) {
         val sw = bmp.width * hero.scale
         val sh = bmp.height * hero.scale
         heroDst.set(cx - sw / 2f, drawY - sh + FOOT_PAD, cx + sw / 2f, drawY + FOOT_PAD)
+        // 묭묭 진화한 고양이 주인공은 발끝을 그대로 둔 채 엄청 크게
+        if (evolved) {
+            val k = com.jamcat.nayngapo.entity.AllyCat.EVOLVE_SCALE
+            heroDst.set(cx - sw * k / 2f, heroDst.bottom - sh * k, cx + sw * k / 2f, heroDst.bottom)
+        }
     }
     // 착지 충격파: 매 프레임 알파/크기만 갱신해 재사용
     private val shockwavePaint = Paint().apply { isAntiAlias = true; isFilterBitmap = true }
@@ -435,6 +445,8 @@ class Player(var x: Float, var y: Float) {
         const val POISON_EVERY = 2f
         /** 각성: 공격력·방어력 증가량 (대표님 2026-10-09) · 지속 시간 10초 (Claude 판단) */
         const val AWAKEN_BONUS = 15
+        /** 묭묭 진화 공격력·방어력 (냥이와 같다) */
+        const val EVOLVE_POWER = 50
         const val AWAKEN_TIME = 10f
         /** 눈에 완전히 파묻히는 깊이 (몸 전체가 잠긴다) */
         const val SNOW_SINK_MAX = 155f
@@ -671,7 +683,7 @@ class Player(var x: Float, var y: Float) {
         isJumpAttacking -> (attackPower * 1.5f).toInt()
         comboStep == 2 -> (attackPower * 1.4f).toInt()   // 킥 마무리
         else -> attackPower
-    } + (if (awakenTimer > 0f) AWAKEN_BONUS else 0)   // 각성: 공격력 +15
+    }.let { (it + (if (awakenTimer > 0f) AWAKEN_BONUS else 0)).let { p -> if (evolved) maxOf(p, EVOLVE_POWER) else p } }   // 각성: 공격력 +15 · 묭묭 진화: 최소 50
 
     fun getAttackHitBox(): RectF? {
         // 내려찍기 낙하 중: 몸 주변(발밑 포함)에 닿는 적을 그대로 밟는다

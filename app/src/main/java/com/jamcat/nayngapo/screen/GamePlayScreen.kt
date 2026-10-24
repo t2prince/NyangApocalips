@@ -919,16 +919,6 @@ class GamePlayScreen(
             }
         }
 
-        // 대검이 땅을 찍으면 앞에 불길 — 반경 안의 냥이에게 피해 5 (2026-10-24)
-        if (player.consumeSwordSlam()) {
-            shake(0.12f, 8f)
-            for (enemy in level.enemies) {
-                if (enemy.isDead) continue
-                if (kotlin.math.abs(enemy.x + enemy.width / 2f - player.slamFireX) <= com.jamcat.nayngapo.entity.Player.SWORD_FIRE_RADIUS)
-                    damageEnemy(enemy, com.jamcat.nayngapo.entity.Player.SWORD_FIRE_DAMAGE)
-            }
-        }
-
         // 필살기 내려찍기 착지: 좌우 반경 안의 모든 적에게 충격파 광역 피해 (1회)
         if (player.consumeShockwave()) {
             val cx = player.x + player.width / 2f

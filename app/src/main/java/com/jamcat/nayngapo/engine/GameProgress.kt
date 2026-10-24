@@ -387,6 +387,11 @@ object GameProgress {
             val count = (value as? Int) ?: continue
             if (count > 0) inventory[key.removePrefix(KEY_ITEM_PREFIX)] = count
         }
+        // 대검은 없앴다 (대표님 2026-10-24 「대검 삭제해」) — 이미 샀으면 값(루비 120)을 돌려준다
+        if (inventory.remove("h_greatsword") != null) {
+            rubies = (prefs?.getInt(KEY_RUBIES, 0) ?: 0) + 120
+            prefs?.edit()?.remove(KEY_ITEM_PREFIX + "h_greatsword")?.putInt(KEY_RUBIES, rubies)?.apply()
+        }
 
         // 팀 냥이 명단·고양이 기술도 같은 저장소를 쓴다
         prefs?.let {

@@ -16,6 +16,11 @@ class DexScreen(private val gameView: GameView) : Screen {
 
     private var timer = 0f
     private val backRect = RectF()
+    /** 도감 쪽 (한 쪽 24칸 — 냥이가 늘어 2026-10-25 ◀ ▶ 로 넘긴다) */
+    private var page = 0
+    private val pageCount get() = (CatDex.entries.size + PER_PAGE - 1) / PER_PAGE
+    private val prevRect = RectF()
+    private val nextRect = RectF()
 
     /** 카드마다 한 개씩 떠오르는 음표의 진행도 (0 ~ NOTE_CYCLE) — 카드 순서대로 조금씩 어긋난다 */
     private val noteT = FloatArray(CatDex.entries.size) { it * 0.10f }
@@ -100,14 +105,35 @@ class DexScreen(private val gameView: GameView) : Screen {
         val ch = h * 0.215f
         val top = h * 0.14f
 
+        page = page.coerceIn(0, pageCount - 1)
         for ((i, entry) in CatDex.entries.withIndex()) {
-            val col = i % cols
-            val row = i / cols
+            if (i / PER_PAGE != page) continue
+            val col = (i % PER_PAGE) % cols
+            val row = (i % PER_PAGE) / cols
             if (row >= rows) break
             val l = padX + col * (cw + gap)
             val t = top + row * (ch + h * 0.025f)
             cardRect.set(l, t, l + cw, t + ch)
             drawCard(canvas, entry, cardRect, h, i)
+        }
+
+        // 쪽 넘기기 ◀ ▶ (돌아가기 버튼 양옆)
+        prevRect.setEmpty(); nextRect.setEmpty()
+        if (pageCount > 1) {
+            val aw = w * 0.09f; val ah = h * 0.10f; val ay = h * 0.875f
+            backTextPaint.textSize = ah * 0.5f
+            if (page > 0) {
+                prevRect.set(w * 0.30f - aw, ay, w * 0.30f, ay + ah)
+                canvas.drawRoundRect(prevRect, 20f, 20f, backPaint); canvas.drawRoundRect(prevRect, 20f, 20f, cardEdgePaint)
+                canvas.drawTr("◀", prevRect.centerX(), prevRect.centerY() + ah * 0.17f, backTextPaint)
+            }
+            if (page < pageCount - 1) {
+                nextRect.set(w * 0.70f, ay, w * 0.70f + aw, ay + ah)
+                canvas.drawRoundRect(nextRect, 20f, 20f, backPaint); canvas.drawRoundRect(nextRect, 20f, 20f, cardEdgePaint)
+                canvas.drawTr("▶", nextRect.centerX(), nextRect.centerY() + ah * 0.17f, backTextPaint)
+            }
+            countPaint.textSize = h * 0.032f
+            canvas.drawTr("${page + 1} / $pageCount 쪽", w - 30f, h * 0.135f, countPaint)
         }
 
         // 돌아가기 버튼
@@ -190,11 +216,16 @@ class DexScreen(private val gameView: GameView) : Screen {
     private companion object {
         /** 음표 하나가 떠오르는 데 걸리는 시간 */
         const val NOTE_CYCLE = 1.2f
+        const val PER_PAGE = 24
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.actionMasked == MotionEvent.ACTION_UP && backRect.contains(event.x, event.y)) {
-            close()
+        if (event.actionMasked == MotionEvent.ACTION_UP) {
+            when {
+                backRect.contains(event.x, event.y) -> close()
+                prevRect.contains(event.x, event.y) -> page--
+                nextRect.contains(event.x, event.y) -> page++
+            }
         }
         return true
     }

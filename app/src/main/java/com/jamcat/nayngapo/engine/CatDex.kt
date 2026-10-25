@@ -55,6 +55,9 @@ object CatDex {
         Entry("teleport", "순간냥이", "순간이동하는 초원의 보스", { SpriteManager.teleportCat }),
         Entry("giant", "왕왕냥이", "하늘의 왕", { SpriteManager.bossEvilCat }),
         Entry("wizard", "마법사냥이", "정글의 보스", { SpriteManager.bossWizardCat }),   // 20스테이지 보스 (2026-09-20 「모두 도감에」)
+        // 51~60 빙산 (대표님 2026-10-25 「거기에 나오는 고양이들은 그냥 만들고 고양이 도감에 추가해」)
+        Entry("ice", "얼음냥이", "얼음 덩이를 던져 얼린다", { SpriteManager.iceCat }),
+        Entry("iceberg", "빙산냥이", "얼음 팔로 때리고 얼린다 (60 보스)", { SpriteManager.icebergBoss ?: SpriteManager.iceCat }),
     )
 
     fun entry(id: String): Entry? = entries.firstOrNull { it.id == id }
@@ -85,6 +88,9 @@ object CatDex {
         is ThiefCat -> "thief"
         is VineCat -> "vine"
         is TeleportCatBoss -> "teleport"
+        is TeleportCat -> "teleport"      // 빙산의 잡몹 순간냥이도 같은 칸
+        is IceCat -> "ice"
+        is IcebergCatBoss -> "iceberg"
         is WizardCatBoss -> "wizard"
         else -> null
     }

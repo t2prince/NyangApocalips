@@ -18,7 +18,8 @@ object Rewards {
 
     fun isBoss(enemy: Enemy): Boolean =
         enemy is HumanCatBoss || enemy is EvilCatBoss ||
-            enemy is WizardCatBoss || enemy is TeleportCatBoss || enemy is com.jamcat.nayngapo.entity.PirateCatBoss
+            enemy is WizardCatBoss || enemy is TeleportCatBoss || enemy is com.jamcat.nayngapo.entity.PirateCatBoss ||
+            enemy is com.jamcat.nayngapo.entity.IcebergCatBoss   // 60 빙산냥이도 루비 5 (2026-10-25)
 
     fun rubyRewardOf(enemy: Enemy): Int = if (isBoss(enemy)) RUBY_BOSS else RUBY_NORMAL
 }

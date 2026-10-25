@@ -94,6 +94,33 @@ abstract class Enemy(
     /** 순간이동 등으로 잠시 사라져 몸이 닿지 않는 상태인지 */
     open val isTangible: Boolean get() = true
 
+    /**
+     * 몸 말고 따로 때리는 자리 (빙산냥이의 뻗은 얼음 주먹, 2026-10-25) — 인간이 닿으면 strikeDamage 만큼 맞는다. 없으면 null.
+     * 호출 직후에만 유효한 사각형을 돌려준다.
+     */
+    open fun strikeBox(): RectF? = null
+    open val strikeDamage: Int get() = contactDamage
+    /** 몸·주먹에 맞은 인간이 얼어 못 움직이는 시간(초) — 빙산냥이 3초 (기획15). 0 = 안 얼린다 */
+    open val freezeOnHit: Float get() = 0f
+
+    /** 우리 편 얼음냥이의 얼음에 맞아 얼어 있는 남은 시간 (2026-10-25, Claude 판단) — 그동안 움직이지 않는다 */
+    var frozenTimer = 0f
+    /** 얼린다 — 보스는 안 언다 (Claude 판단) */
+    fun freeze(seconds: Float) { if (!isBoss && !isDead) frozenTimer = maxOf(frozenTimer, seconds) }
+
+    /** 얼어 있으면 몸에 옅은 하늘색 얼음 껍질을 덮어 그린다 */
+    fun drawFrozen(canvas: Canvas) {
+        if (frozenTimer <= 0f) return
+        val h = maxOf(height, lastSpriteHeight)
+        val cx = x + width / 2f
+        val hw = maxOf(width, (lastSprite?.width ?: 0).toFloat()) * 0.55f
+        frozenRect.set(cx - hw, y + jumpZ - h - 4f, cx + hw, y + 8f)
+        canvas.drawRoundRect(frozenRect, 16f, 16f, frozenFill)
+        canvas.drawRoundRect(frozenRect, 16f, 16f, frozenEdge)
+        canvas.drawLine(frozenRect.left + 10f, frozenRect.top + 14f, frozenRect.left + 26f, frozenRect.top + 30f, frozenShine)
+        canvas.drawLine(frozenRect.right - 14f, frozenRect.bottom - 30f, frozenRect.right - 24f, frozenRect.bottom - 16f, frozenShine)
+    }
+
     // 전신 히트박스 (부유 연출 jumpZ 포함): 경사 지형에서도 근접 공격이 빗나가지 않는다
     private val hitBoxRect = RectF()
     /** 전신 히트박스 — 매 프레임 새로 만들지 않고 하나를 갱신해 돌려준다 (호출 직후에만 유효) */
@@ -317,6 +344,15 @@ abstract class Enemy(
             Bitmap.createBitmap(out, w, h, Bitmap.Config.ARGB_8888)
         }
         private val NB = arrayOf(1 to 0, -1 to 0, 0 to 1, 0 to -1)
+
+        private val frozenRect = RectF()
+        private val frozenFill = Paint().apply { color = Color.argb(110, 170, 225, 255); isAntiAlias = true }
+        private val frozenEdge = Paint().apply {
+            color = Color.argb(200, 90, 160, 220); style = Paint.Style.STROKE; strokeWidth = 3f; isAntiAlias = true
+        }
+        private val frozenShine = Paint().apply {
+            color = Color.argb(220, 255, 255, 255); strokeWidth = 4f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true
+        }
 
         /** 한 번의 공격이 한 번만 적중하도록 하는 피격 간격(초) */
         const val HIT_COOLDOWN = 0.35f
@@ -1991,5 +2027,458 @@ class VineCat(x: Float, y: Float) : Enemy(x, y, 15, 2) {
         val vineLeafPaint = Paint().apply { color = Color.rgb(74, 142, 66); isAntiAlias = true }
         val vineShadowPaint = Paint().apply { color = Color.argb(40, 0, 0, 0); isAntiAlias = true }
         val vineShadow = RectF()
+    }
+}
+
+// ============ 51~60 빙산 (대표님 2026-10-25 「51-60까지 만들어」「거기에 나오는 고양이들은 그냥 만들고 고양이 도감에 추가해」) ============
+/**
+ * 얼음냥이 — 그림·능력은 기획서에 없어 전부 Claude 판단: HP 20 · 공격 5(아군 피해).
+ * 다른 냥이처럼 인간 쪽으로 걸어오다 240 앞에서 멈추고, 2.5초마다 얼음 덩이를 포물선으로 던진다(사거리 650).
+ * 얼음 덩이에 맞으면 하트 1 + 1초 동안 얼어서 못 움직인다. 그림 cat_ice (오른쪽을 보는 하늘색 냥이, 두꺼운 꼬리).
+ */
+class IceCat(x: Float, y: Float) : Enemy(x, y, 20, 5) {
+    override val width = 80f
+    override val height = 80f
+    private val moveSpeed = 65f
+    private var wanderTimer = 0f
+    private var wanderDirX = 0f
+    private var hopPhase = (Math.random() * Math.PI).toFloat()
+    private var throwTimer = 1.2f + Math.random().toFloat()
+    private var throwAnim = 0f
+    private val pendingProjectiles = mutableListOf<Projectile>()
+
+    override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
+        pendingProjectiles.clear()
+        facingRight = playerX > x
+        wanderTimer -= deltaTime
+        val dx = playerX - x
+        val dist = abs(dx)
+        velocityX = when {
+            dist < 240f -> 0f
+            dist < 900f -> sign(dx) * moveSpeed
+            else -> {
+                if (wanderTimer <= 0f) {
+                    wanderTimer = 1f + (Math.random() * 2f).toFloat()
+                    wanderDirX = (if (Math.random() < 0.5) -1f else 1f) * moveSpeed
+                }
+                wanderDirX
+            }
+        }
+        throwTimer -= deltaTime
+        if (throwAnim > 0f) throwAnim -= deltaTime
+        if (throwTimer <= 0f && dist < THROW_RANGE) {
+            throwTimer = THROW_EVERY; throwAnim = 0.3f
+            val dir = if (dx >= 0f) 1f else -1f
+            // 날아가는 시간 0.85초에 인간 쪽에 떨어지게 (너무 가깝거나 멀면 속도를 자른다)
+            val vx = dir * (dist / FLIGHT_TIME).coerceIn(220f, 700f)
+            val vy = -GRAVITY * FLIGHT_TIME / 2f
+            val r = 13f
+            pendingProjectiles.add(
+                Projectile(x + width / 2f + dir * 28f - r, y - height * 0.95f - r, vx, vy, attackPower, false,
+                    radius = r, gravity = GRAVITY, isIceChunk = true, iceFreeze = FREEZE_TIME)
+            )
+        }
+        if (abs(velocityX) > 1f) { hopPhase += deltaTime * 9f; jumpZ = -abs(sin(hopPhase)) * 5f }
+        else jumpZ = if (throwAnim > 0f) -8f * sin(throwAnim / 0.3f * Math.PI.toFloat()) else 0f
+        super.update(deltaTime, playerX, playerY)
+    }
+
+    override fun draw(canvas: Canvas) {
+        drawSprite(canvas, SpriteManager.iceCat)
+        drawHpBar(canvas)
+    }
+
+    override fun getProjectiles(): List<Projectile> = pendingProjectiles.toList()
+
+    companion object {
+        private const val THROW_RANGE = 650f
+        private const val THROW_EVERY = 2.5f
+        private const val FLIGHT_TIME = 0.85f
+        private const val GRAVITY = 900f
+        /** 얼음 덩이에 맞은 인간이 얼어 있는 시간 (Claude 판단) */
+        const val FREEZE_TIME = 1f
+    }
+}
+
+/**
+ * 잡몹 순간냥이 (52~60 표 「순간냥이」, 2026-10-25) — 10스테이지 보스 순간냥이(TeleportCatBoss)의 작은 판.
+ * HP 20 · 공격 3(아군 피해) · 닿으면 하트 1 (Claude 판단). 인간이 700 안에 있으면 3.5~5초마다 사라졌다가 인간 앞이나 뒤 220~340 에 나타난다.
+ */
+class TeleportCat(x: Float, y: Float) : Enemy(x, y, 20, 3) {
+    override val width = 80f
+    override val height = 90f
+    private var teleportTimer = 3.5f + (Math.random() * 1.5).toFloat()
+    private var vanishTimer = 0f
+    private var floatPhase = (Math.random() * 6.0).toFloat()
+    private var appearFlash = 0f
+    private val flashPaint = Paint().apply { style = Paint.Style.STROKE; strokeWidth = 5f; isAntiAlias = true }
+
+    override val isTangible: Boolean get() = vanishTimer <= 0f
+
+    override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
+        floatPhase += deltaTime
+        if (vanishTimer > 0f) {
+            if (hitCooldown > 0f) hitCooldown -= deltaTime
+            vanishTimer -= deltaTime
+            if (vanishTimer <= 0f) {
+                val side = if (Math.random() < 0.5) -1f else 1f
+                x = (playerX + side * (220f + (Math.random() * 120f).toFloat()))
+                    .coerceIn(Constants.PLAY_AREA_LEFT + 5f, Constants.PLAY_AREA_RIGHT - width - 5f)
+                y = Terrain.groundY(x + width / 2f)
+                teleportTimer = 3.5f + (Math.random() * 1.5).toFloat()
+                appearFlash = 0.3f
+            }
+            return
+        }
+        if (appearFlash > 0f) appearFlash -= deltaTime
+        facingRight = playerX > x
+        val dx = playerX - x
+        teleportTimer -= deltaTime
+        if (teleportTimer <= 0f && abs(dx) < 700f) {
+            vanishTimer = 0.5f
+            velocityX = 0f
+            return
+        }
+        velocityX = if (abs(dx) < 900f) sign(dx) * 90f else 0f
+        jumpZ = sin(floatPhase * 3f) * 4f
+        super.update(deltaTime, playerX, playerY)
+    }
+
+    override fun takeDamage(amount: Int) {
+        if (isTangible) super.takeDamage(amount)
+    }
+
+    override fun draw(canvas: Canvas) {
+        if (!isTangible) return
+        drawSprite(canvas, SpriteManager.teleportCatMob)
+        if (appearFlash > 0f) {
+            flashPaint.color = Color.argb((200 * appearFlash / 0.3f).toInt(), 255, 255, 255)
+            canvas.drawCircle(x + width / 2f, y + jumpZ - height / 2f, 60f * (1.3f - appearFlash / 0.3f), flashPaint)
+        }
+        drawHpBar(canvas)
+    }
+}
+
+/**
+ * 빙산냥이 — 60스테이지 보스 (기획15 `Plan/기획15_빙산보스.jpg`): HP 45 · 필살기 5.
+ * 커다란 네모 얼음 덩어리 위에 작은 냥이가 엎드려 있고, 인간 쪽 옆구리에서 얼음 팔 둘(둥근 주먹)이 나온다. 그림 cat_iceberg_boss.
+ * 공격을 차례로 돌아가며 쓴다: ① 주먹 휘두르기 ② 팔 뻗기 ③ 땅에서 얼음 가시가 솟고 얼음 조각 2개를 던짐 ④ 필살기 — 아래 팔이 땅을 따라 길게 뻗어 인간을 얼린다.
+ * **인간이 맞으면 하트 4(필살기 5), 3초 동안 얼어 못 움직인다** (기획15). 간격·거리·빠르기는 Claude 판단.
+ */
+class IcebergCatBoss(x: Float, y: Float) : Enemy(x, y, 45, 4) {
+    override val width = BLOCK_W
+    override val height = 180f
+    override val contactDamage = 4
+    override val freezeOnHit: Float get() = FREEZE_TIME
+    override val strikeDamage: Int get() = if (state == State.ULT) ULT_DAMAGE else contactDamage
+
+    private enum class State { WALK, PUNCH, STRETCH, SPIKES, ULT }
+    private var state = State.WALK
+    private var stateT = 0f
+    private var cooldown = 2.2f
+    private var nextAttack = 0
+    /** 필살기: 아래 팔이 땅을 따라 뻗은 길이 · 뻗을 목표 길이 */
+    private var ultExt = 0f
+    private var ultReach = 0f
+    private var spikeX = 0f
+    private var thrown = 0
+    private var lastPlayerCx = 0f
+    private val pendingProjectiles = mutableListOf<Projectile>()
+    private val strike = RectF()
+
+    private val bmp: Bitmap get() = SpriteManager.icebergBoss ?: fallback
+
+    override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
+        pendingProjectiles.clear()
+        val pcx = playerX + Constants.PLAYER_WIDTH / 2f
+        lastPlayerCx = pcx
+        val cx = x + width / 2f
+        val dx = pcx - cx
+        val front = abs(dx) - width / 2f        // 얼음 덩어리 앞면에서 인간까지
+        stateT += deltaTime
+        when (state) {
+            State.WALK -> {
+                facingRight = dx > 0f
+                velocityX = if (front > 260f && abs(dx) < 1400f) sign(dx) * 70f else 0f
+                cooldown -= deltaTime
+                if (cooldown <= 0f && abs(dx) < 1100f) startAttack(front)
+            }
+            State.PUNCH -> { velocityX = 0f; if (stateT >= PUNCH_TIME) endAttack() }
+            State.STRETCH -> { velocityX = 0f; if (stateT >= STRETCH_TIME) endAttack() }
+            State.SPIKES -> {
+                velocityX = 0f
+                // 쿵 뛰어올랐다가(0.6초) 내려앉는 순간 인간 발밑에 얼음 가시 셋이 솟는다
+                jumpZ = if (stateT < SPIKE_WARN) -sin(stateT / SPIKE_WARN * Math.PI.toFloat()) * 60f else 0f
+                if (stateT >= SPIKE_WARN && thrown == 0) {
+                    thrown = 1
+                    for (k in -1..1) {
+                        val sx = spikeX + k * 75f
+                        val r = 34f
+                        pendingProjectiles.add(Projectile(sx - r, Terrain.groundY(sx) - r * 2f, 0f, 0f, attackPower, false,
+                            radius = r, fuse = 0.9f, isIceSpike = true, iceFreeze = FREEZE_TIME, heartDamage = contactDamage))
+                    }
+                }
+                // 얼음 조각 2개를 인간 쪽으로 던진다
+                if ((stateT >= 0.8f && thrown == 1) || (stateT >= 1.05f && thrown == 2)) {
+                    thrown++
+                    throwChunk(pcx)
+                }
+                if (stateT >= SPIKES_TIME) endAttack()
+            }
+            State.ULT -> {
+                velocityX = 0f
+                if (stateT >= ULT_WINDUP) {
+                    if (ultReach == 0f) {
+                        val (sx, _) = world(LOWER_SHOULDER_U, LOWER_SHOULDER_V)
+                        ultReach = (abs(pcx - sx) - (LOWER_REST_FIST_U - LOWER_SHOULDER_U)).coerceIn(150f, ULT_MAX_REACH)
+                    }
+                    val t = stateT - ULT_WINDUP
+                    val outT = ultReach / ULT_SPEED
+                    ultExt = when {
+                        t < outT -> t * ULT_SPEED
+                        t < outT + ULT_HOLD -> ultReach
+                        else -> (ultReach - (t - outT - ULT_HOLD) * ULT_SPEED * 0.8f).coerceAtLeast(0f)
+                    }
+                    if (t > outT + ULT_HOLD && ultExt <= 0f) endAttack()
+                }
+            }
+        }
+        super.update(deltaTime, playerX, playerY)
+        if (state != State.WALK) facingRight = facingLock
+    }
+
+    private var facingLock = true
+
+    private fun startAttack(front: Float) {
+        stateT = 0f; thrown = 0; ultExt = 0f; ultReach = 0f
+        facingLock = facingRight
+        var a = nextAttack % 4
+        // 주먹 휘두르기는 코앞에서만 — 멀면 팔 뻗기로 (Claude 판단)
+        if (a == 0 && front > 300f) a = 1
+        nextAttack = a + 1
+        state = when (a) {
+            0 -> State.PUNCH
+            1 -> State.STRETCH
+            2 -> { spikeX = lastPlayerCx; State.SPIKES }
+            else -> State.ULT
+        }
+    }
+
+    private fun endAttack() {
+        state = State.WALK; stateT = 0f; ultExt = 0f; jumpZ = 0f
+        cooldown = ATTACK_GAP
+    }
+
+    private fun throwChunk(pcx: Float) {
+        val (sx, sy) = world(UPPER_REST_FIST_U, UPPER_REST_FIST_V)
+        val d = pcx - sx
+        val vx = sign(d) * (abs(d) / 0.9f).coerceIn(250f, 800f)
+        val r = 16f
+        pendingProjectiles.add(Projectile(sx - r, sy - r, vx, -GRAVITY * 0.45f, attackPower, false,
+            radius = r, gravity = GRAVITY, isIceChunk = true, iceFreeze = FREEZE_TIME, heartDamage = contactDamage))
+    }
+
+    override fun getProjectiles(): List<Projectile> = pendingProjectiles.toList()
+
+    // ===== 팔 모양 (그림 좌표 u·v = 오른쪽을 볼 때 그림 왼쪽 위 기준) =====
+    /** 그림 좌표 → 월드 좌표 (왼쪽을 보면 얼음 덩어리 기준으로 거울) */
+    private fun world(u: Float, v: Float): Pair<Float, Float> {
+        val top = y + jumpZ + 8f - bmp.height
+        val wx = if (facingRight) x + u else x + width - u
+        return wx to top + v
+    }
+
+    /** 위 팔 주먹의 그림 좌표 (각도·길이로) */
+    private fun upperFist(): Pair<Float, Float> {
+        val t = stateT
+        var ang = REST_ANGLE
+        var len = UPPER_LEN
+        when (state) {
+            State.PUNCH -> {
+                ang = when {
+                    t < 0.35f -> lerp(REST_ANGLE, -75f, t / 0.35f)
+                    t < 0.6f -> lerp(-75f, 40f, (t - 0.35f) / 0.25f)
+                    else -> lerp(40f, REST_ANGLE, ((t - 0.6f) / 0.3f).coerceAtMost(1f))
+                }
+                len = UPPER_LEN + 35f
+            }
+            State.STRETCH -> {
+                ang = -5f
+                len = UPPER_LEN + STRETCH_LEN * stretchFrac()
+            }
+            else -> Unit
+        }
+        val rad = Math.toRadians(ang.toDouble())
+        return (UPPER_SHOULDER_U + len * kotlin.math.cos(rad).toFloat()) to (UPPER_SHOULDER_V + len * kotlin.math.sin(rad).toFloat())
+    }
+
+    private fun stretchFrac(): Float {
+        val t = stateT
+        return when {
+            t < 0.3f -> t / 0.3f
+            t < 0.6f -> 1f
+            t < 1.1f -> 1f - (t - 0.6f) / 0.5f
+            else -> 0f
+        }
+    }
+
+    private fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
+
+    override fun strikeBox(): RectF? {
+        val active = when (state) {
+            State.PUNCH -> stateT in 0.4f..0.75f
+            State.STRETCH -> stretchFrac() > 0.3f
+            State.ULT -> ultExt > 30f
+            else -> false
+        }
+        if (!active) return null
+        val (fu, fv) = if (state == State.ULT) (LOWER_REST_FIST_U + ultExt) to ULT_FIST_V else upperFist()
+        val (wx, wy) = world(fu, fv)
+        strike.set(wx - FIST_R, wy - FIST_R, wx + FIST_R, wy + FIST_R)
+        return strike
+    }
+
+    override fun draw(canvas: Canvas) {
+        val img0 = bmp
+        lastSprite = img0
+        lastSpriteHeight = img0.height.toFloat()
+        val shake = if (state == State.ULT && stateT < ULT_WINDUP) sin(animTime * 70f) * 4f else 0f
+        val feet = y + jumpZ + windLift
+        val top = feet + 8f - img0.height
+        // 그림자
+        shadowRect.set(x - 10f, y - 6f, x + width + 10f, y + 8f)
+        canvas.drawOval(shadowRect, bossShadow)
+        // 필살기 모으기: 얼음 덩어리 둘레가 파랗게 빛난다
+        if (state == State.ULT && stateT < ULT_WINDUP) {
+            glowPaint.alpha = (90 + 80 * sin(animTime * 14f)).toInt().coerceIn(0, 255)
+            canvas.drawCircle(x + width / 2f, feet - height * 0.5f, width * 0.8f, glowPaint)
+        }
+        // 얼음 가시 자리: 솟기 전 땅에 금이 가며 빛난다
+        if (state == State.SPIKES && stateT < SPIKE_WARN) {
+            val gy = Terrain.groundY(spikeX)
+            warnPaint.alpha = (110 + 100 * sin(animTime * 20f)).toInt().coerceIn(0, 255)
+            shadowRect.set(spikeX - 130f, gy - 10f, spikeX + 130f, gy + 10f)
+            canvas.drawOval(shadowRect, warnPaint)
+            for (k in -2..2) canvas.drawLine(spikeX + k * 22f, gy, spikeX + k * 34f, gy - 6f - abs(k) * 2f, crackPaint)
+        }
+        val img = if (facingRight) img0 else SpriteManager.getFlipped(img0)
+        val left = (if (facingRight) x else x + width - img0.width) + shake
+        val codeArms = state == State.PUNCH || state == State.STRETCH || state == State.ULT
+        if (codeArms) {
+            // 그림의 팔은 잘라 내고 얼음 덩어리(+위의 냥이)만 그린 뒤, 움직이는 팔을 코드로 그린다
+            canvas.save()
+            canvas.clipRect(x - 4f + shake, top - 10f, x + BLOCK_CLIP + shake, feet + 20f)
+            canvas.drawBitmap(img, left, top, null)
+            canvas.restore()
+            val (us, vs) = world(UPPER_SHOULDER_U, UPPER_SHOULDER_V)
+            val (uf, vf) = upperFist().let { world(it.first, it.second) }
+            val (ls, lvs) = world(LOWER_SHOULDER_U, LOWER_SHOULDER_V)
+            if (state == State.ULT) {
+                // 아래 팔: 어깨에서 땅으로 내려가 땅을 따라 길게
+                val (ex, ey) = world(LOWER_ELBOW_U, ULT_FIST_V)
+                val (fx, fy) = world(LOWER_REST_FIST_U + ultExt, ULT_FIST_V)
+                drawArm(canvas, floatArrayOf(ls + shake, lvs, ex + shake, ey, fx + shake, fy))
+            } else {
+                val (fx, fy) = world(LOWER_REST_FIST_U, LOWER_REST_FIST_V)
+                drawArm(canvas, floatArrayOf(ls, lvs, fx, fy))
+            }
+            drawArm(canvas, floatArrayOf(us + shake, vs, uf + shake, vf))
+        } else {
+            canvas.drawBitmap(img, left, top, null)
+        }
+        drawHpBar(canvas)
+    }
+
+    /** 굵고 둥근 하늘색 얼음 팔(검은 외곽선) + 끝의 둥근 주먹. pts = 어깨부터 주먹까지 꺾이는 점들 (x, y, x, y …) */
+    private fun drawArm(canvas: Canvas, pts: FloatArray) {
+        armPath.reset()
+        armPath.moveTo(pts[0], pts[1])
+        var i = 2
+        while (i < pts.size) { armPath.lineTo(pts[i], pts[i + 1]); i += 2 }
+        canvas.drawPath(armPath, armEdge)
+        canvas.drawPath(armPath, armFill)
+        val fx = pts[pts.size - 2]; val fy = pts[pts.size - 1]
+        canvas.drawCircle(fx, fy, FIST_R, fistFill)
+        canvas.drawCircle(fx, fy, FIST_R, fistEdge)
+        canvas.drawCircle(fx - FIST_R * 0.35f, fy - FIST_R * 0.35f, FIST_R * 0.2f, fistShine)
+    }
+
+    companion object {
+        /** 얼음 덩어리(맞는 몸) 너비 — 그림 360×193 에서 덩어리는 왼쪽 약 210 */
+        const val BLOCK_W = 210f
+        private const val BLOCK_CLIP = 214f
+        /** 맞으면 얼어 있는 시간 3초 (기획15) · 필살기 5 */
+        const val FREEZE_TIME = 3f
+        const val ULT_DAMAGE = 5
+        private const val ATTACK_GAP = 1.6f
+        private const val PUNCH_TIME = 0.9f
+        private const val STRETCH_TIME = 1.2f
+        private const val SPIKE_WARN = 0.6f
+        private const val SPIKES_TIME = 1.5f
+        private const val ULT_WINDUP = 0.9f
+        private const val ULT_SPEED = 1500f
+        private const val ULT_HOLD = 0.6f
+        private const val ULT_MAX_REACH = 1000f
+        private const val GRAVITY = 1000f
+        // 그림(360×193) 기준 팔 자리
+        private const val UPPER_SHOULDER_U = 205f
+        private const val UPPER_SHOULDER_V = 88f
+        private const val UPPER_REST_FIST_U = 318f
+        private const val UPPER_REST_FIST_V = 58f
+        private const val LOWER_SHOULDER_U = 198f
+        private const val LOWER_SHOULDER_V = 140f
+        private const val LOWER_REST_FIST_U = 312f
+        private const val LOWER_REST_FIST_V = 152f
+        private const val LOWER_ELBOW_U = 228f
+        private const val ULT_FIST_V = 157f
+        private const val UPPER_LEN = 117f
+        private const val REST_ANGLE = -15f
+        private const val STRETCH_LEN = 330f
+        private const val FIST_R = 30f
+
+        private val shadowRect = RectF()
+        private val armPath = Path()
+        private val bossShadow = Paint().apply { color = Color.argb(55, 0, 0, 0); isAntiAlias = true }
+        private val glowPaint = Paint().apply { color = Color.rgb(120, 200, 255); isAntiAlias = true }
+        private val warnPaint = Paint().apply { color = Color.rgb(150, 215, 255); isAntiAlias = true }
+        private val crackPaint = Paint().apply { color = Color.rgb(40, 80, 120); strokeWidth = 3f; isAntiAlias = true }
+        private val armEdge = Paint().apply {
+            color = Color.rgb(20, 24, 32); style = Paint.Style.STROKE; strokeWidth = 34f
+            strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND; isAntiAlias = true
+        }
+        private val armFill = Paint().apply {
+            color = Color.rgb(170, 220, 250); style = Paint.Style.STROKE; strokeWidth = 27f
+            strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND; isAntiAlias = true
+        }
+        private val fistFill = Paint().apply { color = Color.rgb(170, 220, 250); isAntiAlias = true }
+        private val fistEdge = Paint().apply { color = Color.rgb(20, 24, 32); style = Paint.Style.STROKE; strokeWidth = 3.5f; isAntiAlias = true }
+        private val fistShine = Paint().apply { color = Color.WHITE; isAntiAlias = true }
+
+        /** 그림(cat_iceberg_boss)이 없을 때 코드로 그린 빙산냥이 — 네모 얼음 + 위에 엎드린 냥이 + 오른쪽 팔 둘 */
+        private val fallback: Bitmap by lazy {
+            val b = Bitmap.createBitmap(360, 193, Bitmap.Config.ARGB_8888)
+            val c = Canvas(b)
+            val edge = Paint().apply { color = Color.rgb(20, 24, 32); style = Paint.Style.STROKE; strokeWidth = 4f; isAntiAlias = true }
+            val ice = Paint().apply { color = Color.rgb(150, 205, 245); isAntiAlias = true }
+            val iceLit = Paint().apply { color = Color.rgb(205, 236, 255); isAntiAlias = true }
+            val cat = Paint().apply { color = Color.rgb(130, 190, 240); isAntiAlias = true }
+            // 팔 (덩어리 뒤에서 나온다)
+            for ((s, f) in listOf((205f to 88f) to (318f to 58f), (198f to 140f) to (312f to 152f))) {
+                c.drawLine(s.first, s.second, f.first, f.second, armEdge)
+                c.drawLine(s.first, s.second, f.first, f.second, armFill)
+                c.drawCircle(f.first, f.second, 30f, fistFill); c.drawCircle(f.first, f.second, 30f, edge)
+            }
+            c.drawRect(6f, 44f, 210f, 189f, ice)
+            c.drawRect(6f, 44f, 70f, 189f, iceLit)
+            c.drawRect(6f, 44f, 210f, 189f, edge)
+            // 엎드린 냥이
+            c.drawOval(70f, 14f, 170f, 50f, cat); c.drawOval(70f, 14f, 170f, 50f, edge)
+            c.drawCircle(160f, 24f, 18f, cat); c.drawCircle(160f, 24f, 18f, edge)
+            val ear = Path().apply { moveTo(148f, 10f); lineTo(152f, -2f + 6f); lineTo(160f, 8f); close(); moveTo(164f, 8f); lineTo(172f, 2f); lineTo(174f, 14f); close() }
+            c.drawPath(ear, cat); c.drawPath(ear, edge)
+            val eye = Paint().apply { color = Color.rgb(20, 24, 32); isAntiAlias = true }
+            c.drawCircle(158f, 22f, 2.5f, eye); c.drawCircle(168f, 22f, 2.5f, eye)
+            b
+        }
     }
 }

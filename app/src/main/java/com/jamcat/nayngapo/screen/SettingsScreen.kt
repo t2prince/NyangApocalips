@@ -135,7 +135,7 @@ class SettingsScreen(private val gameView: GameView, private val fromShop: Boole
         canvas.drawRoundRect(dataPanel, 18f, 18f, edgePaint)
         canvas.drawTr("지금 저장된 데이터", dataPanel.centerX(), dataPanel.top + h * 0.065f, panelLabelPaint)
         linePaint.textSize = h * 0.032f
-        val cleared = (1..GameProgress.PLAYABLE_STAGES).count { GameProgress.isCleared(it) }
+        val cleared = GameProgress.playableStages.count { GameProgress.isCleared(it) }
         val lines = listOf(
             "루비 ${GameProgress.rubies}  ·  점수 ${String.format("%,d", GameProgress.bankScore)}",
             "깬 스테이지 ${cleared}개  ·  열린 스테이지 ${GameProgress.unlockedStage}",

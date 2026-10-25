@@ -10,8 +10,20 @@ object GameProgress {
     /** 실제 스테이지 데이터가 만들어진 곳까지 — 그 뒤는 '준비 중' (1~10 초원, 11 하늘, 12~20 정글) */
     const val PLAYABLE_STAGES = 31   // 21~30 꿀 지역, 31 해적 (2026-10-04)
 
+    /**
+     * 51~60 빙산 (대표님 2026-10-25 「51-60까지 만들어」 — 예전 32~40 빙산 표를 52~60 으로 옮김, 51 은 Claude 판단).
+     * 32~50 은 아직 데이터가 없어 '준비 중' — 31 을 깨면 51 이 열린다.
+     */
+    val ICE_STAGES = 51..60
+
     /** 해당 스테이지를 실제로 플레이할 수 있는가 */
-    fun hasData(stageNumber: Int) = stageNumber in 1..PLAYABLE_STAGES
+    fun hasData(stageNumber: Int) = stageNumber in 1..PLAYABLE_STAGES || stageNumber in ICE_STAGES
+
+    /** 데이터가 있는 스테이지 번호들 (앞에서부터) */
+    val playableStages: List<Int> get() = (1..PLAYABLE_STAGES) + ICE_STAGES
+
+    /** 이 스테이지 다음으로 데이터가 있는 스테이지 (없으면 null) — 31 다음은 51 */
+    fun nextPlayableAfter(stageNumber: Int): Int? = playableStages.firstOrNull { it > stageNumber }
 
     /** 하늘 지역(날개냥이를 타고 나는 스테이지)인가 — 11 하나뿐이다 */
     fun isSkyStage(stageNumber: Int) = stageNumber == 11
@@ -77,11 +89,11 @@ object GameProgress {
      * 3) 전부 깼으면 null (다음 지역 준비 중)
      */
     fun nextBattleStage(): Int? {
-        val afterLast = lastClearedStage + 1
+        val afterLast = nextPlayableAfter(lastClearedStage) ?: (lastClearedStage + 1)
         if (lastClearedStage > 0 && hasData(afterLast) && afterLast <= unlockedStage && afterLast !in clearedStages) {
             return afterLast
         }
-        return (1..PLAYABLE_STAGES).firstOrNull { it <= unlockedStage && it !in clearedStages }
+        return playableStages.firstOrNull { it <= unlockedStage && it !in clearedStages }
     }
 
     /** 지금 고른 인간의 id (로비 '캐릭터 변경'에서 바꾼다) */
@@ -359,6 +371,8 @@ object GameProgress {
     fun init(context: Context) {
         prefs = context.getSharedPreferences(GameSlots.currentPrefsName(context), Context.MODE_PRIVATE)   // 게임 고르기에서 고른 게임 (2026-10-24)
         unlockedStage = prefs?.getInt(KEY_UNLOCKED, 1) ?: 1
+        // 31 을 깨서 32(데이터 없음)까지 열린 세이브는 51 빙산을 열어 준다 (2026-10-25)
+        if (unlockedStage in (PLAYABLE_STAGES + 1) until ICE_STAGES.first) unlockedStage = ICE_STAGES.first
         clearedStages.clear()
         prefs?.getStringSet(KEY_CLEARED, emptySet())?.forEach { it.toIntOrNull()?.let(clearedStages::add) }
         lastClearedStage = prefs?.getInt(KEY_LAST_CLEARED, 0) ?: 0
@@ -543,7 +557,8 @@ object GameProgress {
     fun onStageCleared(stageNumber: Int) {
         clearedStages.add(stageNumber)
         lastClearedStage = stageNumber
-        val next = (stageNumber + 1).coerceAtMost(TOTAL_STAGES)
+        // 다음 스테이지에 데이터가 없으면 데이터가 있는 다음 스테이지를 연다 (31 → 51, 2026-10-25)
+        val next = (nextPlayableAfter(stageNumber) ?: (stageNumber + 1)).coerceAtMost(TOTAL_STAGES)
         if (next > unlockedStage) unlockedStage = next
         prefs?.edit()
             ?.putInt(KEY_UNLOCKED, unlockedStage)

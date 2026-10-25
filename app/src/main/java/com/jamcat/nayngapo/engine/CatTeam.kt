@@ -443,8 +443,7 @@ object CatTeam {
 
     /** 떠난 냥이가 머물 스테이지: 이미 열린 땅 스테이지 중 하나 (하늘·바다 빼고) */
     private fun randomLeaveStage(): Int {
-        val last = minOf(GameProgress.unlockedStage, GameProgress.PLAYABLE_STAGES)
-        val pool = (1..last).filter { !GameProgress.isSkyStage(it) && it != 31 }
+        val pool = GameProgress.playableStages.filter { it <= GameProgress.unlockedStage && !GameProgress.isSkyStage(it) && it != 31 }
         return if (pool.isEmpty()) 1 else pool[(Math.random() * pool.size).toInt()]
     }
 
@@ -618,6 +617,8 @@ object CatTeam {
         AllyCat.Kind.ANVIL -> "모루냥이"
         AllyCat.Kind.POOP -> "똥냥이"
         AllyCat.Kind.VINE -> "덩굴냥이"
+        AllyCat.Kind.ICE -> "얼음냥이"
+        AllyCat.Kind.TELEPORT -> "순간냥이"
     }
 
     fun cat(id: Int): TeamCat? = roster.firstOrNull { it.id == id }

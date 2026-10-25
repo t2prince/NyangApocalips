@@ -142,6 +142,19 @@ class Player(var x: Float, var y: Float) {
     private val gunDst = RectF()
     /** 꽃가루에 숨이 막혀 느려진 남은 시간 (꽃냥이, 2026-09-27) */
     var chokeTimer = 0f
+    /**
+     * 얼어서 못 움직이는 남은 시간 (얼음냥이 1초 · 빙산냥이 3초, 2026-10-25) — 걷기·점프·돌진이 안 된다(공격은 된다, Claude 판단).
+     * 얼어 있는 동안은 얼음이 막아 줘서 더 맞지 않는다 (Claude 판단 — 보스 옆에서 얼면 계속 맞지 않게).
+     */
+    var frozenTimer = 0f
+        private set
+    fun freeze(seconds: Float) {
+        if (isDead || seconds <= 0f) return
+        frozenTimer = maxOf(frozenTimer, seconds)
+        velocityX = 0f; dashT = 0f
+        isInvincible = true
+        invincibilityTimer = maxOf(invincibilityTimer, frozenTimer + 0.3f)
+    }
     /** 눈에 잠긴 깊이 (0 = 평지, 최대치면 몸이 완전히 파묻힌다) */
     private var snowSink = 0f
 
@@ -233,6 +246,7 @@ class Player(var x: Float, var y: Float) {
             }
         } else poisonT = 0f
         if (chokeTimer > 0f) chokeTimer -= deltaTime
+        if (frozenTimer > 0f) { frozenTimer -= deltaTime; velocityX = 0f; dashT = 0f }
         if (awakenTimer > 0f) awakenTimer -= deltaTime
         if (dashT > 0f) dashT -= deltaTime
         if (isFlyer) {
@@ -378,7 +392,7 @@ class Player(var x: Float, var y: Float) {
 
     fun draw(canvas: Canvas) {
         if (isDead) return
-        if (isInvincible && ((invincibilityTimer * 8).toInt() % 2 == 0)) return
+        if (isInvincible && frozenTimer <= 0f && ((invincibilityTimer * 8).toInt() % 2 == 0)) return
 
         val drawY = y + jumpZ + snowSink - rideLift + hoverLift()   // 눈에 잠긴 만큼 아래로, 배냥이를 타면 그만큼 위로, 나는 냥이는 떠서
         val cx = x + width / 2f
@@ -419,6 +433,20 @@ class Player(var x: Float, var y: Float) {
 
         // ===== 평소 동작: GPT가 그린 졸라맨 스프라이트로 그린다 =====
         drawSprite(canvas, cx, drawY, dir)
+        if (frozenTimer > 0f) drawFrozen(canvas, cx, drawY)
+    }
+
+    private val frozenFill = Paint().apply { color = Color.argb(120, 170, 225, 255); isAntiAlias = true }
+    private val frozenEdge = Paint().apply { color = Color.argb(220, 80, 150, 215); style = Paint.Style.STROKE; strokeWidth = 4f; isAntiAlias = true }
+    private val frozenShine = Paint().apply { color = Color.argb(230, 255, 255, 255); strokeWidth = 5f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    private val frozenRect = RectF()
+    /** 얼어 있으면 몸을 옅은 하늘색 얼음 덩어리가 감싼다 (2026-10-25) */
+    private fun drawFrozen(canvas: Canvas, cx: Float, drawY: Float) {
+        frozenRect.set(cx - 46f, drawY - height - 22f, cx + 46f, drawY + 8f)
+        canvas.drawRoundRect(frozenRect, 18f, 18f, frozenFill)
+        canvas.drawRoundRect(frozenRect, 18f, 18f, frozenEdge)
+        canvas.drawLine(frozenRect.left + 12f, frozenRect.top + 16f, frozenRect.left + 30f, frozenRect.top + 40f, frozenShine)
+        canvas.drawLine(frozenRect.right - 14f, frozenRect.bottom - 40f, frozenRect.right - 26f, frozenRect.bottom - 20f, frozenShine)
     }
 
     /** 앞손에 레이저 총 — 손잡이(그림 가로 30%·세로 70%)가 손에 오게, 바라보는 쪽으로 */
@@ -580,6 +608,8 @@ class Player(var x: Float, var y: Float) {
         if (flingTimer > 0f) return
         // 내려찍기 중에는 조작 불가 — 제자리에서 수직으로만 움직인다
         if (stompPhase != StompPhase.NONE) { velocityX = 0f; return }
+        // 얼어 있으면 꼼짝 못 한다
+        if (frozenTimer > 0f && !isJumping) { velocityX = 0f; return }
 
         if (isJumping) {
             // 공중: 이륙 관성을 유지하고, 입력이 있을 때만 약하게 조향한다.
@@ -644,6 +674,7 @@ class Player(var x: Float, var y: Float) {
     fun jump() {
         if (ridingVine) return          // 매달린 동안의 점프는 '놓기'라서 화면 쪽에서 처리한다
         if (inDeepSnow) return          // 눈에 발이 묶여 뛸 수 없다
+        if (frozenTimer > 0f) return    // 얼어서 뛸 수 없다
         if (!isJumping && stompPhase == StompPhase.NONE) {
             onPlatform = null                                // 발판 위에서도 그대로 뛴다 (jumpZ 오프셋에서 시작)
             isJumping = true; jumpVelocity = Constants.JUMP_VELOCITY * hero.jumpMul
@@ -865,7 +896,7 @@ class Player(var x: Float, var y: Float) {
     fun needsRespawn(): Boolean = hp <= 0 && lives > 0
 
     fun respawn(startX: Float, startY: Float) {
-        x = startX; y = startY; hp = maxHp; halfLost = false; awakenTimer = 0f; poisoned = false
+        x = startX; y = startY; hp = maxHp; halfLost = false; awakenTimer = 0f; poisoned = false; frozenTimer = 0f
         velocityX = 0f; jumpZ = 0f; jumpVelocity = 0f
         isJumping = false; isAttacking = false
         stompPhase = StompPhase.NONE; stompTimer = 0f; shockwavePending = false

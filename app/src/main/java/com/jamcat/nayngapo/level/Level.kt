@@ -31,6 +31,21 @@ private const val SHIP_DECK_RISE = 90f     // 물 위로 갑판 높이 (점프 �
  *   9  +그린냥이     | 위험한 함정x2+일반    | 2        | 고양이x2 인간x1
  *   10 +그린냥이+순간냥이 Boss | X          | 3        | X
  * 여기에 기획3의 늪(빠지면 5배 감속, 점프로 통과)이 2스테이지부터 깔린다.
+ *
+ * 51~60 빙산 (대표님 2026-10-25 「51-60까지 만들어」 — 기획11 `Plan/기획11_빙산_32-40.jpg` 의 32~40 표를 52~60 으로 옮김, 51 은 Claude 판단).
+ * 32~50 은 아직 없다('준비 중'). 마릿수·비밀의 방은 Claude 판단:
+ *   냥이 종류                                   | 구출            | 함정
+ *   51 냥이·얼음냥이 (Claude 판단)               | 인간x1          | 수직 구덩이
+ *   52 그린냥이·냥이·얼음냥이·총냥이               | 고양이x1        | 수직 구덩이·구덩이 함정
+ *   53 그린냥이·냥이·얼음냥이·총냥이·순간냥이       | 인간x1          | 52와 같음
+ *   54 53과 같음                                 | 총냥이x1        | 52와 같음
+ *   55 53과 같음                                 | -               | 52와 같음
+ *   56 53의 냥이 + 해머냥이                       | -               | 52와 같음
+ *   57 53과 같음                                 | -               | 수직 구덩이x3
+ *   58 얼음냥이·물냥이                            | -               | 수직 구덩이
+ *   59 얼음냥이                                  | 얼음냥이x5      | 얼음 구덩이
+ *   60 얼음냥이·순간냥이·냥이·빙산냥이 Boss         | 순간냥이x1      | 얼음 구덩이·수직 구덩이·구덩이 함정
+ * 수직 구덩이 = 폭 130 의 깊은 얼음 구멍(낭떠러지처럼 떨어짐), 얼음 구덩이 = 밟으면 0.5초 뒤 깨지는 얇은 얼음(깨지면 구덩이 함정) — 뜻은 Claude 판단.
  */
 class Level(val stageNumber: Int) {
     val enemies = mutableListOf<Enemy>()
@@ -58,6 +73,8 @@ class Level(val stageNumber: Int) {
     /** 31 해적 스테이지: 토네이도 함정 · 끝의 해적선 자리(x, 없으면 null) */
     val tornadoTraps = mutableListOf<TornadoTrap>()
     var pirateShipX: Float? = null
+    /** 51~60 빙산: 얼음 구덩이 (밟으면 깨진다) */
+    val iceHoles = mutableListOf<IceHole>()
     val projectiles = mutableListOf<Projectile>()
     var playerStartX = 200f
     var areaWidth = Constants.PLAY_AREA_RIGHT
@@ -166,6 +183,29 @@ class Level(val stageNumber: Int) {
             31 -> StagePlan(mapOf(Kind.NORMAL to 8, Kind.BLUE to 6, Kind.BOAT to 6),
                 secrets = 1, humans = 1, cats = 1, tornadoes = 2,
                 boss = { baseX -> listOf(PirateCatBoss(baseX, Constants.GROUND_Y)) })
+            // ===== 51~60 빙산 (대표님 2026-10-25, 위 머리말 표) — 마릿수·비밀의 방은 Claude 판단 =====
+            51 -> StagePlan(mapOf(Kind.NORMAL to 8, Kind.ICE to 4),
+                secrets = 1, humans = 1, shafts = 1)
+            52 -> StagePlan(mapOf(Kind.GREEN to 3, Kind.NORMAL to 8, Kind.ICE to 6, Kind.GUN to 2),
+                dangerPits = 1, secrets = 1, cats = 1, shafts = 1)
+            53 -> StagePlan(mapOf(Kind.GREEN to 3, Kind.NORMAL to 8, Kind.ICE to 6, Kind.GUN to 2, Kind.TELEPORT to 2),
+                dangerPits = 1, secrets = 1, humans = 1, shafts = 1)
+            54 -> StagePlan(mapOf(Kind.GREEN to 3, Kind.NORMAL to 8, Kind.ICE to 7, Kind.GUN to 3, Kind.TELEPORT to 2),
+                dangerPits = 1, secrets = 2, shafts = 1, fixedCats = listOf(AllyCat.Kind.GUN))
+            55 -> StagePlan(mapOf(Kind.GREEN to 4, Kind.NORMAL to 8, Kind.ICE to 8, Kind.GUN to 3, Kind.TELEPORT to 3),
+                dangerPits = 1, secrets = 2, shafts = 1)
+            56 -> StagePlan(mapOf(Kind.GREEN to 4, Kind.NORMAL to 7, Kind.ICE to 8, Kind.GUN to 3, Kind.TELEPORT to 3, Kind.HAMMER to 3),
+                dangerPits = 1, secrets = 2, shafts = 1)
+            57 -> StagePlan(mapOf(Kind.GREEN to 4, Kind.NORMAL to 8, Kind.ICE to 9, Kind.GUN to 3, Kind.TELEPORT to 3),
+                secrets = 2, shafts = 3)
+            58 -> StagePlan(mapOf(Kind.ICE to 12, Kind.BLUE to 8),
+                secrets = 2, shafts = 1)
+            59 -> StagePlan(mapOf(Kind.ICE to 16),
+                secrets = 3, iceHoles = 2, fixedCats = List(5) { AllyCat.Kind.ICE })
+            60 -> StagePlan(mapOf(Kind.ICE to 10, Kind.TELEPORT to 4, Kind.NORMAL to 8),
+                dangerPits = 1, secrets = 3, shafts = 1, iceHoles = 1, fixedCats = listOf(AllyCat.Kind.TELEPORT),
+                // 60 보스 = 빙산냥이 (기획15, 표의 'Boss')
+                boss = { baseX -> listOf(IcebergCatBoss(baseX, Constants.GROUND_Y)) })
             // 정글의 끝: 마법사 냥이 삼형제가 신전을 지킨다 (원안 마지막 보스 디자인)
             else -> StagePlan(mapOf(Kind.KITTEN to 3, Kind.YELLOW to 4, Kind.GUN to 4, Kind.NORMAL to 4, Kind.GREEN to 3, Kind.VINE to 6, Kind.FLUFFY to 3,   // 20: 치즈냥이도 넣는다 (대표님 2026-09-20, 마릿수는 Claude 판단)
                 Kind.ANVIL to 3, Kind.LASER to 3, Kind.THIEF to 1),
@@ -179,7 +219,8 @@ class Level(val stageNumber: Int) {
                 })
         }
         // 늪(기획3): 2스테이지부터 하나, 7스테이지부터 둘 (함정은 과하지 않게)
-        val swampCount = if (stageNumber < 2) 0 else (1 + (stageNumber - 2) / 5).coerceAtMost(if (stageNumber == 31) 0 else if (stageNumber == 20 || stageNumber in 21..30) 1 else 2)   // 꿀 지역도 1개, 31 바다는 없음   // 20 은 「함정이 너무 많아」(2026-10-04)로 1개
+        val icy = stageNumber in 51..60   // 빙산: 늪·낭떠러지 대신 수직 구덩이 (Claude 판단)
+        val swampCount = if (stageNumber < 2 || icy) 0 else (1 + (stageNumber - 2) / 5).coerceAtMost(if (stageNumber == 31) 0 else if (stageNumber == 20 || stageNumber in 21..30) 1 else 2)   // 꿀 지역도 1개, 31 바다는 없음   // 20 은 「함정이 너무 많아」(2026-10-04)로 1개
 
         // 해머냥이는 모루냥이가 나오는 스테이지에만, 1~3마리 무작위로 섞인다 (대표님 2026-09-20)
         val mobs = plan.mobs.toMutableMap()
@@ -218,7 +259,8 @@ class Level(val stageNumber: Int) {
         val gapCenters = (1..groupCount).map { pathStart + it * groupSpacing - groupSpacing / 2f }
         val hazardOrder = List(swampCount) { Hazard.SWAMP } +
             List(plan.spikes) { Hazard.SPIKE } +
-            List(plan.dangerPits) { Hazard.PIT }
+            List(plan.dangerPits) { Hazard.PIT } +
+            List(plan.iceHoles) { Hazard.ICE_HOLE }
         val hazardX = mutableListOf<Float>()
         if (hazardOrder.isNotEmpty()) {
             val n = hazardOrder.size.coerceAtMost(gapCenters.size)
@@ -236,13 +278,14 @@ class Level(val stageNumber: Int) {
                     }
                     Hazard.SPIKE -> traps.add(Trap(hx, Terrain.groundY(hx + 75f)))
                     Hazard.PIT -> pits.add(PitTrap(hx, Terrain.groundY(hx + 85f), seed = stageNumber * 31 + i * 7))
+                    Hazard.ICE_HOLE -> iceHoles.add(IceHole(hx, Terrain.groundY(hx + IceHole.WIDTH / 2f)))
                 }
             }
         }
 
         // ===== 낭떠러지: 3스테이지부터, 그룹 사이 빈 구간 중 함정이 없는 곳에 (대표님 2026-09-20 「슈퍼마리오처럼 낭떠러지」) =====
         // 폭 160~215 는 점프 사거리(약 300) 안이라 뛰어넘을 수 있다. 냥이들도 hazardAhead 로 뛰어넘는다.
-        val chasmCount = if (stageNumber < 3) 0 else (1 + (stageNumber - 3) / 4).coerceAtMost(if (stageNumber == 31) 0 else if (stageNumber == 20) 2 else if (stageNumber in 21..30) 3 else 5)   // 꿀 지역 최대 3 (Claude 판단), 31 바다는 없음   // 20 은 5 → 2 (2026-10-04)
+        val chasmCount = if (stageNumber < 3 || icy) 0 else (1 + (stageNumber - 3) / 4).coerceAtMost(if (stageNumber == 31) 0 else if (stageNumber == 20) 2 else if (stageNumber in 21..30) 3 else 5)   // 꿀 지역 최대 3 (Claude 판단), 31 바다는 없음   // 20 은 5 → 2 (2026-10-04)
         val chasmFreeGaps = gapCenters.filter { gc -> hazardX.none { kotlin.math.abs(it - gc) < 500f } }
         repeat(chasmCount) { i ->
             if (chasmFreeGaps.isEmpty()) return@repeat
@@ -253,6 +296,17 @@ class Level(val stageNumber: Int) {
             val probe = Chasm(cx, 0f, seed)
             chasms.add(Chasm(cx, Terrain.groundY(cx + probe.width / 2f), seed))
             hazardX.add(cx - 80f)                    // 비밀의 방·감옥이 위에 안 놓이게
+        }
+
+        // ===== 수직 구덩이 (51~60 빙산): 함정이 없는 빈 구간 뒤쪽에 =====
+        val shaftGaps = gapCenters.filter { gc -> hazardX.none { kotlin.math.abs(it - gc) < 500f } }
+        repeat(plan.shafts) { i ->
+            if (shaftGaps.isEmpty()) return@repeat
+            val gc = shaftGaps[((i + 1) * shaftGaps.size) / (plan.shafts + 1) % shaftGaps.size]
+            val cx = gc + 260f
+            if (chasms.any { kotlin.math.abs(it.x - cx) < 600f }) return@repeat
+            chasms.add(Chasm(cx, Terrain.groundY(cx + Chasm.SHAFT_W / 2f), stageNumber * 19 + i * 7, shaft = true))
+            hazardX.add(cx - 80f)
         }
 
         // 공중 발판(벽돌판)은 뺐다 (대표님 2026-09-27 「위에 떠 있는 벽돌 모두 없애」) — platforms 는 늘 비어 있다
@@ -267,18 +321,22 @@ class Level(val stageNumber: Int) {
         }
 
         // ===== 감옥: 기획5의 구출 표 (인간/고양이 감옥을 번갈아 배치) =====
-        val prisonKinds = mutableListOf<Prison.Kind>()
-        repeat(plan.humans) { prisonKinds.add(Prison.Kind.HUMAN) }
+        // (감옥 종류, 꼭 갇혀 있을 냥이 — 표에서 정한 냥이면 그 종류, 아니면 null)
+        val prisonKinds = mutableListOf<Pair<Prison.Kind, AllyCat.Kind?>>()
+        repeat(plan.humans) { prisonKinds.add(Prison.Kind.HUMAN to null) }
         // 냥이 감옥을 많이 (대표님 2026-10-10 「냥이 감옥을 많이 넣어 줘」): 표의 마릿수 × 2 + 2 (배율은 Claude 판단)
-        repeat(plan.cats * CAT_PRISON_MUL + CAT_PRISON_EXTRA) { prisonKinds.add(Prison.Kind.CAT) }
+        repeat(plan.cats * CAT_PRISON_MUL + CAT_PRISON_EXTRA) { prisonKinds.add(Prison.Kind.CAT to null) }
+        // 표에서 갇힌 냥이를 정한 감옥 (54 총냥이·59 얼음냥이 5·60 순간냥이 — 2026-10-25): 꼭 그 냥이가 갇혀 있다
+        for (k in plan.fixedCats) prisonKinds.add(Prison.Kind.CAT to k)
         prisonKinds.shuffle()
-        for ((i, kind) in prisonKinds.withIndex()) {
+        for ((i, slot) in prisonKinds.withIndex()) {
+            val (kind, fixedCat) = slot
             var px = pathStart + (i + 1) * (bossBaseX - pathStart) / (prisonKinds.size + 1).toFloat()
             // 함정 위에 겹치면 옆으로 비켜 놓는다
             while (hazardX.any { px > it - 220f && px < it + 500f }) px += 340f
             // 냥이 감옥: 70%는 이 스테이지에 나오는 냥이 중 하나가 갇혀 있다 — 모든 냥이를 구출해 우리 팀으로 (보스 빼고, 2026-10-10).
             // 나머지 30%는 예전처럼(새끼+엄마 또는 구할 때 무작위). 비율은 Claude 판단
-            val catKind = if (kind == Prison.Kind.CAT && Math.random() < 0.7)
+            val catKind = fixedCat ?: if (kind == Prison.Kind.CAT && Math.random() < 0.7)
                 enemies.filter { !it.isBoss && it !is BoatCat }.randomOrNull()?.let { AllyCat.kindForEnemy(it) } else null
             prisons.add(Prison(px, Terrain.groundY(px), kind, catKind = catKind))
         }
@@ -360,7 +418,9 @@ class Level(val stageNumber: Int) {
         GUN({ x, y -> GunCat(x, y) }),           // 총냥이 HP15 공격2 (기획8) — 표엔 안 넣고 LASER 자리에서 50% 로 나온다
         FLOWER({ x, y -> FlowerCat(x, y) }),
         BEE({ x, y -> BeeCat(x, y) }),
-        BOAT({ x, y -> BoatCat(x, y) });         // 배냥이 HP20 (31 해적)           // 벌냥이 HP3 (기획10) — 처음부터 날아다닌다     // 꽃냥이 HP15 공격10 (기획10, 꿀 스테이지)
+        BOAT({ x, y -> BoatCat(x, y) }),
+        ICE({ x, y -> IceCat(x, y) }),           // 얼음냥이 HP20 (51~60 빙산, Claude 판단)
+        TELEPORT({ x, y -> TeleportCat(x, y) });  // 잡몹 순간냥이 HP20 (53~60 빙산, Claude 판단)         // 배냥이 HP20 (31 해적)           // 벌냥이 HP3 (기획10) — 처음부터 날아다닌다     // 꽃냥이 HP15 공격10 (기획10, 꿀 스테이지)
 
         companion object {
             /** 모루냥이 스테이지에 섞이는 해머냥이 마릿수 범위 (무작위) */
@@ -370,7 +430,7 @@ class Level(val stageNumber: Int) {
     }
 
     /** 경로에 심는 함정 종류 (앞에서 뒤로 갈수록 위험해진다) */
-    private enum class Hazard { SWAMP, SPIKE, PIT }
+    private enum class Hazard { SWAMP, SPIKE, PIT, ICE_HOLE }
 
     private class StagePlan(
         val mobs: Map<Kind, Int>,
@@ -381,6 +441,9 @@ class Level(val stageNumber: Int) {
         val cats: Int = 0,          // 구출: 고양이 감옥 (부수면 아군 합류)
         val boss: ((Float) -> List<Enemy>)? = null,
         val tornadoes: Int = 0,     // 토네이도 함정 (31 해적)
+        val shafts: Int = 0,        // 수직 구덩이 (51~60 빙산)
+        val iceHoles: Int = 0,      // 얼음 구덩이 (51~60 빙산)
+        val fixedCats: List<AllyCat.Kind> = emptyList(),   // 꼭 이 냥이가 갇힌 감옥 (표의 '총냥이x1' 등)
     )
 
     fun onEnemyDefeated() {

@@ -54,7 +54,15 @@ class Projectile(
     /** 적을 뚫고 나간다 (저격탄) */
     val pierce: Boolean = false,
     /** 날아갈 수 있는 거리 (0 = 제한 없음) */
-    val range: Float = 0f
+    val range: Float = 0f,
+    /** 얼음 덩이 — 얼음냥이·빙산냥이가 던진다 (2026-10-25). 땅에 닿으면 부서진다 */
+    val isIceChunk: Boolean = false,
+    /** 땅에서 솟는 얼음 가시 (빙산냥이) — 제자리에서 fuse 동안 솟았다 사라진다. 아래 끝이 땅 */
+    val isIceSpike: Boolean = false,
+    /** 맞으면 얼어서 못 움직이는 시간(초) — 인간(적 탄) 또는 적 냥이(우리 편 탄). 0 = 안 얼린다 */
+    val iceFreeze: Float = 0f,
+    /** 인간이 맞으면 잃는 하트 (0 = 보통 규칙: 1, 번개 2) — 빙산냥이 공격 4 (기획15) */
+    val heartDamage: Int = 0
 ) {
     /** 뚫고 나가는 탄이 이미 때린 적들 */
     val hitOnce = HashSet<Any>()
@@ -70,7 +78,10 @@ class Projectile(
     /** 도화선이 다 타서 스스로 터졌다 — 화면이 한 번 처리하고 내린다 */
     var fuseBurnedOut = false
 
-    val hitBox: RectF get() = RectF(x, y, x + width, y + height)
+    val hitBox: RectF get() =
+        // 얼음 가시는 다 솟기 전(0.1초)과 꺼지는 중에는 안 닿는다
+        if (isIceSpike && (fuse - fuseLeft < 0.1f || fuseLeft < 0.15f)) RectF(-1e5f, -1e5f, -1e5f + 1f, -1e5f + 1f)
+        else RectF(x, y, x + width, y + height)
     private val spriteDst = RectF()
     private val arrowShaft = Paint().apply { color = android.graphics.Color.rgb(140, 92, 48); strokeWidth = 6f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
     private val arrowHead = Paint().apply { color = android.graphics.Color.rgb(200, 204, 212); isAntiAlias = true }
@@ -111,7 +122,7 @@ class Projectile(
             if (traveled > range) isAlive = false
         }
 
-        if (isShuriken || isStone || isFlame || isLava) animTime += deltaTime
+        if (isShuriken || isStone || isFlame || isLava || isIceChunk || isIceSpike) animTime += deltaTime
         if (isMissile) {
             missileAge += deltaTime
             // 방향은 그대로 두고 속력만 0.5초에 걸쳐 900까지 올린다
@@ -215,6 +226,16 @@ class Projectile(
 
         if (isLava) {
             drawLava(canvas, cx, cy)
+            return
+        }
+
+        if (isIceChunk) {
+            drawIceChunk(canvas, cx, cy)
+            return
+        }
+
+        if (isIceSpike) {
+            drawIceSpike(canvas, cx)
             return
         }
 
@@ -476,6 +497,83 @@ class Projectile(
         val bx = -velocityX / sp; val by = -velocityY / sp
         canvas.drawCircle(cx + bx * r * 1.5f, cy + by * r * 1.5f, r * 0.45f, lavaBody)
         canvas.drawCircle(cx + bx * r * 2.4f, cy + by * r * 2.4f, r * 0.28f, lavaBody)
+    }
+
+    private val iceFill = Paint().apply { color = Color.rgb(196, 232, 252); isAntiAlias = true }
+    private val iceShade = Paint().apply { color = Color.rgb(128, 188, 232); isAntiAlias = true }
+    private val iceShine = Paint().apply { color = Color.WHITE; isAntiAlias = true }
+    private val iceEdge = Paint().apply {
+        color = Color.rgb(24, 40, 64); style = Paint.Style.STROKE; strokeWidth = 3f
+        strokeJoin = Paint.Join.ROUND; isAntiAlias = true
+    }
+    private val icePath = Path()
+
+    /** 얼음 덩이: 빙글 도는 모난 하늘색 덩어리 + 그늘 면 + 흰 반짝임, 진한 외곽선 */
+    private fun drawIceChunk(canvas: Canvas, cx: Float, cy: Float) {
+        val r = radius
+        canvas.save()
+        canvas.rotate(animTime * 400f * (if (velocityX >= 0f) 1f else -1f), cx, cy)
+        icePath.reset()
+        icePath.moveTo(cx - r, cy - r * 0.3f)
+        icePath.lineTo(cx - r * 0.35f, cy - r)
+        icePath.lineTo(cx + r * 0.6f, cy - r * 0.8f)
+        icePath.lineTo(cx + r, cy + r * 0.1f)
+        icePath.lineTo(cx + r * 0.4f, cy + r)
+        icePath.lineTo(cx - r * 0.7f, cy + r * 0.75f)
+        icePath.close()
+        canvas.drawPath(icePath, iceFill)
+        icePath.reset()
+        icePath.moveTo(cx + r, cy + r * 0.1f)
+        icePath.lineTo(cx + r * 0.4f, cy + r)
+        icePath.lineTo(cx - r * 0.7f, cy + r * 0.75f)
+        icePath.lineTo(cx, cy + r * 0.1f)
+        icePath.close()
+        canvas.drawPath(icePath, iceShade)
+        canvas.drawCircle(cx - r * 0.35f, cy - r * 0.4f, r * 0.2f, iceShine)
+        icePath.reset()
+        icePath.moveTo(cx - r, cy - r * 0.3f)
+        icePath.lineTo(cx - r * 0.35f, cy - r)
+        icePath.lineTo(cx + r * 0.6f, cy - r * 0.8f)
+        icePath.lineTo(cx + r, cy + r * 0.1f)
+        icePath.lineTo(cx + r * 0.4f, cy + r)
+        icePath.lineTo(cx - r * 0.7f, cy + r * 0.75f)
+        icePath.close()
+        canvas.drawPath(icePath, iceEdge)
+        canvas.restore()
+    }
+
+    /** 얼음 가시: 땅(맞는 칸 아래 끝)에서 뾰족한 얼음 세 개가 솟았다가(처음 0.15초) 다시 꺼진다(마지막 0.2초) */
+    private fun drawIceSpike(canvas: Canvas, cx: Float) {
+        val ground = y + height
+        val life = if (fuse > 0f) fuse - fuseLeft else 0f
+        val grow = when {
+            life < 0.15f -> life / 0.15f
+            fuseLeft < 0.2f -> (fuseLeft / 0.2f).coerceAtLeast(0f)
+            else -> 1f
+        }
+        val tall = height * grow
+        for (k in -1..1) {
+            val bx = cx + k * radius * 0.6f
+            val h = tall * (if (k == 0) 1f else 0.7f)
+            val hw = radius * 0.38f
+            icePath.reset()
+            icePath.moveTo(bx - hw, ground)
+            icePath.lineTo(bx + k * 6f, ground - h)
+            icePath.lineTo(bx + hw, ground)
+            icePath.close()
+            canvas.drawPath(icePath, iceFill)
+            icePath.reset()
+            icePath.moveTo(bx + k * 6f, ground - h)
+            icePath.lineTo(bx + hw, ground)
+            icePath.lineTo(bx, ground)
+            icePath.close()
+            canvas.drawPath(icePath, iceShade)
+            icePath.reset()
+            icePath.moveTo(bx - hw, ground)
+            icePath.lineTo(bx + k * 6f, ground - h)
+            icePath.lineTo(bx + hw, ground)
+            canvas.drawPath(icePath, iceEdge)
+        }
     }
 
     private val brassPaint = Paint().apply { color = Color.rgb(212, 170, 70); isAntiAlias = true }

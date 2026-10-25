@@ -6,10 +6,17 @@ import android.graphics.*
  * 바닥이 통째로 없는 낭떠러지. 스테이지 후반부에 나타나며 걸어 들어가면 그대로 떨어져 즉사한다.
  * 폭은 점프 사거리(약 300px)보다 좁게 잡아 반드시 뛰어넘을 수 있게 한다.
  */
-class Chasm(val x: Float, val y: Float, seed: Int) {
+class Chasm(
+    val x: Float, val y: Float, seed: Int,
+    /**
+     * 수직 구덩이 (51~60 빙산 표의 「수직 구덩이」 — 뜻은 기획에 없어 Claude 판단, 2026-10-25):
+     * 폭 130 의 좁고 아주 깊은 얼음 구멍. 벽이 얼음이고, 빠지면 낭떠러지처럼 떨어진다.
+     */
+    val shaft: Boolean = false
+) {
 
-    /** 낭떠러지마다 다른 폭 (160~215) */
-    val width = 160f + (kotlin.math.abs(seed * 43) % 56)
+    /** 낭떠러지마다 다른 폭 (160~215), 수직 구덩이는 130 */
+    val width = if (shaft) SHAFT_W else 160f + (kotlin.math.abs(seed * 43) % 56)
 
     /** 발끝이 허공에 놓였는지 (가장자리 턱은 아직 안전) */
     fun swallows(centerX: Float): Boolean = centerX > x + 16f && centerX < x + width - 16f
@@ -37,6 +44,7 @@ class Chasm(val x: Float, val y: Float, seed: Int) {
      * 깊은 어둠과 양쪽 절벽 단면을 그려 '떨어지는 구멍'으로 보이게 한다.
      */
     fun draw(canvas: Canvas, bottomY: Float) {
+        if (shaft) { drawShaft(canvas, bottomY); return }
         // 아래로 갈수록 캄캄해지는 구멍 속
         voidPaint.shader = LinearGradient(
             0f, y, 0f, bottomY,
@@ -82,7 +90,44 @@ class Chasm(val x: Float, val y: Float, seed: Int) {
         canvas.drawPath(path, cliffPaint)
     }
 
-    private companion object {
-        const val STEPS = 8
+    private val shaftWall = Paint().apply { color = Color.rgb(150, 205, 240); isAntiAlias = true }
+    private val shaftWallLit = Paint().apply { color = Color.rgb(215, 240, 255); isAntiAlias = true }
+    private val shaftEdge = Paint().apply { color = Color.rgb(30, 50, 80); style = Paint.Style.STROKE; strokeWidth = 3f; isAntiAlias = true }
+    private val shaftRim = Paint().apply { color = Color.rgb(245, 250, 255); isAntiAlias = true }
+
+    /** 수직 구덩이: 곧게 떨어지는 얼음 벽 사이로 끝이 안 보이게 캄캄해진다 + 눈 덮인 가장자리 + 경고 표지 */
+    private fun drawShaft(canvas: Canvas, bottomY: Float) {
+        voidPaint.shader = LinearGradient(0f, y, 0f, y + 260f, Color.rgb(70, 120, 170), Color.rgb(6, 10, 22), Shader.TileMode.CLAMP)
+        canvas.drawRect(x, y - 2f, x + width, bottomY, voidPaint)
+        voidPaint.shader = null
+        // 양쪽 얼음 벽 (두께 18, 아래로 곧게)
+        canvas.drawRect(x, y, x + 18f, bottomY, shaftWall)
+        canvas.drawRect(x + width - 18f, y, x + width, bottomY, shaftWall)
+        canvas.drawRect(x + 3f, y, x + 8f, bottomY, shaftWallLit)
+        canvas.drawRect(x + width - 15f, y, x + width - 10f, bottomY, shaftWallLit)
+        canvas.drawLine(x + 18f, y, x + 18f, bottomY, shaftEdge)
+        canvas.drawLine(x + width - 18f, y, x + width - 18f, bottomY, shaftEdge)
+        // 벽에 금 몇 줄
+        for (k in 0 until 4) {
+            val cy = y + 50f + k * 70f
+            canvas.drawLine(x + 4f, cy, x + 16f, cy + 18f, shaftEdge)
+            canvas.drawLine(x + width - 4f, cy + 30f, x + width - 16f, cy + 46f, shaftEdge)
+        }
+        // 눈 덮인 가장자리
+        canvas.drawRoundRect(x - 26f, y - 8f, x + 12f, y + 8f, 8f, 8f, shaftRim)
+        canvas.drawRoundRect(x + width - 12f, y - 8f, x + width + 26f, y + 8f, 8f, 8f, shaftRim)
+        val cx = x + width / 2f
+        markPath.reset()
+        markPath.moveTo(cx, y - 78f); markPath.lineTo(cx + 23f, y - 36f); markPath.lineTo(cx - 23f, y - 36f); markPath.close()
+        canvas.drawPath(markPath, markPaint)
+        canvas.drawPath(markPath, markEdgePaint)
+        canvas.drawLine(cx, y - 66f, cx, y - 49f, markSignPaint)
+        canvas.drawPoint(cx, y - 42f, markSignPaint)
+    }
+
+    companion object {
+        private const val STEPS = 8
+        /** 수직 구덩이 폭 (Claude 판단) */
+        const val SHAFT_W = 130f
     }
 }

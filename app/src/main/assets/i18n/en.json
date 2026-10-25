@@ -838,5 +838,14 @@
  "바다(31)에서는 야간 전투를 못 해요": "No night battles at sea (31)",
  "야간 전투! 냥이들이 공격력·체력 두 배, 눈이 하얘져요": "Night battle! Cats get double attack & HP, and white eyes",
  "🌙 야간 전투 승리! 루비 두 배 +{0}": "🌙 Night battle won! Rubies doubled +{0}",
- "🌙 야간 전투 승리! 루비 두 배 (+{0})": "🌙 Night battle won! Rubies doubled (+{0})"
+ "🌙 야간 전투 승리! 루비 두 배 (+{0})": "🌙 Night battle won! Rubies doubled (+{0})",
+ "슬쩍!": "Swiped!",
+ "{0} / {1} 쪽": "Page {0} / {1}",
+ "도둑냥이가 훔쳐 왔다! 루비 +{0}": "Thief cat brought loot! Rubies +{0}",
+ "쩌적!": "Crack!",
+ "꽁꽁 얼었다!": "Frozen solid!",
+ "얼음냥이": "Ice Cat",
+ "얼음 덩이를 던져 얼린다": "Throws ice chunks that freeze",
+ "빙산냥이": "Iceberg Cat",
+ "얼음 팔로 때리고 얼린다 (60 보스)": "Punches with ice arms and freezes (Stage 60 boss)"
 }

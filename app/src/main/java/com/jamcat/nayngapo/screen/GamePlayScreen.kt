@@ -30,7 +30,8 @@ class GamePlayScreen(
         stageNumber <= 20 -> Theme.JUNGLE  // 정글: 거대한 나무 + 늘어진 덩굴
         stageNumber <= 30 -> Theme.HONEY   // 꿀: 21~30 (대표님 2026-10-04) — 벌집 바닥 + 큰 꽃 (기획10)
         stageNumber == 31 -> Theme.BEACH   // 해적: 바닷가 모래밭 + 바다, 끝에 해적선 (2026-10-04)
-        stageNumber <= 40 -> Theme.SNOW    // 32~40 빙산 (예정)
+        stageNumber in 51..60 -> Theme.SNOW   // 51~60 빙산 (2026-10-25): 눈 덮인 바닥 + 멀리 빙산
+        stageNumber <= 40 -> Theme.SNOW
         stageNumber <= 40 -> Theme.DESERT
         else -> Theme.VOLCANO
     }
@@ -703,6 +704,8 @@ class GamePlayScreen(
                 continue
             }
             if (!enemy.isDead) {
+                // 우리 편 얼음냥이 얼음에 맞아 얼어 있으면 꼼짝 못 한다 (2026-10-25)
+                if (enemy.frozenTimer > 0f) { enemy.frozenTimer -= deltaTime; continue }
                 enemy.update(deltaTime, player.x, player.y)
                 newcomers.addAll(enemy.takeSpawns())
                 // Collect projectiles
@@ -734,6 +737,15 @@ class GamePlayScreen(
             ally.pendingCallout?.let { shout ->
                 hitEffects.add(HitEffect(ally.x, ally.y - ally.height - 30f, 0.9f, shout))
                 ally.pendingCallout = null
+            }
+            // 우리 편 도둑냥이가 훔쳐 온 루비를 건넨다 (2026-10-25) — 빚이 있으면 먼저 갚는다
+            if (ally.pendingRubies > 0) {
+                val n = ally.pendingRubies
+                ally.pendingRubies = 0
+                GameProgress.addRubies(n)
+                stageRubies += n
+                SoundManager.playCatHit()
+                hitEffects.add(HitEffect(player.x, player.y - player.height - 50f, 1.0f, "도둑냥이가 훔쳐 왔다! 루비 +$n"))
             }
             ally.pendingMeleeTarget?.let { target ->
                 if (!target.isDead) damageEnemy(target, ally.meleeDamage)
@@ -837,6 +849,20 @@ class GamePlayScreen(
             break
         }
 
+        // 얼음 구덩이 (51~60 빙산, 2026-10-25): 인간이 밟으면 금이 가고 0.5초 뒤 깨진다 — 깨진 구멍은 구덩이 함정과 같다
+        for (hole in level.iceHoles) {
+            val pcx = player.x + player.width / 2f
+            val on = !player.isAirborne && !player.ridingVine && hole.covers(pcx)
+            val wasBroken = hole.broken
+            hole.update(deltaTime, on)
+            if (hole.broken && !wasBroken) { shake(0.2f, 10f); hitEffects.add(HitEffect(hole.x + hole.width / 2f, hole.y - 60f, 0.6f, "쩌적!")) }
+            if (!player.isDead && on && hole.swallows(pcx)) {
+                shake(0.35f, 18f)
+                hitEffects.add(HitEffect(player.x, player.y - player.height, 1f, "빠졌다!"))
+                player.fallIntoPit()
+            }
+        }
+
         // 바닥이 없는 낭떠러지: 발이 허공에 닿는 순간 그대로 떨어져 즉사한다
         for (chasm in level.chasms) {
             if (player.isAirborne || player.ridingVine || player.onPlatform != null) continue
@@ -932,6 +958,22 @@ class GamePlayScreen(
             }
         }
 
+        // 얼음 덩이가 땅에 닿으면 부서져 얼음 조각이 튄다
+        for (proj in level.projectiles) {
+            if (!proj.isIceChunk || !proj.isAlive) continue
+            val ix = proj.x + proj.width / 2f
+            val ground = Terrain.groundY(ix)
+            if (proj.y + proj.height >= ground) {
+                proj.isAlive = false
+                repeat(5) { i ->
+                    val ang = (-Math.PI * (0.15 + 0.7 * i / 4.0)).toFloat()
+                    val v = 150f + Math.random().toFloat() * 120f
+                    sparks.add(Spark(ix, ground - 4f, kotlin.math.cos(ang) * v, kotlin.math.sin(ang) * v, 0.35f,
+                        Color.rgb(200, 235, 255), size = 4f))
+                }
+            }
+        }
+
         // 돌이 땅에 닿으면 피해 없이 부서진다
         for (proj in level.projectiles) {
             if (!proj.isStone || !proj.isAlive) continue
@@ -995,7 +1037,9 @@ class GamePlayScreen(
         val playerBox = player.hitBox
         if (!player.isInvincible && !player.isJumping) {
             for (enemy in level.enemies) {
-                if (!enemy.isDead && enemy.isTangible && RectF.intersects(playerBox, enemy.hitBox)) {
+                // 빙산냥이의 뻗은 얼음 주먹은 몸과 따로 때린다 (2026-10-25)
+                val struck = !enemy.isDead && enemy.strikeBox()?.let { RectF.intersects(playerBox, it) } == true
+                if (struck || (!enemy.isDead && enemy.isTangible && RectF.intersects(playerBox, enemy.hitBox))) {
                     if (enemy is com.jamcat.nayngapo.entity.ThiefCat) {
                         // 도둑냥이는 때리지 않고 루비를 훔쳐 달아난다 (잡으면 되찾는다)
                         if (enemy.tryStealOnTouch()) {
@@ -1018,7 +1062,10 @@ class GamePlayScreen(
                     if (enemy.halfHeart) player.takeHalfDamage()      // 새끼 고양이: 하트 반 칸
                     else {
                         val before = player.hp + player.robotHp
-                        player.takeDamage(enemy.contactDamage * (if (com.jamcat.nayngapo.entity.Enemy.nightBattle) 2 else 1))   // 잡몹 1, 보스 3 (기획4) · 야간 전투 두 배
+                        val dmg = if (struck) enemy.strikeDamage else enemy.contactDamage
+                        player.takeDamage(dmg * (if (com.jamcat.nayngapo.entity.Enemy.nightBattle) 2 else 1))   // 잡몹 1, 보스 3 (기획4) · 야간 전투 두 배
+                        // 빙산냥이에 맞으면 3초 동안 언다 (기획15)
+                        if (enemy.freezeOnHit > 0f && player.hp + player.robotHp < before) freezePlayer(enemy.freezeOnHit)
                         // 여왕 벌냥이 침에 맞으면 독 — 계속 2초마다 하트 한 칸 (2026-10-16)
                         if (enemy is com.jamcat.nayngapo.entity.QueenBeeCatBoss && player.hp + player.robotHp < before && !player.poisoned) {
                             player.poisoned = true
@@ -1051,6 +1098,8 @@ class GamePlayScreen(
                     } else {
                         // 채집통은 인간이 때릴 때만 (냥이들이 쏜 탄은 안 잡힌다)
                         if (!(proj.byHuman && tryCapture(enemy))) damageEnemy(enemy, proj.damage)
+                        // 우리 편 얼음 덩이: 맞은 적이 잠깐 언다 (보스는 안 언다)
+                        if (proj.iceFreeze > 0f) enemy.freeze(proj.iceFreeze)
                         // 돌은 맞고 부서진다
                         if (proj.isStone) chipStone(proj.x + proj.width / 2f, proj.y + proj.height / 2f)
                     }
@@ -1083,9 +1132,13 @@ class GamePlayScreen(
                         continue
                     }
                     // 적 탄에 스치면 하트 1. 노랑냥이 번개만 2 (대표님 2026-09-24 — 총냥이 총알은 2가 아니다)
-                    player.takeDamage(if (proj.isLightning) 2 else 1)
-                    proj.isAlive = false
-                    if (proj.isPollen) {
+                    val beforeHp = player.hp + player.robotHp
+                    player.takeDamage(if (proj.heartDamage > 0) proj.heartDamage else if (proj.isLightning) 2 else 1)
+                    if (!proj.isIceSpike) proj.isAlive = false   // 얼음 가시는 솟은 자리에 남는다
+                    if (proj.iceFreeze > 0f) {
+                        // 얼음 덩이·얼음 가시: 맞으면 얼어 못 움직인다 (얼음냥이 1초 · 빙산냥이 3초)
+                        if (player.hp + player.robotHp < beforeHp) freezePlayer(proj.iceFreeze)
+                    } else if (proj.isPollen) {
                         // 꽃가루: 숨이 막혀 잠깐 느려진다 (기획10 「숨막힘」)
                         player.chokeTimer = CHOKE_TIME
                         hitEffects.add(HitEffect(player.x, player.y - player.height, 0.8f, "콜록! 숨막혀!"))
@@ -1271,6 +1324,7 @@ class GamePlayScreen(
         val probe = centerX + dir * 95f
         if (level.pits.any { probe > it.x - 24f && probe < it.x + it.width + 24f }) return true
         if (level.chasms.any { probe > it.x - 30f && probe < it.x + it.width + 30f }) return true
+        if (level.iceHoles.any { it.broken && probe > it.x - 24f && probe < it.x + it.width + 24f }) return true
         if (level.swamps.any { probe > it.x - 24f && probe < it.x + it.width + 24f }) return true
         return level.traps.any {
             it.isDangerous && probe > it.x - 24f && probe < it.x + it.width + 24f
@@ -2438,6 +2492,7 @@ class GamePlayScreen(
         level.pirateShipX?.let { drawPirateShip(canvas, it) }
         for (tt in level.tornadoTraps) tt.draw(canvas)
         for (pit in level.pits) pit.draw(canvas)
+        for (hole in level.iceHoles) hole.draw(canvas)
         for (trap in level.traps) trap.draw(canvas)
         for (wall in level.walls) wall.draw(canvas)
 
@@ -2456,7 +2511,7 @@ class GamePlayScreen(
         // Enemies
         for (enemy in level.enemies) {
             if (!enemy.isDead) {
-                drawables.add(Drawable(enemy.y) { enemy.draw(canvas) })
+                drawables.add(Drawable(enemy.y) { enemy.draw(canvas); enemy.drawFrozen(canvas) })
             } else if (enemy.isDying && !enemy.captured) {
                 drawables.add(Drawable(enemy.y) { enemy.drawDeath(canvas) })
             }
@@ -2970,7 +3025,7 @@ class GamePlayScreen(
     private fun drawHorizonBand(canvas: Canvas, color: Int) {
         val sw = gameView.screenWidth.toFloat()
         // Terrain이 솟을 수 있는 최대 높이보다 위에서 시작해야 어떤 언덕에서도 틈이 없다
-        val maxRise = 18f + stageNumber * 17f
+        val maxRise = (18f + stageNumber * 17f).coerceAtMost(360f)   // 51~60 빙산은 번호가 커서 위로 너무 솟지 않게 (지형 최고 300)
         val topBase = Constants.GROUND_Y - maxRise - 95f
         val scroll = camera.x * 0.3f
 
@@ -3653,6 +3708,13 @@ class GamePlayScreen(
         return true
     }
 
+    /** 인간이 얼었다 (얼음냥이·빙산냥이, 2026-10-25) — 로봇을 타고 있으면 로봇이 대신 맞아 안 언다 (Claude 판단) */
+    private fun freezePlayer(seconds: Float) {
+        if (player.robotHp > 0) return
+        player.freeze(seconds)
+        hitEffects.add(HitEffect(player.x, player.y - player.height - 40f, 1.0f, "꽁꽁 얼었다!"))
+    }
+
     /** 독에 걸리면 머리 위로 초록 방울이 보글보글 + '독' 글씨 */
     private val poisonPaint = Paint().apply { color = Color.argb(200, 110, 220, 80); isAntiAlias = true }
     private val poisonText = Paint().apply {
@@ -3698,7 +3760,7 @@ class GamePlayScreen(
      */
     private fun catKindShot(): Boolean {
         val kind = player.playerCat?.kind ?: return false
-        if (kind !in setOf(com.jamcat.nayngapo.entity.AllyCat.Kind.GUN, com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN, com.jamcat.nayngapo.entity.AllyCat.Kind.RED, com.jamcat.nayngapo.entity.AllyCat.Kind.ORANGE, com.jamcat.nayngapo.entity.AllyCat.Kind.YELLOW, com.jamcat.nayngapo.entity.AllyCat.Kind.LASER, com.jamcat.nayngapo.entity.AllyCat.Kind.FLOWER, com.jamcat.nayngapo.entity.AllyCat.Kind.POOP)) return false   // 벌냥이는 아무것도 쏘지 않는다 (대표님 2026-10-24)
+        if (kind !in setOf(com.jamcat.nayngapo.entity.AllyCat.Kind.GUN, com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN, com.jamcat.nayngapo.entity.AllyCat.Kind.RED, com.jamcat.nayngapo.entity.AllyCat.Kind.ORANGE, com.jamcat.nayngapo.entity.AllyCat.Kind.YELLOW, com.jamcat.nayngapo.entity.AllyCat.Kind.LASER, com.jamcat.nayngapo.entity.AllyCat.Kind.FLOWER, com.jamcat.nayngapo.entity.AllyCat.Kind.POOP, com.jamcat.nayngapo.entity.AllyCat.Kind.ICE)) return false   // 벌냥이는 아무것도 쏘지 않는다 (대표님 2026-10-24)
         if (gunCooldown > 0f) return true
         gunCooldown = 0.4f
         val dir = if (player.facingRight) 1f else -1f
@@ -3722,6 +3784,9 @@ class GamePlayScreen(
             com.jamcat.nayngapo.entity.AllyCat.Kind.LASER -> add(com.jamcat.nayngapo.entity.Projectile(cx, my, dir * 800f, 0f, d * 2, true, tint = Color.rgb(92, 208, 108), radius = 9f))
             com.jamcat.nayngapo.entity.AllyCat.Kind.FLOWER -> repeat(3) { add(com.jamcat.nayngapo.entity.Projectile(cx + dir * 30f, my, dir * (300f + Math.random().toFloat() * 120f),
                 60f + (Math.random().toFloat() - 0.5f) * 180f, d, true, tint = Color.rgb(250, 220, 80), radius = 9f, fuse = 0.8f, isPollen = true)) }
+            // 얼음냥이 주인공: 얼음 덩이를 던져 맞은 적을 1초 얼린다 (2026-10-25)
+            com.jamcat.nayngapo.entity.AllyCat.Kind.ICE -> add(com.jamcat.nayngapo.entity.Projectile(cx + dir * 28f - 13f, my - 30f, dir * 520f, -380f, d, true,
+                radius = 13f, gravity = 900f, isIceChunk = true, iceFreeze = com.jamcat.nayngapo.entity.AllyCat.ICE_FREEZE_ENEMY))
             com.jamcat.nayngapo.entity.AllyCat.Kind.POOP -> add(com.jamcat.nayngapo.entity.Projectile(cx, my - 20f, dir * 400f, -420f, d, true, tint = Color.rgb(130, 86, 50), radius = 12f, gravity = 1000f))
             else -> Unit
         }

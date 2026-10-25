@@ -93,6 +93,13 @@ object SpriteManager {
     /** 갑옷 입은 배냥이 — 무늬별 (cat_boat_<무늬>_armor_ally) */
     var boatArmor: Map<CatCoat, Bitmap> = emptyMap()
     lateinit var teleportCat: Bitmap    // 순간냥이 = 그린냥이 + 가운데 분홍 줄 (초원 보스)
+    /** 잡몹 순간냥이 (51~60 빙산, 2026-10-25) — 보스보다 작게 원본 크기 */
+    lateinit var teleportCatMob: Bitmap
+    /** 얼음냥이 (51~60 빙산, 2026-10-25): 적 cat_ice(두꺼운 꼬리) · 내 편 cat_ice_ally(얇은 꼬리). 그림이 없으면 하늘색으로 물들인 치즈냥이 */
+    lateinit var iceCat: Bitmap
+    lateinit var iceCatAlly: Bitmap
+    /** 60 보스 빙산냥이 (cat_iceberg_boss, 오른쪽을 보는 얼음 덩어리 + 위에 엎드린 냥이 + 얼음 팔·주먹). 없으면 코드로 그린다 */
+    var icebergBoss: Bitmap? = null
     lateinit var allyCat: Bitmap     // 인간 편의 평범한 냥이
 
     // 애니메이션 프레임 (cat4·cat5 시트: 대기/이동/점프/공격)
@@ -282,6 +289,10 @@ object SpriteManager {
                 ?.let { c to BitmapFactory.decodeResource(res, it) }
         }.toMap()
         teleportCat = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_teleport), 1.25f)   // 보스라 조금 크게
+        teleportCatMob = BitmapFactory.decodeResource(res, R.drawable.cat_teleport)
+        iceCat = opt("cat_ice") ?: icyTint(scaled(normalCat, 1.06f))
+        iceCatAlly = opt("cat_ice_ally") ?: icyTint(allyCat)
+        icebergBoss = opt("cat_iceberg_boss")
 
         // 냥이도 동작마다 7프레임짜리 연속 동작 스트립
         catIdle = splitStrip(res, R.drawable.anim_cat_idle, PLAYER_FRAMES)
@@ -423,6 +434,20 @@ object SpriteManager {
         leafAt(hx + w * 0.07f, hy + 1f, -26f, w * 0.11f, w * 0.045f, leaf)
         leafAt(hx - w * 0.01f, hy - 2f, -4f, w * 0.09f, w * 0.040f, leaf)
         return bmp
+    }
+
+    /** 얼음냥이 그림이 아직 없을 때: 냥이 그림을 하늘색으로 물들인다 (외곽선 검정은 그대로) */
+    private fun icyTint(src: Bitmap): Bitmap {
+        val out = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
+        val p = android.graphics.Paint().apply {
+            colorFilter = android.graphics.ColorMatrixColorFilter(android.graphics.ColorMatrix(floatArrayOf(
+                0.45f, 0.1f, 0.1f, 0f, 60f,
+                0.2f, 0.55f, 0.2f, 0f, 90f,
+                0.2f, 0.2f, 0.4f, 0f, 150f,
+                0f, 0f, 0f, 1f, 0f)))
+        }
+        android.graphics.Canvas(out).drawBitmap(src, 0f, 0f, p)
+        return out
     }
 
     /** 같은 그림을 비율만 키워 다른 개체처럼 보이게 한다 */

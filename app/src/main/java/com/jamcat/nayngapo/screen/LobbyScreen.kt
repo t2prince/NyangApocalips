@@ -344,7 +344,7 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
             canvas.drawCircle(cx, cy, stoneR, stoneFillPaint)
             canvas.drawCircle(cx, cy, stoneR, stoneOutlinePaint)
 
-            if (stage <= current) {
+            if (stage <= current && GameProgress.hasData(stage)) {   // 32~50 처럼 데이터 없는 돌은 번호 없이 회색 (2026-10-25)
                 canvas.drawTr("$stage", cx, cy + stoneR * 0.40f, stoneNumPaint)
             } else if (GameProgress.hasData(stage)) {
                 canvas.drawCircle(cx, cy, stoneR * 0.30f, stoneLockPaint)

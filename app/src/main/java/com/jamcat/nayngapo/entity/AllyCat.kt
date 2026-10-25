@@ -55,7 +55,9 @@ class AllyCat(
         BOAT,
         // ===== 모든 냥이가 우리 팀이 될 수 있다 (보스만 빼고, 구출·채집통 — 대표님 2026-10-10) =====
         // 우리 팀 그림이 따로 없어서 그 냥이(적) 그림을 그대로 쓰고, 싸우는 법은 치즈냥이처럼 가까이 가서 친다 (Claude 판단)
-        HAMMER, THIEF, LASER, RED, ORANGE, YELLOW, BEE, FLOWER, MUD, HONEY, FLUFFY, ANVIL, POOP, VINE
+        HAMMER, THIEF, LASER, RED, ORANGE, YELLOW, BEE, FLOWER, MUD, HONEY, FLUFFY, ANVIL, POOP, VINE,
+        /** 51~60 빙산 (2026-10-25): 얼음냥이 — 얼음 덩이를 던져 적을 잠깐 얼린다 · 순간냥이 — 멀리 있는 적 옆으로 순간이동해 할퀸다 (Claude 판단) */
+        ICE, TELEPORT
     }
 
     /** 날아냥이는 땅 위에서도 살짝 떠서 다닌다 */
@@ -146,7 +148,7 @@ class AllyCat(
      * 빨강 불 뿜기 · 주황 용암 던지기 · 노랑 번개 · 레이저 · 꽃가루 · 벌 침 · 똥 던지기는 멀리서, 해머·모루는 세게 내려친다(2배·3배).
      * 나머지(도둑·털뭉·머드·꿀·덩굴)는 할퀴기. 피해량은 우리 팀 공격력 기준(배율은 Claude 판단).
      */
-    private val ranged = kind in setOf(Kind.RED, Kind.ORANGE, Kind.YELLOW, Kind.LASER, Kind.FLOWER, Kind.BEE, Kind.POOP)
+    private val ranged = kind in setOf(Kind.RED, Kind.ORANGE, Kind.YELLOW, Kind.LASER, Kind.FLOWER, Kind.BEE, Kind.POOP, Kind.ICE)
     /** 원거리 (그린냥이 슬라임 / 총냥이 총알 / 위의 원거리 냥이들) */
     private val isSpitter = kind == Kind.GREEN || isGunner || ranged
     private val moveSpeed = (if (isSpitter) 250f else 300f) * speedMul
@@ -245,6 +247,33 @@ class AllyCat(
         }.minByOrNull { abs(it.x - x) }
 
         val speed = if (order == AllyOrder.ATTACK) moveSpeed * 1.15f else moveSpeed
+        if (blinkFlash > 0f) blinkFlash -= deltaTime
+        if (teleportCd > 0f) teleportCd -= deltaTime
+        if (stealCd > 0f) stealCd -= deltaTime
+
+        // 우리 편 도둑냥이 (대표님 2026-10-25 「같은 편 도둑냥이는 다른 편 고양이의 루비를 훔치고 와」):
+        // 적 냥이(보스 포함)에게 달려가 닿으면 루비 2개를 훔치고, 인간에게 돌아와 건넨다. 훔치는 간격 4초 (Claude 판단)
+        if (kind == Kind.THIEF && (loot > 0 || (stealCd <= 0f && target != null))) {
+            val goal = if (loot > 0) playerX else target!!.x
+            val dx = goal - x
+            facingRight = dx > 0
+            velocityX = if (abs(dx) > 40f) sign(dx) * moveSpeed * 1.2f else 0f
+            if (loot > 0 && abs(dx) < 70f) {
+                pendingRubies = loot; loot = 0
+            } else if (loot == 0 && abs(dx) < 60f) {
+                loot = THIEF_STEAL; stealCd = THIEF_STEAL_EVERY
+                pendingCallout = "슬쩍!"
+            }
+            moveAndHop(deltaTime, playerX)
+            return
+        }
+
+        // 우리 편 순간냥이: 공격할 적이 멀면(300 넘게) 4초마다 그 옆으로 순간이동한다 (Claude 판단)
+        if (kind == Kind.TELEPORT && target != null && order != AllyOrder.HOLD && teleportCd <= 0f && abs(target.x - x) > 300f) {
+            teleportCd = 4f
+            x = target.x + (if (target.x > x) -90f else 90f)
+            blinkFlash = 0.3f
+        }
 
         if (target != null) {
             val dx = target.x - x
@@ -285,6 +314,11 @@ class AllyCat(
             velocityX = if (abs(dx) > 60f) sign(dx) * speed else 0f
         }
 
+        moveAndHop(deltaTime, playerX)
+    }
+
+    /** 바라보는 쪽 고정 · 이동 · 지시별 거리 제한 · 지형 따라가기 · 깡충 (update 끝부분) */
+    private fun moveAndHop(deltaTime: Float, playerX: Float) {
         // 기술을 쓰는 동안에는 적을 쫓아 돌아서더라도 고정한 쪽을 계속 본다
         if (faceLockTimer > 0f) {
             faceLockTimer -= deltaTime
@@ -327,6 +361,15 @@ class AllyCat(
         }
     }
 
+    // 우리 편 순간냥이 순간이동 · 도둑냥이 훔치기 상태
+    private var teleportCd = 0f
+    private var blinkFlash = 0f
+    private var stealCd = 0f
+    /** 도둑냥이가 훔쳐서 들고 오는 루비 */
+    private var loot = 0
+    /** 도둑냥이가 인간에게 방금 건넨 루비 — 화면 쪽에서 GameProgress.addRubies 후 0 으로 */
+    var pendingRubies = 0
+
     /** 적일 때와 같은 원거리 공격 (우리 편 탄) */
     private fun shootLikeEnemy(dir: Float, target: Enemy) {
         val cx = x + width / 2f
@@ -359,6 +402,11 @@ class AllyCat(
             }
             Kind.POOP -> pendingProjectiles.add(Projectile(cx, mouthY - 20f, dir * 400f, -420f, d, true,   // 똥을 던진다
                 tint = Color.rgb(130, 86, 50), radius = 12f, gravity = 1000f))
+            Kind.ICE -> {                       // 얼음 덩이를 포물선으로 — 맞은 적은 1초 동안 언다 (보스는 안 언다, Claude 판단)
+                val dist = abs(target.x - x)
+                pendingProjectiles.add(Projectile(cx + dir * 28f - 13f, mouthY - 30f, dir * (dist / 0.85f).coerceIn(220f, 700f), -900f * 0.85f / 2f, d, true,
+                    radius = 13f, gravity = 900f, isIceChunk = true, iceFreeze = ICE_FREEZE_ENEMY))
+            }
             else -> Unit
         }
     }
@@ -403,6 +451,19 @@ class AllyCat(
             scratch.set(cx - bw / 2f, drawY - bh + 8f * KITTEN_SCALE, cx + bw / 2f, drawY + 8f * KITTEN_SCALE)
             canvas.drawBitmap(bmp, null, scratch, evolvePaint)
         } else canvas.drawBitmap(bmp, cx - bmp.width / 2f, drawY - bmp.height + 8f, null)
+
+        // 순간이동해 나타난 순간 흰 고리
+        if (blinkFlash > 0f) {
+            castSparkPaint.alpha = (255 * blinkFlash / 0.3f).toInt().coerceIn(0, 255)
+            canvas.drawCircle(cx, drawY - height * 0.5f, 50f * (1.4f - blinkFlash / 0.3f), castSparkPaint.apply { style = Paint.Style.STROKE; strokeWidth = 4f })
+            castSparkPaint.style = Paint.Style.FILL; castSparkPaint.alpha = 255
+        }
+        // 훔친 루비를 들고 오는 도둑냥이: 머리 위에 빨간 루비가 반짝인다
+        if (loot > 0) {
+            val ry = drawY - height * sizeMul - 44f + sin(hopPhase.toDouble() * 2.0).toFloat() * 3f
+            val gem = Path().apply { moveTo(cx, ry - 10f); lineTo(cx + 9f, ry); lineTo(cx, ry + 11f); lineTo(cx - 9f, ry); close() }
+            canvas.drawPath(gem, markPaint); canvas.drawPath(gem, markStrokePaint)
+        }
 
         // 기술을 쓰는 동안 주위에 노란 반짝임 여섯 개
         if (castTimer > 0f) {
@@ -472,6 +533,8 @@ class AllyCat(
             Kind.ANVIL -> SpriteManager.anvilCat
             Kind.POOP -> SpriteManager.poopCat
             Kind.VINE -> SpriteManager.vineCat
+            Kind.ICE -> SpriteManager.iceCatAlly
+            Kind.TELEPORT -> SpriteManager.teleportCatMob
             else -> null
         }
 
@@ -540,6 +603,8 @@ class AllyCat(
             is AnvilCat -> Kind.ANVIL
             is PoopCat -> Kind.POOP
             is VineCat -> Kind.VINE
+            is IceCat -> Kind.ICE
+            is TeleportCat -> Kind.TELEPORT
             else -> if (e.isBoss) null else Kind.NORMAL   // 치즈냥이·새끼 고양이 등
         }
 
@@ -553,6 +618,12 @@ class AllyCat(
         const val HOVER_LIFT = -18f
         /** 우리 팀 벌냥이가 떠 있는 높이 (적 벌냥이는 210, 우리 편은 인간 머리 위쯤 — Claude 판단) */
         const val BEE_HOVER_LIFT = -150f
+
+        /** 우리 편 얼음냥이 얼음에 맞은 적이 얼어 있는 시간 (Claude 판단) */
+        const val ICE_FREEZE_ENEMY = 1f
+        /** 우리 편 도둑냥이가 한 번에 훔치는 루비 · 간격 (적 도둑냥이와 같게, Claude 판단) */
+        const val THIEF_STEAL = 2
+        const val THIEF_STEAL_EVERY = 4f
 
         /** 기술을 쓰는 동작 길이 */
         const val CAST_TIME = 0.3f

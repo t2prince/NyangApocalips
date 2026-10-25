@@ -73,6 +73,17 @@ object Terrain {
         30 -> Profile(Shape.TERRACES, 150f, 2400f, 3f, 0.4f)
         // 해적 (바닷가 모래밭)
         31 -> Profile(Shape.FLAT, 0f, 1700f, 0f, 0f)        // 바다 — 물은 평평하다 (2026-10-09)
+        // 빙산 51~60 (2026-10-25, 모양·높이 Claude 판단) — 얼음 언덕·빙벽
+        51 -> Profile(Shape.ROLLING, 90f, 1600f, 3f, 0.2f)
+        52 -> Profile(Shape.MESA, 140f, 1500f, 3f, 0.5f)
+        53 -> Profile(Shape.PEAKS, 150f, 1000f, 3f, 0.3f)
+        54 -> Profile(Shape.STAIRS, 180f, 2000f, 3f, 0.1f)
+        55 -> Profile(Shape.VALLEY, 180f, 1800f, 4f, 0.6f)
+        56 -> Profile(Shape.MOUNTAIN, 240f, 2200f, 4f, 0.4f)
+        57 -> Profile(Shape.MESA, 200f, 1300f, 4f, 0.7f)
+        58 -> Profile(Shape.DUNES, 170f, 1500f, 4f, 0.2f)
+        59 -> Profile(Shape.PEAKS, 190f, 1200f, 4f, 0.8f)
+        60 -> Profile(Shape.TERRACES, 150f, 2400f, 2f, 0.5f)   // 보스 싸움터
         else -> Profile(Shape.ROLLING, 60f + stage * 4f, 1500f, 4f, 0f)
     }
 

@@ -55,6 +55,8 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
     private var timer = 0f
     private var pressedId: String? = null
     private val charRect = RectF()
+    /** 맨 위 왼쪽 '다른 게임 플레이하기' → 게임 고르기 (대표님 2026-10-25 「홈 화면에서는 다른 게임 플레이하기 버튼이 제일 위 왼쪽에 있어」) */
+    private val otherGameRect = RectF()
 
     // 미구현 기능을 눌렀을 때 잠깐 떠오르는 쪽지
     private var noticeText = ""
@@ -183,6 +185,12 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
         canvas.drawRoundRect(charRect, 14f, 14f, borderPaint)
         labelPaint.textSize = h * 0.032f
         canvas.drawTr("🙂 캐릭터 변경", charRect.centerX(), charRect.centerY() + h * 0.011f, labelPaint)
+
+        otherGameRect.set(0.015f * w, 0.012f * h, 0.245f * w, 0.088f * h)
+        canvas.drawRoundRect(otherGameRect, 14f, 14f, if (pressedId == "other_game") panelPressPaint else panelPaint)
+        canvas.drawRoundRect(otherGameRect, 14f, 14f, borderPaint)
+        labelPaint.textSize = h * 0.032f
+        canvas.drawTr("🎮 다른 게임 플레이하기", otherGameRect.centerX(), otherGameRect.centerY() + h * 0.011f, labelPaint)
 
         drawNotice(canvas, w, h)
     }
@@ -455,7 +463,8 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
         if (mapOnly) return true
 
         when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> pressedId = if (charRect.contains(event.x, event.y)) "char" else slotAt(event.x, event.y, w, h)?.id
+            MotionEvent.ACTION_DOWN -> pressedId = if (otherGameRect.contains(event.x, event.y)) "other_game"
+                else if (charRect.contains(event.x, event.y)) "char" else slotAt(event.x, event.y, w, h)?.id
             MotionEvent.ACTION_UP -> {
                 // 지도 쪽 넘기기 화살표를 먼저, 그다음 돌 — 돌 하나가 스테이지 하나
                 val stage = stageAt(event.x, event.y)
@@ -465,6 +474,8 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
                     mapPage++
                 } else if (stage != null) {
                     enterStage(stage)
+                } else if (otherGameRect.contains(event.x, event.y)) {
+                    if (pressedId == "other_game") gameView.showGameSelect()
                 } else if (charRect.contains(event.x, event.y)) {
                     if (pressedId == "char") gameView.showCharacterSelect()
                 } else {

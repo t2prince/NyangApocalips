@@ -61,6 +61,10 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
 
     // ===== 캣타워 냥이 고르기 창 =====
     private var choosing = false
+    /** 냥이가 18마리보다 많으면 옆으로 넘겨 본다 (대표님 2026-10-25 「넘기면 자기 팀에 있는 모든 고양이가 될 수 있어」) */
+    private var choosePage = 0
+    private val prevPageRect = RectF()
+    private val nextPageRect = RectF()
     private val chooseRects = ArrayList<Pair<Int, RectF>>()
     private val closeRect = RectF()
     private var noticeText = ""
@@ -162,7 +166,7 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
         }
     }
 
-    /** 캣타워 냥이들을 한 줄에 여섯씩 — 누르면 그 냥이가 된다 */
+    /** 우리 팀 냥이들을 한 줄에 여섯씩, 한 쪽에 18마리 — 누르면 그 냥이가 된다. 옆으로 밀거나 ◀ ▶ 로 넘긴다 */
     private fun drawChooser(canvas: Canvas, w: Float, h: Float) {
         canvas.drawRect(0f, 0f, w, h, dimPaint)
         val panel = RectF(w * 0.06f, h * 0.08f, w * 0.94f, h * 0.92f)
@@ -172,7 +176,9 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
         chooseRects.clear()
         val cats = com.jamcat.nayngapo.engine.CatTeam.living
         val cols = 6; val cw = (panel.width() - 40f) / cols; val ch = h * 0.22f
-        for ((i, c) in cats.take(18).withIndex()) {
+        val pages = ((cats.size + PAGE_CATS - 1) / PAGE_CATS).coerceAtLeast(1)
+        choosePage = choosePage.coerceIn(0, pages - 1)
+        for ((i, c) in cats.drop(choosePage * PAGE_CATS).take(PAGE_CATS).withIndex()) {
             val l = panel.left + 20f + (i % cols) * cw; val t = panel.top + h * 0.11f + (i / cols) * (ch + 10f)
             val r = RectF(l + 6f, t, l + cw - 6f, t + ch)
             chooseRects.add(c.id to r)
@@ -192,6 +198,24 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
         canvas.drawRoundRect(closeRect, 20f, 20f, tagPaint); canvas.drawRoundRect(closeRect, 20f, 20f, edgePaint)
         tagTextPaint.textSize = bh2 * 0.42f
         canvas.drawTr("닫기", closeRect.centerX(), closeRect.centerY() + bh2 * 0.15f, tagTextPaint)
+        prevPageRect.setEmpty(); nextPageRect.setEmpty()
+        if (pages > 1) {
+            val aw = w * 0.11f
+            prevPageRect.set(panel.left + 30f, closeRect.top, panel.left + 30f + aw, closeRect.bottom)
+            nextPageRect.set(panel.right - 30f - aw, closeRect.top, panel.right - 30f, closeRect.bottom)
+            for ((r, label, on) in listOf(Triple(prevPageRect, "◀", choosePage > 0), Triple(nextPageRect, "▶", choosePage < pages - 1))) {
+                canvas.drawRoundRect(r, 20f, 20f, if (on) tagPaint else tagOffPaint); canvas.drawRoundRect(r, 20f, 20f, edgePaint)
+                canvas.drawTr(label, r.centerX(), r.centerY() + bh2 * 0.15f, tagTextPaint)
+            }
+            namePaint.textSize = h * 0.032f
+            canvas.drawTr("${choosePage + 1} / $pages", w / 2f, closeRect.top - h * 0.02f, namePaint)
+        }
+    }
+
+    private fun turnPage(d: Int) {
+        val pages = ((com.jamcat.nayngapo.engine.CatTeam.living.size + PAGE_CATS - 1) / PAGE_CATS).coerceAtLeast(1)
+        val np = (choosePage + d).coerceIn(0, pages - 1)
+        if (np != choosePage) { choosePage = np; SoundManager.playCatHit() }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -199,10 +223,13 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
             MotionEvent.ACTION_DOWN -> { downX = event.x; lastX = event.x; dragging = false }
             MotionEvent.ACTION_MOVE -> {
                 if (abs(event.x - downX) > 24f) dragging = true
-                if (dragging) { scrollX = (scrollX - (event.x - lastX)).coerceIn(0f, maxScroll) }
+                if (dragging && !choosing) { scrollX = (scrollX - (event.x - lastX)).coerceIn(0f, maxScroll) }
                 lastX = event.x
             }
-            MotionEvent.ACTION_UP -> if (!dragging) tap(event.x, event.y)
+            MotionEvent.ACTION_UP -> when {
+                !dragging -> tap(event.x, event.y)
+                choosing -> turnPage(if (event.x < downX) 1 else -1)   // 냥이 고르기 창: 밀면 다음/앞 쪽
+            }
         }
         return true
     }
@@ -210,6 +237,8 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
     private fun tap(x: Float, y: Float) {
         if (choosing) {
             if (closeRect.contains(x, y)) { choosing = false; return }
+            if (prevPageRect.contains(x, y)) { turnPage(-1); return }
+            if (nextPageRect.contains(x, y)) { turnPage(1); return }
             val hit = chooseRects.firstOrNull { it.second.contains(x, y) } ?: return
             GameProgress.setPlayerCat(hit.first)
             GameProgress.selectHero(Heroes.CAT_ID)
@@ -235,7 +264,7 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
             // 고양이: 캣타워 냥이 중에서 고른다
             if (hero.id == Heroes.CAT_ID) {
                 if (com.jamcat.nayngapo.engine.CatTeam.living.isEmpty()) { noticeText = "캣타워에 냥이가 없어요 — 먼저 냥이를 구해요"; noticeTimer = 2f }
-                else choosing = true
+                else { choosing = true; choosePage = 0 }
                 return
             }
             if (hero.id != GameProgress.selectedHero) {
@@ -255,5 +284,6 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
 
     private companion object {
         const val HOP_TIME = 0.4f
+        const val PAGE_CATS = 18
     }
 }

@@ -270,7 +270,7 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
         // 뽑기 칸 아래에는 한 번 값을 적어 준다
         if (slot.id == "gacha") {
             hintPaint.textSize = h * 0.028f
-            canvas.drawTr("한 번 루비 ${GachaScreen.PRICE}", rect.centerX(), rect.bottom - h * 0.014f, hintPaint)
+            canvas.drawTr("상자 3개 · 루비 ${GachaScreen.PRICE}~", rect.centerX(), rect.bottom - h * 0.014f, hintPaint)
         }
 
         // 고양이 관리 칸 아래에는 팀 냥이 수와 출전 인원을 적어 준다

@@ -800,7 +800,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         // 뽑기 기계 앞: 말풍선
         if (nearGacha) {
             val bx = GACHA_X - cameraX
-            val label = "▼ 뽑기 하기 (루비 ${GachaScreen.PRICE})"
+            val label = "▼ 뽑기 하기 (상자 3개)"
             bubbleText.textSize = 44f
             val bw = bubbleText.measureTr(label) + 60f
             val by = groundY - 300f + sin(timer * 4f) * 6f

@@ -9,6 +9,7 @@ import com.jamcat.nayngapo.engine.BattleLoadout.Ride
 import com.jamcat.nayngapo.engine.CarCatalog
 import com.jamcat.nayngapo.engine.GameProgress
 import com.jamcat.nayngapo.engine.GameView
+import com.jamcat.nayngapo.engine.GunCatalog
 import com.jamcat.nayngapo.engine.RobotCatalog
 import com.jamcat.nayngapo.engine.SpriteManager
 
@@ -54,9 +55,9 @@ class BattlePrepScreen(private val gameView: GameView, private val stage: Int) :
         "h_life" -> BattleLoadout.lifePotion
         "h_heal" -> BattleLoadout.heartPotion
         "h_bugbox" -> BattleLoadout.bugbox
-        else -> BattleLoadout.gun
+        else -> GunCatalog.equipped() != null
     }
-    private fun usable(id: String) = owned(id) && !(isSea && id == "h_life")
+    private fun usable(id: String) = (if (id == "h_gun") GunCatalog.owned().isNotEmpty() else owned(id)) && !(isSea && id == "h_life")
 
     override fun update(deltaTime: Float) {
         if (noticeTimer > 0f) noticeTimer -= deltaTime
@@ -81,22 +82,23 @@ class BattlePrepScreen(private val gameView: GameView, private val stage: Int) :
             val on = can && selected(it.id)
             canvas.drawRoundRect(r, 24f, 24f, if (!can) off else if (on) chosen else card)
             canvas.drawRoundRect(r, 24f, 24f, ink)
-            SpriteManager.shopIcons[it.id]?.let { bmp ->
+            val gunNow = if (it.id == "h_gun") GunCatalog.equipped() else null   // 총 칸은 지금 고른 총의 그림·이름
+            SpriteManager.shopIcons[gunNow?.id ?: it.id]?.let { bmp ->
                 val s = minOf(r.width() * 0.45f / bmp.width, r.height() * 0.42f / bmp.height)
                 rect.set(r.centerX() - bmp.width * s / 2f, r.top + 16f, r.centerX() + bmp.width * s / 2f, r.top + 16f + bmp.height * s)
                 canvas.drawBitmap(bmp, null, rect, if (can) null else dim)
             }
             text.textSize = h * 0.036f
-            canvas.drawTr(it.name, r.centerX(), r.top + r.height() * 0.64f, text)
+            canvas.drawTr(if (it.id == "h_gun") (gunNow?.name ?: "총") else it.name, r.centerX(), r.top + r.height() * 0.64f, text)
             text.textSize = h * 0.027f
             val sub = when {
                 isSea && it.id == "h_life" -> "바다에서는 못 써요"
-                !owned(it.id) -> "없음 · 상점에서 사요"
+                !can -> "없음 · 상점에서 사요"
                 it.id == "h_gun" -> if (on) "들고 간다 ✓" else "안 가져간다"
                 else -> "${it.desc} · ${GameProgress.itemCount(it.id)}개" + if (on) " ✓" else ""
             }
             canvas.drawTr(sub, r.centerX(), r.top + r.height() * 0.80f, text)
-            canvas.drawTr(if (!can) "" else if (on) "가져가기" else "안 가져가기", r.centerX(), r.top + r.height() * 0.92f, text)
+            canvas.drawTr(if (!can) "" else if (it.id == "h_gun") "눌러서 총 바꾸기" else if (on) "가져가기" else "안 가져가기", r.centerX(), r.top + r.height() * 0.92f, text)
         }
 
         // 탈 것
@@ -172,11 +174,16 @@ class BattlePrepScreen(private val gameView: GameView, private val stage: Int) :
             val id = items[i].id
             when {
                 isSea && id == "h_life" -> notice("바다는 목숨 1 — 생명 물약을 못 써요")
-                !owned(id) -> notice("${items[i].name}이(가) 없어요 · 상점에서 사요")
+                !usable(id) -> notice("${items[i].name}이(가) 없어요 · 상점에서 사요")
                 id == "h_life" -> BattleLoadout.lifePotion = !BattleLoadout.lifePotion
                 id == "h_heal" -> BattleLoadout.heartPotion = !BattleLoadout.heartPotion
                 id == "h_bugbox" -> BattleLoadout.bugbox = !BattleLoadout.bugbox
-                else -> BattleLoadout.gun = !BattleLoadout.gun
+                id == "h_gun" -> {
+                    // 총 고르기: 안 가져감 → 내가 가진 총들(레이저 총 + 실제 총) 차례로 돌아간다 (2026-10-25)
+                    val opts = listOf<String?>(null) + GunCatalog.owned().map { it.id }
+                    val cur = GunCatalog.equipped()?.id
+                    BattleLoadout.gunId = opts[(opts.indexOf(cur) + 1) % opts.size] ?: BattleLoadout.NO_GUN
+                }
             }
             return true
         }

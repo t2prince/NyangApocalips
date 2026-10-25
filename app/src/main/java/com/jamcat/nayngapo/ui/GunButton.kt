@@ -30,9 +30,10 @@ class GunButton {
         canvas.drawRoundRect(rect, 44f, 44f, ink)
         canvas.drawTr(if (p.gunOut) "🔫 총 넣기" else "🔫 총 꺼내기", rect.centerX(), rect.centerY() - 2f, text)
         // 남은 총알 (2026-10-24 — 총알이 없으면 안 나간다)
-        val ammo = com.jamcat.nayngapo.engine.GameProgress.itemCount("h_ammo")
+        val spec = com.jamcat.nayngapo.engine.GunCatalog.byId(p.gunKind)
+        val ammo = com.jamcat.nayngapo.engine.GameProgress.itemCount(spec?.ammoId ?: "h_ammo")
         small.color = if (ammo > 0) Color.rgb(40, 34, 30) else Color.rgb(200, 40, 40)
-        canvas.drawTr("총알 $ammo", rect.centerX(), rect.centerY() + 32f, small)
+        canvas.drawTr("${spec?.ammoName ?: "총알"} $ammo", rect.centerX(), rect.centerY() + 32f, small)
     }
 
     /** 눌렀으면 총을 넣거나 꺼내고 true */

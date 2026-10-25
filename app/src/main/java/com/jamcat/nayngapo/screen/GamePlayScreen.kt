@@ -331,7 +331,8 @@ class GamePlayScreen(
             if (GameProgress.consumeItem("h_big_heal")) { player.maxHp += 4; player.hp = player.maxHp }
             else if (GameProgress.consumeItem("h_heal")) { player.maxHp += 2; player.hp = player.maxHp }
         }
-        player.hasGun = player.hasGun && loadout.gun
+        player.gunKind = com.jamcat.nayngapo.engine.GunCatalog.equipped()?.id   // 출전 준비에서 고른 총 (안 가져감이면 null)
+        player.hasGun = player.gunKind != null
         showWaveText("STAGE $stageNumber - START!")
 
         // 관리 화면에서 출전으로 골라 둔 팀 냥이들이 플레이어 뒤에 줄지어 함께 출발한다.
@@ -390,8 +391,7 @@ class GamePlayScreen(
         /** 배냥이 위에 올라탄 인간을 그만큼 위로 그린다 (Claude 판단) */
         private const val SEA_RIDE_LIFT = 58f
         /** 레이저 총: 쏘는 간격(초) · 총알 빠르기 */
-        private const val GUN_INTERVAL = 0.28f
-        private const val GUN_SPEED = 1100f
+        private const val GUN_SPEED = 1100f   // 레이저 총 (간격은 GunCatalog)
         /** 다시 하는 스테이지: 끝에서 이만큼 안에 들어오면 클리어 */
         private const val REPLAY_END_MARGIN = 600f
         /** 화살비: 모두 합쳐 쏟아지는 화살 수(냥이마다 나눠 2~6개) · 노리는 냥이 수 · 떨어지는 빠르기 */
@@ -1037,6 +1037,10 @@ class GamePlayScreen(
             if (!proj.isPlayerOwned || !proj.isAlive) continue
             for (enemy in level.enemies) {
                 if (!enemy.isDead && RectF.intersects(proj.hitBox, enemy.hitBox)) {
+                    if (proj.pierce) {   // 저격탄: 닿은 적마다 한 번씩 때리고 계속 날아간다
+                        if (proj.hitOnce.add(enemy) && !(proj.byHuman && tryCapture(enemy))) damageEnemy(enemy, proj.damage)
+                        continue
+                    }
                     proj.isAlive = false
                     if (proj.isFirework) {
                         // 폭죽은 한 마리만 때리지 않고 주변까지 휩쓴다
@@ -3124,7 +3128,7 @@ class GamePlayScreen(
     private fun drawSeaMount(canvas: Canvas) {
         if (selfBoat || selfFly31 || selfSwim) return   // 주인공 배냥이가 곧 배 · 나는 냥이는 배 없이 · 헤엄치는 냥이도 배 없이
         val m = seaMount ?: return
-        val base = m.coat.boatAlly
+        val base = (if (m.hasArmor) SpriteManager.boatArmor[m.coat] else null) ?: m.coat.boatAlly   // 갑옷 입은 배냥이 (2026-10-25)
         val bmp = if (player.facingRight) base else SpriteManager.getFlipped(base)
         val s = 1.35f
         val cx = player.x + player.width / 2f
@@ -3728,12 +3732,35 @@ class GamePlayScreen(
     private val muzzlePt = android.graphics.PointF()
     private fun fireGun() {
         if (gunCooldown > 0f) return
-        if (!GameProgress.consumeItem("h_ammo")) return   // 총알이 없으면 안 나간다 (대표님 2026-10-24) — 남은 수는 총 버튼에
-        gunCooldown = GUN_INTERVAL
+        val spec = com.jamcat.nayngapo.engine.GunCatalog.byId(player.gunKind) ?: return
+        if (!GameProgress.consumeItem(spec.ammoId)) return   // 총알이 없으면 안 나간다 (대표님 2026-10-24) — 남은 수는 총 버튼에
+        gunCooldown = spec.interval
         val dir = if (player.facingRight) 1f else -1f
         val cr = carRide
         if (cr != null && cr.riding) cr.muzzle(player, muzzlePt)
-        else { muzzlePt.x = player.x + player.width / 2f + dir * 75f; muzzlePt.y = player.y + player.jumpZ - 108f }
+        else { muzzlePt.x = player.x + player.width / 2f + dir * spec.muzzleDx; muzzlePt.y = player.y + player.jumpZ - 108f }
+        if (spec.shot != 0) {
+            // 실제 총 (2026-10-25): 탄알·산탄·예광탄 + 총구 불꽃. 산탄은 한 발에 알갱이 여러 개가 부채꼴로
+            for (i in 0 until spec.pellets) {
+                val deg = if (spec.pellets > 1) -spec.spreadDeg + 2f * spec.spreadDeg * i / (spec.pellets - 1) else 0f
+                val a = Math.toRadians(deg.toDouble())
+                level.projectiles.add(
+                    com.jamcat.nayngapo.entity.Projectile(
+                        muzzlePt.x, muzzlePt.y, dir * spec.speed * kotlin.math.cos(a).toFloat(), spec.speed * kotlin.math.sin(a).toFloat(),
+                        spec.damage, true, radius = spec.bulletRadius, byHuman = true,
+                        gunShot = spec.shot, pierce = spec.pierce, range = spec.range
+                    )
+                )
+            }
+            for (k in 0 until 4) {
+                val ang = (Math.random() - 0.5) * 0.9
+                val v = 160f + Math.random().toFloat() * 220f
+                sparks.add(Spark(muzzlePt.x, muzzlePt.y, dir * kotlin.math.cos(ang).toFloat() * v, kotlin.math.sin(ang).toFloat() * v, 0.07f,
+                    if (k % 2 == 0) Color.rgb(255, 240, 160) else Color.rgb(255, 170, 50), size = 6f + k * 2f))
+            }
+            SoundManager.playAttack()
+            return
+        }
         level.projectiles.add(
             com.jamcat.nayngapo.entity.Projectile(
                 muzzlePt.x, muzzlePt.y, dir * GUN_SPEED, 0f, player.attackPower, true,

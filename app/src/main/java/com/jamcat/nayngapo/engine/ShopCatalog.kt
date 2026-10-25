@@ -74,6 +74,16 @@ object ShopCatalog {
         Item("h_gun", "레이저 총", 80, "들고 다니며 공격 버튼으로 총알을 쏜다 · 차를 타면 차에 단다", max = 1),
         // 총알 (대표님 2026-10-24 「총에 총알을 안 넣으면 발사가 안 돼, 넣은 개수만큼」「총알은 3루비야」) — 한 발에 하나씩 쓴다
         Item("h_ammo", "총알", 3, "레이저 총에 넣는다 · 산 개수만큼 쏜다"),
+        // 실제 총과 총알 (대표님 2026-10-25 「총이랑 총알 실제처럼 만들어. 실제로 있는 총이랑 총알을 여러 종류 만들어」) — 값·피해·간격은 Claude 판단 (engine/GunCatalog)
+        Item("h_pistol", "권총", 120, "9mm 총알을 쏜다 · 한 발 8", max = 1),
+        Item("h_smg", "기관단총", 250, "9mm 총알을 빠르게 쏜다 · 한 발 5", max = 1),
+        Item("h_shotgun", "산탄총", 300, "산탄 한 발에 알갱이 5개가 부채꼴로 · 가까이서 세다", max = 1),
+        Item("h_rifle", "돌격소총", 400, "소총탄을 빠르게 쏜다 · 한 발 12", max = 1),
+        Item("h_sniper", "저격총", 600, "저격탄이 적을 줄줄이 뚫고 멀리 간다 · 한 발 40", max = 1),
+        Item("h_ammo_9mm", "9mm 총알", 2, "권총·기관단총에 넣는다 · 산 개수만큼 쏜다"),
+        Item("h_ammo_shell", "산탄", 4, "산탄총에 넣는다 · 한 발에 하나"),
+        Item("h_ammo_rifle", "소총탄", 3, "돌격소총에 넣는다 · 산 개수만큼 쏜다"),
+        Item("h_ammo_sniper", "저격탄", 8, "저격총에 넣는다 · 산 개수만큼 쏜다"),
         // 채집통 (대표님 2026-10-10 「채집통을 가지고 스테이지에 가서 냥이를 때리면 자기 팀 냥이가 돼, 보스만 빼고」) — 한 마리에 하나 쓴다. 값 15·최대 3개는 Claude 판단
         Item("h_bugbox", "채집통", 15, "스테이지에서 냥이를 때리면 내 팀이 된다 (보스 빼고)", max = 3),
         Item("h_helmet", "투구", 40, "인간 하트 +1 (영구)", max = 3),
@@ -119,7 +129,7 @@ object ShopCatalog {
         3 to ("장난감 가게" to listOf("cat_grass", "fish_toy", "mouse_toy", "feather_wand", "laser_pointer")),
         4 to ("살림 가게" to listOf("brush", "water_bowl", "cushion", "scratcher", "litter", "cat_tower")),
         // 8~10번 천막 = 인간이 가는 가게 (2026-10-09)
-        7 to ("무기점" to listOf("h_glove", "h_gauntlet", "h_gun", "h_ammo")),
+        7 to ("무기점" to listOf("h_glove", "h_gauntlet", "h_gun", "h_ammo", "h_pistol", "h_smg", "h_shotgun", "h_rifle", "h_sniper", "h_ammo_9mm", "h_ammo_shell", "h_ammo_rifle", "h_ammo_sniper")),
         8 to ("갑옷점" to listOf("h_helmet", "h_vest")),
         9 to ("약국" to listOf("h_life", "h_heal")),
         // 12번 천막 (11번은 로봇 상점)

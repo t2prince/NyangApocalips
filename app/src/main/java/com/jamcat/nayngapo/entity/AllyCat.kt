@@ -475,13 +475,25 @@ class AllyCat(
             else -> null
         }
 
+        /**
+         * 갑옷 입은 그림 (대표님 2026-10-25 「일반냥이 말고도 갑옷 다 만들어」) — GPT 그림 cat_<종류>_armor_ally,
+         * 해머냥이는 갑옷 입은 무늬 그림에 망치, 덩굴냥이는 갑옷 입은 치즈냥이에 나뭇잎 모자. 그림이 없으면 null(맨몸 그림)
+         */
+        fun extraArmorSprite(kind: Kind, coat: com.jamcat.nayngapo.engine.CatCoat): android.graphics.Bitmap? = when (kind) {
+            Kind.HAMMER -> hammerSprite(coat, armored = true)
+            Kind.VINE -> SpriteManager.vineCatArmor
+            else -> SpriteManager.extraArmor[kind]
+        }
+
         private val hammerCache = HashMap<com.jamcat.nayngapo.engine.CatCoat, android.graphics.Bitmap>()
+        private val hammerArmorCache = HashMap<com.jamcat.nayngapo.engine.CatCoat, android.graphics.Bitmap>()
         /**
          * 해머를 든 해머냥이 그림 (무늬별로 한 번 만들어 둔다): 무늬 그림 + 얼굴 앞에서 앞발로 세워 든 망치(흰 앞발, 앞으로 12° 기울임).
          * 망치 모양은 적 해머냥이와 같다. 얼굴을 가리지 않게 몸 앞쪽 아래에서 쥔다. 냥이 발은 그림 아래·가운데 그대로.
          */
-        fun hammerSprite(coat: com.jamcat.nayngapo.engine.CatCoat): android.graphics.Bitmap = hammerCache.getOrPut(coat) {
-            val cat = coat.ally
+        fun hammerSprite(coat: com.jamcat.nayngapo.engine.CatCoat, armored: Boolean = false): android.graphics.Bitmap =
+            (if (armored) hammerArmorCache else hammerCache).getOrPut(coat) {
+            val cat = if (armored) coat.allyArmor else coat.ally
             val padX = (cat.width * 0.32f).toInt(); val padTop = (cat.height * 0.05f).toInt()
             val out = android.graphics.Bitmap.createBitmap(cat.width + padX * 2, cat.height + padTop, android.graphics.Bitmap.Config.ARGB_8888)
             val c = Canvas(out)
@@ -553,7 +565,7 @@ class AllyCat(
         Kind.NORMAL -> if (armored) coat.allyArmor else coat.ally
         Kind.FLYING -> if (armored) SpriteManager.flyingCatAllyArmor else SpriteManager.flyingCatAlly   // 아군은 꼬리가 얇다
         Kind.GUN -> if (armored) SpriteManager.gunCatAllyArmor else SpriteManager.gunCatAlly
-        Kind.BOAT -> coat.boatAlly
-        else -> extraSprite(kind, coat) ?: coat.ally
+        Kind.BOAT -> if (armored) SpriteManager.boatArmor[coat] ?: coat.boatAlly else coat.boatAlly
+        else -> (if (armored) extraArmorSprite(kind, coat) else null) ?: extraSprite(kind, coat) ?: coat.ally
     }
 }

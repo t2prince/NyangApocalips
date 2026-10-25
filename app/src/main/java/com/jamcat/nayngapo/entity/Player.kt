@@ -133,7 +133,9 @@ class Player(var x: Float, var y: Float) {
     var poisoned = false
     private var poisonT = 0f
     /** 무기점에서 산 레이저 총 — 들고 다니고, 차를 타면 차에 단다 (2026-10-09) */
-    var hasGun: Boolean = com.jamcat.nayngapo.engine.GameProgress.itemCount("h_gun") > 0   // 스테이지에서는 출전 준비에서 고른 대로
+    var hasGun: Boolean = com.jamcat.nayngapo.engine.GunCatalog.equipped() != null   // 스테이지에서는 출전 준비에서 고른 대로
+    /** 들고 있는 총 id (null = 총 없음) — 레이저 총 h_gun 또는 실제 총 (2026-10-25) */
+    var gunKind: String? = com.jamcat.nayngapo.engine.GunCatalog.equipped()?.id
     /** 총을 꺼내 들고 있는가 — '총 넣기'로 넣으면 손에서 사라지고 주먹으로 싸운다 (2026-10-10) */
     var gunOut = true
     private val handPt = android.graphics.PointF()
@@ -421,11 +423,14 @@ class Player(var x: Float, var y: Float) {
 
     /** 앞손에 레이저 총 — 손잡이(그림 가로 30%·세로 70%)가 손에 오게, 바라보는 쪽으로 */
     private fun drawGunInHand(canvas: Canvas, bmp: Bitmap) {
-        val gun = SpriteManager.gunSide ?: return
+        val spec = com.jamcat.nayngapo.engine.GunCatalog.byId(gunKind)
+        val real = spec?.let { SpriteManager.realGuns[it.id] }
+        val gun = real ?: SpriteManager.gunSide ?: return
         // 고양이·내가 만든 캐릭터는 방금 그린 앞손 자리에
         if (com.jamcat.nayngapo.ui.CharSkin.handles(hero)) handPt.set(com.jamcat.nayngapo.ui.CharSkin.lastHand)
         else if (!com.jamcat.nayngapo.ui.frontHand(bmp, heroDst, facingRight, handPt)) return
-        val gh = heroDst.height() * 0.17f; val gw = gun.width * gh / gun.height
+        var gh = heroDst.height() * 0.17f; var gw = gun.width * gh / gun.height
+        if (real != null && spec != null) { gw = heroDst.height() * spec.handLen; gh = gun.height * gw / gun.width }   // 총마다 길이가 다르다 (권총 짧게, 저격총 길게)
         val g = if (facingRight) gun else SpriteManager.getFlipped(gun)
         val gripX = if (facingRight) 0.30f else 0.70f
         gunDst.set(handPt.x - gw * gripX, handPt.y - gh * 0.70f, handPt.x - gw * gripX + gw, handPt.y + gh * 0.30f)

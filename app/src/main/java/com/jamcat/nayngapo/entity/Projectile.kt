@@ -48,8 +48,17 @@ class Projectile(
     /** 인간이 쏜 탄 (레이저 총·로봇 주먹) — 채집통은 인간이 때릴 때만 잡는다 (대표님 2026-10-10) */
     val byHuman: Boolean = false,
     /** 화살 — 인간 기술 '화살비'. 날아가는 쪽을 향한 나무 화살로 그린다 (2026-10-16) */
-    val isArrow: Boolean = false
+    val isArrow: Boolean = false,
+    /** 실제 총 탄 그림 (0 = 아님, 1 탄알, 2 산탄 알갱이, 3 저격 예광탄) — 2026-10-25 */
+    val gunShot: Int = 0,
+    /** 적을 뚫고 나간다 (저격탄) */
+    val pierce: Boolean = false,
+    /** 날아갈 수 있는 거리 (0 = 제한 없음) */
+    val range: Float = 0f
 ) {
+    /** 뚫고 나가는 탄이 이미 때린 적들 */
+    val hitOnce = HashSet<Any>()
+    private var traveled = 0f
     val width = radius * 2f
     val height = radius * 2f
     var isAlive = true
@@ -97,6 +106,10 @@ class Projectile(
         if (gravity != 0f) velocityY += gravity * deltaTime
         x += velocityX * deltaTime
         y += velocityY * deltaTime
+        if (range > 0f) {
+            traveled += kotlin.math.hypot(velocityX, velocityY) * deltaTime
+            if (traveled > range) isAlive = false
+        }
 
         if (isShuriken || isStone || isFlame || isLava) animTime += deltaTime
         if (isMissile) {
@@ -167,6 +180,11 @@ class Projectile(
             canvas.drawCircle(cx + back * sw * 0.55f, cy, sh * 0.22f, fistFlameOuter)
             canvas.drawCircle(cx + back * sw * 0.48f, cy, sh * 0.13f, fistFlameInner)
             canvas.drawBitmap(bmp, null, spriteDst, null)
+            return
+        }
+
+        if (gunShot != 0) {
+            drawGunShot(canvas, cx, cy)
             return
         }
 
@@ -458,6 +476,44 @@ class Projectile(
         val bx = -velocityX / sp; val by = -velocityY / sp
         canvas.drawCircle(cx + bx * r * 1.5f, cy + by * r * 1.5f, r * 0.45f, lavaBody)
         canvas.drawCircle(cx + bx * r * 2.4f, cy + by * r * 2.4f, r * 0.28f, lavaBody)
+    }
+
+    private val brassPaint = Paint().apply { color = Color.rgb(212, 170, 70); isAntiAlias = true }
+    private val copperPaint = Paint().apply { color = Color.rgb(184, 98, 52); isAntiAlias = true }
+    private val tracerGlow = Paint().apply { color = Color.argb(110, 255, 220, 90); strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    private val tracerCore = Paint().apply { color = Color.rgb(255, 252, 225); strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
+    private val pelletPaint = Paint().apply { color = Color.rgb(120, 122, 128); isAntiAlias = true }
+    private val gunBullet = RectF()
+
+    /** 실제 총 탄: 탄알 = 놋쇠 몸통 + 구리 머리 + 짧은 흰노랑 예광 꼬리, 산탄 = 작은 회색 알갱이, 저격 = 길고 가는 밝은 예광선 */
+    private fun drawGunShot(canvas: Canvas, cx: Float, cy: Float) {
+        val sp = kotlin.math.hypot(velocityX, velocityY).coerceAtLeast(1f)
+        val ux = velocityX / sp; val uy = velocityY / sp
+        when (gunShot) {
+            2 -> {
+                canvas.drawCircle(cx, cy, radius * 0.7f, pelletPaint)
+                canvas.drawCircle(cx - radius * 0.2f, cy - radius * 0.2f, radius * 0.25f, tracerCore)
+            }
+            3 -> {
+                tracerGlow.strokeWidth = 9f; tracerCore.strokeWidth = 3.5f
+                canvas.drawLine(cx - ux * 150f, cy - uy * 150f, cx + ux * 14f, cy + uy * 14f, tracerGlow)
+                canvas.drawLine(cx - ux * 150f, cy - uy * 150f, cx + ux * 14f, cy + uy * 14f, tracerCore)
+                canvas.drawCircle(cx + ux * 14f, cy + uy * 14f, 4f, tracerCore)
+            }
+            else -> {
+                tracerGlow.strokeWidth = 5f; tracerCore.strokeWidth = 2.2f
+                canvas.drawLine(cx - ux * 44f, cy - uy * 44f, cx - ux * 10f, cy - uy * 10f, tracerGlow)
+                canvas.drawLine(cx - ux * 36f, cy - uy * 36f, cx - ux * 10f, cy - uy * 10f, tracerCore)
+                canvas.save()
+                canvas.translate(cx, cy)
+                canvas.rotate(Math.toDegrees(atan2(velocityY, velocityX).toDouble()).toFloat())
+                gunBullet.set(-12f, -3.6f, 4f, 3.6f)
+                canvas.drawRoundRect(gunBullet, 2f, 2f, brassPaint)
+                gunBullet.set(2f, -3.4f, 12f, 3.4f)
+                canvas.drawRoundRect(gunBullet, 3.4f, 3.4f, copperPaint)
+                canvas.restore()
+            }
+        }
     }
 
     private fun drawShuriken(canvas: Canvas, cx: Float, cy: Float) {

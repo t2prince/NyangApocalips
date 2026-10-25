@@ -63,6 +63,8 @@ object SpriteManager {
     var carShop: Bitmap? = null
     /** 레이저 총 옆모습 (총구가 오른쪽) — 인간 손·자동차에 단다 */
     var gunSide: Bitmap? = null
+    /** 실제 총 옆모습 (총구가 오른쪽, 없으면 gunSide) — gun_pistol·gun_smg·gun_shotgun·gun_rifle·gun_sniper */
+    val realGuns = HashMap<String, Bitmap>()
     /** 로봇 옆모습 (오른쪽을 본다, 맨 위가 열린 조종석) */
     var robotSide: Bitmap? = null
     /** 로봇 앞 주먹 (주먹 발사 탄) — 로봇 그림에서 주먹 자리를 잘라 쓴다 */
@@ -84,6 +86,12 @@ object SpriteManager {
     lateinit var greenCatAlly: Bitmap   // 아군용 얇은 꼬리 변형
     lateinit var blueCatAlly: Bitmap
     lateinit var vineCat: Bitmap        // 나뭇잎 모자를 쓴 덩굴냥이 (정글)
+    /** 갑옷 입은 덩굴냥이 (갑옷 입은 치즈냥이 + 나뭇잎 모자) */
+    val vineCatArmor: Bitmap by lazy { makeVineCat(CatCoat.CHEESE.allyArmor) }
+    /** 갑옷 입은 내 편 그림 — 종류별 (GPT, cat_<종류>_armor_ally), 그림이 있는 것만 (2026-10-25) */
+    var extraArmor: Map<com.jamcat.nayngapo.entity.AllyCat.Kind, Bitmap> = emptyMap()
+    /** 갑옷 입은 배냥이 — 무늬별 (cat_boat_<무늬>_armor_ally) */
+    var boatArmor: Map<CatCoat, Bitmap> = emptyMap()
     lateinit var teleportCat: Bitmap    // 순간냥이 = 그린냥이 + 가운데 분홍 줄 (초원 보스)
     lateinit var allyCat: Bitmap     // 인간 편의 평범한 냥이
 
@@ -230,6 +238,9 @@ object SpriteManager {
         }.toMap()
         res.getIdentifier("car_shop", "drawable", context.packageName).let { if (it != 0) carShop = BitmapFactory.decodeResource(res, it) }
         res.getIdentifier("gun_side", "drawable", context.packageName).let { if (it != 0) gunSide = BitmapFactory.decodeResource(res, it) }
+        for (g in GunCatalog.all) g.bitmapName?.let { n ->
+            res.getIdentifier(n, "drawable", context.packageName).let { if (it != 0) realGuns[g.id] = BitmapFactory.decodeResource(res, it) }
+        }
         res.getIdentifier("robot_side", "drawable", context.packageName).let { if (it != 0) robotSide = BitmapFactory.decodeResource(res, it) }
         fun opt(name: String) = res.getIdentifier(name, "drawable", context.packageName).takeIf { it != 0 }?.let { BitmapFactory.decodeResource(res, it) }
         robotBody = opt("robot_p_body"); robotArm = opt("robot_p_arm"); robotLeg = opt("robot_p_leg")
@@ -262,6 +273,14 @@ object SpriteManager {
         blueCatAlly = BitmapFactory.decodeResource(res, R.drawable.cat_blue_ally)
         // 덩굴냥이: 냥이에 나뭇잎 모자를 씌운 합성본 (정글 12~20)
         vineCat = makeVineCat(normalCat)
+        extraArmor = com.jamcat.nayngapo.entity.AllyCat.Kind.values().mapNotNull { k ->
+            res.getIdentifier("cat_${k.name.lowercase()}_armor_ally", "drawable", context.packageName).takeIf { it != 0 }
+                ?.let { k to BitmapFactory.decodeResource(res, it) }
+        }.toMap()
+        boatArmor = CatCoat.values().mapNotNull { c ->
+            res.getIdentifier("cat_boat_${c.name.lowercase()}_armor_ally", "drawable", context.packageName).takeIf { it != 0 }
+                ?.let { c to BitmapFactory.decodeResource(res, it) }
+        }.toMap()
         teleportCat = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_teleport), 1.25f)   // 보스라 조금 크게
 
         // 냥이도 동작마다 7프레임짜리 연속 동작 스트립

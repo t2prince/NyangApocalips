@@ -113,9 +113,12 @@ class CarRide(val car: CarCatalog.Car) {
         if (!riding) return
         place(p.x + p.width / 2f, p.y + p.jumpZ, p.facingRight)?.let { canvas.drawBitmap(it, null, dst, null) }
         // 총을 가졌으면 차 앞쪽 위에 달려 있다 (2026-10-09 「총을 자동차에 달 수 있어」)
-        if (p.hasGun && p.gunOut) SpriteManager.gunSide?.let { gun ->
+        val spec = com.jamcat.nayngapo.engine.GunCatalog.byId(p.gunKind)
+        val real = spec?.let { SpriteManager.realGuns[it.id] }
+        if (p.hasGun && p.gunOut) (real ?: SpriteManager.gunSide)?.let { gun ->
             val g = if (p.facingRight) gun else SpriteManager.getFlipped(gun)
-            val gh = DRAW_H * 0.36f; val gw = gun.width * gh / gun.height
+            var gh = DRAW_H * 0.36f; var gw = gun.width * gh / gun.height
+            if (real != null && spec != null) { gw = DRAW_H * spec.handLen * 2.6f; gh = gun.height * gw / gun.width }
             val gx = dst.centerX() + (if (p.facingRight) 1f else -1f) * dst.width() * 0.18f
             val gy = dst.top + DRAW_H * 0.30f
             gunRect.set(gx - gw / 2f, gy - gh / 2f, gx + gw / 2f, gy + gh / 2f)

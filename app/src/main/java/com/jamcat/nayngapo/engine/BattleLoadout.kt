@@ -13,8 +13,9 @@ object BattleLoadout {
     var heartPotion = true
     /** 채집통을 가져갈지 — 가져가면 스테이지에서 냥이를 때려 내 팀으로 잡는다 (보스 빼고, 한 마리에 하나) */
     var bugbox = true
-    /** 레이저 총을 들고 갈지 */
-    var gun = true
+    /** 들고 갈 총 id (null = 아직 안 골랐다 → 레이저 총, NO_GUN = 안 가져간다). 출전 준비에서 누를 때마다 돌아가며 바뀐다 (2026-10-25) */
+    var gunId: String? = null
+    const val NO_GUN = "none"
     /** 야간 전투로 갈지 — 상점마을2에서 의사를 구해야 고를 수 있다 (2026-10-17). 기본은 낮 */
     var night = false
     /** 무엇을 타고 갈지 (없는 건 걷기로) */

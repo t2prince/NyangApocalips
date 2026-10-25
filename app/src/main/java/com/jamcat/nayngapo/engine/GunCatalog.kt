@@ -18,7 +18,7 @@ object GunCatalog {
         /** 쏘는 간격 (초) */
         val interval: Float,
         val speed: Float,
-        /** 한 번에 나가는 알갱이 수 (산탄총 5) · 부채꼴 반각(도) */
+        /** 한 번에 나가는 알갱이 수 (산탄총 5, 권총 7) · 부채꼴 반각(도) */
         val pellets: Int = 1,
         val spreadDeg: Float = 0f,
         /** 사거리 (0 = 제한 없음) */
@@ -39,7 +39,7 @@ object GunCatalog {
 
     val all: List<Spec> = listOf(
         Spec(LASER, "레이저 총", "h_ammo", "총알", 0, 0.28f, 1100f),
-        Spec("h_pistol", "권총", "h_ammo_9mm", "9mm", 8, 0.40f, 1500f, shot = 1, range = 1100f, bulletRadius = 7f,
+        Spec("h_pistol", "권총", "h_ammo_9mm", "9mm", 8, 0.40f, 1500f, pellets = 7, spreadDeg = 8f, shot = 1, range = 1100f, bulletRadius = 7f,
             handLen = 0.14f, muzzleDx = 70f, bitmapName = "gun_pistol"),
         Spec("h_smg", "기관단총", "h_ammo_9mm", "9mm", 5, 0.12f, 1600f, shot = 1, range = 1000f, bulletRadius = 6f,
             handLen = 0.20f, muzzleDx = 85f, bitmapName = "gun_smg"),

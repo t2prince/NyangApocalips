@@ -39,6 +39,10 @@ class GamePlayScreen(
     private val isSea = stageNumber == 31
     /** 배냥이가 주인공이면 스스로 헤엄친다 — 따로 타지 않고, 쓰러지면 그 냥이가 무덤 (2026-10-24) */
     private val selfBoat = isSea && com.jamcat.nayngapo.engine.Heroes.playerCatKind() == com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT
+    /** '수영 하기'를 배운 주인공 냥이 — 배냥이처럼 스스로 헤엄친다, 나는 냥이는 날아서 (대표님 2026-10-25) */
+    private val selfSwim = isSea && !selfBoat && com.jamcat.nayngapo.engine.Heroes.selected().id == com.jamcat.nayngapo.engine.Heroes.CAT_ID &&
+        com.jamcat.nayngapo.engine.Heroes.playerCatKind().let { it != com.jamcat.nayngapo.entity.AllyCat.Kind.BEE && it != com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING } &&
+        com.jamcat.nayngapo.engine.CatSkills.canSwim(com.jamcat.nayngapo.engine.Heroes.playerCat())
     /**
      * 벌냥이·날아냥이가 주인공이면 배냥이 없이 바다 위를 날아서 간다 — 내려앉으면(물에 닿으면) 죽는다
      * (대표님 2026-10-24 「벌냥이와 날아냥이는 해적 스테이지에서는 배냥이를 안 타도 갈 수 있어, 하늘을 날아서. 하지만 땅으로 내려오면 사망해」)
@@ -46,7 +50,7 @@ class GamePlayScreen(
     private val selfFly31 = isSea && com.jamcat.nayngapo.engine.Heroes.playerCatKind().let {
         it == com.jamcat.nayngapo.entity.AllyCat.Kind.BEE || it == com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING }
     private val seaMount: com.jamcat.nayngapo.engine.CatTeam.TeamCat? =
-        if (selfBoat || selfFly31) com.jamcat.nayngapo.engine.Heroes.playerCat()
+        if (selfBoat || selfFly31 || selfSwim) com.jamcat.nayngapo.engine.Heroes.playerCat()
         else if (isSea) com.jamcat.nayngapo.engine.CatTeam.boatMount() else null
     private var seaMountMarked = false
     /** 자동차 매장 '자동차 선택'에서 고른 차 — 땅 스테이지에서 타고 다닌다 (바다는 배냥이라 안 탄다, 2026-10-09). 차를 누르면 내리고 탄다 */
@@ -152,6 +156,7 @@ class GamePlayScreen(
     /** 이 스테이지에서 쓸 수 있는 고양이 기술 (배우고 켜 둔 것만, 최대 4개 — 묭묭 진화로 4칸) */
     private val battleSkills =
         com.jamcat.nayngapo.engine.CatSkills.all
+            .filter { !it.passive }   // 수영 하기처럼 늘 걸린 기술은 버튼이 없다
             .filter { sk ->
                 com.jamcat.nayngapo.engine.CatSkills.isActive(sk.id) ||   // 로비에서 배우고 켜 둔 기술
                     com.jamcat.nayngapo.engine.CatTeam.party.any { sk.id in it.skills }   // 출전 냥이가 천막에서 배운 기술 ||
@@ -309,7 +314,7 @@ class GamePlayScreen(
         camera.forwardOnly = true   // 플랫포머식: 카메라가 뒤로 돌아가지 않는다
         // 한 번 깬 스테이지: 냥이가 없고 감옥은 깨져 있다 — 끝까지 가면 클리어 (2026-10-17)
         if (GameProgress.isCleared(stageNumber)) level.emptyForReplay()
-        if (isSea) { player.lives = 1; player.rideLift = if (selfBoat || selfFly31) 0f else SEA_RIDE_LIFT }
+        if (isSea) { player.lives = 1; player.rideLift = if (selfBoat || selfFly31 || selfSwim) 0f else SEA_RIDE_LIFT }
         if (selfFly31) { player.seaFlight = true; player.startFlying() }
         robotRide?.mount(player)
         carRide?.let { cr ->
@@ -2455,7 +2460,17 @@ class GamePlayScreen(
 
         // 아군 냥이
         for (ally in level.allies) {
-            drawables.add(Drawable(ally.y) { ally.draw(canvas) })
+            if (isSea && allySwims(ally)) {
+                // 헤엄치는 냥이: 다리만큼 물에 잠기고 물 밑은 안 보인다
+                drawables.add(Drawable(ally.y) {
+                    val sink = SpriteManager.allyCat.height * com.jamcat.nayngapo.ui.CharSkin.SWIM_SINK
+                    canvas.save()
+                    canvas.clipRect(ally.x - ally.width * 3f, -100000f, ally.x + ally.width * 4f, ally.y + sink * 0.15f)
+                    canvas.translate(0f, sink)
+                    ally.draw(canvas)
+                    canvas.restore()
+                })
+            } else drawables.add(Drawable(ally.y) { ally.draw(canvas) })
         }
 
         // 쓰러진 팀 냥이의 무덤
@@ -2474,8 +2489,10 @@ class GamePlayScreen(
                     else -> canvas.save()
                 }
                 com.jamcat.nayngapo.ui.CharSkin.seaWaterline = selfBoat   // 배냥이 주인공: 다리는 물에 잠긴다
+                com.jamcat.nayngapo.ui.CharSkin.swimWaterline = selfSwim   // 헤엄치는 냥이: 다리가 물에 잠긴다
                 player.draw(canvas)
                 com.jamcat.nayngapo.ui.CharSkin.seaWaterline = false
+                com.jamcat.nayngapo.ui.CharSkin.swimWaterline = false
                 canvas.restore()
                 carRide?.drawRiding(canvas, player)
                 robotRide?.drawRiding(canvas, player)   // 로봇은 인간 앞 — 조종석에 앉은 인간
@@ -2487,7 +2504,7 @@ class GamePlayScreen(
             // (해적선 갑판 위에 선 냥이는 뗏목 없이)
             for (enemy in level.enemies) if (!enemy.isDead && enemy !is com.jamcat.nayngapo.entity.BoatCat && enemy.isTangible && !Terrain.onDeck(enemy.x + enemy.width / 2f))
                 drawables.add(Drawable(enemy.y - 0.5f) { drawRaft(canvas, enemy.x + enemy.width / 2f, enemy.y, enemy.width) })
-            for (ally in level.allies) if (!ally.isDead && !Terrain.onDeck(ally.x + ally.width / 2f))
+            for (ally in level.allies) if (!ally.isDead && !Terrain.onDeck(ally.x + ally.width / 2f) && !allySwims(ally))
                 drawables.add(Drawable(ally.y - 0.5f) { drawRaft(canvas, ally.x + ally.width / 2f, ally.y, ally.width) })
         }
 
@@ -3105,7 +3122,7 @@ class GamePlayScreen(
 
     /** 인간이 탄 배냥이: 인간 발밑에 무늬 그대로의 배냥이(내 편)를 그린다 */
     private fun drawSeaMount(canvas: Canvas) {
-        if (selfBoat || selfFly31) return   // 주인공 배냥이가 곧 배 · 나는 냥이는 배 없이
+        if (selfBoat || selfFly31 || selfSwim) return   // 주인공 배냥이가 곧 배 · 나는 냥이는 배 없이 · 헤엄치는 냥이도 배 없이
         val m = seaMount ?: return
         val base = m.coat.boatAlly
         val bmp = if (player.facingRight) base else SpriteManager.getFlipped(base)
@@ -3121,6 +3138,11 @@ class GamePlayScreen(
         canvas.drawBitmap(bmp, null, mountDst, null)
         canvas.restore()
     }
+
+    /** 바다에서 뗏목 없이 헤엄치는 내 편 냥이 — '수영 하기'를 배웠고 해적선 갑판 위가 아니면 (2026-10-25) */
+    private fun allySwims(ally: com.jamcat.nayngapo.entity.AllyCat): Boolean =
+        !ally.isDead && !Terrain.onDeck(ally.x + ally.width / 2f) &&
+            com.jamcat.nayngapo.engine.CatSkills.canSwim(ally.teamId?.let { com.jamcat.nayngapo.engine.CatTeam.cat(it) })
 
     /** 물 위의 작은 뗏목 (배가 없는 냥이용) */
     private fun drawRaft(canvas: Canvas, cx: Float, y: Float, w: Float) {

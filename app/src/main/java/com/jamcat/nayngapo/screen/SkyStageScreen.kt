@@ -632,6 +632,9 @@ class SkyStageScreen(
             if (Math.random() < 0.5) com.jamcat.nayngapo.entity.Prison.Kind.CAT
             else com.jamcat.nayngapo.entity.Prison.Kind.HUMAN,
         )
+        // 이 스테이지에서 이미 냥이를 구했으면 냥이 감옥은 다시 안 나온다 (2026-10-25) — 인간 감옥만
+        // 이미 깬 스테이지도 같다 (땅 스테이지를 다시 하면 감옥이 깨져 있는 것처럼)
+        if (GameProgress.skyCatRescued(stageNumber) || GameProgress.isCleared(stageNumber)) kinds.removeAll { it == com.jamcat.nayngapo.entity.Prison.Kind.CAT }
         kinds.shuffle()
         for ((i, kind) in kinds.withIndex()) {
             val px = courseLength * (0.25f + 0.25f * i) + (Math.random().toFloat() - 0.5f) * 600f
@@ -655,6 +658,7 @@ class SkyStageScreen(
             rescued += 1
             val kind = prison.rescueKind
             val cat = CatTeam.recruit(kind, prison.catCoat)
+            GameProgress.markSkyCatRescued(stageNumber)
             effects.add(
                 Effect(prison.x, prison.y - 70f, 1.8f, "${cat.name} 구출! 캣타워에서 출전시켜 주세요")
             )

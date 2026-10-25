@@ -18,6 +18,8 @@ object CatSkills : SkillBook {
         val power: Int,
         /** 다시 쓸 수 있게 되기까지 걸리는 시간(초) */
         val cooldown: Float,
+        /** 버튼 없이 늘 걸려 있는 기술 (수영 하기) — 전투 기술 버튼 칸에 안 나온다 */
+        val passive: Boolean = false,
     ) {
         /** 그림 파일 이름 규칙: drawable-nodpi/skill_<id>.png */
         val iconName: String get() = "skill_$id"
@@ -50,9 +52,19 @@ object CatSkills : SkillBook {
             "출전한 냥이들이 엄청 커진다 (55분) · 공격력 50 · 방어력 50",
             power = 50, cooldown = 55 * 60f
         ),
+        // 대표님 2026-10-25: 이름 수영 하기 · 물에서 헤엄칠 수 있다 · 루비 100
+        // (버튼 없이 늘 걸림 · 31 바다에서 배냥이 없이 헤엄 — 주인공 냥이는 혼자 들어가고 출전 냥이는 뗏목 없이 헤엄 — Claude 판단)
+        Skill(
+            "swim", "수영 하기", 100,
+            "물에서 헤엄칠 수 있다 (31 바다에 배냥이 없이 들어가고, 뗏목 없이 헤엄친다)",
+            power = 0, cooldown = 0f, passive = true
+        ),
     )
 
     fun byId(id: String): Skill? = all.firstOrNull { it.id == id }
+
+    /** 이 냥이가 헤엄칠 수 있나 — 로비에서 배우고 켜 둔 '수영 하기'는 모든 냥이, 천막에서 배운 것은 그 냥이만 */
+    fun canSwim(c: CatTeam.TeamCat?): Boolean = c != null && (isActive("swim") || "swim" in c.skills)
 
     private const val KEY_LEARNED = "skills_learned"
     private const val KEY_ENABLED = "skills_enabled"

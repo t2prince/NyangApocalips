@@ -29,6 +29,10 @@ object CharSkin {
 
     /** 바다(31)에서 배냥이 주인공을 그릴 때: 배 바닥이 물(발끝)에 오고 그 아래 다리는 잘린다 */
     var seaWaterline = false
+    /** 바다(31)에서 '수영 하기'로 헤엄치는 주인공 냥이: 다리만큼 물에 잠긴다 (2026-10-25) */
+    var swimWaterline = false
+    /** 헤엄칠 때 그림 높이의 이만큼(다리 길이쯤) 물에 잠긴다 — Claude 판단 */
+    const val SWIM_SINK = 0.22f
 
     /** 마지막으로 그린 앞손 자리 — 총·대검을 쥐는 곳 */
     val lastHand = PointF()
@@ -68,6 +72,9 @@ object CharSkin {
         if (seaWaterline) {
             canvas.clipRect(footX - cw * 2f, footY - ch * 3f, footX + cw * 2f, footY + 10f)
             dy += ch * (1f - com.jamcat.nayngapo.entity.BoatCat.BOAT_HULL_BOTTOM)
+        } else if (swimWaterline) {
+            canvas.clipRect(footX - cw * 2f, footY - ch * 3f, footX + cw * 2f, footY + 6f)
+            dy += ch * SWIM_SINK
         }
         canvas.translate(footX, footY)
         if (!right) canvas.scale(-1f, 1f)

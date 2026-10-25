@@ -319,6 +319,9 @@ object GameProgress {
     /** 상점마을2 (바다 끝): 가게마다 앞 감옥의 사람을 구하면 그 가게가 문을 연다 (2026-10-17) */
     fun isVillage2Open(i: Int): Boolean = prefs?.getBoolean("village2_open_$i", false) ?: false
     fun openVillage2(i: Int) { prefs?.edit()?.putBoolean("village2_open_$i", true)?.apply() }
+    /** 하늘 스테이지 감옥에서 냥이를 구했나 — 구한 뒤에는 그 스테이지에 냥이 감옥이 다시 안 나온다 (대표님 2026-10-25 「11스테이지에 구출한 냥이는 더 구출할 수 없어」) */
+    fun skyCatRescued(stage: Int): Boolean = prefs?.getBoolean("sky_cat_rescued_$stage", false) ?: false
+    fun markSkyCatRescued(stage: Int) { prefs?.edit()?.putBoolean("sky_cat_rescued_$stage", true)?.apply() }
     /** 상점마을2 감옥에 갇힌 의사를 구했나 — 구하면 야간 전투를 할 수 있다 (2026-10-17). 의사 감옥 = 상점마을2 DOCTOR_SHOP 번 가게 앞 */
     const val DOCTOR_SHOP = 2
     val doctorRescued: Boolean get() = isVillage2Open(DOCTOR_SHOP)

@@ -1050,7 +1050,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         // 부두 끝에 매어 둔 어선 — 조선소에서 산 내 배가 있을 때만
         val myBoat = com.jamcat.nayngapo.engine.BoatCatalog.current
         if (myBoat != null) {
-            val boat = SpriteManager.fishingBoat
+            val boat = myBoat.bitmap
             val bh = 210f; val bw = boat.width * bh / boat.height
             val bob = sin(timer * 1.8f) * 5f
             rect.set(walkMaxX + 70f, groundY - bh * 0.80f + 30f + bob, walkMaxX + 70f + bw, groundY + bh * 0.20f + 30f + bob)

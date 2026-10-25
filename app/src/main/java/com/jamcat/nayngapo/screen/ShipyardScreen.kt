@@ -74,7 +74,6 @@ class ShipyardScreen(private val gameView: GameView) : Screen {
         maxScroll = (boats.size * cw + (boats.size - 1) * gap - (w - padX * 2f)).coerceAtLeast(0f)
         scrollX = scrollX.coerceIn(0f, maxScroll)
         val current = BoatCatalog.current
-        val boatBmp = SpriteManager.fishingBoat
         for ((i, b) in boats.withIndex()) {
             val l = padX + i * (cw + gap) - scrollX
             val r = cardRects[i]
@@ -85,6 +84,7 @@ class ShipyardScreen(private val gameView: GameView) : Screen {
             canvas.drawRoundRect(r, 20f, 20f, if (riding) chosenCard else card)
             canvas.drawRoundRect(r, 20f, 20f, if (riding) gold else ink)
             // 배 그림 (출렁출렁)
+            val boatBmp = b.bitmap
             val bw = cw * 0.86f; val bh = bw * boatBmp.height / boatBmp.width
             val bob = sin(timer * 1.8f + i) * 6f
             rect.set(r.centerX() - bw / 2f, h * 0.40f - bh / 2f + bob, r.centerX() + bw / 2f, h * 0.40f + bh / 2f + bob)

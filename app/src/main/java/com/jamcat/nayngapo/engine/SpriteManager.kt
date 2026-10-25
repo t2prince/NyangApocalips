@@ -48,6 +48,8 @@ object SpriteManager {
     lateinit var boatCat: Bitmap
     lateinit var pirateShip: Bitmap
     lateinit var fishingBoat: Bitmap
+    /** 조선소 배 그림 (배 id → 그림) — 그림이 있는 배만 */
+    var boatImages: Map<String, Bitmap> = emptyMap()
     /** 상점 마을 맨 앞의 집 (안에 캣타워) */
     lateinit var catHouse: Bitmap
     /** 투기장의 밀짚 가짜 냥이 */
@@ -212,6 +214,10 @@ object SpriteManager {
         boatCat = scaled(BitmapFactory.decodeResource(res, R.drawable.cat_boat), 1.06f)
         pirateShip = BitmapFactory.decodeResource(res, R.drawable.pirate_ship)
         fishingBoat = BitmapFactory.decodeResource(res, R.drawable.fishing_boat)   // 낚시터 어선
+        boatImages = BoatCatalog.boats.mapNotNull { b ->
+            res.getIdentifier(b.id, "drawable", context.packageName).takeIf { it != 0 && b.id != "fishing_boat" }
+                ?.let { b.id to BitmapFactory.decodeResource(res, it) }
+        }.toMap()
         catHouse = BitmapFactory.decodeResource(res, R.drawable.cat_house)
         strawCat = BitmapFactory.decodeResource(res, R.drawable.straw_cat)
         dummyByLevel = listOf(strawCat) + listOf("wood", "stone", "iron", "gold", "diamond").map { n ->

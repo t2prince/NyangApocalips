@@ -651,7 +651,8 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         if (netCool > 0f) return
         val w = gameView.screenWidth.toFloat(); val h = gameView.screenHeight.toFloat()
         val waterY = h * 0.55f
-        val bw = boatWidth(w); val bh = bw * SpriteManager.fishingBoat.height / SpriteManager.fishingBoat.width
+        val bmp = boat?.bitmap ?: SpriteManager.fishingBoat
+        val bw = boatWidth(w); val bh = bw * bmp.height / bmp.width
         val sx = deckScreenX(w, 0.08f)
         val sy = waterY + 90f - bh * 0.80f + bh * 0.30f
         val tx = if (!pirateX.isNaN() && !pirateCatDead) pirateX + shipWidth(h) * PIRATE_CAT_U else w * 0.8f
@@ -832,7 +833,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
 
     /** 어선: 흰 배에 파란 줄, 조타실 (그림이 있으면 그림) — 인간은 앞 갑판에 서 있다 */
     private fun drawFishingBoat(canvas: Canvas, w: Float, h: Float, deckY: Float) {
-        val bmp = SpriteManager.fishingBoat
+        val bmp = boat?.bitmap ?: SpriteManager.fishingBoat
         val bw = boatWidth(w); val bh = bw * bmp.height / bmp.width
         val left = boatLeft(w)
         rect.set(left, deckY - bh * BOAT_DECK_V, left + bw, deckY - bh * BOAT_DECK_V + bh)

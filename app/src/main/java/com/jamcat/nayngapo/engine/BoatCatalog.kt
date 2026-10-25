@@ -18,7 +18,11 @@ object BoatCatalog {
         /** 몸통 색 (흰색 → 이 색), null 이면 그림 그대로 */
         val tint: Int?, val desc: String,
     ) {
-        val paint: Paint? = tint?.let { c -> Paint().apply { isFilterBitmap = true; colorFilter = LightingColorFilter(c, 0) } }
+        private val tintPaint: Paint? = tint?.let { c -> Paint().apply { isFilterBitmap = true; colorFilter = LightingColorFilter(c, 0) } }
+        /** 배마다 따로 그린 그림 (drawable-nodpi/<id>.png, 2026-10-25 「조선소의 배들 다시 그려줘」) — 없으면 어선 그림에 색만 입힌다 */
+        val bitmap: android.graphics.Bitmap get() = SpriteManager.boatImages[id] ?: SpriteManager.fishingBoat
+        /** 그릴 때 쓰는 붓 — 제 그림이 있으면 색을 입히지 않는다 */
+        val paint: Paint? get() = if (SpriteManager.boatImages.containsKey(id)) null else tintPaint
     }
 
     val boats: List<Boat> = listOf(

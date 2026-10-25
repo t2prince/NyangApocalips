@@ -1229,8 +1229,10 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
     private fun doPlay(h: Float) {
         val cat = selected ?: return
         if (cat.gone) return
+        if (!CatTeam.hasToy()) { showNotice(CatTeam.NO_TOY_MSG); return }
         // 놀아주기 = 고양이 낚싯대 놀이 (대표님 2026-10-17 「낚싯대를 움직이면 고양이 발바닥이 따라와」)
         playing = true; playCatches = 0; playCool = 0f
+        playCatX = gameView.screenWidth * 0.5f; playCatZ = 0f; playCatVZ = 0f; playCatRight = true
         wandX = gameView.screenWidth * 0.62f; wandY = h * 0.30f
         featherX = wandX; featherY = wandY + WAND_STRING; featherVX = 0f; featherVY = 0f
         pawX = gameView.screenWidth * 0.5f; pawY = h * 0.70f
@@ -1246,6 +1248,11 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
     private var featherX = 0f; private var featherY = 0f
     private var featherVX = 0f; private var featherVY = 0f
     private var pawX = 0f; private var pawY = 0f
+    // 냥이가 직접 깃털을 쫓아 뛰어다닌다 (대표님 2026-10-25 「고양이가 직접 움직이면서 놀아」) — 빠르기·점프 높이는 Claude 판단
+    private var playCatX = 0f
+    /** 바닥에서 뛰어오른 높이(위가 +) · 위로 빠르기 */
+    private var playCatZ = 0f; private var playCatVZ = 0f
+    private var playCatRight = true
     private val playDoneRect = RectF()
     private val playShade = Paint().apply { color = Color.argb(150, 30, 26, 40) }
     private val playFloor = Paint().apply { color = Color.rgb(250, 238, 214); isAntiAlias = true }
@@ -1271,13 +1278,27 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         featherVY += (-dy / d * pull + 1600f) * dt
         featherVX *= (1f - 2.5f * dt); featherVY *= (1f - 2.5f * dt)
         featherX += featherVX * dt; featherY += featherVY * dt
+        // 냥이: 깃털 아래로 달려가고, 깃털이 높이 있으면 펄쩍 뛰어오른다 (쉬는 동안은 제자리)
+        val w = gameView.screenWidth.toFloat()
+        if (playCool <= 0f) {
+            val gap = featherX - playCatX
+            if (kotlin.math.abs(gap) > 30f) {
+                playCatX += kotlin.math.sign(gap) * (kotlin.math.abs(gap) * 3f).coerceIn(120f, 900f) * dt
+                playCatRight = gap > 0f
+            }
+            if (playCatZ <= 0f && kotlin.math.abs(gap) < w * 0.12f && featherY < h * 0.55f) playCatVZ = h * 1.9f
+        }
+        playCatX = playCatX.coerceIn(w * 0.12f, w * 0.88f)
+        playCatVZ -= h * 5.5f * dt
+        playCatZ = (playCatZ + playCatVZ * dt).coerceAtLeast(0f)
+        if (playCatZ <= 0f) playCatVZ = 0f
         // 앞발: 어깨에서 닿는 만큼만 뻗어 깃털을 쫓는다 (쉬는 동안은 내려놓는다)
-        val sx = gameView.screenWidth * 0.5f; val sy = h * 0.74f
+        val sx = playCatX + (if (playCatRight) 1f else -1f) * h * 0.08f; val sy = h * 0.74f - playCatZ
         var tx = if (playCool > 0f) sx + 40f else featherX
         var ty = if (playCool > 0f) sy + 20f else featherY
         val rx = tx - sx; val ry = ty - sy
         val rd = kotlin.math.hypot(rx, ry)
-        val reach = h * 0.48f
+        val reach = h * 0.30f
         if (rd > reach) { tx = sx + rx / rd * reach; ty = sy + ry / rd * reach }
         val k = (dt * PAW_FOLLOW).coerceAtMost(1f)
         pawX += (tx - pawX) * k; pawY += (ty - pawY) * k
@@ -1298,13 +1319,20 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
         canvas.drawRect(0f, 0f, w, h, playShade)
         canvas.drawRect(0f, h * 0.86f, w, h, playFloor)
         // 냥이 (아래 가운데, 위를 올려다본다)
-        val bmp = plainSpriteFor(cat)
+        val base = plainSpriteFor(cat)
+        val bmp = if (playCatRight) base else SpriteManager.getFlipped(base)
         val ch = h * 0.42f; val cw = bmp.width * ch / bmp.height
-        val cx = w * 0.5f
-        dstRect.set(cx - cw / 2f, h * 0.90f - ch, cx + cw / 2f, h * 0.90f)
+        val cx = playCatX
+        // 달릴 때는 통통 튀고, 뛰어오르면 몸을 살짝 젖힌다
+        val hop = if (playCatZ <= 0f && playCool <= 0f && kotlin.math.abs(featherX - playCatX) > 30f) kotlin.math.abs(kotlin.math.sin(timer * 14f)) * h * 0.02f else 0f
+        val baseY = h * 0.90f - playCatZ - hop
+        canvas.save()
+        if (playCatZ > 0f) canvas.rotate(if (playCatRight) -12f else 12f, cx, baseY - ch / 2f)
+        dstRect.set(cx - cw / 2f, baseY - ch, cx + cw / 2f, baseY)
         canvas.drawBitmap(bmp, null, dstRect, null)
+        canvas.restore()
         // 앞발: 어깨에서 발바닥까지 팔 + 둥근 발바닥(분홍 젤리 네 개 + 큰 젤리)
-        val sx = w * 0.5f; val sy = h * 0.74f
+        val sx = playCatX + (if (playCatRight) 1f else -1f) * h * 0.08f; val sy = h * 0.74f - playCatZ
         armInk.strokeWidth = 64f; canvas.drawLine(sx, sy, pawX, pawY, armInk)
         armFill.strokeWidth = 54f; canvas.drawLine(sx, sy, pawX, pawY, armFill)
         canvas.drawCircle(pawX, pawY, 44f, pawFill); canvas.drawCircle(pawX, pawY, 44f, pawInk)

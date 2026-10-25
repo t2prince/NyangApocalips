@@ -802,17 +802,23 @@ object CatTeam {
      * 놀아주기 — 장난감이 있으면 훨씬 신난다 (장난감은 없어지지 않는다).
      * 뛰어노느라 포만감은 조금 준다.
      */
+    const val NO_TOY_MSG = "장난감이 없어서 못 논다냥! 장난감 가게에서 사 오자"
+    /** 놀아줄 장난감이 하나라도 있나 */
+    fun hasToy(): Boolean = TOY_IDS.any { GameProgress.itemCount(it) > 0 }
+    private val TOY_IDS = listOf("fish_kite", "crab_doll", "laser_pointer", "shell_rattle", "fish_toy", "beach_ball", "feather_wand", "mouse_toy", "cat_grass")
+
     fun play(id: Int): CareResult? {
         val cat = cat(id) ?: return null
         if (cat.gone) return null
         // 가진 장난감 중 가장 좋은 것 + 다른 장난감마다 3씩 더 (최대 40) — 새 장난감 2026-10-09
         val toyJoy = linkedMapOf("fish_kite" to 34, "crab_doll" to 30, "laser_pointer" to 28, "shell_rattle" to 26, "fish_toy" to 25, "beach_ball" to 24,
-            "feather_wand" to 22, "mouse_toy" to 20, "ball" to 18)   // 상점마을2 장난감 2026-10-24
+            "feather_wand" to 22, "mouse_toy" to 20, "cat_grass" to 18)   // 상점마을2 장난감 2026-10-24
         val owned = toyJoy.filterKeys { GameProgress.itemCount(it) > 0 }
         val gain: Int
         val withWhat: String
-        if (owned.isEmpty()) { gain = 8; withWhat = "" }
-        else {
+        // 장난감이 없으면 놀 수 없다 (대표님 2026-10-25 「고양이 놀아주기는 장난감이 없으면 할 수 없고」)
+        if (owned.isEmpty()) return CareResult(false, NO_TOY_MSG)
+        run {
             gain = (owned.values.max() + 3 * (owned.size - 1)).coerceAtMost(40)
             withWhat = " (" + owned.keys.joinToString(" + ") { id -> ShopCatalog.items.first { it.id == id }.name } + ")"
         }

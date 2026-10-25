@@ -161,7 +161,7 @@ class PlayroomScreen(private val gameView: GameView) : Screen {
         /** 들어올 때 내는 루비 */
         const val ENTRY_PRICE = 10
         /** 방에 놓인 장난감 (상점 물건 id, 가로 자리 비율, 크기) */
-        private val TOYS = listOf(Triple("cat_tower", 0.07f, 300f), Triple("ball", 0.30f, 90f), Triple("cushion", 0.55f, 130f),
+        private val TOYS = listOf(Triple("cat_tower", 0.07f, 300f), Triple("cat_grass", 0.30f, 90f), Triple("cushion", 0.55f, 130f),
             Triple("scratcher", 0.78f, 140f), Triple("fish_toy", 0.94f, 110f))
     }
 }

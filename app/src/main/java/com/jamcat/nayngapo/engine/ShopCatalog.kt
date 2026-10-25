@@ -22,7 +22,8 @@ object ShopCatalog {
         Item("tuna_can", "참치캔", 5, "든든한 한 끼"),
         Item("feed", "사료 한 봉지", 8, "매일 먹는 밥"),
         Item("catnip", "캣닢", 6, "냄새만 맡아도 신난다"),
-        Item("ball", "방울 공", 4, "굴리면 딸랑딸랑"),
+        // 방울 공 삭제 → 캣그라스 (대표님 2026-10-25 「방울공 삭제 후 캣그라스 넣어줘」, 값·즐거움은 방울 공 그대로 — Claude 판단)
+        Item("cat_grass", "캣그라스", 4, "냠냠 씹으며 노는 고양이 풀"),
         Item("fish_toy", "낚싯대 장난감", 10, "흔들면 펄쩍 뛴다"),
         Item("brush", "빗", 7, "털을 곱게 빗어 준다"),
         Item("water_bowl", "물그릇", 5, "시원한 물 한 그릇"),
@@ -115,7 +116,7 @@ object ShopCatalog {
     /** 상점가 천막별 가게 (천막 번호 0부터) → (가게 이름, 진열 물건). 1번(0) 고양이 상점, 2번(1) 고양이 기술, 6번(5) 동물 병원은 따로 */
     val tentShops: Map<Int, Pair<String, List<String>>> = mapOf(
         2 to ("간식 가게" to listOf("churu", "tuna_can", "feed", "catnip", "milk", "salmon", "cat_cake", "feed_all")),
-        3 to ("장난감 가게" to listOf("ball", "fish_toy", "mouse_toy", "feather_wand", "laser_pointer")),
+        3 to ("장난감 가게" to listOf("cat_grass", "fish_toy", "mouse_toy", "feather_wand", "laser_pointer")),
         4 to ("살림 가게" to listOf("brush", "water_bowl", "cushion", "scratcher", "litter", "cat_tower")),
         // 8~10번 천막 = 인간이 가는 가게 (2026-10-09)
         7 to ("무기점" to listOf("h_glove", "h_gauntlet", "h_gun", "h_ammo")),

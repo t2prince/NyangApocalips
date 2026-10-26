@@ -751,8 +751,8 @@ class GamePlayScreen(
                 if (!target.isDead) damageEnemy(target, ally.meleeDamage)
             }
 
-            // 적 냥이와 몸이 닿으면 물린다
-            for (enemy in level.enemies) {
+            // 적 냥이와 몸이 닿으면 물린다 (날아다니는 벌냥이는 안 물린다)
+            if (!ally.dodgesCats) for (enemy in level.enemies) {
                 if (enemy.isDead) continue
                 if (RectF.intersects(ally.hitBox, enemy.hitBox)) {
                     ally.takeDamage(enemy.attackPower)
@@ -1112,7 +1112,7 @@ class GamePlayScreen(
         for (proj in level.projectiles) {
             if (proj.isPlayerOwned || !proj.isAlive) continue
             for (ally in level.allies) {
-                if (ally.isDead) continue
+                if (ally.isDead || ally.dodgesCats) continue   // 벌냥이는 냥이 탄도 안 맞는다 (2026-10-26)
                 if (RectF.intersects(proj.hitBox, ally.hitBox)) {
                     ally.takeDamage(proj.damage)
                     proj.isAlive = false

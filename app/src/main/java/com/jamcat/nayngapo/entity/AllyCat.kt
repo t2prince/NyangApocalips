@@ -65,6 +65,8 @@ class AllyCat(
     private val hovers = kind == Kind.FLYING || kind == Kind.BEE
     /** 떠 있는 높이 (벌냥이는 적일 때처럼 높이) */
     private val hoverHeight = if (kind == Kind.BEE) BEE_HOVER_LIFT else HOVER_LIFT
+    /** 날아다니는 벌냥이는 냥이들의 공격(몸 박치기·탄)을 안 받는다 (대표님 2026-10-26 「벌냥이가 날아다니면 냥이들에 공격을 안 받아 우리팀」) */
+    val dodgesCats: Boolean get() = kind == Kind.BEE
     /** 그림 크기 배율 (새끼면 작게) */
     private val sizeMul = if (kitten) KITTEN_SCALE else 1f
 

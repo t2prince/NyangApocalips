@@ -91,7 +91,7 @@ class PlayroomScreen(private val gameView: GameView) : Screen {
         buttons.clear()
         if (cats.isEmpty()) {
             text.textSize = h * 0.045f
-            canvas.drawTr("놀고 있는 냥이가 없어요 (캣타워에서 출전시키면 와요)", w / 2f, h * 0.45f, text)
+            canvas.drawTr("놀고 있는 냥이가 없어요 (고양이 관리에서 출전시키면 와요)", w / 2f, h * 0.45f, text)
         }
         for (c in cats) {
             val k = kitties[c.id] ?: continue
@@ -142,7 +142,7 @@ class PlayroomScreen(private val gameView: GameView) : Screen {
         val c = CatTeam.cat(hit.first) ?: return true
         if (c.inDaycare) {
             CatTeam.takeFromDaycare(c.id)
-            notice("${c.name}을(를) 데려왔어요! (캣타워)")
+            notice("${c.name}을(를) 데려왔어요! (고양이 관리)")
         } else {
             CatTeam.putInDaycare(c.id)
             notice("${c.name}을(를) 맡겼어요 · 늘 배불러요")

@@ -847,5 +847,22 @@
  "얼음냥이": "Ice Cat",
  "얼음 덩이를 던져 얼린다": "Throws ice chunks that freeze",
  "빙산냥이": "Iceberg Cat",
- "얼음 팔로 때리고 얼린다 (60 보스)": "Punches with ice arms and freezes (Stage 60 boss)"
+ "얼음 팔로 때리고 얼린다 (60 보스)": "Punches with ice arms and freezes (Stage 60 boss)",
+  "찌가 쏙 들어가고 '!'가 뜨면 바로 당기기! · 물고기는 고양이 관리에서 간식으로": "When the float dips and '!' pops up, reel in! · Feed fish to cats at Cat Care",
+  "냥이 2마리를 데려와야 싸울 수 있어요! (고양이 관리에서 출전)": "Bring 2 cats to fight! (Deploy at Cat Care)",
+  "▼ 고양이 관리": "▼ Cat Care",
+  "놀고 있는 냥이가 없어요 (고양이 관리에서 출전시키면 와요)": "No cats playing (Deploy one at Cat Care)",
+  "{0}을(를) 데려왔어요! (고양이 관리)": "Brought {0} home! (Cat Care)",
+  "{0} 구출! 고양이 관리에서 출전시켜 주세요": "Rescued {0}! Deploy at Cat Care",
+  "{0} 돌아왔다! (고양이 관리)": "{0} is back! (Cat Care)",
+  "▼ 집 들어가기 (고양이 관리)": "▼ Enter home (Cat Care)",
+  "냥이를 데려와야 기술을 가르쳐 줄 수 있어요! (고양이 관리에서 출전)": "Bring a cat to learn skills! (Deploy at Cat Care)",
+  "냥이를 데려와야 수술할 수 있어요! (고양이 관리에서 출전)": "Bring a cat for surgery! (Deploy at Cat Care)",
+  "냥이를 데려와야 체력 훈련을 할 수 있어요! (고양이 관리에서 출전)": "Bring a cat for HP training! (Deploy at Cat Care)",
+  "냥이를 데려와야 투기장에서 싸울 수 있어요! (고양이 관리에서 출전)": "Bring a cat to fight in the arena! (Deploy at Cat Care)",
+  "날아냥이가 함께한다! (고양이 관리에 합류)": "Flying Cat joins you! (At Cat Care)",
+  "고양이 관리에서 냥이에게 단다 · 떠나도 어디 있는지 알 수 있다": "Attach at Cat Care · Find your cat if they leave",
+  "날아냥이가 잠들어 있다냥! 고양이 관리에서 부활 약을 먹여야 하늘에 갈 수 있다 (로봇을 타면 날아갈 수 있어요)": "Flying Cat is asleep, nya! Give it a revival potion at Cat Care to reach the sky (You can fly in a robot)",
+  "배냥이가 잠들어 있다냥! 고양이 관리에서 부활 약을 먹여야 바다에 나갈 수 있다": "Boat Cat is asleep, nya! Give it a revival potion at Cat Care to sail",
+  "고양이 관리": "Cat Care"
 }

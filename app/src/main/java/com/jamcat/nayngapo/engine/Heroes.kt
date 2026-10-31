@@ -73,7 +73,7 @@ object Heroes {
      * 능력은 검은 인간과 같다 (Claude 판단). 그림은 ui/CharSkin.
      */
     const val CAT_ID = "cat"
-    val cat = Hero(CAT_ID, "고양이", Color.rgb(20, 20, 20), "캣타워 냥이가 된다", Accessory.NONE)
+    val cat = Hero(CAT_ID, "고양이", Color.rgb(20, 20, 20), "고양이 관리의 냥이가 된다", Accessory.NONE)
     /** 내가 만든 캐릭터 id 앞머리 (engine/CustomChars) */
     const val CUSTOM_PREFIX = "custom_"
 

@@ -722,7 +722,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
         // 집 앞: '들어가기' 말풍선 → 집 안의 캣타워
         if (nearTower) {
             val bx = towerX - cameraX
-            val label = "▼ 집 들어가기 (캣타워)"
+            val label = "▼ 집 들어가기 (고양이 관리)"
             bubbleText.textSize = 44f
             val bw = bubbleText.measureTr(label) + 60f
             val by = groundY - HOUSE_H - 50f + sin(timer * 4f) * 6f
@@ -1272,7 +1272,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 // 데려온 냥이 1마리만 배운다 — 2마리 이상 데려왔으면 먼저 하나를 고른다 (2026-10-09)
                 val brought = allies.mapNotNull { a -> a.teamId?.let { com.jamcat.nayngapo.engine.CatTeam.cat(it) } }.filter { !it.gone }
                 when {
-                    brought.isEmpty() -> showNotice("냥이를 데려와야 기술을 가르쳐 줄 수 있어요! (캣타워에서 출전)")
+                    brought.isEmpty() -> showNotice("냥이를 데려와야 기술을 가르쳐 줄 수 있어요! (고양이 관리에서 출전)")
                     brought.size == 1 -> skillStudent = brought[0]
                     else -> choosing = brought
                 }
@@ -1281,7 +1281,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 val brought = allies.mapNotNull { a -> a.teamId?.let { com.jamcat.nayngapo.engine.CatTeam.cat(it) } }.filter { !it.gone }
                 chooseFor = ChooseFor.HOSPITAL
                 when {
-                    brought.isEmpty() -> showNotice("냥이를 데려와야 수술할 수 있어요! (캣타워에서 출전)")
+                    brought.isEmpty() -> showNotice("냥이를 데려와야 수술할 수 있어요! (고양이 관리에서 출전)")
                     brought.size == 1 -> patient = brought[0]
                     else -> choosing = brought
                 }
@@ -1297,7 +1297,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 val brought = allies.mapNotNull { a -> a.teamId?.let { com.jamcat.nayngapo.engine.CatTeam.cat(it) } }.filter { !it.gone }
                 chooseFor = ChooseFor.TRAINING
                 when {
-                    brought.isEmpty() -> showNotice("냥이를 데려와야 체력 훈련을 할 수 있어요! (캣타워에서 출전)")
+                    brought.isEmpty() -> showNotice("냥이를 데려와야 체력 훈련을 할 수 있어요! (고양이 관리에서 출전)")
                     brought.size == 1 -> gameView.showHpTraining(brought[0].id)
                     else -> choosing = brought
                 }
@@ -1307,7 +1307,7 @@ class ShopScreen(private val gameView: GameView) : Screen {
                 val brought = allies.mapNotNull { a -> a.teamId?.let { com.jamcat.nayngapo.engine.CatTeam.cat(it) } }.filter { !it.gone }
                 chooseFor = ChooseFor.ARENA
                 when {
-                    brought.isEmpty() -> showNotice("냥이를 데려와야 투기장에서 싸울 수 있어요! (캣타워에서 출전)")
+                    brought.isEmpty() -> showNotice("냥이를 데려와야 투기장에서 싸울 수 있어요! (고양이 관리에서 출전)")
                     brought.size == 1 -> gameView.showArena(brought[0].id)
                     else -> choosing = brought
                 }

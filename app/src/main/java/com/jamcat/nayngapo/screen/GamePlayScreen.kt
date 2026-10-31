@@ -2253,7 +2253,7 @@ class GamePlayScreen(
             hitEffects.add(
                 HitEffect(
                     prison.x, prison.y - prison.height, 1.6f,
-                    "${recruited.name} 구출! 캣타워에서 출전시켜 주세요"
+                    "${recruited.name} 구출! 고양이 관리에서 출전시켜 주세요"
                 )
             )
         } else {
@@ -3681,7 +3681,7 @@ class GamePlayScreen(
             enemy.capture()
             com.jamcat.nayngapo.engine.CatTeam.bringBack(enemy.teamCat.id)
             SoundManager.playCatHit()
-            hitEffects.add(HitEffect(enemy.x, enemy.y - enemy.height - 40f, 1.8f, "${enemy.teamCat.name} 돌아왔다! (캣타워)"))
+            hitEffects.add(HitEffect(enemy.x, enemy.y - enemy.height - 40f, 1.8f, "${enemy.teamCat.name} 돌아왔다! (고양이 관리)"))
             return true
         }
         if (!GameProgress.consumeItem("h_bugbox")) return false

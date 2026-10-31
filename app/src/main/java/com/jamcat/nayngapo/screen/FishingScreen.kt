@@ -1154,7 +1154,7 @@ class FishingScreen(private val gameView: GameView, atSeaEnd: Boolean = false) :
         text.textSize = h * 0.065f
         canvas.drawTr("낚시터", w / 2f, h * 0.10f, text)
         text.textSize = h * 0.03f
-        if (!onBoat) canvas.drawTr("찌가 쏙 들어가고 '!'가 뜨면 바로 당기기! · 물고기는 캣타워에서 간식으로", w / 2f, h * 0.16f, text)
+        if (!onBoat) canvas.drawTr("찌가 쏙 들어가고 '!'가 뜨면 바로 당기기! · 물고기는 고양이 관리에서 간식으로", w / 2f, h * 0.16f, text)
 
         // 가진 물고기·바다 생물 (왼쪽 위 한 줄 — 아래 버튼과 안 겹치게, 한 번도 안 잡은 건 흐리게)
         for ((n, id) in CATCH_IDS.withIndex()) {

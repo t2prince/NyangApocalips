@@ -93,7 +93,7 @@ class GachaScreen(private val gameView: GameView, private val fromLobby: Boolean
                 resultCoat = if (resultCatKind == AllyCat.Kind.NORMAL) CatCoat.random() else CatCoat.CHEESE
                 val cat = CatTeam.recruit(resultCatKind, resultCoat)
                 resultText = "${cat.name} 나왔다!"
-                notice("${cat.name} 이(가) 캣타워에 왔어요!")
+                notice("${cat.name} 이(가) 고양이 관리에 왔어요!")
             }
             Kind.ENEMY_CATS -> {
                 val stolen = GameProgress.rubies.coerceAtMost(STEAL_MAX)

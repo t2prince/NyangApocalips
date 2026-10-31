@@ -141,7 +141,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
 
     private fun tapDuelButton() {
         when {
-            brought.size < 2 -> { noticeText = "냥이 2마리를 데려와야 싸울 수 있어요! (캣타워에서 출전)"; noticeTimer = 2.2f }
+            brought.size < 2 -> { noticeText = "냥이 2마리를 데려와야 싸울 수 있어요! (고양이 관리에서 출전)"; noticeTimer = 2.2f }
             brought.size == 2 -> startDuel(brought)
             else -> { picked.clear(); mode = Mode.PICK }
         }

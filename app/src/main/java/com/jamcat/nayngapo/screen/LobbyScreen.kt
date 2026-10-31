@@ -42,7 +42,7 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
         Slot("worldmap", "", 0.260f, 0.100f, 0.735f, 0.855f),
         // 오른쪽 세로줄
         Slot("battle", "전투", 0.750f, 0.100f, 0.985f, 0.340f),
-        Slot("cat_manage", "캣타워", 0.750f, 0.360f, 0.985f, 0.600f),
+        Slot("cat_manage", "고양이 관리", 0.750f, 0.360f, 0.985f, 0.600f),
         Slot("shop", "상점", 0.750f, 0.620f, 0.985f, 0.855f),
         // 아래 가로줄 5칸
         Slot("internet", "인터넷", 0.015f, 0.868f, 0.203f, 0.992f, compact = true),

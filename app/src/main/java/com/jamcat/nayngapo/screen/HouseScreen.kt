@@ -52,7 +52,7 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
         if (floor == 0) {
             worldWidth = GROUND_W
             spots.add(Spot(DOOR_X, "◀ 밖으로 나가기") { gameView.showShop() })
-            spots.add(Spot(TOWER_X, "▼ 캣타워") { returnX = player.x; returnFloor = 0; gameView.showTeam(fromHouse = true) })
+            spots.add(Spot(TOWER_X, "▼ 고양이 관리") { returnX = player.x; returnFloor = 0; gameView.showTeam(fromHouse = true) })
             spots.add(Spot(STAIRS_X, "▲ 위층 올라가기") { gameView.showHouse(1, UP_STAIRS_X) })
         } else {
             val cats = CatTeam.cats.filter { !it.gone && it !in CatTeam.party }   // 출전 중인 냥이는 위층에 없다

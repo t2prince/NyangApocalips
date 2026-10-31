@@ -263,7 +263,7 @@ class CharacterSelectScreen(private val gameView: GameView) : Screen {
             if (i >= cardRects.size || !cardRects[i].contains(x, y)) continue
             // 고양이: 캣타워 냥이 중에서 고른다
             if (hero.id == Heroes.CAT_ID) {
-                if (com.jamcat.nayngapo.engine.CatTeam.living.isEmpty()) { noticeText = "캣타워에 냥이가 없어요 — 먼저 냥이를 구해요"; noticeTimer = 2f }
+                if (com.jamcat.nayngapo.engine.CatTeam.living.isEmpty()) { noticeText = "고양이 관리에 냥이가 없어요 — 먼저 냥이를 구해요"; noticeTimer = 2f }
                 else { choosing = true; choosePage = 0 }
                 return
             }

@@ -19,6 +19,8 @@ data class Placement(
     val catKind: AllyCat.Kind? = null,
     /** 냥이 감옥에 엄마+새끼가 같이 갇혀 있다 (catKind 는 null — 대표님 2026-10-31 「냥이랑 새끼 고양이 같이 넣기」) */
     val withKitten: Boolean = false,
+    /** 하늘 스테이지(11)만: 나는 높이 — 0 = 날 수 있는 맨 위, 1 = 맨 아래 (화면 높이가 기기마다 달라 비율로 적는다). 땅 스테이지는 null */
+    val y: Float? = null,
 )
 
 /** 배치할 수 있는 것의 무리 — 편집 화면 목록의 탭 */
@@ -66,6 +68,8 @@ enum class PlaceType(
     BOSS_PIRATE("해적냥이", PlaceGroup.BOSS, { x, y -> PirateCatBoss(x, y) }),             // 31 — 31 에서는 해적선 위에 탄다
     BOSS_ICEBERG("빙산냥이", PlaceGroup.BOSS, { x, y -> IcebergCatBoss(x, y) }),           // 60
     BOSS_WIZARD("마법사냥이", PlaceGroup.BOSS, { x, y -> WizardCatBoss(x, y) }),           // 20 (삼형제)
+    // 11 하늘의 왕 — 하늘 스테이지(SkyStageScreen)에만 있어 땅 개체가 없다
+    BOSS_GIANT("왕왕냥이", PlaceGroup.BOSS, inPalette = false),
 
     // ===== 함정·물건 =====
     SPIKE("가시 함정", PlaceGroup.HAZARD),
@@ -79,7 +83,7 @@ enum class PlaceType(
     PRISON_HUMAN("인간 감옥", PlaceGroup.HAZARD),
     PRISON_CAT("냥이 감옥", PlaceGroup.HAZARD);
 
-    val isEnemy: Boolean get() = factory != null
+    val isEnemy: Boolean get() = factory != null || this == BOSS_GIANT
 
     companion object {
         /** 모루냥이 스테이지에 섞이는 해머냥이 마릿수 범위 (무작위) */
@@ -99,6 +103,7 @@ object StageLayoutJson {
             if (p.seed != 0) o.put("s", p.seed)
             p.catKind?.let { o.put("c", it.name) }
             if (p.withKitten) o.put("k", 1)
+            p.y?.let { o.put("y", it.toDouble()) }
             arr.put(o)
         }
         return arr.toString()
@@ -112,10 +117,63 @@ object StageLayoutJson {
             val o = arr.getJSONObject(i)
             val type = runCatching { PlaceType.valueOf(o.getString("t")) }.getOrNull() ?: continue
             val cat = if (o.has("c")) runCatching { AllyCat.Kind.valueOf(o.getString("c")) }.getOrNull() else null
-            out.add(Placement(type, o.getDouble("x").toFloat(), o.optInt("s", 0), cat, withKitten = o.optInt("k", 0) == 1))
+            out.add(Placement(type, o.getDouble("x").toFloat(), o.optInt("s", 0), cat, withKitten = o.optInt("k", 0) == 1,
+                y = if (o.has("y")) o.getDouble("y").toFloat() else null))
         }
         out
     } catch (_: Exception) {
         null
+    }
+}
+
+/**
+ * 하늘 스테이지(11) 배치 (대표님 2026-10-31 「11 스태이지도 편집 할수있개 만들어줘」).
+ * 하늘은 땅이 없어 x 와 함께 높이(Placement.y, 0~1)도 적는다. 놓을 수 있는 것: 날아냥이·레이저냥이·왕왕냥이·인간 감옥·냥이 감옥.
+ * 기본 배치는 예전 SkyStageScreen 의 무작위 배치를 그대로 옮겨 왔다.
+ */
+object SkyLayout {
+    /** 편집 화면 목록 (고양이 탭 / 함정·물건 탭) */
+    val CATS = listOf(PlaceType.FLYING, PlaceType.LASER, PlaceType.BOSS_GIANT)
+    val THINGS = listOf(PlaceType.PRISON_HUMAN, PlaceType.PRISON_CAT)
+
+    /** 날 수 있는 높이 — 화면 높이 1080 일 때의 위·아래 (SkyStageScreen: 130 ~ 화면 높이 - 320) */
+    const val NOMINAL_H = 1080f
+    const val FLY_TOP = 130f
+    const val FLY_BOTTOM_GAP = 320f
+    /** 놓을 수 있는 x — 출발(500) 바로 앞과 코스 끝은 비운다 (Claude 판단) */
+    const val MIN_X = 900f
+    const val END_GAP = 300f
+
+    fun courseLength(stage: Int): Float = 11000f + (stage - 11) * 700f
+
+    /** 화면 높이 h 에서 높이 비율 → y */
+    fun yAt(frac: Float, h: Float): Float = FLY_TOP + frac.coerceIn(0f, 1f) * (h - FLY_BOTTOM_GAP - FLY_TOP)
+
+    private fun fracOf(y: Float): Float = ((y - FLY_TOP) / (NOMINAL_H - FLY_BOTTOM_GAP - FLY_TOP)).coerceIn(0f, 1f)
+
+    fun defaultLayout(stage: Int): List<Placement> {
+        val course = courseLength(stage)
+        val out = mutableListOf<Placement>()
+        val flyingCount = 10 + (stage - 11) * 2
+        val laserCount = ((stage - 12) * 2).coerceAtLeast(0)
+        val spots = mutableListOf<Pair<PlaceType, Float>>()
+        repeat(flyingCount) { i -> spots.add(PlaceType.FLYING to (1400f + i * (course - 2600f) / flyingCount)) }
+        repeat(laserCount) { i -> spots.add(PlaceType.LASER to (2200f + i * (course - 3400f) / laserCount.coerceAtLeast(1))) }
+        for ((type, ex) in spots) {
+            val ey = 180f + (Math.random() * 520f).toFloat()
+            out.add(Placement(type, ex + (Math.random() * 260f - 130f).toFloat(), y = fracOf(ey)))
+        }
+        // 끝에는 하늘의 왕 '왕왕냥이' (높이는 게임에서 저절로 오르내린다)
+        out.add(Placement(PlaceType.BOSS_GIANT, course - 900f, y = 0.5f))
+        // 코스 중간중간에 감옥 셋 (인간·냥이 둘 다, 셋째는 반반)
+        val kinds = mutableListOf(PlaceType.PRISON_CAT, PlaceType.PRISON_HUMAN,
+            if (Math.random() < 0.5) PlaceType.PRISON_CAT else PlaceType.PRISON_HUMAN)
+        kinds.shuffle()
+        for ((i, type) in kinds.withIndex()) {
+            val px = course * (0.25f + 0.25f * i) + (Math.random().toFloat() - 0.5f) * 600f
+            // 위아래 15%는 비워 둔다 — 너무 높거나 낮으면 닿기 어렵다
+            out.add(Placement(type, px, y = 0.15f + Math.random().toFloat() * 0.70f))
+        }
+        return out
     }
 }

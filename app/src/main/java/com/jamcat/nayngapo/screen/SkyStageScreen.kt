@@ -313,12 +313,14 @@ class SkyStageScreen(
     private inner class SkyPrison(
         val kind: com.jamcat.nayngapo.entity.Prison.Kind,
         val x: Float,
-        private val baseY: Float
+        private val baseY: Float,
+        /** 스테이지 편집에서 고른 갇힌 냥이 (null 이면 무작위) */
+        chosenCat: com.jamcat.nayngapo.entity.AllyCat.Kind? = null,
     ) {
-        /** 갇힌 냥이 종류 (날아냥이는 10스테이지 전용이라 여기서는 안 나온다) */
+        /** 갇힌 냥이 종류 (무작위면 날아냥이는 10스테이지 전용이라 여기서는 안 나온다) */
         val catKind: com.jamcat.nayngapo.entity.AllyCat.Kind? =
             if (kind == com.jamcat.nayngapo.entity.Prison.Kind.CAT) {
-                listOf(
+                chosenCat ?: listOf(
                     com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN,
                     com.jamcat.nayngapo.entity.AllyCat.Kind.BLUE,
                     com.jamcat.nayngapo.entity.AllyCat.Kind.NORMAL,
@@ -529,7 +531,7 @@ class SkyStageScreen(
     private var fallVy = 0f
     private var fallSpin = 0f
 
-    private val courseLength = 11000f + (stageNumber - 11) * 700f
+    private val courseLength = com.jamcat.nayngapo.level.SkyLayout.courseLength(stageNumber)
     /** 구름 탄 아군이 적을 노리는 가로 사거리 */
     private val ALLY_SHOT_RANGE = 760f
     private var flyMinY = 130f
@@ -603,46 +605,31 @@ class SkyStageScreen(
         }
     }
 
+    /**
+     * 배치 목록(SkyLayout)대로 냥이와 감옥을 띄운다. 스테이지 편집(디버그 빌드)에서 저장한 배치가 있으면 그것을,
+     * 없으면 예전과 같은 무작위 기본 배치를 쓴다 (대표님 2026-10-31 「11 스태이지도 편집 할수있개 만들어줘」).
+     */
     private fun spawnEnemies() {
-        val flyingCount = 10 + (stageNumber - 11) * 2
-        val laserCount = ((stageNumber - 12) * 2).coerceAtLeast(0)
-        val spots = mutableListOf<Pair<SkyKind, Float>>()
-        repeat(flyingCount) { i ->
-            spots.add(SkyKind.FLYING to (1400f + i * (courseLength - 2600f) / flyingCount))
-        }
-        repeat(laserCount) { i ->
-            spots.add(SkyKind.LASER to (2200f + i * (courseLength - 3400f) / laserCount.coerceAtLeast(1)))
-        }
-        for ((kind, ex) in spots) {
-            val ey = 180f + (Math.random() * 520f).toFloat()
-            enemies.add(SkyEnemy(kind, ex + (Math.random() * 260f - 130f).toFloat(), ey))
-        }
-        // 하늘 스테이지(11)의 끝에는 하늘의 왕 '왕왕냥이'가 기다린다
-        enemies.add(SkyEnemy(SkyKind.GIANT, courseLength - 900f, 400f))
-        totalEnemies = enemies.size
-
-        spawnSkyPrisons()
-    }
-
-    /** 코스 중간중간에 감옥 셋을 띄운다 (인간·냥이 둘 다 나온다) */
-    private fun spawnSkyPrisons() {
-        val kinds = mutableListOf(
-            com.jamcat.nayngapo.entity.Prison.Kind.CAT,
-            com.jamcat.nayngapo.entity.Prison.Kind.HUMAN,
-            if (Math.random() < 0.5) com.jamcat.nayngapo.entity.Prison.Kind.CAT
-            else com.jamcat.nayngapo.entity.Prison.Kind.HUMAN,
-        )
+        val layout = (if (StageEdits.enabled) StageEdits.load(stageNumber) else null)
+            ?: com.jamcat.nayngapo.level.SkyLayout.defaultLayout(stageNumber)
+        val h = gameView.screenHeight.toFloat().takeIf { it > 0f } ?: com.jamcat.nayngapo.level.SkyLayout.NOMINAL_H
         // 이 스테이지에서 이미 냥이를 구했으면 냥이 감옥은 다시 안 나온다 (2026-10-25) — 인간 감옥만
         // 이미 깬 스테이지도 같다 (땅 스테이지를 다시 하면 감옥이 깨져 있는 것처럼)
-        if (GameProgress.skyCatRescued(stageNumber) || GameProgress.isCleared(stageNumber)) kinds.removeAll { it == com.jamcat.nayngapo.entity.Prison.Kind.CAT }
-        kinds.shuffle()
-        for ((i, kind) in kinds.withIndex()) {
-            val px = courseLength * (0.25f + 0.25f * i) + (Math.random().toFloat() - 0.5f) * 600f
-            // 위아래 15%는 비워 둔다 — 너무 높거나 낮으면 닿기 어렵다
-            val band = flyMaxY - flyMinY
-            val py = flyMinY + band * (0.15f + Math.random().toFloat() * 0.70f)
-            skyPrisons.add(SkyPrison(kind, px, py))
+        val noCatPrison = GameProgress.skyCatRescued(stageNumber) || GameProgress.isCleared(stageNumber)
+        for (p in layout) {
+            val y = com.jamcat.nayngapo.level.SkyLayout.yAt(p.y ?: 0.5f, h)
+            when (p.type) {
+                com.jamcat.nayngapo.level.PlaceType.FLYING -> enemies.add(SkyEnemy(SkyKind.FLYING, p.x, y))
+                com.jamcat.nayngapo.level.PlaceType.LASER -> enemies.add(SkyEnemy(SkyKind.LASER, p.x, y))
+                com.jamcat.nayngapo.level.PlaceType.BOSS_GIANT -> enemies.add(SkyEnemy(SkyKind.GIANT, p.x, y))
+                com.jamcat.nayngapo.level.PlaceType.PRISON_HUMAN ->
+                    skyPrisons.add(SkyPrison(com.jamcat.nayngapo.entity.Prison.Kind.HUMAN, p.x, y))
+                com.jamcat.nayngapo.level.PlaceType.PRISON_CAT -> if (!noCatPrison)
+                    skyPrisons.add(SkyPrison(com.jamcat.nayngapo.entity.Prison.Kind.CAT, p.x, y, p.catKind))
+                else -> {}   // 하늘에 못 놓는 것 (땅 스테이지용)
+            }
         }
+        totalEnemies = enemies.size
     }
 
     /** 하늘의 감옥이 열렸다 — 인간은 구조 점수, 냥이는 팀 명단에 오른다 */

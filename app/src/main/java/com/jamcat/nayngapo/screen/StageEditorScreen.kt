@@ -16,13 +16,15 @@ import com.jamcat.nayngapo.level.PlaceGroup
 import com.jamcat.nayngapo.level.PlaceType
 import com.jamcat.nayngapo.level.Placement
 import com.jamcat.nayngapo.level.SHIP_DRAW_H
+import com.jamcat.nayngapo.level.SkyLayout
 import kotlin.math.abs
 
 /**
  * 스테이지 편집 (대표님 2026-10-31 「현재 있는 스테이지들 편집할 수 있는 화면 만들어줘. 스테이지를 고르면 그 맵이 나오고
  * 배치할 수 있는 함정들 고양이들 리스트로 나와서 드래그로 배치할 수 있어야 해」). 디버그 빌드에서만 열린다 (「디버그 모드에서만야」).
  *
- *  1) 스테이지 고르기: 땅 스테이지(1~31, 51~60) 버튼. 11 은 하늘 스테이지(다른 화면)라 뺐다 — Claude 판단. 편집해 저장한 스테이지는 ✏️.
+ *  1) 스테이지 고르기: 1~31, 51~60 버튼. 편집해 저장한 스테이지는 ✏️.
+ *     11 하늘 스테이지도 고칠 수 있다 (대표님 2026-10-31 「11 스태이지도 편집 할수있개 만들어줘」) — 하늘은 땅이 없어 위아래로도 놓는다 (SkyLayout).
  *  2) 지도: 그 스테이지의 땅(Terrain)과 놓인 것들을 진짜 그림으로 그린다. 빈 곳이나 아래 막대를 밀면 옆으로 움직인다.
  *  3) 아래 목록(고양이 / 함정·물건 탭)에서 위로 끌어 지도에 놓는다. 놓인 것을 끌면 옮겨지고, 목록이나 🗑 위에 놓으면 지워진다.
  *     높이는 늘 땅 위로 맞추고 x 만 자유롭다.
@@ -34,8 +36,16 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     /** 지도에 놓인 것 하나 — 배치(Placement)와 그것을 그리는 진짜 개체(미리보기) */
     private class Item(var p: Placement, var view: Any?)
 
-    /** 고를 수 있는 땅 스테이지 (11 하늘 스테이지 빼고 — Claude 판단) */
-    private val stages = GameProgress.playableStages.filter { !GameProgress.isSkyStage(it) }
+    /** 하늘에 놓인 것의 미리보기 — (x, y) 가 그림 가운데. 감옥이면 땅 감옥 그림을 빌려 쓴다 (SkyStageScreen.SkyPrison 과 같은 크기) */
+    private class SkyView(val type: PlaceType, val x: Float, val y: Float, val bmp: Bitmap?, val prison: Prison?, val drawScale: Float) {
+        val w: Float get() = if (prison != null) prison.width * drawScale else bmp!!.width * drawScale
+        val h: Float get() = if (prison != null) prison.height * drawScale else bmp!!.height * drawScale
+    }
+
+    /** 고를 수 있는 스테이지 (11 하늘 스테이지 포함) */
+    private val stages = GameProgress.playableStages
+    /** 지금 고치는 게 하늘 스테이지인가 */
+    private val sky: Boolean get() = stage?.let { GameProgress.isSkyStage(it) } == true
 
     private var stage: Int? = null
     private val items = mutableListOf<Item>()
@@ -43,9 +53,9 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     private var timer = 0f
 
     // ===== 지도 보기 =====
-    /** 지도에 보이는 세계 y 범위 (땅 기준선 위 720 ~ 아래 110) */
-    private val worldTop = Constants.GROUND_Y - 720f
-    private val worldBottom = Constants.GROUND_Y + 110f
+    /** 지도에 보이는 세계 y 범위 (땅: 땅 기준선 위 720 ~ 아래 110, 하늘: 화면 높이 1080 전체) */
+    private val worldTop: Float get() = if (sky) 0f else Constants.GROUND_Y - 720f
+    private val worldBottom: Float get() = if (sky) SkyLayout.NOMINAL_H else Constants.GROUND_Y + 110f
     private var camX = 0f
     private var scale = 1f
 
@@ -178,7 +188,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         }
         hintPaint.textAlign = Paint.Align.LEFT
         hintPaint.textSize = h * 0.028f
-        canvas.drawTr("11 은 하늘 스테이지라 편집할 수 없어요 · 저장한 배치는 이 기기(디버그 빌드)에서만 쓰여요", left, h * 0.97f, hintPaint)
+        canvas.drawTr("11 하늘 스테이지는 위아래로도 놓을 수 있어요 · 저장한 배치는 이 기기(디버그 빌드)에서만 쓰여요", left, h * 0.97f, hintPaint)
     }
 
     private fun drawEditor(canvas: Canvas, w: Float, h: Float) {
@@ -255,6 +265,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         canvas.scale(scale, scale)
 
         val dragging = if (mode == Mode.DRAG_ITEM) dragItem else null
+        if (sky) { drawSkyWorld(canvas, s, dragging); finishMap(canvas); return }
         val chasms = items.filter { it !== dragging }.mapNotNull { it.view as? Chasm }
         // 땅: 16 단위 조각마다 Terrain 높이로 (낭떠러지·수직 구덩이 자리는 비운다)
         val step = 16f
@@ -301,7 +312,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         }
 
         // 끄는 것: 손가락 자리의 땅 위에 그린다
-        if ((mode == Mode.DRAG_NEW || mode == Mode.DRAG_ITEM) && mapRect.contains(fingerX, fingerY)) {
+        if (isDragging()) {
             val v = dragView
             val baseX = (dragItem?.p?.x) ?: refX
             if (v != null) {
@@ -315,6 +326,43 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
                 canvas.restore()
             }
         }
+        finishMap(canvas)
+    }
+
+    private fun isDragging() = (mode == Mode.DRAG_NEW || mode == Mode.DRAG_ITEM) && mapRect.contains(fingerX, fingerY)
+
+    /** 하늘 지도: 땅 대신 날 수 있는 높이 띠, 출발·코스 끝, 놓인 것 (감옥 → 냥이 순서) */
+    private fun drawSkyWorld(canvas: Canvas, s: Int, dragging: Item?) {
+        val top = SkyLayout.FLY_TOP
+        val bottom = SkyLayout.NOMINAL_H - SkyLayout.FLY_BOTTOM_GAP
+        canvas.drawLine(camX, top, camX + viewW, top, endLinePaint)
+        canvas.drawLine(camX, bottom, camX + viewW, bottom, endLinePaint)
+        canvas.drawTr("출발", 500f, top - 30f, worldTextPaint)
+        canvas.drawCircle(500f, (top + bottom) / 2f, 30f, flagPaint)
+        val endX = SkyLayout.courseLength(s)
+        canvas.drawLine(endX, worldTop, endX, worldBottom, endLinePaint)
+        canvas.drawTr("코스 끝", endX, top - 30f, worldTextPaint)
+        for (layer in 1..2) {
+            for (it in items) {
+                if (it === dragging || layerOf(it.view) != layer) continue
+                drawView(canvas, it.view)
+                if (it.p.type == PlaceType.PRISON_CAT) drawPrisonTag(canvas, it)
+            }
+        }
+        // 끄는 것: 손가락 자리에 (높이도 따라간다)
+        val v = dragView as? SkyView
+        if (isDragging() && v != null) {
+            canvas.save()
+            canvas.translate(dropX() - v.x, skyDropY(v.type) - v.y)
+            drawView(canvas, v)
+            spanOf(v, tmpRect)
+            canvas.drawRoundRect(tmpRect, 12f, 12f, selectPaint)
+            canvas.restore()
+        }
+    }
+
+    /** 지도 마무리: 고른 것 테두리와 지우기·냥이 고르기 단추 (canvas 는 세계 좌표 상태로 들어와 여기서 되돌린다) */
+    private fun finishMap(canvas: Canvas) {
         // 눌러서 고른 것: 테두리 + 위에 '지우기' 단추 (대표님 2026-10-31 「스테이지에 있는것도 클릭해서 없앨 수 있어야지」)
         val sel = selected?.takeIf { it in items && mode != Mode.DRAG_ITEM }
         if (sel != null) { spanOf(sel.view, tmpRect); canvas.drawRoundRect(tmpRect, 12f, 12f, selectPaint) }
@@ -354,8 +402,11 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     /** 고르기 창이 열린 감옥 (null = 닫힘) */
     private var chooserFor: Item? = null
     /** 고를 수 있는 것 (냥이 종류, 엄마+새끼인가): 무작위(null) · 엄마+새끼 + 우리 팀이 될 수 있는 모든 냥이 */
-    private val chooserKinds: List<Pair<AllyCat.Kind?, Boolean>> =
+    private val allChooserKinds: List<Pair<AllyCat.Kind?, Boolean>> =
         listOf<Pair<AllyCat.Kind?, Boolean>>(null to false, null to true) + AllyCat.Kind.values().map { it to false }
+    /** 하늘 감옥은 한 마리만 갇힌다 — 엄마+새끼는 땅 스테이지만 (Claude 판단) */
+    private val chooserKinds: List<Pair<AllyCat.Kind?, Boolean>>
+        get() = if (sky) allChooserKinds.filter { !it.second } else allChooserKinds
     private val chooserRects = mutableListOf<Pair<Pair<AllyCat.Kind?, Boolean>, RectF>>()
     private val chooserCloseRect = RectF()
     private var chooserDown = false
@@ -374,11 +425,12 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
 
     /** 지도의 냥이 감옥 위에 갇힌 냥이 이름표 (무작위면 '🎲 무작위') — 그림은 감옥이 그 냥이로 그린다 */
     private fun drawPrisonTag(canvas: Canvas, it: Item) {
-        val pr = it.view as? Prison ?: return
+        if (it.view !is Prison && it.view !is SkyView) return
         val text = catName(it.p.catKind, it.p.withKitten)
         val tw = tagPaint.measureTr(text)
-        val cx = pr.x + pr.width / 2f
-        val ty = pr.y - pr.height - 18f
+        spanOf(it.view, tmpRect2)
+        val cx = tmpRect2.centerX()
+        val ty = tmpRect2.top - 18f
         tmpRect2.set(cx - tw / 2f - 10f, ty - 32f, cx + tw / 2f + 10f, ty + 8f)
         canvas.drawRoundRect(tmpRect2, 10f, 10f, tagBgPaint)
         canvas.drawTr(text, cx, ty, tagPaint)
@@ -394,7 +446,8 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         titlePaint.textSize = h * 0.045f
         canvas.drawTr("냥이 감옥에 넣을 냥이 고르기", panel.left + w * 0.02f, panel.top + h * 0.07f, titlePaint)
         hintPaint.textSize = h * 0.026f
-        canvas.drawTr("무작위 = 70% 이 스테이지에 나오는 냥이, 30% 아무 냥이 (예전과 같음)", panel.left + w * 0.02f, panel.top + h * 0.115f, hintPaint)
+        canvas.drawTr(if (sky) "무작위 = 그린·물·치즈·총냥이 중 하나 (예전과 같음)" else "무작위 = 70% 이 스테이지에 나오는 냥이, 30% 아무 냥이 (예전과 같음)",
+            panel.left + w * 0.02f, panel.top + h * 0.115f, hintPaint)
         chooserCloseRect.set(panel.right - w * 0.13f, panel.top + h * 0.02f, panel.right - w * 0.015f, panel.top + h * 0.095f)
         drawButton(canvas, chooserCloseRect, "닫기", false, h)
 
@@ -457,7 +510,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     }
 
     /** 0 = 바닥 함정, 1 = 감옥, 2 = 냥이 */
-    private fun layerOf(v: Any?): Int = when (v) { is Enemy -> 2; is Prison -> 1; else -> 0 }
+    private fun layerOf(v: Any?): Int = when (v) { is Enemy -> 2; is Prison -> 1; is SkyView -> if (v.prison != null) 1 else 2; else -> 0 }
 
     private fun drawView(canvas: Canvas, v: Any?) {
         when (v) {
@@ -471,7 +524,38 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
             is SecretRoom -> v.draw(canvas)
             is Prison -> v.draw(canvas)
             is Chasm -> v.draw(canvas, v.y + 260f)
+            is SkyView -> drawSkyView(canvas, v)
         }
+    }
+
+    private val skyCloudPaint = Paint().apply { color = Color.argb(215, 255, 255, 255); isAntiAlias = true }
+
+    /** 하늘 그림 — 냥이는 출발 쪽(왼쪽)을 본다 (게임에서 다가오는 모습), 감옥은 구름 위 */
+    private fun drawSkyView(canvas: Canvas, v: SkyView) {
+        val pr = v.prison
+        if (pr != null) {
+            val cy = v.y + v.h * 0.5f
+            canvas.drawCircle(v.x - v.w * 0.34f, cy + 8f, v.w * 0.22f, skyCloudPaint)
+            canvas.drawCircle(v.x, cy + 14f, v.w * 0.29f, skyCloudPaint)
+            canvas.drawCircle(v.x + v.w * 0.34f, cy + 8f, v.w * 0.22f, skyCloudPaint)
+            canvas.save()
+            canvas.translate(v.x - v.w / 2f, v.y + v.h / 2f)
+            canvas.scale(v.drawScale, v.drawScale)
+            pr.draw(canvas)
+            canvas.restore()
+            return
+        }
+        val bmp = SpriteManager.getFlipped(v.bmp ?: return)
+        tmpRect2.set(v.x - v.w / 2f, v.y - v.h / 2f, v.x + v.w / 2f, v.y + v.h / 2f)
+        canvas.drawBitmap(bmp, null, tmpRect2, bitmapPaint)
+    }
+
+    /** 하늘 냥이 그림 (게임과 같은 그림 · 크기 — 왕왕냥이는 3.1 배) */
+    private fun skySprite(t: PlaceType): Pair<Bitmap, Float>? = when (t) {
+        PlaceType.FLYING -> SpriteManager.flyingCat to 1f
+        PlaceType.LASER -> SpriteManager.laserCat to 1f
+        PlaceType.BOSS_GIANT -> SpriteManager.bossEvilCat to 3.1f
+        else -> null
     }
 
     /** 지역마다 하늘·땅 색 (지도에서 어느 지역인지 알아보게 — 색은 Claude 판단) */
@@ -480,6 +564,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
             in 12..20 -> Triple(Color.rgb(196, 226, 200), Color.rgb(104, 78, 50), Color.rgb(60, 130, 50))
             in 21..30 -> Triple(Color.rgb(255, 236, 190), Color.rgb(196, 128, 30), Color.rgb(250, 190, 70))
             31 -> Triple(Color.rgb(196, 228, 250), Color.rgb(60, 140, 200), Color.rgb(140, 200, 240))
+            11 -> Triple(Color.rgb(150, 205, 248), Color.rgb(132, 196, 96), Color.rgb(132, 196, 96))
             in 51..60 -> Triple(Color.rgb(222, 238, 252), Color.rgb(170, 205, 235), Color.rgb(250, 252, 255))
             else -> Triple(Color.rgb(200, 230, 252), Color.rgb(140, 100, 64), Color.rgb(110, 180, 70))
         }
@@ -495,7 +580,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
             val paint = when {
                 it.p.type.group == PlaceGroup.BOSS -> tickBoss
                 it.p.type.isEnemy -> tickCat
-                it.view is Prison -> tickPrison
+                it.p.type == PlaceType.PRISON_HUMAN || it.p.type == PlaceType.PRISON_CAT -> tickPrison
                 else -> tickHazard
             }
             canvas.drawLine(bx, barRect.top + 4f, bx, barRect.bottom - 4f, paint)
@@ -508,7 +593,8 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     }
 
     private fun paletteTypes(): List<PlaceType> =
-        if (tab == 0) PlaceType.values().filter { it.inPalette && it.group != PlaceGroup.HAZARD }
+        if (sky) (if (tab == 0) SkyLayout.CATS else SkyLayout.THINGS)
+        else if (tab == 0) PlaceType.values().filter { it.inPalette && it.group != PlaceGroup.HAZARD }
         else PlaceType.values().filter { it.group == PlaceGroup.HAZARD }
 
     private fun paletteLabel(t: PlaceType): String = when {
@@ -596,6 +682,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
             is TornadoTrap -> out.set(v.x - 60f, v.groundY - v.height, v.x + 60f, v.groundY + 10f)
             is SecretRoom -> out.set(v.x, v.y - 60f, v.x + v.width, v.y + 20f)
             is Prison -> out.set(v.hitBox)
+            is SkyView -> { out.set(v.x - v.w / 2f, v.y - v.h / 2f, v.x + v.w / 2f, v.y + v.h / 2f); out.inset(-15f, -15f) }
             else -> out.setEmpty()
         }
     }
@@ -604,14 +691,15 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     private fun centerOffset(v: Any?): Float {
         spanOf(v, tmpRect2)
         val x = when (v) { is Enemy -> v.x; is TornadoTrap -> v.x; is Trap -> v.x; is PitTrap -> v.x; is Swamp -> v.x; is Chasm -> v.x
-            is IceHole -> v.x; is SecretRoom -> v.x; is Prison -> v.x; else -> 0f }
+            is IceHole -> v.x; is SecretRoom -> v.x; is Prison -> v.x; is SkyView -> v.x; else -> 0f }
         return tmpRect2.centerX() - x
     }
     private val tmpRect2 = RectF()
 
     /** 목록 아이콘: 진짜 개체를 따로 된 그림판에 한 번 그리고 빈 테두리를 잘라 둔다 */
     private fun iconFor(t: PlaceType): Bitmap? = iconCache.getOrPut(t) {
-        val view = makeView(Placement(t, ICON_X, seed = 7)) ?: return@getOrPut null
+        skySprite(t)?.let { return@getOrPut it.first }
+        val view = groundView(Placement(t, ICON_X, seed = 7)) ?: return@getOrPut null
         val size = 900
         val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
@@ -641,7 +729,8 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         stage = s
         Terrain.stage = s
         iconCache.clear()   // 꿀 늪처럼 스테이지마다 모습이 다른 것
-        val layout = StageEdits.load(s) ?: Level.defaultLayout(s)   // 편집 안 한 스테이지는 기본 배치를 한 번 만들어 보여 준다
+        // 편집 안 한 스테이지는 기본 배치를 한 번 만들어 보여 준다
+        val layout = StageEdits.load(s) ?: if (GameProgress.isSkyStage(s)) SkyLayout.defaultLayout(s) else Level.defaultLayout(s)
         items.clear()
         for (p in layout) items.add(Item(p, null))
         rebuildAll()
@@ -659,13 +748,24 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     }
 
     private fun makeView(p: Placement): Any? {
+        if (sky) {
+            val y = SkyLayout.yAt(p.y ?: 0.5f, SkyLayout.NOMINAL_H)
+            skySprite(p.type)?.let { (bmp, sc) -> return SkyView(p.type, p.x, y, bmp, null, sc) }
+            val kind = if (p.type == PlaceType.PRISON_CAT) Prison.Kind.CAT else Prison.Kind.HUMAN
+            return SkyView(p.type, p.x, y, null, Prison(0f, 0f, kind, catKind = p.catKind), SKY_PRISON_SCALE)
+        }
+        return groundView(p)
+    }
+
+    private fun groundView(p: Placement): Any? {
         val v = Level.createEntity(p, stage ?: 1)
         if (v is Enemy) v.y = Terrain.groundY(v.x + v.width / 2f)   // 게임에서는 첫 update 에 땅으로 붙는다
         return v
     }
 
     private fun worldMax(): Float =
-        maxOf(Level.areaWidthFor(stage ?: 1, items.map { it.p }) + 600f, camX + viewW).coerceAtMost(Constants.PLAY_AREA_RIGHT + 600f)
+        if (sky) SkyLayout.courseLength(stage ?: 11) + 400f
+        else maxOf(Level.areaWidthFor(stage ?: 1, items.map { it.p }) + 600f, camX + viewW).coerceAtMost(Constants.PLAY_AREA_RIGHT + 600f)
 
     private fun clampCam() {
         camX = camX.coerceIn(0f, (worldMax() - viewW).coerceAtLeast(0f))
@@ -678,7 +778,28 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     private var refX = 0f
 
     /** 지금 손가락 자리에 놓으면 될 배치 x */
-    private fun dropX(): Float = (toWorldX(fingerX) - grabOffset).coerceIn(Level.MIN_PLACE_X, Level.MAX_PLACE_X)
+    private fun dropX(): Float = (toWorldX(fingerX) - grabOffset).let {
+        if (sky) it.coerceIn(SkyLayout.MIN_X, SkyLayout.courseLength(stage ?: 11) - SkyLayout.END_GAP)
+        else it.coerceIn(Level.MIN_PLACE_X, Level.MAX_PLACE_X)
+    }
+
+    /** 하늘: 손가락과 끄는 것 가운데 사이 높이 차 */
+    private var grabOffsetY = 0f
+
+    /** 하늘: 지금 손가락 자리의 높이 (날 수 있는 띠 안). 왕왕냥이는 게임에서 저절로 오르내리니 늘 가운데 (Claude 판단) */
+    private fun skyDropY(t: PlaceType): Float {
+        val top = SkyLayout.FLY_TOP
+        val bottom = SkyLayout.NOMINAL_H - SkyLayout.FLY_BOTTOM_GAP
+        if (t == PlaceType.BOSS_GIANT) return (top + bottom) / 2f
+        return (toWorldY(fingerY) - grabOffsetY).coerceIn(top, bottom)
+    }
+
+    /** 하늘: 놓을 높이 비율 (0 = 맨 위, 1 = 맨 아래) */
+    private fun skyDropFrac(t: PlaceType): Float {
+        val top = SkyLayout.FLY_TOP
+        val bottom = SkyLayout.NOMINAL_H - SkyLayout.FLY_BOTTOM_GAP
+        return (skyDropY(t) - top) / (bottom - top)
+    }
 
     private fun itemAt(sx: Float, sy: Float): Item? {
         val wx = toWorldX(sx); val wy = toWorldY(sy)
@@ -709,7 +830,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         when (mode) {
             Mode.DRAG_NEW -> if (overMap) {
                 val t = dragType!!
-                val p = Placement(t, dropX(), seed = (dropX().toInt() * 7 + items.size) and 0xFFFF)
+                val p = Placement(t, dropX(), seed = (dropX().toInt() * 7 + items.size) and 0xFFFF, y = if (sky) skyDropFrac(t) else null)
                 items.add(Item(p, null))
                 dirty = true
                 rebuildAfterChange(items.last())
@@ -717,7 +838,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
             Mode.DRAG_ITEM -> {
                 val it = dragItem!!
                 if (overMap) {
-                    it.p = it.p.copy(x = dropX())
+                    it.p = it.p.copy(x = dropX(), y = if (sky) skyDropFrac(it.p.type) else it.p.y)
                     dirty = true
                     rebuildAfterChange(it)
                 } else if (overDelete) {
@@ -738,7 +859,9 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         val s = stage ?: return
         StageEdits.save(s, items.map { it.p })
         dirty = false
-        showNotice("저장했어요! 이제 스테이지 $s 는 이 배치로 나와요")
+        // 하늘은 냥이를 전부 무찌르면 클리어라, 냥이가 없으면 들어가자마자 깨진다
+        if (sky && items.none { it.p.type.isEnemy }) showNotice("저장했어요! 냥이가 없어서 들어가면 바로 클리어돼요")
+        else showNotice("저장했어요! 이제 스테이지 $s 는 이 배치로 나와요")
     }
 
     private fun onButton(id: String) {
@@ -823,6 +946,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
                             dragItem = hit
                             dragView = hit.view
                             grabOffset = toWorldX(x) - hit.p.x
+                            grabOffsetY = (hit.view as? SkyView)?.let { v -> toWorldY(y) - v.y } ?: 0f
                             Mode.DRAG_ITEM
                         } else Mode.MAP_PAN
                     }
@@ -873,6 +997,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         val v = makeView(Placement(t, refX, seed = 7))
         dragView = v
         grabOffset = centerOffset(v)
+        grabOffsetY = 0f
     }
 
     private fun jumpBar(sx: Float) {
@@ -907,5 +1032,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     companion object {
         /** 아이콘을 그릴 세계 x — 출발점 근처라 땅이 평평하다 */
         private const val ICON_X = 300f
+        /** 하늘 감옥 크기 (SkyStageScreen.SkyPrison 과 같게) */
+        private const val SKY_PRISON_SCALE = 0.88f
     }
 }

@@ -17,6 +17,8 @@ data class Placement(
     val seed: Int = 0,
     /** 냥이 감옥에 꼭 갇혀 있을 냥이 (null 이면 구할 때 무작위) */
     val catKind: AllyCat.Kind? = null,
+    /** 냥이 감옥에 엄마+새끼가 같이 갇혀 있다 (catKind 는 null — 대표님 2026-10-31 「냥이랑 새끼 고양이 같이 넣기」) */
+    val withKitten: Boolean = false,
 )
 
 /** 배치할 수 있는 것의 무리 — 편집 화면 목록의 탭 */
@@ -57,6 +59,9 @@ enum class PlaceType(
     BOAT("배냥이", PlaceGroup.CAT, { x, y -> BoatCat(x, y) }),             // 배냥이 HP20 (31 해적)
     ICE("얼음냥이", PlaceGroup.CAT, { x, y -> IceCat(x, y) }),             // 얼음냥이 HP20 (51~60 빙산)
     TELEPORT("순간냥이", PlaceGroup.CAT, { x, y -> TeleportCat(x, y) }),   // 잡몹 순간냥이 HP20 (53~60 빙산)
+    // 편집 목록 전용 '냥이+새끼' (대표님 2026-10-31 「냥이랑 새끼 고양이 같이 넣기」): 놓으면 냥이·새끼 고양이 두 칸(NORMAL·KITTEN)으로 나뉜다.
+    // 배치 목록에는 저장되지 않는다 (혹시 들어 있어도 Level 은 무시)
+    CAT_PAIR("냥이+새끼", PlaceGroup.CAT),
 
     // ===== 보스 =====
     BOSS_TELEPORT("순간냥이 보스", PlaceGroup.BOSS, { x, y -> TeleportCatBoss(x, y) }),   // 10
@@ -96,6 +101,7 @@ object StageLayoutJson {
             o.put("x", p.x.toDouble())
             if (p.seed != 0) o.put("s", p.seed)
             p.catKind?.let { o.put("c", it.name) }
+            if (p.withKitten) o.put("k", 1)
             arr.put(o)
         }
         return arr.toString()
@@ -109,7 +115,7 @@ object StageLayoutJson {
             val o = arr.getJSONObject(i)
             val type = runCatching { PlaceType.valueOf(o.getString("t")) }.getOrNull() ?: continue
             val cat = if (o.has("c")) runCatching { AllyCat.Kind.valueOf(o.getString("c")) }.getOrNull() else null
-            out.add(Placement(type, o.getDouble("x").toFloat(), o.optInt("s", 0), cat))
+            out.add(Placement(type, o.getDouble("x").toFloat(), o.optInt("s", 0), cat, withKitten = o.optInt("k", 0) == 1))
         }
         out
     } catch (_: Exception) {

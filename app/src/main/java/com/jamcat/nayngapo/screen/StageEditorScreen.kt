@@ -353,9 +353,10 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     // ===== 감옥 냥이 고르기 (대표님 2026-10-31 「감옥에 넣을 냥이도 고를 수 있게 해줘」) =====
     /** 고르기 창이 열린 감옥 (null = 닫힘) */
     private var chooserFor: Item? = null
-    /** 고를 수 있는 것: 무작위(null) + 우리 팀이 될 수 있는 모든 냥이 */
-    private val chooserKinds: List<AllyCat.Kind?> = listOf<AllyCat.Kind?>(null) + AllyCat.Kind.values().toList()
-    private val chooserRects = mutableListOf<Pair<AllyCat.Kind?, RectF>>()
+    /** 고를 수 있는 것 (냥이 종류, 엄마+새끼인가): 무작위(null) · 엄마+새끼 + 우리 팀이 될 수 있는 모든 냥이 */
+    private val chooserKinds: List<Pair<AllyCat.Kind?, Boolean>> =
+        listOf<Pair<AllyCat.Kind?, Boolean>>(null to false, null to true) + AllyCat.Kind.values().map { it to false }
+    private val chooserRects = mutableListOf<Pair<Pair<AllyCat.Kind?, Boolean>, RectF>>()
     private val chooserCloseRect = RectF()
     private var chooserDown = false
     private val veilPaint = Paint().apply { color = Color.argb(170, 20, 18, 16) }
@@ -365,12 +366,16 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     /** 30 의 배냥이 감옥은 배냥이 그대로 (Claude 판단: 바꿀 수 없다), 인간 감옥은 고를 냥이가 없다 */
     private fun canChooseCat(it: Item) = it.p.type == PlaceType.PRISON_CAT && !undeletable(it)
 
-    private fun catName(k: AllyCat.Kind?): String = if (k == null) "🎲 무작위" else com.jamcat.nayngapo.engine.CatTeam.baseNameOf(k)
+    private fun catName(k: AllyCat.Kind?, kitten: Boolean = false): String = when {
+        kitten -> "👩‍👧 엄마+새끼"
+        k == null -> "🎲 무작위"
+        else -> com.jamcat.nayngapo.engine.CatTeam.baseNameOf(k)
+    }
 
     /** 지도의 냥이 감옥 위에 갇힌 냥이 이름표 (무작위면 '🎲 무작위') — 그림은 감옥이 그 냥이로 그린다 */
     private fun drawPrisonTag(canvas: Canvas, it: Item) {
         val pr = it.view as? Prison ?: return
-        val text = catName(it.p.catKind)
+        val text = catName(it.p.catKind, it.p.withKitten)
         val tw = tagPaint.measureTr(text)
         val cx = pr.x + pr.width / 2f
         val ty = pr.y - pr.height - 18f
@@ -379,7 +384,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         canvas.drawTr(text, cx, ty, tagPaint)
     }
 
-    /** 고르기 창: 한 화면에 8칸씩 3줄 (24칸 = 무작위 + 23종이라 쪽 넘기기는 필요 없다) */
+    /** 고르기 창: 한 화면에 8칸씩 4줄 (25칸 = 무작위·엄마+새끼 + 23종이라 쪽 넘기기는 필요 없다) */
     private fun drawChooser(canvas: Canvas, w: Float, h: Float) {
         val target = chooserFor ?: return
         canvas.drawRect(0f, 0f, w, h, veilPaint)
@@ -399,27 +404,32 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         val cellW = (panel.width() - w * 0.03f) / cols
         val cellH = (panel.bottom - gridTop - h * 0.02f) / rows
         chooserRects.clear()
-        for ((i, k) in chooserKinds.withIndex()) {
+        for ((i, opt) in chooserKinds.withIndex()) {
+            val (k, kitten) = opt
             val l = panel.left + w * 0.015f + (i % cols) * cellW
             val t = gridTop + (i / cols) * cellH
             val r = RectF(l + 5f, t + 5f, l + cellW - 5f, t + cellH - 5f)
-            chooserRects.add(k to r)
-            val chosen = target.p.catKind == k
+            chooserRects.add(opt to r)
+            val chosen = target.p.catKind == k && target.p.withKitten == kitten
             canvas.drawRoundRect(r, 14f, 14f, if (chosen) pressPaint else panelPaint)
             canvas.drawRoundRect(r, 14f, 14f, if (chosen) selectPaint else borderPaint)
             val nameY = r.bottom - cellH * 0.08f
-            if (k != null) {
-                val bmp = Prison.spriteFor(k, com.jamcat.nayngapo.engine.CatCoat.CHEESE)
+            if (k != null || kitten) {
+                val bmp = Prison.spriteFor(k ?: AllyCat.Kind.NORMAL, com.jamcat.nayngapo.engine.CatCoat.CHEESE)
                 val boxT = r.top + 8f; val boxB = nameY - cellH * 0.16f
                 val sc = minOf((r.width() - 16f) / bmp.width, (boxB - boxT) / bmp.height)
                 val bw = bmp.width * sc; val bh = bmp.height * sc
                 val cx = r.centerX(); val cy = (boxT + boxB) / 2f
-                canvas.drawBitmap(bmp, null, RectF(cx - bw / 2f, cy - bh / 2f, cx + bw / 2f, cy + bh / 2f), bitmapPaint)
+                if (kitten) {
+                    // 엄마(왼쪽) + 새끼(오른쪽 아래, 작게) — 감옥 그림과 같은 짝
+                    canvas.drawBitmap(bmp, null, RectF(cx - bw * 0.62f, cy - bh * 0.42f, cx + bw * 0.22f, cy + bh * 0.42f), bitmapPaint)
+                    canvas.drawBitmap(bmp, null, RectF(cx + bw * 0.02f, cy, cx + bw * 0.52f, cy + bh * 0.5f), bitmapPaint)
+                } else canvas.drawBitmap(bmp, null, RectF(cx - bw / 2f, cy - bh / 2f, cx + bw / 2f, cy + bh / 2f), bitmapPaint)
             } else {
                 labelPaint.textSize = cellH * 0.38f
                 canvas.drawTr("🎲", r.centerX(), r.centerY(), labelPaint)
             }
-            val name = catName(k)
+            val name = catName(k, kitten)
             labelPaint.textSize = cellH * 0.13f
             val tw = labelPaint.measureTr(name)
             if (tw > r.width() - 10f) labelPaint.textSize *= (r.width() - 10f) / tw
@@ -436,8 +446,9 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         val target = chooserFor ?: return true
         if (chooserCloseRect.contains(x, y)) { chooserFor = null; return true }
         val hit = chooserRects.firstOrNull { it.second.contains(x, y) } ?: return true
-        if (target.p.catKind != hit.first) {
-            target.p = target.p.copy(catKind = hit.first)
+        val (k, kitten) = hit.first
+        if (target.p.catKind != k || target.p.withKitten != kitten) {
+            target.p = target.p.copy(catKind = k, withKitten = kitten)
             target.view = makeView(target.p)
             dirty = true
         }
@@ -452,6 +463,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         when (v) {
             // 냥이 그림은 게임 안 그대로 — 한 번도 update 하지 않은 냥이라 혹시 그리다 문제가 생겨도 편집 화면이 꺼지지 않게 감싼다
             is Enemy -> runCatching { v.draw(canvas) }
+            is List<*> -> for (e in v) drawView(canvas, e)   // 냥이+새끼 미리보기
             is Trap -> v.draw(canvas)
             is PitTrap -> v.draw(canvas)
             is Swamp -> v.draw(canvas)
@@ -585,6 +597,11 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
             is TornadoTrap -> out.set(v.x - 60f, v.groundY - v.height, v.x + 60f, v.groundY + 10f)
             is SecretRoom -> out.set(v.x, v.y - 60f, v.x + v.width, v.y + 20f)
             is Prison -> out.set(v.hitBox)
+            is List<*> -> {   // 냥이+새끼: 둘을 다 감싸는 테두리
+                out.setEmpty()
+                val r = RectF()
+                for (e in v) { spanOf(e, r); if (out.isEmpty) out.set(r) else out.union(r) }
+            }
             else -> out.setEmpty()
         }
     }
@@ -593,14 +610,14 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     private fun centerOffset(v: Any?): Float {
         spanOf(v, tmpRect2)
         val x = when (v) { is Enemy -> v.x; is TornadoTrap -> v.x; is Trap -> v.x; is PitTrap -> v.x; is Swamp -> v.x; is Chasm -> v.x
-            is IceHole -> v.x; is SecretRoom -> v.x; is Prison -> v.x; else -> 0f }
+            is IceHole -> v.x; is SecretRoom -> v.x; is Prison -> v.x; is List<*> -> (v.firstOrNull() as? Enemy)?.x ?: 0f; else -> 0f }
         return tmpRect2.centerX() - x
     }
     private val tmpRect2 = RectF()
 
     /** 목록 아이콘: 진짜 개체를 따로 된 그림판에 한 번 그리고 빈 테두리를 잘라 둔다 */
     private fun iconFor(t: PlaceType): Bitmap? = iconCache.getOrPut(t) {
-        val view = Level.createEntity(Placement(t, ICON_X, seed = 7), stage ?: 1) ?: return@getOrPut null
+        val view = makeView(Placement(t, ICON_X, seed = 7)) ?: return@getOrPut null
         val size = 900
         val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
@@ -648,6 +665,8 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     }
 
     private fun makeView(p: Placement): Any? {
+        // '냥이+새끼'는 미리보기만 둘 (냥이 + 그 뒤 PAIR_GAP 의 새끼 고양이) — 놓으면 두 칸으로 나뉜다
+        if (p.type == PlaceType.CAT_PAIR) return listOf(makeView(Placement(PlaceType.NORMAL, p.x)), makeView(Placement(PlaceType.KITTEN, p.x - PAIR_GAP)))
         val v = Level.createEntity(p, stage ?: 1)
         if (v is Enemy) v.y = Terrain.groundY(v.x + v.width / 2f)   // 게임에서는 첫 update 에 땅으로 붙는다
         return v
@@ -696,7 +715,13 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         val overMap = mapRect.contains(fingerX, fingerY)
         val overDelete = paletteRect.contains(fingerX, fingerY) || trashRect.contains(fingerX, fingerY)
         when (mode) {
-            Mode.DRAG_NEW -> if (overMap) {
+            Mode.DRAG_NEW -> if (overMap && dragType == PlaceType.CAT_PAIR) {
+                // 냥이 + 바로 뒤(왼쪽) 새끼 고양이 — 그냥 냥이 하나·새끼 하나로 저장된다 (대표님 2026-10-31 「냥이랑 새끼 고양이 같이 넣기」)
+                val x = dropX()
+                items.add(Item(Placement(PlaceType.NORMAL, x), null)); rebuildAfterChange(items.last())
+                items.add(Item(Placement(PlaceType.KITTEN, (x - PAIR_GAP).coerceAtLeast(Level.MIN_PLACE_X)), null)); rebuildAfterChange(items.last())
+                dirty = true
+            } else if (overMap) {
                 val t = dragType!!
                 val p = Placement(t, dropX(), seed = (dropX().toInt() * 7 + items.size) and 0xFFFF)
                 items.add(Item(p, null))
@@ -896,5 +921,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     companion object {
         /** 아이콘을 그릴 세계 x — 출발점 근처라 땅이 평평하다 */
         private const val ICON_X = 300f
+        /** '냥이+새끼': 새끼 고양이는 냥이 뒤(왼쪽) 70 (Claude 판단) */
+        private const val PAIR_GAP = 70f
     }
 }

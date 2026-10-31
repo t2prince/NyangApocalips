@@ -17,14 +17,16 @@ class Prison(
     val y: Float,
     val kind: Kind = Kind.HUMAN,
     /** 이 감옥에 갇힌 냥이의 종류를 못박는다 (null이면 구할 때 무작위) */
-    val catKind: AllyCat.Kind? = null
+    val catKind: AllyCat.Kind? = null,
+    /** 엄마+새끼가 꼭 같이 갇혀 있다 (스테이지 편집의 '엄마+새끼', 대표님 2026-10-31 「냥이랑 새끼 고양이 같이 넣기」) */
+    forceKitten: Boolean = false,
 ) {
     /** 치즈냥이가 갇혀 있을 때의 털 무늬 — 감옥마다 정해 두어 구출 뒤 팀에도 같은 무늬로 간다 */
     val catCoat: com.jamcat.nayngapo.engine.CatCoat = com.jamcat.nayngapo.engine.CatCoat.random()
 
     /** 새끼 고양이가 갇혀 있다 — 구하면 새끼 고양이가 우리 팀이 된다 (대표님 2026-09-27). 무작위 냥이 감옥의 25% (Claude 판단).
      *  새끼는 **엄마(암컷) 냥이와 같이** 갇혀 있다 — 구하면 둘 다 팀에 들어온다 (대표님 2026-10-09) */
-    val holdsKitten: Boolean = kind == Kind.CAT && catKind == null && Math.random() < 0.25
+    val holdsKitten: Boolean = kind == Kind.CAT && catKind == null && (forceKitten || Math.random() < 0.25)
 
     /** 구하면 팀에 들어오는 냥이 — 감옥을 만들 때 정해서, 갇힌 그림과 구한 냥이가 꼭 같다 (2026-10-17 「물음표 고양이」 버그).
      *  무작위 감옥: 새끼+엄마는 치즈냥이, 아니면 15% 날아냥이, 나머지는 그린·파랑·치즈·총냥이 중 하나 */

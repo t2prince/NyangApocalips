@@ -139,6 +139,8 @@ class Level(val stageNumber: Int) {
         val prisonPool = enemies.filter { !it.isBoss && it !is BoatCat }.mapNotNull { AllyCat.kindForEnemy(it) }
         for (p in layout) {
             if (p.type != PlaceType.PRISON_CAT) continue
+            // 편집 화면에서 '엄마+새끼'로 정한 감옥은 꼭 엄마+새끼
+            if (p.withKitten) { prisons.add(Prison(p.x, Terrain.groundY(p.x), Prison.Kind.CAT, forceKitten = true)); continue }
             val catKind = p.catKind ?: if (Math.random() < 0.7) prisonPool.randomOrNull() else null
             prisons.add(Prison(p.x, Terrain.groundY(p.x), Prison.Kind.CAT, catKind = catKind))
         }
@@ -218,7 +220,7 @@ class Level(val stageNumber: Int) {
                 PlaceType.TORNADO -> TornadoTrap(x, Terrain.groundY(x), seed = p.seed)
                 PlaceType.SECRET -> SecretRoom(x, Terrain.groundY(x + 45f))
                 PlaceType.PRISON_HUMAN -> Prison(x, Terrain.groundY(x), Prison.Kind.HUMAN)
-                PlaceType.PRISON_CAT -> Prison(x, Terrain.groundY(x), Prison.Kind.CAT, catKind = p.catKind)
+                PlaceType.PRISON_CAT -> Prison(x, Terrain.groundY(x), Prison.Kind.CAT, catKind = p.catKind, forceKitten = p.withKitten)
                 else -> p.type.factory?.invoke(x, Constants.GROUND_Y)
             }
         }

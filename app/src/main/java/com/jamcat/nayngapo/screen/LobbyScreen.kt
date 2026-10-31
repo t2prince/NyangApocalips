@@ -57,6 +57,9 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
     private val charRect = RectF()
     /** 맨 위 왼쪽 '다른 게임 플레이하기' → 게임 고르기 (대표님 2026-10-25 「홈 화면에서는 다른 게임 플레이하기 버튼이 제일 위 왼쪽에 있어」) */
     private val otherGameRect = RectF()
+    /** 맨 위 오른쪽 '🛠 스테이지 편집' (대표님 2026-10-31) — 디버그 빌드에서만 보이고 눌린다 (「디버그 모드에서만야」). 자리는 비어 있던 오른쪽 위 (Claude 판단) */
+    private val editorRect = RectF()
+    private val editorEnabled = com.jamcat.nayngapo.engine.StageEdits.enabled
 
     // 미구현 기능을 눌렀을 때 잠깐 떠오르는 쪽지
     private var noticeText = ""
@@ -191,6 +194,13 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
         canvas.drawRoundRect(otherGameRect, 14f, 14f, borderPaint)
         labelPaint.textSize = h * 0.032f
         canvas.drawTr("🎮 다른 게임 플레이하기", otherGameRect.centerX(), otherGameRect.centerY() + h * 0.011f, labelPaint)
+
+        if (editorEnabled) {
+            editorRect.set(0.750f * w, 0.012f * h, 0.985f * w, 0.088f * h)
+            canvas.drawRoundRect(editorRect, 14f, 14f, if (pressedId == "stage_editor") panelPressPaint else panelPaint)
+            canvas.drawRoundRect(editorRect, 14f, 14f, borderPaint)
+            canvas.drawTr("🛠 스테이지 편집", editorRect.centerX(), editorRect.centerY() + h * 0.011f, labelPaint)
+        } else editorRect.setEmpty()
 
         drawNotice(canvas, w, h)
     }
@@ -464,6 +474,7 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> pressedId = if (otherGameRect.contains(event.x, event.y)) "other_game"
+                else if (editorEnabled && editorRect.contains(event.x, event.y)) "stage_editor"
                 else if (charRect.contains(event.x, event.y)) "char" else slotAt(event.x, event.y, w, h)?.id
             MotionEvent.ACTION_UP -> {
                 // 지도 쪽 넘기기 화살표를 먼저, 그다음 돌 — 돌 하나가 스테이지 하나
@@ -476,6 +487,8 @@ class LobbyScreen(private val gameView: GameView, private val mapOnly: Boolean =
                     enterStage(stage)
                 } else if (otherGameRect.contains(event.x, event.y)) {
                     if (pressedId == "other_game") gameView.showGameSelect()
+                } else if (editorEnabled && editorRect.contains(event.x, event.y)) {
+                    if (pressedId == "stage_editor") gameView.showStageEditor()
                 } else if (charRect.contains(event.x, event.y)) {
                     if (pressedId == "char") gameView.showCharacterSelect()
                 } else {

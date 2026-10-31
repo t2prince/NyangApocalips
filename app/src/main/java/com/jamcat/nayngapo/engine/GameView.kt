@@ -43,6 +43,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         GameProgress.init(context)
         CustomChars.init(context)   // 내가 만든 캐릭터 (2026-10-24)
         I18n.init(context)   // 언어 설정 (저장된 언어를 읽는다)
+        StageEdits.init(context)   // 스테이지 편집 저장소 (디버그 빌드에서만 쓴다, 2026-10-31)
     }
 
     /** 폰 그림 고르기 (MainActivity 가 채운다) — 결과는 UI 스레드에서, 취소하면 null */
@@ -56,6 +57,12 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     /** 조선소 (상점 마을, 2026-10-24) — 나오면 조선소 앞 */
     fun showShipyard() {
         fadeTo { ShipyardScreen(this) }
+    }
+
+    /** 스테이지 편집 (대표님 2026-10-31) — 디버그 빌드에서만 연다 (「디버그 모드에서만야」) */
+    fun showStageEditor() {
+        if (!StageEdits.enabled) return
+        fadeTo { StageEditorScreen(this) }
     }
 
     fun showCharacterCreate() {

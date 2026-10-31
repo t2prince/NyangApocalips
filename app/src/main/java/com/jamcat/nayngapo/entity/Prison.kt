@@ -91,15 +91,7 @@ class Prison(
 
         // 갇힌 쪽(울상)을 먼저 그리고 창살을 위에 덮는다
         if (kind == Kind.CAT) {
-            val bmp = when (rescueKind) {
-                AllyCat.Kind.FLYING -> SpriteManager.flyingCatAlly
-                AllyCat.Kind.GREEN -> SpriteManager.greenCatAlly
-                AllyCat.Kind.BLUE -> SpriteManager.blueCatAlly
-                AllyCat.Kind.GUN -> SpriteManager.gunCatAlly
-                AllyCat.Kind.BOAT -> catCoat.boatAlly
-                AllyCat.Kind.NORMAL -> catCoat.ally
-                else -> AllyCat.extraSprite(rescueKind, catCoat) ?: catCoat.ally   // 모든 냥이가 갇혀 있을 수 있다 (2026-10-10)
-            }
+            val bmp = spriteFor(rescueKind, catCoat)
             srcRect.set(0, 0, bmp.width, bmp.height)
             if (holdsKitten) {
                 // 엄마 냥이(뒤쪽, 조금 작게) + 그 앞에 새끼(작게)
@@ -139,6 +131,19 @@ class Prison(
         val barSpacing = width / 5f
         for (i in 1..4) {
             canvas.drawLine(x + i * barSpacing, top, x + i * barSpacing, y, barPaint)
+        }
+    }
+
+    companion object {
+        /** 감옥 속(=구하면 오는) 냥이 그림 — 스테이지 편집의 냥이 고르기 목록도 같은 그림을 쓴다 */
+        fun spriteFor(kind: AllyCat.Kind, coat: com.jamcat.nayngapo.engine.CatCoat): android.graphics.Bitmap = when (kind) {
+            AllyCat.Kind.FLYING -> SpriteManager.flyingCatAlly
+            AllyCat.Kind.GREEN -> SpriteManager.greenCatAlly
+            AllyCat.Kind.BLUE -> SpriteManager.blueCatAlly
+            AllyCat.Kind.GUN -> SpriteManager.gunCatAlly
+            AllyCat.Kind.BOAT -> coat.boatAlly
+            AllyCat.Kind.NORMAL -> coat.ally
+            else -> AllyCat.extraSprite(kind, coat) ?: coat.ally   // 모든 냥이가 갇혀 있을 수 있다 (2026-10-10)
         }
     }
 }

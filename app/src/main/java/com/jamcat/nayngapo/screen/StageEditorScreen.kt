@@ -142,7 +142,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         val w = canvas.width.toFloat()
         val h = canvas.height.toFloat()
         canvas.drawRect(0f, 0f, w, h, paperPaint)
-        if (stage == null) drawStagePick(canvas, w, h) else drawEditor(canvas, w, h)
+        if (stage == null) drawStagePick(canvas, w, h) else { drawEditor(canvas, w, h); drawChooser(canvas, w, h) }
         drawNotice(canvas, w, h)
     }
 
@@ -296,6 +296,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
             for (it in items) {
                 if (it === dragging || it.view is Chasm || layerOf(it.view) != layer) continue
                 drawView(canvas, it.view)
+                if (it.p.type == PlaceType.PRISON_CAT) drawPrisonTag(canvas, it)
             }
         }
 
@@ -323,20 +324,126 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
             val cx = mapRect.left + (tmpRect.centerX() - camX) * scale
             val top = mapRect.top + (tmpRect.top - worldTop) * scale
             val bw = mapRect.height() * 0.30f; val bh = mapRect.height() * 0.11f
-            val bx = cx.coerceIn(mapRect.left + bw / 2f + 4f, mapRect.right - bw / 2f - 4f)
+            // 냥이 감옥이면 옆에 '냥이 고르기' 단추도 (대표님 2026-10-31 「감옥에 넣을 냥이도 고를 수 있게 해줘」)
+            val choosable = canChooseCat(sel)
+            val totalW = if (choosable) bw * 2f + 12f else bw
+            val bx = cx.coerceIn(mapRect.left + totalW / 2f + 4f, mapRect.right - totalW / 2f - 4f)
             val by = (top - bh - 8f).coerceAtLeast(mapRect.top + 4f)
-            delBtnRect.set(bx - bw / 2f, by, bx + bw / 2f, by + bh)
+            delBtnRect.set(bx - totalW / 2f, by, bx - totalW / 2f + bw, by + bh)
             canvas.drawRoundRect(delBtnRect, 14f, 14f, trashHotPaint)
             canvas.drawRoundRect(delBtnRect, 14f, 14f, borderPaint)
             labelPaint.textSize = bh * 0.45f
             canvas.drawTr("🗑 지우기", delBtnRect.centerX(), delBtnRect.centerY() + bh * 0.16f, labelPaint)
-        }
+            chooseBtnRect.setEmpty()
+            if (choosable) {
+                chooseBtnRect.set(delBtnRect.right + 12f, by, delBtnRect.right + 12f + bw, by + bh)
+                canvas.drawRoundRect(chooseBtnRect, 14f, 14f, editedPaint)
+                canvas.drawRoundRect(chooseBtnRect, 14f, 14f, borderPaint)
+                canvas.drawTr("🐱 냥이 고르기", chooseBtnRect.centerX(), chooseBtnRect.centerY() + bh * 0.16f, labelPaint)
+            }
+        } else chooseBtnRect.setEmpty()
         canvas.drawRect(mapRect, borderPaint)
     }
 
     /** 눌러서 고른 놓인 것 (지우기 단추가 뜬다) */
     private var selected: Item? = null
     private val delBtnRect = RectF()
+    private val chooseBtnRect = RectF()
+
+    // ===== 감옥 냥이 고르기 (대표님 2026-10-31 「감옥에 넣을 냥이도 고를 수 있게 해줘」) =====
+    /** 고르기 창이 열린 감옥 (null = 닫힘) */
+    private var chooserFor: Item? = null
+    /** 고를 수 있는 것: 무작위(null) + 우리 팀이 될 수 있는 모든 냥이 */
+    private val chooserKinds: List<AllyCat.Kind?> = listOf<AllyCat.Kind?>(null) + AllyCat.Kind.values().toList()
+    private val chooserRects = mutableListOf<Pair<AllyCat.Kind?, RectF>>()
+    private val chooserCloseRect = RectF()
+    private var chooserDown = false
+    private val veilPaint = Paint().apply { color = Color.argb(170, 20, 18, 16) }
+    private val tagPaint = Paint().apply { color = Color.rgb(30, 28, 26); textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD; textSize = 30f; isAntiAlias = true }
+    private val tagBgPaint = Paint().apply { color = Color.argb(225, 255, 250, 225); isAntiAlias = true }
+
+    /** 30 의 배냥이 감옥은 배냥이 그대로 (Claude 판단: 바꿀 수 없다), 인간 감옥은 고를 냥이가 없다 */
+    private fun canChooseCat(it: Item) = it.p.type == PlaceType.PRISON_CAT && !undeletable(it)
+
+    private fun catName(k: AllyCat.Kind?): String = if (k == null) "🎲 무작위" else com.jamcat.nayngapo.engine.CatTeam.baseNameOf(k)
+
+    /** 지도의 냥이 감옥 위에 갇힌 냥이 이름표 (무작위면 '🎲 무작위') — 그림은 감옥이 그 냥이로 그린다 */
+    private fun drawPrisonTag(canvas: Canvas, it: Item) {
+        val pr = it.view as? Prison ?: return
+        val text = catName(it.p.catKind)
+        val tw = tagPaint.measureTr(text)
+        val cx = pr.x + pr.width / 2f
+        val ty = pr.y - pr.height - 18f
+        tmpRect2.set(cx - tw / 2f - 10f, ty - 32f, cx + tw / 2f + 10f, ty + 8f)
+        canvas.drawRoundRect(tmpRect2, 10f, 10f, tagBgPaint)
+        canvas.drawTr(text, cx, ty, tagPaint)
+    }
+
+    /** 고르기 창: 한 화면에 8칸씩 3줄 (24칸 = 무작위 + 23종이라 쪽 넘기기는 필요 없다) */
+    private fun drawChooser(canvas: Canvas, w: Float, h: Float) {
+        val target = chooserFor ?: return
+        canvas.drawRect(0f, 0f, w, h, veilPaint)
+        val panel = RectF(w * 0.04f, h * 0.06f, w * 0.96f, h * 0.95f)
+        canvas.drawRoundRect(panel, 22f, 22f, paperPaint)
+        canvas.drawRoundRect(panel, 22f, 22f, borderPaint)
+        titlePaint.textSize = h * 0.045f
+        canvas.drawTr("냥이 감옥에 넣을 냥이 고르기", panel.left + w * 0.02f, panel.top + h * 0.07f, titlePaint)
+        hintPaint.textSize = h * 0.026f
+        canvas.drawTr("무작위 = 70% 이 스테이지에 나오는 냥이, 30% 아무 냥이 (예전과 같음)", panel.left + w * 0.02f, panel.top + h * 0.115f, hintPaint)
+        chooserCloseRect.set(panel.right - w * 0.13f, panel.top + h * 0.02f, panel.right - w * 0.015f, panel.top + h * 0.095f)
+        drawButton(canvas, chooserCloseRect, "닫기", false, h)
+
+        val cols = 8
+        val rows = (chooserKinds.size + cols - 1) / cols
+        val gridTop = panel.top + h * 0.14f
+        val cellW = (panel.width() - w * 0.03f) / cols
+        val cellH = (panel.bottom - gridTop - h * 0.02f) / rows
+        chooserRects.clear()
+        for ((i, k) in chooserKinds.withIndex()) {
+            val l = panel.left + w * 0.015f + (i % cols) * cellW
+            val t = gridTop + (i / cols) * cellH
+            val r = RectF(l + 5f, t + 5f, l + cellW - 5f, t + cellH - 5f)
+            chooserRects.add(k to r)
+            val chosen = target.p.catKind == k
+            canvas.drawRoundRect(r, 14f, 14f, if (chosen) pressPaint else panelPaint)
+            canvas.drawRoundRect(r, 14f, 14f, if (chosen) selectPaint else borderPaint)
+            val nameY = r.bottom - cellH * 0.08f
+            if (k != null) {
+                val bmp = Prison.spriteFor(k, com.jamcat.nayngapo.engine.CatCoat.CHEESE)
+                val boxT = r.top + 8f; val boxB = nameY - cellH * 0.16f
+                val sc = minOf((r.width() - 16f) / bmp.width, (boxB - boxT) / bmp.height)
+                val bw = bmp.width * sc; val bh = bmp.height * sc
+                val cx = r.centerX(); val cy = (boxT + boxB) / 2f
+                canvas.drawBitmap(bmp, null, RectF(cx - bw / 2f, cy - bh / 2f, cx + bw / 2f, cy + bh / 2f), bitmapPaint)
+            } else {
+                labelPaint.textSize = cellH * 0.38f
+                canvas.drawTr("🎲", r.centerX(), r.centerY(), labelPaint)
+            }
+            val name = catName(k)
+            labelPaint.textSize = cellH * 0.13f
+            val tw = labelPaint.measureTr(name)
+            if (tw > r.width() - 10f) labelPaint.textSize *= (r.width() - 10f) / tw
+            canvas.drawTr(name, r.centerX(), nameY, labelPaint)
+        }
+    }
+
+    /** 고르기 창이 열려 있으면 터치는 여기서만 받는다 */
+    private fun onChooserTouch(event: MotionEvent, x: Float, y: Float): Boolean {
+        // 창을 연 손가락을 뗄 때 바로 아래 칸이 골라지지 않게, 창 안에서 새로 누른 것만 받는다
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) { chooserDown = true; return true }
+        if (event.actionMasked != MotionEvent.ACTION_UP || !chooserDown) return true
+        chooserDown = false
+        val target = chooserFor ?: return true
+        if (chooserCloseRect.contains(x, y)) { chooserFor = null; return true }
+        val hit = chooserRects.firstOrNull { it.second.contains(x, y) } ?: return true
+        if (target.p.catKind != hit.first) {
+            target.p = target.p.copy(catKind = hit.first)
+            target.view = makeView(target.p)
+            dirty = true
+        }
+        chooserFor = null
+        return true
+    }
 
     /** 0 = 바닥 함정, 1 = 감옥, 2 = 냥이 */
     private fun layerOf(v: Any?): Int = when (v) { is Enemy -> 2; is Prison -> 1; else -> 0 }
@@ -669,12 +776,19 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val x = event.x; val y = event.y
         if (stage == null) return onPickTouch(event, x, y)
+        if (chooserFor != null) return onChooserTouch(event, x, y)
         fingerX = x; fingerY = y
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 lastX = x; lastY = y; downX = x; downY = y
                 // 고른 것의 '지우기' 단추
                 val sel = selected
+                if (sel != null && !chooseBtnRect.isEmpty && chooseBtnRect.contains(x, y)) {
+                    chooserFor = sel
+                    chooserDown = false
+                    mode = Mode.NONE
+                    return true
+                }
                 if (sel != null && !delBtnRect.isEmpty && delBtnRect.contains(x, y)) {
                     if (undeletable(sel)) showNotice("30 의 배냥이 감옥은 지울 수 없어요 (31 바다에 갈 배냥이)")
                     else { items.remove(sel); dirty = true; if (stage == 31) rebuildAll() }
@@ -774,7 +888,8 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     }
 
     override fun onBack(): Boolean {
-        if (stage != null) leaveEditor() else gameView.showLobby()
+        if (chooserFor != null) chooserFor = null
+        else if (stage != null) leaveEditor() else gameView.showLobby()
         return true
     }
 

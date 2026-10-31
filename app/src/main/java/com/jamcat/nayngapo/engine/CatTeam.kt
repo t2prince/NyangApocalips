@@ -596,7 +596,8 @@ object CatTeam {
         return CareResult(true, "갑옷 장착! 피해 -60%")
     }
 
-    private fun baseNameOf(kind: AllyCat.Kind) = when (kind) {
+    /** 냥이 종류의 우리말 이름 (스테이지 편집의 감옥 냥이 고르기도 쓴다) */
+    fun baseNameOf(kind: AllyCat.Kind) = when (kind) {
         AllyCat.Kind.GREEN -> "그린냥이"
         AllyCat.Kind.BLUE -> "파랑냥이"
         AllyCat.Kind.NORMAL -> "치즈냥이"

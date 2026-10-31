@@ -77,14 +77,6 @@ enum class PlaceType(
     PRISON_HUMAN("인간 감옥", PlaceGroup.HAZARD),
     PRISON_CAT("냥이 감옥", PlaceGroup.HAZARD);
 
-    /** 이 냥이가 감옥에 갇혀 있으면 구했을 때 오는 우리 편 냥이 (AllyCat.kindForEnemy 와 같은 짝) */
-    val allyKind: AllyCat.Kind?
-        get() = when {
-            group != PlaceGroup.CAT -> null
-            this == KITTEN -> AllyCat.Kind.NORMAL
-            else -> AllyCat.Kind.valueOf(name)
-        }
-
     val isEnemy: Boolean get() = factory != null
 
     companion object {

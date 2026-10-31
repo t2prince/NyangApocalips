@@ -116,7 +116,9 @@ class Level(val stageNumber: Int) {
 
     /** 배치 목록(Placement)을 실제 개체로 만든다 — 기본 생성이든 편집한 배치든 같은 길 */
     private fun build(layout: List<Placement>) {
+        // 냥이 감옥은 냥이를 다 만든 뒤에 (갇힌 냥이를 정하지 않은 감옥은 이 스테이지 냥이 중에서 고른다)
         for (p in layout) {
+            if (p.type == PlaceType.PRISON_CAT) continue
             when (val e = createEntity(p, stageNumber)) {
                 is Enemy -> enemies.add(e)
                 // 늪마다 한 마리가 숨어 있다 (기획9) — 꿀 늪은 꿀냥이 (2026-10-09)
@@ -129,6 +131,16 @@ class Level(val stageNumber: Int) {
                 is SecretRoom -> secretRooms.add(e)
                 is Prison -> prisons.add(e)
             }
+        }
+
+        // 냥이 감옥: 갇힌 냥이를 정했으면(표의 '총냥이x1'·편집 화면의 냥이 고르기) 꼭 그 냥이.
+        // 정하지 않았으면(무작위) 70%는 이 스테이지에 나오는 냥이 중 하나 — 모든 냥이를 구출해 우리 팀으로 (보스·배냥이 빼고, 늪 속 냥이 포함, 2026-10-10).
+        // 나머지 30%는 예전처럼(새끼+엄마 또는 구할 때 무작위). 비율은 Claude 판단
+        val prisonPool = enemies.filter { !it.isBoss && it !is BoatCat }.mapNotNull { AllyCat.kindForEnemy(it) }
+        for (p in layout) {
+            if (p.type != PlaceType.PRISON_CAT) continue
+            val catKind = p.catKind ?: if (Math.random() < 0.7) prisonPool.randomOrNull() else null
+            prisons.add(Prison(p.x, Terrain.groundY(p.x), Prison.Kind.CAT, catKind = catKind))
         }
 
         // 실제 스테이지 길이: 맨 끝에 놓인 것 뒤로 여유 (감옥·카메라가 이 안에 들어온다)
@@ -386,8 +398,6 @@ class Level(val stageNumber: Int) {
             for ((type, dx) in plan.bosses) {
                 out.add(Placement(type, if (stageNumber == 31 && type == Kind.BOSS_PIRATE) bossBaseX + SHIP_FROM_BOSS_BASE + BOSS_ON_SHIP else bossBaseX + dx))
             }
-            // 감옥에 갇힐 수 있는 냥이 (보스·배냥이 빼고, 늪 속 머드냥이·꿀냥이 포함 — 예전 enemies 목록과 같다)
-            val prisonPool = types.filter { it != Kind.BOAT }.mapNotNull { it.allyKind }.toMutableList()
 
             // ===== 함정 배치: 그룹과 그룹 사이의 빈 구간 한가운데에 심는다 =====
             // (그룹 위에 겹치면 싸우다 억울하게 밟게 되므로 반드시 사이 공간에만)
@@ -405,10 +415,7 @@ class Level(val stageNumber: Int) {
                     val hx = slot - 80f
                     hazardX.add(hx)
                     when (hazardOrder[i]) {
-                        Hazard.SWAMP -> {
-                            out.add(Placement(PlaceType.SWAMP, hx, seed = stageNumber * 13 + i * 5))
-                            prisonPool.add(if (stageNumber in 21..30) AllyCat.Kind.HONEY else AllyCat.Kind.MUD)
-                        }
+                        Hazard.SWAMP -> out.add(Placement(PlaceType.SWAMP, hx, seed = stageNumber * 13 + i * 5))
                         Hazard.SPIKE -> out.add(Placement(PlaceType.SPIKE, hx))
                         Hazard.PIT -> out.add(Placement(PlaceType.PIT, hx, seed = stageNumber * 31 + i * 7))
                         Hazard.ICE_HOLE -> out.add(Placement(PlaceType.ICE_HOLE, hx))
@@ -465,10 +472,8 @@ class Level(val stageNumber: Int) {
                 var px = pathStart + (i + 1) * (bossBaseX - pathStart) / (prisonKinds.size + 1).toFloat()
                 // 함정 위에 겹치면 옆으로 비켜 놓는다
                 while (hazardX.any { px > it - 220f && px < it + 500f }) px += 340f
-                // 냥이 감옥: 70%는 이 스테이지에 나오는 냥이 중 하나가 갇혀 있다 — 모든 냥이를 구출해 우리 팀으로 (보스 빼고, 2026-10-10).
-                // 나머지 30%는 예전처럼(새끼+엄마 또는 구할 때 무작위). 비율은 Claude 판단
-                val catKind = fixedCat ?: if (kind == Prison.Kind.CAT && Math.random() < 0.7) prisonPool.randomOrNull() else null
-                out.add(Placement(if (kind == Prison.Kind.HUMAN) PlaceType.PRISON_HUMAN else PlaceType.PRISON_CAT, px, catKind = catKind))
+                // 표에서 정한 냥이만 적어 둔다 — 나머지는 '무작위'(null): build 에서 70% 이 스테이지 냥이 / 30% 무작위
+                out.add(Placement(if (kind == Prison.Kind.HUMAN) PlaceType.PRISON_HUMAN else PlaceType.PRISON_CAT, px, catKind = fixedCat))
             }
             // 30: 바다(31)에 나가려면 배냥이가 있어야 한다 — 배냥이가 갇힌 감옥을 하나 꼭 둔다 (2026-10-09)
             if (stageNumber == 30) {

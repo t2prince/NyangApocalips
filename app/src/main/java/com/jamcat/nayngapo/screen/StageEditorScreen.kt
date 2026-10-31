@@ -463,7 +463,6 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         when (v) {
             // 냥이 그림은 게임 안 그대로 — 한 번도 update 하지 않은 냥이라 혹시 그리다 문제가 생겨도 편집 화면이 꺼지지 않게 감싼다
             is Enemy -> runCatching { v.draw(canvas) }
-            is List<*> -> for (e in v) drawView(canvas, e)   // 냥이+새끼 미리보기
             is Trap -> v.draw(canvas)
             is PitTrap -> v.draw(canvas)
             is Swamp -> v.draw(canvas)
@@ -597,11 +596,6 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
             is TornadoTrap -> out.set(v.x - 60f, v.groundY - v.height, v.x + 60f, v.groundY + 10f)
             is SecretRoom -> out.set(v.x, v.y - 60f, v.x + v.width, v.y + 20f)
             is Prison -> out.set(v.hitBox)
-            is List<*> -> {   // 냥이+새끼: 둘을 다 감싸는 테두리
-                out.setEmpty()
-                val r = RectF()
-                for (e in v) { spanOf(e, r); if (out.isEmpty) out.set(r) else out.union(r) }
-            }
             else -> out.setEmpty()
         }
     }
@@ -610,7 +604,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     private fun centerOffset(v: Any?): Float {
         spanOf(v, tmpRect2)
         val x = when (v) { is Enemy -> v.x; is TornadoTrap -> v.x; is Trap -> v.x; is PitTrap -> v.x; is Swamp -> v.x; is Chasm -> v.x
-            is IceHole -> v.x; is SecretRoom -> v.x; is Prison -> v.x; is List<*> -> (v.firstOrNull() as? Enemy)?.x ?: 0f; else -> 0f }
+            is IceHole -> v.x; is SecretRoom -> v.x; is Prison -> v.x; else -> 0f }
         return tmpRect2.centerX() - x
     }
     private val tmpRect2 = RectF()
@@ -665,8 +659,6 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     }
 
     private fun makeView(p: Placement): Any? {
-        // '냥이+새끼'는 미리보기만 둘 (냥이 + 그 뒤 PAIR_GAP 의 새끼 고양이) — 놓으면 두 칸으로 나뉜다
-        if (p.type == PlaceType.CAT_PAIR) return listOf(makeView(Placement(PlaceType.NORMAL, p.x)), makeView(Placement(PlaceType.KITTEN, p.x - PAIR_GAP)))
         val v = Level.createEntity(p, stage ?: 1)
         if (v is Enemy) v.y = Terrain.groundY(v.x + v.width / 2f)   // 게임에서는 첫 update 에 땅으로 붙는다
         return v
@@ -715,13 +707,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         val overMap = mapRect.contains(fingerX, fingerY)
         val overDelete = paletteRect.contains(fingerX, fingerY) || trashRect.contains(fingerX, fingerY)
         when (mode) {
-            Mode.DRAG_NEW -> if (overMap && dragType == PlaceType.CAT_PAIR) {
-                // 냥이 + 바로 뒤(왼쪽) 새끼 고양이 — 그냥 냥이 하나·새끼 하나로 저장된다 (대표님 2026-10-31 「냥이랑 새끼 고양이 같이 넣기」)
-                val x = dropX()
-                items.add(Item(Placement(PlaceType.NORMAL, x), null)); rebuildAfterChange(items.last())
-                items.add(Item(Placement(PlaceType.KITTEN, (x - PAIR_GAP).coerceAtLeast(Level.MIN_PLACE_X)), null)); rebuildAfterChange(items.last())
-                dirty = true
-            } else if (overMap) {
+            Mode.DRAG_NEW -> if (overMap) {
                 val t = dragType!!
                 val p = Placement(t, dropX(), seed = (dropX().toInt() * 7 + items.size) and 0xFFFF)
                 items.add(Item(p, null))
@@ -921,7 +907,5 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     companion object {
         /** 아이콘을 그릴 세계 x — 출발점 근처라 땅이 평평하다 */
         private const val ICON_X = 300f
-        /** '냥이+새끼': 새끼 고양이는 냥이 뒤(왼쪽) 70 (Claude 판단) */
-        private const val PAIR_GAP = 70f
     }
 }

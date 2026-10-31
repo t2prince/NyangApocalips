@@ -59,9 +59,6 @@ enum class PlaceType(
     BOAT("배냥이", PlaceGroup.CAT, { x, y -> BoatCat(x, y) }),             // 배냥이 HP20 (31 해적)
     ICE("얼음냥이", PlaceGroup.CAT, { x, y -> IceCat(x, y) }),             // 얼음냥이 HP20 (51~60 빙산)
     TELEPORT("순간냥이", PlaceGroup.CAT, { x, y -> TeleportCat(x, y) }),   // 잡몹 순간냥이 HP20 (53~60 빙산)
-    // 편집 목록 전용 '냥이+새끼' (대표님 2026-10-31 「냥이랑 새끼 고양이 같이 넣기」): 놓으면 냥이·새끼 고양이 두 칸(NORMAL·KITTEN)으로 나뉜다.
-    // 배치 목록에는 저장되지 않는다 (혹시 들어 있어도 Level 은 무시)
-    CAT_PAIR("냥이+새끼", PlaceGroup.CAT),
 
     // ===== 보스 =====
     BOSS_TELEPORT("순간냥이 보스", PlaceGroup.BOSS, { x, y -> TeleportCatBoss(x, y) }),   // 10

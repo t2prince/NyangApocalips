@@ -60,6 +60,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     private var lastX = 0f
     private var lastY = 0f
     private var downX = 0f
+    private var downY = 0f
     private var fingerX = 0f
     private var fingerY = 0f
     private var dragType: PlaceType? = null
@@ -313,9 +314,29 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
                 canvas.restore()
             }
         }
+        // 눌러서 고른 것: 테두리 + 위에 '지우기' 단추 (대표님 2026-10-31 「스테이지에 있는것도 클릭해서 없앨 수 있어야지」)
+        val sel = selected?.takeIf { it in items && mode != Mode.DRAG_ITEM }
+        if (sel != null) { spanOf(sel.view, tmpRect); canvas.drawRoundRect(tmpRect, 12f, 12f, selectPaint) }
         canvas.restore()
+        delBtnRect.setEmpty()
+        if (sel != null) {
+            val cx = mapRect.left + (tmpRect.centerX() - camX) * scale
+            val top = mapRect.top + (tmpRect.top - worldTop) * scale
+            val bw = mapRect.height() * 0.30f; val bh = mapRect.height() * 0.11f
+            val bx = cx.coerceIn(mapRect.left + bw / 2f + 4f, mapRect.right - bw / 2f - 4f)
+            val by = (top - bh - 8f).coerceAtLeast(mapRect.top + 4f)
+            delBtnRect.set(bx - bw / 2f, by, bx + bw / 2f, by + bh)
+            canvas.drawRoundRect(delBtnRect, 14f, 14f, trashHotPaint)
+            canvas.drawRoundRect(delBtnRect, 14f, 14f, borderPaint)
+            labelPaint.textSize = bh * 0.45f
+            canvas.drawTr("🗑 지우기", delBtnRect.centerX(), delBtnRect.centerY() + bh * 0.16f, labelPaint)
+        }
         canvas.drawRect(mapRect, borderPaint)
     }
+
+    /** 눌러서 고른 놓인 것 (지우기 단추가 뜬다) */
+    private var selected: Item? = null
+    private val delBtnRect = RectF()
 
     /** 0 = 바닥 함정, 1 = 감옥, 2 = 냥이 */
     private fun layerOf(v: Any?): Int = when (v) { is Enemy -> 2; is Prison -> 1; else -> 0 }
@@ -651,7 +672,19 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         fingerX = x; fingerY = y
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                lastX = x; lastY = y; downX = x
+                lastX = x; lastY = y; downX = x; downY = y
+                // 고른 것의 '지우기' 단추
+                val sel = selected
+                if (sel != null && !delBtnRect.isEmpty && delBtnRect.contains(x, y)) {
+                    if (undeletable(sel)) showNotice("30 의 배냥이 감옥은 지울 수 없어요 (31 바다에 갈 배냥이)")
+                    else { items.remove(sel); dirty = true; if (stage == 31) rebuildAll() }
+                    selected = null
+                    mode = Mode.NONE
+                    return true
+                }
+                // 빈 곳이나 지도 밖을 누르면 고르기 풀림
+                if (!mapRect.contains(x, y)) selected = null
+                else if (itemAt(x, y) == null) selected = null
                 pressedButton = buttons.entries.firstOrNull { it.value.contains(x, y) }?.key
                 mode = when {
                     pressedButton != null -> Mode.BUTTON
@@ -678,8 +711,11 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
                     Mode.BAR -> jumpBar(x)
                     Mode.PALETTE_PENDING -> {
                         val t = dragType
-                        if (t != null && y < paletteRect.top) startDragNew(t, x)   // 위로 끌어 올리면 지도에 놓기 시작
-                        else if (abs(x - downX) > 14f) { mode = Mode.PALETTE_SCROLL; dragType = null }
+                        // 위로 움직인 게 더 크면 지도에 놓기 시작, 옆으로 움직인 게 더 크면 목록 넘기기
+                        // (전에는 옆으로 14 만 움직여도 넘기기가 돼서 비스듬히 끌면 배치가 안 됐다 — 2026-10-31 「드래그 하면 배치가 안되는데?」)
+                        val mx = abs(x - downX); val up = downY - y
+                        if (t != null && up > 20f && up >= mx) startDragNew(t, x)
+                        else if (mx > 20f && mx > up) { mode = Mode.PALETTE_SCROLL; dragType = null }
                     }
                     Mode.PALETTE_SCROLL -> paletteScroll -= dx
                     else -> {}
@@ -689,7 +725,11 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
             MotionEvent.ACTION_UP -> {
                 when (mode) {
                     Mode.BUTTON -> pressedButton?.let { id -> if (buttons[id]!!.contains(x, y)) onButton(id) }
-                    Mode.DRAG_NEW, Mode.DRAG_ITEM -> finishDrag()
+                    // 거의 안 움직이고 뗐으면 '누르기' — 그것을 고르고 지우기 단추를 띄운다 (한 번 더 누르면 고르기 풀림)
+                    Mode.DRAG_ITEM -> if (abs(x - downX) < 15f && abs(y - downY) < 15f) {
+                        selected = if (selected === dragItem) null else dragItem
+                    } else { selected = null; finishDrag() }
+                    Mode.DRAG_NEW -> finishDrag()
                     Mode.PALETTE_PENDING -> if (dragType != null) showNotice("위로 끌어서 지도에 놓으세요")
                     else -> {}
                 }

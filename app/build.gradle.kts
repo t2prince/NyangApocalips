@@ -28,6 +28,15 @@ android {
         versionName = versionProps.getProperty("VERSION_NAME") ?: "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // 나누(PlayNANOO) 세이브 동기화 키 — 저장소 밖 ~/.nyangapo/build.env 의 NANOO_GAME_ID·NANOO_SERVICE_KEY.
+        // 없으면 빈 값으로 굽히고 앱은 나누를 쓰지 않는다 (Secret Key 는 앱에 넣지 않는다)
+        buildConfigField("String", "NANOO_GAME_ID", "\"${signEnv.getProperty("NANOO_GAME_ID") ?: ""}\"")
+        buildConfigField("String", "NANOO_SERVICE_KEY", "\"${signEnv.getProperty("NANOO_SERVICE_KEY") ?: ""}\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     signingConfigs {

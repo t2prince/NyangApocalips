@@ -39,6 +39,12 @@ object GameSlots {
         save(context)
     }
 
+    /** 저장소를 바깥에서 통째로 바꿨을 때 (나누에서 세이브를 받아 왔을 때) 목록을 다시 읽는다 */
+    fun reload(context: Context) {
+        loaded = false
+        load(context)
+    }
+
     fun currentPrefsName(context: Context): String { load(context); return prefsName(currentId) }
 
     val current: Slot? get() = list.firstOrNull { it.id == currentId }

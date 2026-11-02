@@ -53,6 +53,14 @@
   - **21~30 꿀 지역**(벌집 바닥·벌냥이·꽃냥이, 22~30 구성은 Claude 판단) — `PLAYABLE_STAGES = 30`
   - 날아냥이가 무덤이면 11 에 못 들어감, 스토리 화면 삭제, 해적냥이·배냥이·해적선 그림(31 용)
 - 2026-10-25 **51~60 빙산** (`GameProgress.ICE_STAGES`, 32~50 은 '준비 중', 31 을 깨면 51 이 열림): 얼음냥이(`IceCat`)·잡몹 순간냥이(`TeleportCat`)·60 보스 빙산냥이(`IcebergCatBoss`) — `entity/Enemy.kt` 끝, 수직 구덩이(`Chasm(shaft = true)`)·얼음 구덩이(`entity/IceHole.kt`), 인간 얼음 상태(`Player.freeze`), 우리 편 얼음냥이·순간냥이(`AllyCat.Kind.ICE`·`TELEPORT`), 도감 `ice`·`iceberg` + 도감 쪽 넘기기(24칸씩 ◀ ▶ — 전엔 24칸 넘는 냥이가 안 보였음). 그림 `cat_ice`·`cat_ice_ally`·`cat_ice_armor_ally`·`cat_iceberg_boss`(없으면 코드 그림). 우리 편 도둑냥이가 적의 루비 2개를 훔쳐 온다. 값은 거의 Claude 판단 — `docs/GAME_RULES.md` 빙산 절.
+- 2026-11-02 **나누(PlayNANOO) 세이브 동기화** (「나누로 옮길거야 데이터저장」「그게 있다고 가정하고 작업 먼저해. 키 없으면 동작안하게하고」) — `engine/NanooSync.kt`:
+  - 나누는 안드로이드 SDK 가 없다 → 유니티 DLL(에듀아바타 `Assets/PlayNANOO/PlayNANOOAndroid.dll`)을 `monodis` 로 풀어 본 REST 를 그대로 부른다. 모두 `PUT` JSON, 헤더 `X-Playnanoo-Key`(Service Key)·`X-Playnanoo-Id`(Game ID)·로그인 뒤 `Authorization: Bearer`. 본문에 공통 값(device_id·platform `aos`·version…)을 붙인다.
+  - 게스트 로그인 `service-account.playnanoo.com/api/v20240401/guest/signin` (`linked_id` = ANDROID_ID → 같은 기기는 재설치해도 같은 계정). 저장 `service-storage-api.playnanoo.com/storage/v20221001/save`·`/load`, 키 `save`, 값 = 게임 저장소(`nyang_games`·`nyang_progress*`) 전부를 JSON 하나로. 내가 만든 캐릭터·스테이지 편집은 올리지 않는다.
+  - 오류는 HTTP 500 + `{"ErrorCode","Message"}`: 10006 = 서버에 세이브 없음, 30002 = 토큰 끝남(하루) → 다시 로그인. 키 `test`/`test` 로 로그인·저장·받기를 curl 로 실제 확인함(2026-11-02, 1MB 도 저장됨).
+  - 규칙(Claude 판단, 코드 리뷰 반영): 계정이 기기 ID 에 묶여 서버 세이브 = 이 기기가 마지막으로 올린 것. 나누와 한 번이라도 맞춘 기기(저장소 `nanoo` 의 `synced`, **백업 규칙에서 뺐다**)는 기기 세이브가 기준 — 앱을 내릴 때·3분마다 바뀌면 올림. 맞춘 적 없는 기기(새로 설치·앱 데이터 삭제·자동 백업으로 되살림)에 서버 세이브가 있으면 서버 것으로 되살림 — 켠 직후 화면(로고·로딩·스토리·시작)에서만, 게임 스레드를 멈춘 뒤, 실패하면 원래대로 되돌림. 덮기 전 기기 세이브는 `files/nanoo_backup_before_restore.json`. 서버 세이브를 받기 전에는 올리지 않음.
+  - 한계: 기기 ID(ANDROID_ID)는 서명 키마다 달라 **디버그 판과 플레이 판은 다른 계정**, 새 폰·공장 초기화도 새 계정. 기기를 옮겨 이으려면 구글 로그인(나누 `social/signin`)을 붙여야 함 — 사용자 결정 필요.
+  - 키: `~/.nyangapo/build.env` 에 `NANOO_GAME_ID=`·`NANOO_SERVICE_KEY=` 를 넣고 빌드 → `BuildConfig`. **없으면 기능 전체가 꺼짐**(지금 상태). Secret Key 는 앱에 넣지 않는다. logcat 태그 `Nanoo`.
+  - 인터넷 권한(`INTERNET`)을 이때 처음 넣었다.
 - 2026-11-02 **플레이 콘솔 배포 준비** (「에듀아바타처럼 구글 클라우드로 배포하게 준비하자」 — 에듀아바타 `Tools/aab_build.sh`·`play_upload.py` 방식):
   - `Tools/aab_build.sh`: `version.properties` 의 판 번호(VERSION_CODE)를 올리고 `bundleRelease` → `~/dev/release/nyangapo/NyangApocalips.aab` → 서비스 계정으로 내부 테스트 트랙에 올림 (`UPLOAD=0` 굽기만, `STATUS=draft` 초안, `BUMP=0` 번호 그대로). 출시 노트 = 지난 업로드 뒤 커밋 제목.
   - 서명: 업로드 키 `~/.nyangapo/keystore/upload.keystore`, 비밀번호 `~/.nyangapo/build.env` (저장소 밖, 0600). **잃어버리지 않게 백업** (잃으면 콘솔에서 업로드 키 재설정 요청).

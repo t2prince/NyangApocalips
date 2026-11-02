@@ -52,6 +52,24 @@ class MainActivity : AppCompatActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         gameView = GameView(this)
+
+        // 나누 세이브 동기화 (2026-11-02) — 키가 없으면 아무것도 안 한다.
+        // 새로 설치한 기기에 서버 세이브가 있으면: 켠 직후 화면에서만, 게임을 멈추고 → 세이브를 바꾸고 → 다시 읽는다
+        // (지금 안 되면 나누가 다음 차례에 다시 묻는다)
+        com.jamcat.nayngapo.engine.NanooSync.onServerNewer = { apply ->
+            runOnUiThread {
+                if (!lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED) || !gameView.atStartScreens) return@runOnUiThread
+                gameView.pause()
+                if (gameView.atStartScreens) {
+                    runCatching(apply).onFailure { com.jamcat.nayngapo.engine.CrashLog.record("nanoo:restore", it) }
+                    com.jamcat.nayngapo.engine.GameSlots.reload(this)
+                    com.jamcat.nayngapo.engine.GameProgress.init(this)
+                    gameView.afterSaveReplaced()
+                }
+                gameView.resume()
+            }
+        }
+        com.jamcat.nayngapo.engine.NanooSync.start(this)
         gameView.imagePicker = { done -> pickDone = done; pickImage.launch("image/*") }
         setContentView(gameView)
 
@@ -70,6 +88,7 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
         gameView.pause()
         SoundManager.pauseBgm()
+        com.jamcat.nayngapo.engine.NanooSync.saveSoon()   // 앱을 내릴 때 세이브를 올린다 (바뀐 게 있을 때만)
     }
 
     override fun onResume() {

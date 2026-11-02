@@ -1,19 +1,11 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
--->
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 나누 동기화 상태(nanoo.xml)는 백업·기기 옮기기에서 뺀다: 되살린 기기가 '나누와 맞춘 적 없음'으로 보여야
+     서버의 더 새 세이브를 받는다 (engine/NanooSync.kt) -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="sharedpref" path="nanoo.xml" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="sharedpref" path="nanoo.xml" />
     </device-transfer>
-    -->
 </data-extraction-rules>

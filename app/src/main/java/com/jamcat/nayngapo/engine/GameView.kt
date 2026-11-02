@@ -135,6 +135,16 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         fadeTo { GameSelectScreen(this) }
     }
 
+    /** 나누 세이브로 되살려도 되는 화면인가 — 켠 직후(로고·로딩·스토리·시작 화면), 화면 전환 중이 아닐 때 */
+    val atStartScreens: Boolean
+        get() = fadeDir == 0 && currentScreen.let { it is LogoScreen || it is LoadingScreen || it is StoryScreen || it is TitleScreen }
+
+    /** 세이브를 통째로 바꾼 뒤 (게임 스레드가 멈춘 상태에서) — 남은 전환을 지우고, 스토리·시작 화면이면 시작 화면을 새로 */
+    fun afterSaveReplaced() {
+        fadeDir = 0; fadeAlpha = 0f; pendingScreen = null
+        if (currentScreen is TitleScreen || currentScreen is StoryScreen) currentScreen = TitleScreen(this)
+    }
+
     fun showTitle() {
         currentScreen = TitleScreen(this)
         SoundManager.resumeBgm()   // 홈으로 돌아오면 다시 노래가 흐른다
@@ -447,6 +457,7 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     }
 
     fun resume() {
+        if (gameThread?.isAlive == true) return   // 이미 돌고 있으면 두 개 띄우지 않는다
         if (holder.surface.isValid) {
             gameThread = GameThread(holder, this)
             gameThread?.running = true

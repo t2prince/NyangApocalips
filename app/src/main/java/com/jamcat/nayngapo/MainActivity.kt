@@ -34,6 +34,14 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // 크래시 기록 (2026-11-02): 잡지 못한 오류로 앱이 꺼질 때도 꺼지기 전에 crash_log.txt 에 남긴다
+        com.jamcat.nayngapo.engine.CrashLog.init(this)
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+            com.jamcat.nayngapo.engine.CrashLog.record("uncaught:${t.name}", e)
+            previous?.uncaughtException(t, e)
+        }
+
         // Fullscreen immersive
         WindowCompat.setDecorFitsSystemWindows(window, false)
         val controller = WindowInsetsControllerCompat(window, window.decorView)

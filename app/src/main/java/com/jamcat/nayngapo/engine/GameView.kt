@@ -160,7 +160,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
     fun handleBack(): Boolean {
         synchronized(holder) {   // 뒤로가기도 UI 스레드 — 게임 루프와 같은 잠금
             if (fadeDir != 0) return true     // 전환 중에는 삼켜서 중복 진입을 막는다
-            return currentScreen?.onBack() ?: false
+            return try { currentScreen?.onBack() ?: false }
+            catch (e: Exception) { CrashLog.record("back", e, currentScreenName()); true }
         }
     }
 
@@ -349,7 +350,12 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
                 if (fadeAlpha >= 1f) {
                     // 완전히 어두워진 순간에 화면 교체 → 전환이 보이지 않는다
                     fadeAlpha = 1f
-                    pendingScreen?.let { com.jamcat.nayngapo.entity.Enemy.nightBattle = false; currentScreen = it() }   // 야간 전투는 그 스테이지에서만
+                    pendingScreen?.let { make ->
+                        com.jamcat.nayngapo.entity.Enemy.nightBattle = false   // 야간 전투는 그 스테이지에서만
+                        // 새 화면을 만들다 오류가 나면 앱을 끄지 않고 지금 화면에 남는다 (2026-11-02 크래시 막기)
+                        try { currentScreen = make() } catch (e: Exception) { CrashLog.record("open", e, currentScreenName()) }
+                        badFrames = 0
+                    }
                     pendingScreen = null
                     fadeDir = -1
                 }
@@ -359,13 +365,35 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         }
         // 냥이의 배고픔은 '게임을 켜 둔 시간'으로만 흐른다.
         // 이 루프는 앱이 내려가면 멈추므로 꺼 둔 시간은 세지 않는다.
-        CatTeam.tickPlayTime(deltaTime)
-        currentScreen?.update(deltaTime)
+        try {
+            CatTeam.tickPlayTime(deltaTime)
+            currentScreen?.update(deltaTime)
+            badFrames = 0
+        } catch (e: Exception) { onScreenError("update", e) }
+    }
+
+    /**
+     * 크래시 막기 (대표님 2026-11-02 「크래시가 많이 나」「날 수 있는 곳들 틀어막아봐」): 화면의 갱신·그리기·터치에서 난 오류는
+     * 앱을 끄지 않고 CrashLog 에 적은 뒤 넘어간다. 같은 화면이 계속(BAD_FRAME_LIMIT 프레임 넘게 줄곧) 오류를 내면
+     * 그 화면에서 빠져나와 로비로 간다 (로비가 오류면 타이틀로) — Claude 판단.
+     */
+    private var badFrames = 0
+    private val BAD_FRAME_LIMIT = 90
+
+    private fun onScreenError(where: String, e: Exception) {
+        CrashLog.record(where, e, currentScreenName())
+        if (++badFrames < BAD_FRAME_LIMIT) return
+        badFrames = 0
+        val inLobby = currentScreen is LobbyScreen
+        fadeDir = 0; fadeAlpha = 0f; pendingScreen = null
+        currentScreen = try {
+            if (inLobby) TitleScreen(this) else LobbyScreen(this)
+        } catch (e2: Exception) { CrashLog.record("rescue", e2, currentScreenName()); TitleScreen(this) }
     }
 
     fun drawGame(canvas: Canvas) {
         canvas.drawColor(Color.BLACK)
-        currentScreen?.draw(canvas)
+        try { currentScreen?.draw(canvas) } catch (e: Exception) { onScreenError("draw", e) }
         if (fadeAlpha > 0f) {
             fadePaint.alpha = (fadeAlpha * 255f).toInt().coerceIn(0, 255)
             canvas.drawRect(0f, 0f, canvas.width.toFloat(), canvas.height.toFloat(), fadePaint)
@@ -378,7 +406,8 @@ class GameView(context: Context) : SurfaceView(context), SurfaceHolder.Callback 
         // (루비 상점 반짝이를 추가하다 ConcurrentModificationException 으로 꺼지던 문제).
         synchronized(holder) {
             if (fadeDir != 0) return true   // 전환 중 입력은 무시 (중복 진입 방지)
-            return currentScreen?.onTouchEvent(event) ?: super.onTouchEvent(event)
+            return try { currentScreen?.onTouchEvent(event) ?: super.onTouchEvent(event) }
+            catch (e: Exception) { CrashLog.record("touch", e, currentScreenName()); true }
         }
     }
 

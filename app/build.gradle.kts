@@ -1,6 +1,19 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+}
+
+// 판 번호 (version.properties — Tools/aab_build.sh 가 올린다)
+val versionProps = Properties().apply {
+    rootProject.file("version.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+
+// 플레이 업로드 서명키 — 저장소 밖 ~/.nyangapo/build.env 에서만 읽는다 (없으면 release 는 서명 없이 굽힌다)
+val signEnv = Properties().apply {
+    val f = file(System.getProperty("user.home") + "/.nyangapo/build.env")
+    if (f.exists()) f.inputStream().use { load(it) }
 }
 
 android {
@@ -10,15 +23,27 @@ android {
     defaultConfig {
         applicationId = "com.jamcat.nayngapo"
         minSdk = 29
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 36
+        versionCode = (versionProps.getProperty("VERSION_CODE") ?: "1").toInt()
+        versionName = versionProps.getProperty("VERSION_NAME") ?: "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (signEnv.getProperty("NYANGAPO_KEYSTORE") != null) {
+            create("upload") {
+                storeFile = file(signEnv.getProperty("NYANGAPO_KEYSTORE"))
+                storePassword = signEnv.getProperty("NYANGAPO_KEYSTORE_PASS")
+                keyAlias = signEnv.getProperty("NYANGAPO_KEY_ALIAS")
+                keyPassword = signEnv.getProperty("NYANGAPO_KEY_PASS")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfigs.findByName("upload")?.let { signingConfig = it }
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

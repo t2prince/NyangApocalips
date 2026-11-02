@@ -53,6 +53,12 @@
   - **21~30 꿀 지역**(벌집 바닥·벌냥이·꽃냥이, 22~30 구성은 Claude 판단) — `PLAYABLE_STAGES = 30`
   - 날아냥이가 무덤이면 11 에 못 들어감, 스토리 화면 삭제, 해적냥이·배냥이·해적선 그림(31 용)
 - 2026-10-25 **51~60 빙산** (`GameProgress.ICE_STAGES`, 32~50 은 '준비 중', 31 을 깨면 51 이 열림): 얼음냥이(`IceCat`)·잡몹 순간냥이(`TeleportCat`)·60 보스 빙산냥이(`IcebergCatBoss`) — `entity/Enemy.kt` 끝, 수직 구덩이(`Chasm(shaft = true)`)·얼음 구덩이(`entity/IceHole.kt`), 인간 얼음 상태(`Player.freeze`), 우리 편 얼음냥이·순간냥이(`AllyCat.Kind.ICE`·`TELEPORT`), 도감 `ice`·`iceberg` + 도감 쪽 넘기기(24칸씩 ◀ ▶ — 전엔 24칸 넘는 냥이가 안 보였음). 그림 `cat_ice`·`cat_ice_ally`·`cat_ice_armor_ally`·`cat_iceberg_boss`(없으면 코드 그림). 우리 편 도둑냥이가 적의 루비 2개를 훔쳐 온다. 값은 거의 Claude 판단 — `docs/GAME_RULES.md` 빙산 절.
+- 2026-11-02 **플레이 콘솔 배포 준비** (「에듀아바타처럼 구글 클라우드로 배포하게 준비하자」 — 에듀아바타 `Tools/aab_build.sh`·`play_upload.py` 방식):
+  - `Tools/aab_build.sh`: `version.properties` 의 판 번호(VERSION_CODE)를 올리고 `bundleRelease` → `~/dev/release/nyangapo/NyangApocalips.aab` → 서비스 계정으로 내부 테스트 트랙에 올림 (`UPLOAD=0` 굽기만, `STATUS=draft` 초안, `BUMP=0` 번호 그대로). 출시 노트 = 지난 업로드 뒤 커밋 제목.
+  - 서명: 업로드 키 `~/.nyangapo/keystore/upload.keystore`, 비밀번호 `~/.nyangapo/build.env` (저장소 밖, 0600). **잃어버리지 않게 백업** (잃으면 콘솔에서 업로드 키 재설정 요청).
+  - 서비스 계정 키: `~/.nyangapo/play-service-account.json`, 없으면 에듀아바타 키(`~/.eduavatar/`)를 같이 쓴다.
+  - 남은 일(사람이): 플레이 콘솔에서 앱 만들기(패키지 `com.jamcat.nayngapo`) → 서비스 계정에 이 앱 권한 → 첫 업로드는 `STATUS=draft`. 2026-11-02 `--check` 는 "Package not found"(앱이 아직 콘솔에 없음).
+  - targetSdk 35 → 36 (플레이 새 앱 요구 대비 — Claude 판단). 릴리스 빌드는 디버그가 아니라 스테이지 편집이 안 보인다.
 - 2026-11-02 **크래시 막기** (「크래시가 많이 나」「날 수 있는 곳들 틀어막아봐」): `GameView` 가 화면 갱신·그리기·터치·뒤로가기·새 화면 만들기에서 난 오류를 잡아 앱을 끄지 않는다. 같은 화면이 90프레임 내리 오류면 로비로(로비면 타이틀로). 모든 오류(잡은 것 + 앱이 꺼진 것)는 `engine/CrashLog.kt` 가 앱 내부 `files/crash_log.txt` 에 적는다 — 읽기: `adb shell run-as com.jamcat.nayngapo cat files/crash_log.txt` (logcat 태그 `CRASH`). 원인을 찾으면 그 자리도 고친다 — 잡아 둔 건 임시 방패.
 - 2026-10-31 **스테이지 편집 화면** (디버그 빌드에서만, 로비 맨 위 오른쪽 '🛠 스테이지 편집' — `screen/StageEditorScreen.kt`): 고른 스테이지의 지도에 냥이·함정·감옥을 끌어 놓고 저장. 저장은 세이브와 따로인 `stage_edits`(`engine/StageEdits.kt`). Level 은 배치 목록(`level/StageLayout.kt` `Placement`·`PlaceType`)을 기본 생성기(`Level.defaultLayout`)로 만들거나 저장된 편집을 읽어 `Level.createEntity` 로 짓는다. 규칙·Claude 판단은 `docs/GAME_RULES.md` 스테이지 편집 절. 새 한국어 글자의 `en.json` 번역은 아직 안 채움. 11 하늘 스테이지도 편집된다: 하늘 배치는 `SkyLayout`(같은 파일, 높이 `Placement.y` 0~1 비율), `SkyStageScreen.spawnEnemies` 가 그 목록으로 냥이·감옥을 띄운다.
 - 테스트 기기가 바뀐 듯함: 2026-10-04 부터 `R5CR40LCT0P` 에 설치됨(전에는 `R5CT3262MQY`). 사용자 확인 대기.

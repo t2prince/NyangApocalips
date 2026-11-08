@@ -30,7 +30,7 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
     private var cameraX = 0f
 
     /** 위층의 냥이들 — 있는 만큼 (떠났거나 무덤인 냥이는 없다) */
-    private class Resident(val cat: CatTeam.TeamCat, val sprite: Bitmap, var x: Float, val home: Float) {
+    private class Resident(val cat: CatTeam.TeamCat, val sprite: Bitmap, var x: Float, val home: Float, val tower: Boolean = false) {
         var dir = if (Math.random() < 0.5) 1f else -1f
         var wait = (Math.random() * 2.0).toFloat()
         var phase = (Math.random() * 6.0).toFloat()
@@ -56,15 +56,17 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
             spots.add(Spot(STAIRS_X, "▲ 위층 올라가기") { gameView.showHouse(1, UP_STAIRS_X) })
         } else {
             val cats = CatTeam.cats.filter { !it.gone && it !in CatTeam.party }   // 출전 중인 냥이는 위층에 없다
-            worldWidth = maxOf(GROUND_W, 420f + cats.size * CAT_GAP + 520f)
+            worldWidth = maxOf(GROUND_W, 420f + cats.size * CAT_GAP + cats.count { CatTeam.hasTower(it) } * (TOWER_GAP - CAT_GAP) + 520f)
             // 다 큰 냥이는 줄지어, 새끼 냥이들은 맨 뒤에 서로 모여 있다 (대표님 2026-10-09 「새끼 냥이들은 집에서 서로 모여 떠들어」)
             val adults = cats.filter { !it.isKitten }; val kittens = cats.filter { it.isKitten }
             var hx = 420f
             for (c in adults + kittens) {
+                val tower = CatTeam.hasTower(c)
+                if (tower) hx += (TOWER_GAP - CAT_GAP) / 2f   // 캣타워가 옆 냥이와 겹치지 않게 넓게
                 val sprite = com.jamcat.nayngapo.entity.AllyCat(0f, 0f, c.kind, level = c.level, teamId = c.id,
                     armored = c.hasArmor, attackBonus = c.attackBonus, coat = c.coat).spriteNow()
-                residents.add(Resident(c, sprite, hx, hx))
-                hx += if (c.isKitten) KITTEN_GAP else CAT_GAP
+                residents.add(Resident(c, sprite, hx, hx, tower = tower))
+                hx += if (tower) (TOWER_GAP + CAT_GAP) / 2f else if (c.isKitten) KITTEN_GAP else CAT_GAP
             }
             spots.add(Spot(UP_STAIRS_X, "▼ 아래층 내려가기") { gameView.showHouse(0, STAIRS_X - 60f) })
         }
@@ -134,6 +136,7 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
         // 냥이들은 제 자리 근처를 천천히 오가다 멈췄다 한다
         for (r in residents) {
             r.phase += deltaTime
+            if (r.tower) continue   // 캣타워 위 냥이는 제자리
             if (r.wait > 0f) { r.wait -= deltaTime; continue }
             // 새끼들은 모인 자리에서 조금만 꼼지락
             val range = if (r.cat.isKitten) 25f else 60f
@@ -220,8 +223,9 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
         }
         if (floor == 0) {
             drawDoor(canvas, DOOR_X, gy)
-            SpriteManager.shopIcons["cat_tower"]?.let { bmp ->
-                val th = 520f; val tw = bmp.width * th / bmp.height
+            // 고양이 관리 입구 = 고양이 집 (대표님 2026-11-08 「홈 화면의 캣타워는 고양이 집으로 바꿔」, 예전엔 캣타워)
+            SpriteManager.catHut.let { bmp ->
+                val th = 360f; val tw = bmp.width * th / bmp.height
                 rect.set(TOWER_X - tw / 2f, gy + 10f - th, TOWER_X + tw / 2f, gy + 10f)
                 canvas.drawBitmap(bmp, null, rect, null)
             }
@@ -275,6 +279,20 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
     }
 
     private fun drawResident(canvas: Canvas, r: Resident, gy: Float) {
+        // 캣타워를 차지한 냥이는 자기 캣타워 위에 있다 (대표님 2026-11-08 「2층(집)에 그 고양이 밑에 캣타워가 있어」)
+        if (r.tower) {
+            SpriteManager.shopIcons["cat_tower"]?.let { t ->
+                val tw = t.width * TOWER_UP_H / t.height
+                rect.set(r.home - tw / 2f, gy + 10f - TOWER_UP_H, r.home + tw / 2f, gy + 10f)
+                canvas.drawBitmap(t, null, rect, null)
+            }
+            drawCatAt(canvas, r, gy + 10f - TOWER_UP_H * TOWER_TOP)
+            return
+        }
+        drawCatAt(canvas, r, gy)
+    }
+
+    private fun drawCatAt(canvas: Canvas, r: Resident, gy: Float) {
         val moving = r.wait <= 0f
         val bmp = if (r.dir > 0f) r.sprite else SpriteManager.getFlipped(r.sprite)
         val hop = if (moving) abs(sin(r.phase * 10f)) * 8f else 0f
@@ -392,6 +410,10 @@ class HouseScreen(private val gameView: GameView, private val floor: Int, startX
         private const val GROUND_W = 2800f
         private const val DOOR_X = 220f
         private const val TOWER_X = 1120f
+        /** 위층 캣타워 높이 · 냥이가 올라앉는 자리(맨 위 판, 아래에서부터 비율) — 그림에 맞춰 Claude 판단 */
+        private const val TOWER_UP_H = 300f
+        private const val TOWER_TOP = 0.93f
+        private const val TOWER_GAP = 330f
         private const val STAIRS_X = 2400f
         /** 가구 (이름, 가운데 x, 그림 높이) */
         private val GROUND_FURNITURE = listOf(

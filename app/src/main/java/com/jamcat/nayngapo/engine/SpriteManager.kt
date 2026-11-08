@@ -52,6 +52,8 @@ object SpriteManager {
     var boatImages: Map<String, Bitmap> = emptyMap()
     /** 상점 마을 맨 앞의 집 (안에 캣타워) */
     lateinit var catHouse: Bitmap
+    /** 집 1층 고양이 관리 입구의 작은 고양이 집 (2026-11-08) */
+    lateinit var catHut: Bitmap
     /** 투기장의 밀짚 가짜 냥이 */
     lateinit var strawCat: Bitmap
     /** 집 안 가구 (GPT 그림 furn_*) — 이름 → 그림, 없는 그림은 빠진다 */
@@ -234,6 +236,7 @@ object SpriteManager {
                 ?.let { b.id to BitmapFactory.decodeResource(res, it) }
         }.toMap()
         catHouse = BitmapFactory.decodeResource(res, R.drawable.cat_house)
+        catHut = BitmapFactory.decodeResource(res, R.drawable.cat_hut)
         strawCat = BitmapFactory.decodeResource(res, R.drawable.straw_cat)
         dummyByLevel = listOf(strawCat) + listOf("wood", "stone", "iron", "gold", "diamond").map { n ->
             val id = res.getIdentifier("dummy_$n", "drawable", context.packageName)

@@ -345,8 +345,8 @@ class TeamScreen(private val gameView: GameView, private val fromHouse: Boolean 
     private fun drawCenterStage(canvas: Canvas, w: Float, h: Float, cat: CatTeam.TeamCat) {
         val cx = w * 0.50f
 
-        // 캣타워를 사 두면 냥이가 그 위에 올라가 춤을 춘다
-        val hasTower = GameProgress.itemCount("cat_tower") > 0
+        // 캣타워를 차지한 냥이만 그 위에 올라가 춤을 춘다 (캣타워 하나에 한 마리, 2026-11-08)
+        val hasTower = CatTeam.hasTower(cat)
         val tower = if (hasTower) SpriteManager.shopIcons["cat_tower"] else null
         if (tower != null) {
             drawTowerStage(canvas, w, h, cat, cx, tower)

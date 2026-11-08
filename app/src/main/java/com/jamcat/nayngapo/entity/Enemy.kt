@@ -82,7 +82,7 @@ abstract class Enemy(
     private val dustPaint = Paint()
     private val dustDot = Paint().apply { isAntiAlias = true }
 
-    /** 야간 전투 눈: 큰 흰 눈을 가진 냥이(똥·털북숭·모루)는 눈동자를 하얗게 */
+    /** 야간 전투 눈: 큰 흰 눈을 가진 냥이(똥냥이)는 눈동자를 하얗게 */
     open val bigEyes: Boolean get() = false
 
     /** 몸에 닿았을 때 플레이어가 잃는 체력 (잡몹 1, 보스 3 — 기획4) */
@@ -256,7 +256,7 @@ abstract class Enemy(
         /**
          * 야간 전투의 눈이 하얀 그림 (그림마다 한 번 만들어 둔다).
          * - 보통 냥이: 눈은 흰 주둥이(가장 큰 흰 덩어리) 바로 위, 털에 둘러싸인 작은 검은 점 두 개 → 하얗게
-         * - 큰 흰 눈 냥이(bigEyes: 똥·털북숭·모루냥이): 큰 흰 눈 안의 검은 눈동자 → 하얗게
+         * - 큰 흰 눈 냥이(bigEyes: 똥냥이): 큰 흰 눈 안의 검은 눈동자 → 하얗게
          */
         fun nightEyes(src: Bitmap, bigEyes: Boolean = false): Bitmap = nightCache.getOrPut(src) {
             val w = src.width; val h = src.height
@@ -1682,7 +1682,7 @@ class FlyingCat(x: Float, y: Float) : Enemy(x, y, 25, 15) {
 // ============ 털북숭냥이 (HP 50, 대미지 10) ============
 /** 털이 두꺼워 단단하다. 털뭉치를 발사한다 (대표님 2026-11-08 「털뭉치를 발사해」, 예전엔 털 세 가닥) */
 class FluffyCat(x: Float, y: Float) : Enemy(x, y, 50, 10) {
-    override val bigEyes: Boolean get() = true   // 야간 전투: 큰 흰 눈의 눈동자가 하얗게
+    // 2026-11-08 새 그림은 보통 얼굴(점 눈·흰 주둥이)이라 큰 흰 눈 처리를 쓰지 않는다 (털북숭냥이는 눈이 털에 가려 안 보인다)
     override val width = 100f
     override val height = 105f
     private var rollPhase = (Math.random() * Math.PI).toFloat()
@@ -1722,7 +1722,7 @@ class FluffyCat(x: Float, y: Float) : Enemy(x, y, 50, 10) {
 // ============ 모루냥이 (HP 75, 대미지 10) ============
 /** 쇳덩이 같은 몸. 아주 느리지만 가장 단단하다 */
 class AnvilCat(x: Float, y: Float) : Enemy(x, y, 75, 10) {   // 시트: 모루냥이 HP75, 대미지 10
-    override val bigEyes: Boolean get() = true   // 야간 전투: 큰 흰 눈의 눈동자가 하얗게
+    // 2026-11-08 새 그림은 보통 얼굴(점 눈·흰 주둥이)이라 큰 흰 눈 처리를 쓰지 않는다 (털북숭냥이는 눈이 털에 가려 안 보인다)
     override val width = 112f
     override val height = 110f
 

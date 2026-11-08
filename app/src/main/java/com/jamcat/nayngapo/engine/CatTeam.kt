@@ -161,6 +161,16 @@ object CatTeam {
     /** 무덤까지 포함한 전체 명단 (칸 순서가 유지된다) — 놀이방에 맡긴 냥이는 빠진다 */
     val cats: List<TeamCat> get() = roster.filter { !it.inDaycare }
 
+    /**
+     * 캣타워 하나에 냥이 한 마리 (대표님 2026-11-08 「캣타워 하나 사면 고양이 한 마리만 쓸 수 있어」).
+     * 가진 캣타워 수만큼, 명단 앞쪽의 있는 냥이(떠났거나 무덤이 아닌)부터 하나씩 차지한다 — 누구 차지인지는 Claude 판단.
+     */
+    fun hasTower(cat: TeamCat): Boolean {
+        val n = GameProgress.itemCount("cat_tower")
+        if (n <= 0 || cat.gone) return false
+        return cats.filter { !it.gone }.take(n).any { it.id == cat.id }
+    }
+
     /** 고양이 놀이방에 맡긴 냥이들 */
     val daycare: List<TeamCat> get() = roster.filter { it.inDaycare && !it.gone }
 

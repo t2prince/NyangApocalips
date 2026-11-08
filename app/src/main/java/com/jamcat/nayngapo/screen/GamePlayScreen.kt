@@ -3770,7 +3770,7 @@ class GamePlayScreen(
      */
     private fun catKindShot(): Boolean {
         val kind = player.playerCat?.kind ?: return false
-        if (kind !in setOf(com.jamcat.nayngapo.entity.AllyCat.Kind.GUN, com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN, com.jamcat.nayngapo.entity.AllyCat.Kind.RED, com.jamcat.nayngapo.entity.AllyCat.Kind.ORANGE, com.jamcat.nayngapo.entity.AllyCat.Kind.YELLOW, com.jamcat.nayngapo.entity.AllyCat.Kind.LASER, com.jamcat.nayngapo.entity.AllyCat.Kind.FLOWER, com.jamcat.nayngapo.entity.AllyCat.Kind.POOP, com.jamcat.nayngapo.entity.AllyCat.Kind.ICE, com.jamcat.nayngapo.entity.AllyCat.Kind.FLUFFY, com.jamcat.nayngapo.entity.AllyCat.Kind.SEOLGI, com.jamcat.nayngapo.entity.AllyCat.Kind.EUNHA)) return false   // 벌냥이는 아무것도 쏘지 않는다 (대표님 2026-10-24)
+        if (kind !in setOf(com.jamcat.nayngapo.entity.AllyCat.Kind.GUN, com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN, com.jamcat.nayngapo.entity.AllyCat.Kind.RED, com.jamcat.nayngapo.entity.AllyCat.Kind.ORANGE, com.jamcat.nayngapo.entity.AllyCat.Kind.YELLOW, com.jamcat.nayngapo.entity.AllyCat.Kind.LASER, com.jamcat.nayngapo.entity.AllyCat.Kind.FLOWER, com.jamcat.nayngapo.entity.AllyCat.Kind.POOP, com.jamcat.nayngapo.entity.AllyCat.Kind.ICE, com.jamcat.nayngapo.entity.AllyCat.Kind.FLUFFY, com.jamcat.nayngapo.entity.AllyCat.Kind.SEOLGI, com.jamcat.nayngapo.entity.AllyCat.Kind.EUNHA, com.jamcat.nayngapo.entity.AllyCat.Kind.BLUE)) return false   // 벌냥이는 아무것도 쏘지 않는다 (대표님 2026-10-24)
         if (gunCooldown > 0f) return true
         gunCooldown = 0.4f
         val dir = if (player.facingRight) 1f else -1f
@@ -3782,7 +3782,8 @@ class GamePlayScreen(
             .minByOrNull { kotlin.math.abs(it.x + it.width / 2f - cx) }
         when (kind) {
             com.jamcat.nayngapo.entity.AllyCat.Kind.GUN -> add(com.jamcat.nayngapo.entity.Projectile(cx + dir * 34f, my - 20f, 620f * dir, 0f, d, true, tint = Color.rgb(170, 70, 220), radius = 6f))
-            com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN -> add(com.jamcat.nayngapo.entity.Projectile(cx, my, 520f * dir, 0f, d, true, tint = Color.rgb(140, 220, 110), radius = 13f))
+            com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN -> add(com.jamcat.nayngapo.entity.Projectile(cx, my, 520f * dir, 0f, d, true, tint = Color.rgb(140, 220, 110), radius = 13f, art = com.jamcat.nayngapo.engine.SpriteManager.shotSlime))
+            com.jamcat.nayngapo.entity.AllyCat.Kind.BLUE -> add(com.jamcat.nayngapo.entity.Projectile(cx, my, 460f * dir, 0f, d, true, tint = Color.rgb(90, 160, 230), radius = 13f, art = com.jamcat.nayngapo.engine.SpriteManager.shotWater))   // 물냥이 물 (2026-11-08)
             com.jamcat.nayngapo.entity.AllyCat.Kind.RED -> repeat(4) { i -> add(com.jamcat.nayngapo.entity.Projectile(cx + dir * 30f, my, dir * (360f + i * 30f), (i - 1.5f) * 50f, d, true,
                 tint = Color.rgb(255, 140, 30), radius = 12f, fuse = 0.55f, isFlame = true)) }
             com.jamcat.nayngapo.entity.AllyCat.Kind.ORANGE -> add(com.jamcat.nayngapo.entity.Projectile(cx, my - 20f, dir * 430f, -560f, d, true, tint = Color.rgb(255, 110, 20), radius = 14f, gravity = 1100f, isLava = true))

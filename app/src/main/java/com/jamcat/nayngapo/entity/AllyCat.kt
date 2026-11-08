@@ -152,7 +152,7 @@ class AllyCat(
      * 빨강 불 뿜기 · 주황 용암 던지기 · 노랑 번개 · 레이저 · 꽃가루 · 벌 침 · 똥 던지기 · 털북숭 털뭉치는 멀리서, 해머·모루는 세게 내려친다(2배·3배).
      * 나머지(도둑·머드·꿀·덩굴)는 할퀴기. 피해량은 우리 팀 공격력 기준(배율은 Claude 판단).
      */
-    private val ranged = kind in setOf(Kind.RED, Kind.ORANGE, Kind.YELLOW, Kind.LASER, Kind.FLOWER, Kind.BEE, Kind.POOP, Kind.ICE, Kind.FLUFFY, Kind.SEOLGI, Kind.EUNHA)
+    private val ranged = kind in setOf(Kind.RED, Kind.ORANGE, Kind.YELLOW, Kind.LASER, Kind.FLOWER, Kind.BEE, Kind.POOP, Kind.ICE, Kind.FLUFFY, Kind.SEOLGI, Kind.EUNHA, Kind.BLUE)
     /** 원거리 (그린냥이 슬라임 / 총냥이 총알 / 위의 원거리 냥이들) */
     private val isSpitter = kind == Kind.GREEN || isGunner || ranged
     private val moveSpeed = (if (isSpitter) 250f else 300f) * speedMul
@@ -301,9 +301,9 @@ class AllyCat(
                                 attackDamage, true, tint = Color.rgb(170, 70, 220), radius = 5f)
                         )
                     } else {
-                        pendingProjectiles.add(          // 슬라임을 뱉는다 (아군 탄)
+                        pendingProjectiles.add(          // 슬라임볼을 뱉는다 (아군 탄)
                             Projectile(x + width / 2f, y - height * 0.45f, 520f * dir, 0f,
-                                attackDamage, true, tint = Color.rgb(140, 220, 110), radius = 13f)
+                                attackDamage, true, tint = Color.rgb(140, 220, 110), radius = 13f, art = SpriteManager.shotSlime)
                         )
                     }
                 }
@@ -407,6 +407,8 @@ class AllyCat(
             Kind.POOP -> pendingProjectiles.add(Projectile(cx, mouthY - 20f, dir * 400f, -420f, d, true,   // 똥을 던진다
                 tint = Color.rgb(130, 86, 50), radius = 12f, gravity = 1000f))
             // 설기: 하얀 백설기 떡 덩이를 포물선으로 던진다 · 은하: 반짝이는 별을 곧게 빠르게 쏜다 (공격 방식 Claude 판단, 2026-11-08)
+            Kind.BLUE -> pendingProjectiles.add(Projectile(cx, mouthY, dir * 460f, 0f, d, true,   // 물냥이: 물을 뱉는다 (2026-11-08)
+                tint = Color.rgb(90, 160, 230), radius = 13f, art = SpriteManager.shotWater))
             Kind.SEOLGI -> pendingProjectiles.add(Projectile(cx, mouthY - 20f, dir * 460f, -480f, d, true,
                 tint = Color.rgb(250, 248, 238), radius = 14f, gravity = 1000f, isRiceCake = true))
             Kind.EUNHA -> pendingProjectiles.add(Projectile(cx, mouthY, dir * 820f, 0f, d, true,

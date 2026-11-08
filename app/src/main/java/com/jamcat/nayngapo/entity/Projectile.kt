@@ -57,6 +57,8 @@ class Projectile(
     val range: Float = 0f,
     /** 털뭉치 — 털북숭냥이가 발사한다 (대표님 손그림 2026-11-08). 털 획이 삐죽삐죽한 누런 공, 굴러가듯 돈다 */
     val isFurball: Boolean = false,
+    /** 손그림 발사체 그림 (그린냥이 슬라임볼·물냥이 물 — 2026-11-08). 날아가는 쪽을 보게 그린다 */
+    val art: android.graphics.Bitmap? = null,
     /** 백설기 떡 덩이 — 설기가 던진다 (2026-11-08). 하얀 네모 떡 */
     val isRiceCake: Boolean = false,
     /** 별 — 은하가 쏜다 (2026-11-08). 반짝이는 다섯 꼭지 별 */
@@ -244,6 +246,14 @@ class Projectile(
 
         if (isIceSpike) {
             drawIceSpike(canvas, cx)
+            return
+        }
+
+        if (art != null) {
+            val bmp = if (velocityX >= 0f) art else com.jamcat.nayngapo.engine.SpriteManager.getFlipped(art)
+            val w = radius * 3.2f; val h = w * bmp.height / bmp.width
+            starRect.set(cx - w / 2f, cy - h / 2f, cx + w / 2f, cy + h / 2f)
+            canvas.drawBitmap(bmp, null, starRect, null)
             return
         }
 

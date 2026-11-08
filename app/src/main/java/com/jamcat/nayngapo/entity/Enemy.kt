@@ -756,21 +756,36 @@ class LaserCat(x: Float, y: Float) : Enemy(x, y, 15, 30) {   // 시트: 레이�
 }
 
 // ============ 나쁜 파랑냥이 (HP 20, 대미지 5) ============
-/** 수북한 꼬리에 털이 부슬한 나쁜 편 파랑냥이: 빠르게 달려들어 문다 */
+/** 물냥이(파랑냥이): 다가오다 380 앞에서 멈춰 물을 뱉는다 (대표님 손그림 2026-11-08 「물냥이 물」 — 예전엔 달려들어 물기만, 사거리·간격 Claude 판단) */
 class BlueCat(x: Float, y: Float) : Enemy(x, y, 20, 5) {
     override val width = 92f
     override val height = 104f
     private var hopPhase = (Math.random() * Math.PI).toFloat()
+    private var spitTimer = 1.4f
+    private val pendingProjectiles = mutableListOf<Projectile>()
 
     override fun update(deltaTime: Float, playerX: Float, playerY: Float) {
+        pendingProjectiles.clear()
         facingRight = playerX > x
         val dx = playerX - x
-        velocityX = if (abs(dx) < 500f) sign(dx) * 200f else sign(dx) * 90f
+        velocityX = when {
+            abs(dx) < 380f -> 0f
+            abs(dx) < 500f -> sign(dx) * 200f
+            else -> sign(dx) * 90f
+        }
+        spitTimer -= deltaTime
+        if (spitTimer <= 0f && abs(dx) < Constants.ENEMY_FIRE_RANGE) {
+            spitTimer = 2.0f
+            val dir = if (facingRight) 1f else -1f
+            pendingProjectiles.add(Projectile(x + width / 2f, y - height * 0.45f, 340f * dir, 0f, 5, false,
+                tint = Color.rgb(90, 160, 230), radius = 13f, art = SpriteManager.shotWater))
+        }
 
-        hopPhase += deltaTime * 13f
-        jumpZ = -abs(sin(hopPhase.toDouble())).toFloat() * 16f
+        if (abs(velocityX) > 1f) { hopPhase += deltaTime * 13f; jumpZ = -abs(sin(hopPhase.toDouble())).toFloat() * 16f } else jumpZ = 0f
         super.update(deltaTime, playerX, playerY)
     }
+
+    override fun getProjectiles(): List<Projectile> = pendingProjectiles.toList()
 
     override fun draw(canvas: Canvas) {
         drawSprite(canvas, SpriteManager.blueCatEvil)
@@ -1625,7 +1640,7 @@ class GreenCat(x: Float, y: Float) : Enemy(x, y, 20, 10) {
             val dir = if (facingRight) 1f else -1f
             pendingProjectiles.add(
                 Projectile(x + width / 2f, y - height * 0.45f, 260f * dir, 0f, 10, false,
-                    tint = Color.rgb(120, 190, 90), radius = 13f)
+                    tint = Color.rgb(120, 190, 90), radius = 13f, art = SpriteManager.shotSlime)
             )
         }
         super.update(deltaTime, playerX, playerY)

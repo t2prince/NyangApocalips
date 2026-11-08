@@ -24,6 +24,8 @@ ITEMS = {
     'trap_shaft': 600,
     'trap_tornado': 360,
 }
+# 손그림 발사체 (Plan/shots, 2026-11-08) — 높이 64
+SHOTS = {'shot_slime': 64, 'shot_water': 64}
 
 
 def drop_top_islands(img):
@@ -45,6 +47,13 @@ for name, h in ITEMS.items():
     img = strip_background(Image.open(os.path.join(SRC, name + '.png')))
     if name == 'trap_pit':
         img = drop_top_islands(img)
+    img = img.crop(img.getbbox())
+    img = img.resize((max(1, round(img.width * h / img.height)), h), Image.LANCZOS)
+    img.save(os.path.join(DST, name + '.png'))
+    print(name, img.size)
+
+for name, h in SHOTS.items():
+    img = strip_background(Image.open(os.path.join('Plan/shots', name + '.png')))
     img = img.crop(img.getbbox())
     img = img.resize((max(1, round(img.width * h / img.height)), h), Image.LANCZOS)
     img.save(os.path.join(DST, name + '.png'))

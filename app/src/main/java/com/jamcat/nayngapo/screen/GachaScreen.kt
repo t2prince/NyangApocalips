@@ -269,7 +269,7 @@ class GachaScreen(private val gameView: GameView, private val fromLobby: Boolean
 
     companion object {
         /** 제일 싼 상자 값 — 상점 마을·로비 안내 글자가 쓴다 */
-        const val PRICE = 10
+        const val PRICE = 5
         private const val SHAKE_TIME = 0.9f
         /** 다른 편 고양이 3마리가 훔쳐 가는 루비 (한 마리 3개) — Claude 판단 */
         private const val STEAL_MAX = 9
@@ -286,7 +286,7 @@ class GachaScreen(private val gameView: GameView, private val fromLobby: Boolean
                 Prize(Kind.ITEM, "고양이 통조림", 25, "tuna_can"),
                 Prize(Kind.BOMB, "폭탄", 20),
             )),
-            Box("그냥 상자", 30, "gacha_box_normal", Color.rgb(150, 100, 60), listOf(
+            Box("그냥 상자", 15, "gacha_box_normal", Color.rgb(150, 100, 60), listOf(
                 Prize(Kind.HUMAN, "인간", 15),
                 Prize(Kind.CAT, "아군 고양이", 15),
                 Prize(Kind.ITEM, "츄르", 20, "churu"),
@@ -294,7 +294,7 @@ class GachaScreen(private val gameView: GameView, private val fromLobby: Boolean
                 Prize(Kind.ITEM, "캣닢", 15, "catnip"),
                 Prize(Kind.ITEM, "사료 한 봉", 15, "feed"),
             )),
-            Box("좋은 상자", 80, "gacha_box_good", Color.rgb(40, 36, 36), listOf(
+            Box("좋은 상자", 40, "gacha_box_good", Color.rgb(40, 36, 36), listOf(
                 Prize(Kind.ITEM, "공격력 Lv업", 10, "attack_up", rare = true),
                 Prize(Kind.CAT, "아군 고양이", 15),
                 Prize(Kind.ITEM, "츄르", 18, "churu"),

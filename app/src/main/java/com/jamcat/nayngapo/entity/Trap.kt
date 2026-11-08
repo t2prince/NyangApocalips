@@ -58,7 +58,18 @@ class Trap(val x: Float, val y: Float) {
         holeRect.set(x - 8f, y - 4f, x + width + 8f, floorY)
         canvas.drawRoundRect(holeRect, 14f, 14f, basePaint)
 
-        // 가시: 구덩이 바닥에서 올라와 지면 위로 솟는다
+        // 가시: 구덩이 바닥에서 올라와 지면 위로 솟는다 — GPT 그림이 있으면 그 그림을 밀어 올린다 (2026-11-08)
+        com.jamcat.nayngapo.engine.SpriteManager.traps["trap_spikes"]?.let { b ->
+            val h = width * b.height / b.width
+            canvas.save()
+            canvas.clipRect(x - 10f, top - 10f, x + width + 10f, floorY - 2f)
+            rect.set(x, top, x + width, top + h)
+            canvas.drawBitmap(b, null, rect, null)
+            canvas.restore()
+            canvas.drawLine(x - 8f, y - 3f, x + width + 8f, y - 3f, baseEdgePaint)
+            drawWarn(canvas, top)
+            return
+        }
         val spikes = 5
         val w = width / spikes
         for (i in 0 until spikes) {
@@ -75,11 +86,15 @@ class Trap(val x: Float, val y: Float) {
         // 구덩이 입구 테두리 (파헤쳐진 흙)
         canvas.drawLine(x - 8f, y - 3f, x + width + 8f, y - 3f, baseEdgePaint)
 
-        // 가시가 솟았을 때 위험 표시
-        if (isDangerous) {
-            val cx = x + width / 2f
-            canvas.drawLine(cx, top - 34f, cx, top - 16f, warnPaint)
-            canvas.drawPoint(cx, top - 8f, warnPaint)
-        }
+        drawWarn(canvas, top)
     }
+
+    /** 가시가 솟았을 때 위험 표시 */
+    private fun drawWarn(canvas: Canvas, top: Float) {
+        if (!isDangerous) return
+        val cx = x + width / 2f
+        canvas.drawLine(cx, top - 34f, cx, top - 16f, warnPaint)
+        canvas.drawPoint(cx, top - 8f, warnPaint)
+    }
+    private val rect = RectF()
 }

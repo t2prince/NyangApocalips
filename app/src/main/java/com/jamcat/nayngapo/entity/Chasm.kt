@@ -53,15 +53,30 @@ class Chasm(
         canvas.drawRect(x, y - 2f, x + width, bottomY, voidPaint)
         voidPaint.shader = null
 
-        // 왼쪽 절벽 단면: 위 가장자리에서 아래로 깨져 내려간다
-        drawCliff(canvas, x, -1f)
-        drawCliff(canvas, x + width, 1f)
+        // 왼쪽·오른쪽 절벽 벽 — GPT 그림이 있으면 그 그림(오른쪽은 좌우 뒤집기), 없으면 코드 그림 (2026-11-08)
+        val cliff = com.jamcat.nayngapo.engine.SpriteManager.traps["trap_cliff_left"]
+        if (cliff != null) {
+            val h = bottomY - y + 40f
+            val w = 180f
+            val top = y - h * CLIFF_GROUND - 4f   // 그림 위 풀 줄(6%)이 지면에 오게
+            artRect.set(x - w + 34f, top, x + 34f, top + h)
+            canvas.drawBitmap(cliff, null, artRect, null)
+            artRect.set(x + width - 34f, top, x + width - 34f + w, top + h)
+            canvas.drawBitmap(com.jamcat.nayngapo.engine.SpriteManager.getFlipped(cliff), null, artRect, null)
+        } else {
+            drawCliff(canvas, x, -1f)
+            drawCliff(canvas, x + width, 1f)
+        }
 
         // 가장자리에 걸린 흙턱 (밟고 설 수 있는 부분)
         canvas.drawRect(x - 26f, y - 6f, x + 8f, y + 10f, cliffEdgePaint)
         canvas.drawRect(x + width - 8f, y - 6f, x + width + 26f, y + 10f, cliffEdgePaint)
 
-        // 경고 표지 — 멀리서도 구멍인 걸 알아보게
+        drawMark(canvas)
+    }
+
+    /** 경고 표지 — 멀리서도 구멍인 걸 알아보게 */
+    private fun drawMark(canvas: Canvas) {
         val cx = x + width / 2f
         markPath.reset()
         markPath.moveTo(cx, y - 78f)
@@ -96,7 +111,18 @@ class Chasm(
     private val shaftRim = Paint().apply { color = Color.rgb(245, 250, 255); isAntiAlias = true }
 
     /** 수직 구덩이: 곧게 떨어지는 얼음 벽 사이로 끝이 안 보이게 캄캄해진다 + 눈 덮인 가장자리 + 경고 표지 */
+    private val artRect = RectF()
+
     private fun drawShaft(canvas: Canvas, bottomY: Float) {
+        // GPT 그림 (2026-11-08): 곧게 내려가는 얼음 벽 사이 깊은 구멍 — 폭에 맞춰 바닥까지 늘린다
+        com.jamcat.nayngapo.engine.SpriteManager.traps["trap_shaft"]?.let { b ->
+            artRect.set(x - 12f, y - 10f, x + width + 12f, bottomY)
+            canvas.drawBitmap(b, null, artRect, null)
+            canvas.drawRoundRect(x - 26f, y - 8f, x + 12f, y + 8f, 8f, 8f, shaftRim)
+            canvas.drawRoundRect(x + width - 12f, y - 8f, x + width + 26f, y + 8f, 8f, 8f, shaftRim)
+            drawMark(canvas)
+            return
+        }
         voidPaint.shader = LinearGradient(0f, y, 0f, y + 260f, Color.rgb(70, 120, 170), Color.rgb(6, 10, 22), Shader.TileMode.CLAMP)
         canvas.drawRect(x, y - 2f, x + width, bottomY, voidPaint)
         voidPaint.shader = null
@@ -129,5 +155,7 @@ class Chasm(
         private const val STEPS = 8
         /** 수직 구덩이 폭 (Claude 판단) */
         const val SHAFT_W = 130f
+        /** 낭떠러지 벽 그림에서 지면(풀 줄)까지 비율 (그림에서 잰 값) */
+        private const val CLIFF_GROUND = 0.06f
     }
 }

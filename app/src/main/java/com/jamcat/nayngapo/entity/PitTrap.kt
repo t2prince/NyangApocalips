@@ -110,7 +110,17 @@ class PitTrap(val x: Float, val y: Float, seed: Int) {
         (0.5f - kotlin.math.abs(t - 0.5f)) * 2f * (0.82f + 0.18f * jag)
     }
 
+    private val pitRect = RectF()
+
     fun draw(canvas: Canvas) {
+        // GPT 그림 (2026-11-08): 흙 틀 + 캄캄한 속 + 쇠꼬챙이. 위 가장자리 = 지면, 폭·깊이에 맞춰 늘린다
+        com.jamcat.nayngapo.engine.SpriteManager.traps["trap_pit"]?.let { b ->
+            pitRect.set(x - 26f, y - 10f, x + width + 26f, y + depth)
+            canvas.drawBitmap(b, null, pitRect, null)
+            drawWarnSign(canvas)
+            drawDigger(canvas)
+            return
+        }
         // 구덩이 벽: 위 가장자리에서 바닥까지 들쭉날쭉하게 파였다
         path.reset()
         path.moveTo(x, y - 4f)
@@ -164,6 +174,11 @@ class PitTrap(val x: Float, val y: Float, seed: Int) {
         canvas.drawLine(x - 14f, y - 4f, x + 10f, y - 4f, rimPaint)
         canvas.drawLine(x + width - 10f, y - 4f, x + width + 14f, y - 4f, rimPaint)
 
+        drawWarnSign(canvas)
+        drawDigger(canvas)
+    }
+
+    private fun drawWarnSign(canvas: Canvas) {
         val cx = x + width / 2f
         warnPath.reset()
         warnPath.moveTo(cx, y - 74f)
@@ -174,8 +189,6 @@ class PitTrap(val x: Float, val y: Float, seed: Int) {
         canvas.drawPath(warnPath, warnEdgePaint)
         canvas.drawLine(cx, y - 62f, cx, y - 46f, warnMarkPaint)
         canvas.drawPoint(cx, y - 40f, warnMarkPaint)
-
-        drawDigger(canvas)
     }
 
     private companion object {

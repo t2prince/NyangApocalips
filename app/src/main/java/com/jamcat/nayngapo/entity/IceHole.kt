@@ -34,6 +34,21 @@ class IceHole(val x: Float, val y: Float) {
     private val rect = RectF()
 
     fun draw(canvas: Canvas) {
+        // GPT 그림 (2026-11-08): 깨진 구멍 / 얼음판. 얼음판 위 금은 코드가 그대로 그린다
+        val art = com.jamcat.nayngapo.engine.SpriteManager.traps
+        if (broken) art["trap_ice_hole_broken"]?.let { b ->
+            val h = 190f
+            rect.set(x - 10f, y - h * BROKEN_GROUND, x + width + 10f, y - h * BROKEN_GROUND + h)
+            canvas.drawBitmap(b, null, rect, null)
+            return
+        }
+        if (!broken) art["trap_ice_hole"]?.let { b ->
+            val h = width * b.height / b.width
+            rect.set(x, y - h * 0.45f, x + width, y + h * 0.55f)
+            canvas.drawBitmap(b, null, rect, null)
+            if (crackT >= 0f) drawCracks(canvas)
+            return
+        }
         if (broken) {
             // 깨진 구멍: 얼음 벽 + 캄캄한 속 + 가장자리에 남은 얼음 조각
             rect.set(x + 6f, y - 10f, x + width - 6f, y + 150f)
@@ -51,6 +66,10 @@ class IceHole(val x: Float, val y: Float) {
         canvas.drawOval(rect, icePaint)
         canvas.drawOval(rect, edgePaint)
         canvas.drawLine(x + width * 0.2f, y - 4f, x + width * 0.38f, y - 6f, iceLit)
+        drawCracks(canvas)
+    }
+
+    private fun drawCracks(canvas: Canvas) {
         // 금: 밟힌 뒤 점점 퍼진다 (멀쩡해도 잔금 하나 — 수상한 얼음)
         val k = if (crackT < 0f) 0.15f else 0.3f + 0.7f * (crackT / BREAK_TIME)
         val cx = x + width / 2f
@@ -68,5 +87,7 @@ class IceHole(val x: Float, val y: Float) {
         /** 얼음판 폭 · 밟고 깨질 때까지 (Claude 판단) */
         const val WIDTH = 190f
         const val BREAK_TIME = 0.5f
+        /** 깨진 구멍 그림에서 지면선 높이 비율 (위 얼음 조각 아래 가로선, 그림에서 잰 값) */
+        private const val BROKEN_GROUND = 0.19f
     }
 }

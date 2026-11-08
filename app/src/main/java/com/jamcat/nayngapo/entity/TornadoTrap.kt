@@ -27,6 +27,17 @@ class TornadoTrap(private val homeX: Float, val groundY: Float, seed: Int) {
     fun hits(cx: Float) = cx > x - width / 2f && cx < x + width / 2f
 
     fun draw(canvas: Canvas) {
+        // GPT 그림 (2026-11-08): 회오리 그림을 발밑 기준으로 좌우로 살짝 흔들고, 빙글 도는 느낌으로 짧게 뒤집는다
+        com.jamcat.nayngapo.engine.SpriteManager.traps["trap_tornado"]?.let { b ->
+            val bmp = if ((t * 6f).toInt() % 2 == 0) b else com.jamcat.nayngapo.engine.SpriteManager.getFlipped(b)
+            val h = height; val w = h * b.width / b.height
+            canvas.save()
+            canvas.rotate(sin(t * 5f) * 5f, x, groundY)
+            rect.set(x - w / 2f, groundY - h, x + w / 2f, groundY + 6f)
+            canvas.drawBitmap(bmp, null, rect, null)
+            canvas.restore()
+            return
+        }
         // 아래는 가늘고 위로 갈수록 넓어지는 회오리 고리들 — 계속 돈다
         for (k in 0 until RINGS) {
             val f = k / (RINGS - 1f)

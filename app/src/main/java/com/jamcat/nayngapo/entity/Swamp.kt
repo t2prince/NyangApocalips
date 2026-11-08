@@ -33,7 +33,18 @@ class Swamp(val x: Float, val y: Float, seed: Int, val honey: Boolean = false) {
         wave += deltaTime
     }
 
+    private val swampRect = android.graphics.RectF()
+
     fun draw(canvas: Canvas) {
+        // GPT 그림 (2026-11-08): 진흙 늪 / 꿀 늪 웅덩이를 폭에 맞춰 깐다 + 갈대는 그대로
+        com.jamcat.nayngapo.engine.SpriteManager.traps[if (honey) "trap_swamp_honey" else "trap_swamp"]?.let { b ->
+            val w = width + 40f
+            val h = w * b.height / b.width
+            swampRect.set(x - 20f, y - h * 0.35f, x + width + 20f, y + h * 0.65f)
+            canvas.drawBitmap(b, null, swampRect, null)
+            drawReeds(canvas)
+            return
+        }
         // 진흙 웅덩이: 지면에 얕게 파인 타원
         path.reset()
         path.moveTo(x - 20f, y)
@@ -60,6 +71,10 @@ class Swamp(val x: Float, val y: Float, seed: Int, val honey: Boolean = false) {
             }
         }
 
+        drawReeds(canvas)
+    }
+
+    private fun drawReeds(canvas: Canvas) {
         // 가장자리 갈대
         for ((i, side) in listOf(x - 6f, x + width + 6f).withIndex()) {
             val sway = kotlin.math.sin(wave * 1.4 + i * 2).toFloat() * 4f

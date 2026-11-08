@@ -62,6 +62,8 @@ object SpriteManager {
     /** 60 끝 감옥의 설기·은하 (우리 편, 2026-11-08) */
     var seolgiCat: Bitmap? = null
     var eunhaCat: Bitmap? = null
+    /** 함정 그림 (GPT, 2026-11-08 「함정 이미지 다시 그려줘 — 다」) — 이름 → 그림. 없으면 예전 코드 그림 */
+    val traps = HashMap<String, Bitmap>()
     /** 투기장의 밀짚 가짜 냥이 */
     lateinit var strawCat: Bitmap
     /** 집 안 가구 (GPT 그림 furn_*) — 이름 → 그림, 없는 그림은 빠진다 */
@@ -266,6 +268,8 @@ object SpriteManager {
         }
         res.getIdentifier("robot_side", "drawable", context.packageName).let { if (it != 0) robotSide = BitmapFactory.decodeResource(res, it) }
         fun opt(name: String) = res.getIdentifier(name, "drawable", context.packageName).takeIf { it != 0 }?.let { BitmapFactory.decodeResource(res, it) }
+        for (n in listOf("trap_spikes", "trap_pit", "trap_swamp", "trap_swamp_honey", "trap_ice_hole", "trap_ice_hole_broken",
+                "trap_cliff_left", "trap_shaft", "trap_tornado")) opt(n)?.let { traps[n] = it }
         robotBody = opt("robot_p_body"); robotArm = opt("robot_p_arm"); robotLeg = opt("robot_p_leg")
         opt("robot_p_fist")?.let { robotFist = it }
         if (robotFist == null) robotSide?.let { r ->   // 주먹 자리: 그림 가로 75~100%, 세로 32~62% (robot_side 586×460 에서 잰 값)

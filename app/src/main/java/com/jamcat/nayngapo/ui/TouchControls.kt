@@ -108,10 +108,18 @@ class TouchControls {
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD); isAntiAlias = true
     }
     private val orderCatPaint = Paint().apply { isAntiAlias = true }
-    /** 기술 버튼 자리 (최대 3칸) */
-    private val skillCenters = FloatArray(SKILL_SLOTS * 2)
-    private val humanSkillCenters = FloatArray(HUMAN_SKILL_SLOTS * 2)
     private val skillIconDst = RectF()
+
+    // ===== 기술 창 (대표님 손그림 2026-11-08 「쓰는 법」: 때리기 버튼을 아무 쪽으로나 밀면 6칸 창이 뜨고, 눌러서 쓴다) =====
+    /** 창이 열려 있는가 — 칸을 누르면 쓰고 닫힌다, 창 밖을 누르면 닫힌다 */
+    var panelOpen = false
+        private set
+    /** 창 칸 자리: 인간 기술 다음에 고양이 기술 (한 줄 3칸, 많으면 줄이 늘어난다) */
+    private val panelHumanCenters = FloatArray(HUMAN_SKILL_SLOTS * 2)
+    private val panelCatCenters = FloatArray(SKILL_SLOTS * 2)
+    private val panelRect = RectF()
+    private var panelRight = 0f
+    private var panelBottom = 0f
 
     fun updateLayout(screenWidth: Int, screenHeight: Int) {
         dpadCenterX = 300f
@@ -133,20 +141,51 @@ class TouchControls {
         val ocy = specialBtnY - 150f
         orderRect.set(ocx - ow / 2f, ocy - oh / 2f, ocx + ow / 2f, ocy + oh / 2f)
 
-        // 기술 버튼: 지시 알약 왼쪽으로 줄지어 놓는다
-        for (i in 0 until SKILL_SLOTS) {
-            skillCenters[i * 2] = specialBtnX - 300f - i * 110f
-            skillCenters[i * 2 + 1] = specialBtnY - 150f
-        }
+        // 기술 창: 점프 버튼 왼쪽 위 (패드와 겹치지 않는 자리)
+        panelRight = jumpBtnX - 150f
+        panelBottom = jumpBtnY + 40f
+    }
 
-        // 인간 기술 버튼: JUMP 위 한 줄.
-        // 2400·1920 x 1080에서 모든 버튼과 겹치지 않게 잰 자리 — 가장 가까운 것은
-        // 고양이 기술 줄의 '냥이 없음' 글씨(15px)와 JUMP 터치 범위(5.7px)다.
-        // 네 번째 칸은 셋째 칸 왼쪽 — 고양이 기술 줄(가장 왼쪽 가장자리)보다 더 왼쪽이라 겹치지 않는다.
-        for (i in 0 until HUMAN_SKILL_SLOTS) {
-            humanSkillCenters[i * 2] = jumpBtnX - 90f - i * 110f
-            humanSkillCenters[i * 2 + 1] = jumpBtnY - 185f
+    /** 지금 가진 기술 수만큼 창 칸 자리를 정한다 — 아래 줄부터 오른쪽 → 왼쪽, 한 줄 3칸 */
+    private fun layoutPanel() {
+        val n = humanSkills.size.coerceAtMost(HUMAN_SKILL_SLOTS) + skills.size.coerceAtMost(SKILL_SLOTS)
+        val rows = ((n + PANEL_COLS - 1) / PANEL_COLS).coerceAtLeast(1)
+        val left = panelRight - PANEL_COLS * PANEL_CELL
+        val top = panelBottom - rows * PANEL_CELL
+        panelRect.set(left - 16f, top - 16f, panelRight + 16f, panelBottom + 16f)
+        var k = 0
+        fun place(arr: FloatArray, count: Int) {
+            for (i in 0 until count) {
+                arr[i * 2] = left + (k % PANEL_COLS + 0.5f) * PANEL_CELL
+                arr[i * 2 + 1] = top + (k / PANEL_COLS + 0.5f) * PANEL_CELL
+                k++
+            }
         }
+        place(panelHumanCenters, humanSkills.size.coerceAtMost(HUMAN_SKILL_SLOTS))
+        place(panelCatCenters, skills.size.coerceAtMost(SKILL_SLOTS))
+    }
+
+    private fun hasPanelItems() = humanSkills.isNotEmpty() || skills.isNotEmpty()
+
+    fun closePanel() { panelOpen = false }
+
+    /** 창 칸을 눌렀으면 그 기술을 쓰고(쿨타임이 끝났으면) 창을 닫는다 — 칸을 눌렀으면 true */
+    private fun tryPanelSlot(px: Float, py: Float): Boolean {
+        fun hit(arr: FloatArray, i: Int) =
+            kotlin.math.hypot((px - arr[i * 2]).toDouble(), (py - arr[i * 2 + 1]).toDouble()) < SKILL_RADIUS + 14f
+        for (i in humanSkills.indices) {
+            if (i >= HUMAN_SKILL_SLOTS || !hit(panelHumanCenters, i)) continue
+            if ((humanSkillCooldowns.getOrNull(i) ?: 0f) <= 0f) inputState.useHumanSkill = humanSkills[i].id
+            panelOpen = false
+            return true
+        }
+        for (i in skills.indices) {
+            if (i >= SKILL_SLOTS || !hit(panelCatCenters, i)) continue
+            if ((skillCooldowns.getOrNull(i) ?: 0f) <= 0f) inputState.useSkill = skills[i].id
+            panelOpen = false
+            return true
+        }
+        return false
     }
 
     /** 이 자리가 패드·버튼 자리인가 — 화면 위 다른 것(자동차 등)을 누를 때 조작과 겹치지 않게 (2026-10-09) */
@@ -156,8 +195,7 @@ class TouchControls {
         if (near(dpadCenterX, dpadCenterY, dpadRadius + 30f)) return true
         if (near(attackBtnX, attackBtnY, 150f) || near(jumpBtnX, jumpBtnY, 140f) || near(specialBtnX, specialBtnY, 130f)) return true
         if (orderRect.contains(px, py)) return true
-        for (i in 0 until SKILL_SLOTS) if (near(skillCenters[i * 2], skillCenters[i * 2 + 1], 70f)) return true
-        for (i in 0 until HUMAN_SKILL_SLOTS) if (near(humanSkillCenters[i * 2], humanSkillCenters[i * 2 + 1], 70f)) return true
+        if (panelOpen && panelRect.contains(px, py)) return true
         return false
     }
 
@@ -231,31 +269,23 @@ class TouchControls {
             return
         }
 
-        // 인간 기술 버튼: 냥이가 없어도 언제나 쓸 수 있다 (쿨타임이 끝난 기술만, 누를 때 한 번만)
-        for (i in humanSkills.indices) {
-            if (i >= HUMAN_SKILL_SLOTS) break
-            val sx = humanSkillCenters[i * 2]
-            val sy = humanSkillCenters[i * 2 + 1]
-            if (kotlin.math.hypot((px - sx).toDouble(), (py - sy).toDouble()) > SKILL_RADIUS + 12f) continue
-            val key = "hskill$i"
-            if (prevButton != key) {
-                pointerButtons[pointerId] = key
-                if ((humanSkillCooldowns.getOrNull(i) ?: 0f) <= 0f) inputState.useHumanSkill = humanSkills[i].id
-            }
-            return
+        // 기술 창 — 열려 있으면 칸을 누르거나(밀던 손가락을 칸 위로 가져가도) 쓴다
+        if (panelOpen) {
+            if (prevButton == "panel") return
+            if (tryPanelSlot(px, py)) { pointerButtons[pointerId] = "panel"; return }
+            if (prevButton == "drag") return                 // 밀던 손가락은 창이 열린 채로 둔다
+            if (prevButton == null && !panelRect.contains(px, py)) panelOpen = false   // 창 밖을 새로 누르면 닫는다
+            else if (panelRect.contains(px, py)) { pointerButtons[pointerId] = "panel"; return }
         }
 
-        // 고양이 기술 버튼: 쿨타임이 끝난 기술만, 누를 때 한 번만
-        for (i in skills.indices) {
-            if (i >= SKILL_SLOTS) break
-            val sx = skillCenters[i * 2]
-            val sy = skillCenters[i * 2 + 1]
-            if (kotlin.math.hypot((px - sx).toDouble(), (py - sy).toDouble()) > SKILL_RADIUS + 12f) continue
-            val key = "skill$i"
-            if (prevButton != key) {
-                pointerButtons[pointerId] = key
-                if ((skillCooldowns.getOrNull(i) ?: 0f) <= 0f) inputState.useSkill = skills[i].id
-            }
+        // 때리기 버튼을 누른 채 버튼 밖으로 밀면 기술 창이 열린다 (방향은 어디든)
+        val hitRadiusAttack = btnRadius + 15f
+        if (prevButton == "attack" && hasPanelItems() &&
+            kotlin.math.hypot((px - attackBtnX).toDouble(), (py - attackBtnY).toDouble()) >= hitRadiusAttack) {
+            inputState.attack = false
+            layoutPanel()
+            panelOpen = true
+            pointerButtons[pointerId] = "drag"
             return
         }
 
@@ -297,7 +327,7 @@ class TouchControls {
             "special" -> inputState.special = false
             "order" -> Unit          // 한 번 누름으로 끝나는 버튼이라 놓을 때 할 일이 없다
             // 기술 버튼도 한 번 누름 — 놓을 때 되돌릴 것이 없다
-            "skill0", "skill1", "skill2", "hskill0", "hskill1", "hskill2", "hskill3" -> Unit
+            "drag", "panel" -> Unit  // 기술 창 — 한 번 누름으로 끝난다
         }
     }
 
@@ -309,6 +339,7 @@ class TouchControls {
     fun releaseAll() {
         pointerButtons.clear()
         resetInput()
+        panelOpen = false
     }
 
     private fun resetInput() {
@@ -350,23 +381,23 @@ class TouchControls {
         drawButton(canvas, jumpBtnX, jumpBtnY, "jump", inputState.jump, Color.rgb(120, 190, 255))
         drawSpecialButton(canvas)
         if (showOrder) drawOrderButton(canvas)
-        drawSkillButtons(canvas)
-        drawHumanSkillButtons(canvas)
+        if (panelOpen) drawPanel(canvas)
     }
 
-    /** 배운 고양이 기술 버튼: 그림 + 쿨타임 링 + 남은 초 */
-    private fun drawSkillButtons(canvas: Canvas) {
-        drawSkillRow(
-            canvas, skills, skillCooldowns, skillCenters,
-            com.jamcat.nayngapo.engine.SpriteManager.skillIcons, ACCENT, requiresCaster = true
-        )
-    }
+    private val panelBgPaint = Paint().apply { color = Color.argb(170, 20, 24, 32); isAntiAlias = true }
 
-    /** 배운 인간 기술 버튼 — 고양이 기술과 같은 모양, 파란 테두리로 구분한다 */
-    private fun drawHumanSkillButtons(canvas: Canvas) {
+    /** 기술 창: 어두운 판 위에 인간 기술(파란 테두리) → 고양이 기술(노란 테두리) */
+    private fun drawPanel(canvas: Canvas) {
+        layoutPanel()   // 창이 열린 사이 기술 수가 바뀔 수 있다
+        canvas.drawRoundRect(panelRect, 26f, 26f, panelBgPaint)
+        canvas.drawRoundRect(panelRect, 26f, 26f, padEdgePaint)
         drawSkillRow(
-            canvas, humanSkills, humanSkillCooldowns, humanSkillCenters,
+            canvas, humanSkills, humanSkillCooldowns, panelHumanCenters,
             com.jamcat.nayngapo.engine.SpriteManager.humanSkillIcons, HUMAN_RING, requiresCaster = false
+        )
+        drawSkillRow(
+            canvas, skills, skillCooldowns, panelCatCenters,
+            com.jamcat.nayngapo.engine.SpriteManager.skillIcons, ACCENT, requiresCaster = true
         )
     }
 
@@ -629,6 +660,10 @@ class TouchControls {
 
         /** 인간 기술 버튼 칸 수 */
         const val HUMAN_SKILL_SLOTS = 6   // 각성(2026-10-09)·화살비(2026-10-16) 추가로 6칸
+
+        /** 기술 창 한 줄 칸 수와 칸 크기 */
+        const val PANEL_COLS = 3
+        const val PANEL_CELL = 130f
 
         /** 기술 버튼 반지름 (지름 96px) */
         const val SKILL_RADIUS = 48f

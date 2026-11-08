@@ -69,6 +69,7 @@
   - targetSdk 35 → 36 (플레이 새 앱 요구 대비 — Claude 판단). 릴리스 빌드는 디버그가 아니라 스테이지 편집이 안 보인다.
 - 2026-11-02 **크래시 막기** (「크래시가 많이 나」「날 수 있는 곳들 틀어막아봐」): `GameView` 가 화면 갱신·그리기·터치·뒤로가기·새 화면 만들기에서 난 오류를 잡아 앱을 끄지 않는다. 같은 화면이 90프레임 내리 오류면 로비로(로비면 타이틀로). 모든 오류(잡은 것 + 앱이 꺼진 것)는 `engine/CrashLog.kt` 가 앱 내부 `files/crash_log.txt` 에 적는다 — 읽기: `adb shell run-as com.jamcat.nayngapo cat files/crash_log.txt` (logcat 태그 `CRASH`). 원인을 찾으면 그 자리도 고친다 — 잡아 둔 건 임시 방패.
 - 2026-10-31 **스테이지 편집 화면** (디버그 빌드에서만, 로비 맨 위 오른쪽 '🛠 스테이지 편집' — `screen/StageEditorScreen.kt`): 고른 스테이지의 지도에 냥이·함정·감옥을 끌어 놓고 저장. 저장은 세이브와 따로인 `stage_edits`(`engine/StageEdits.kt`). Level 은 배치 목록(`level/StageLayout.kt` `Placement`·`PlaceType`)을 기본 생성기(`Level.defaultLayout`)로 만들거나 저장된 편집을 읽어 `Level.createEntity` 로 짓는다. 규칙·Claude 판단은 `docs/GAME_RULES.md` 스테이지 편집 절. 새 한국어 글자의 `en.json` 번역은 아직 안 채움. 11 하늘 스테이지도 편집된다: 하늘 배치는 `SkyLayout`(같은 파일, 높이 `Placement.y` 0~1 비율), `SkyStageScreen.spawnEnemies` 가 그 목록으로 냥이·감옥을 띄운다.
+- 2026-11-08 **편집 배치를 앱에 넣기**: `scripts/pull_stage_edits.sh` 가 연결된 폰(디버그 빌드)의 `stage_edits` 를 `app/src/main/assets/stage_layouts/stage_N.json` 으로 뽑는다. 앱에 넣은 배치는 **모든 빌드(릴리스 포함)** 가 쓴다 — 순서: 이 폰 편집(디버그만) → 앱에 넣은 배치 → 기본 생성 (`StageEdits.layoutFor`). 지금 들어간 것: 스테이지 1·4~10 (SM-A826S 폰에서 뽑음). 편집을 더 하면 스크립트를 다시 돌리고 커밋한다.
 - 테스트 기기가 바뀐 듯함: 2026-10-04 부터 `R5CR40LCT0P` 에 설치됨(전에는 `R5CT3262MQY`). 사용자 확인 대기.
 
 로비의 아직 빈 칸: **인터넷** — "준비 중" 안내만 뜹니다. (미션은 2026-09-20 구현: `screen/MissionScreen.kt`, `engine/Missions.kt`)

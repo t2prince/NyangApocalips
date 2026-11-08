@@ -158,7 +158,7 @@ class StageClearScreen(
             }
             11 -> {
                 endPaint.textSize = h * 0.048f
-                canvas.drawTr("하늘의 왕 왕왕냥이를 타도했습니다!", w / 2f, h * 0.66f, endPaint)
+                canvas.drawTr("하늘의 먼지냥이를 타도했습니다!", w / 2f, h * 0.66f, endPaint)
                 canvas.drawTr("저 아래 울창한 정글이 기다린다!", w / 2f, h * 0.72f, endPaint)
             }
             20 -> {

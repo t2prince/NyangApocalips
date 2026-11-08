@@ -550,11 +550,11 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         canvas.drawBitmap(bmp, null, tmpRect2, bitmapPaint)
     }
 
-    /** 하늘 냥이 그림 (게임과 같은 그림 · 크기 — 왕왕냥이는 3.1 배) */
+    /** 하늘 냥이 그림 (게임과 같은 그림 · 크기 — 먼지냥이는 높이 300) */
     private fun skySprite(t: PlaceType): Pair<Bitmap, Float>? = when (t) {
         PlaceType.FLYING -> SpriteManager.flyingCat to 1f
         PlaceType.LASER -> SpriteManager.laserCat to 1f
-        PlaceType.BOSS_GIANT -> SpriteManager.bossEvilCat to 3.1f
+        PlaceType.BOSS_GIANT -> (SpriteManager.dustCat ?: SpriteManager.bossEvilCat) to 300f / (SpriteManager.dustCat ?: SpriteManager.bossEvilCat).height
         else -> null
     }
 
@@ -786,7 +786,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
     /** 하늘: 손가락과 끄는 것 가운데 사이 높이 차 */
     private var grabOffsetY = 0f
 
-    /** 하늘: 지금 손가락 자리의 높이 (날 수 있는 띠 안). 왕왕냥이는 게임에서 저절로 오르내리니 늘 가운데 (Claude 판단) */
+    /** 하늘: 지금 손가락 자리의 높이 (날 수 있는 띠 안). 먼지냥이는 게임에서 저절로 오르내리니 늘 가운데 (Claude 판단) */
     private fun skyDropY(t: PlaceType): Float {
         val top = SkyLayout.FLY_TOP
         val bottom = SkyLayout.NOMINAL_H - SkyLayout.FLY_BOTTOM_GAP

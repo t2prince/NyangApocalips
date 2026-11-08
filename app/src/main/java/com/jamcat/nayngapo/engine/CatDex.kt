@@ -53,8 +53,8 @@ object CatDex {
             frames = { SpriteManager.thiefIdle }),   // 가면 쓴 채 춤춘다
         Entry("vine", "덩굴냥이", "덩굴을 타고 난다", { SpriteManager.vineCat }),
         Entry("teleport", "순간냥이", "순간이동하는 초원의 보스", { SpriteManager.teleportCat }),
-        Entry("giant", "왕왕냥이", "하늘의 왕", { SpriteManager.bossEvilCat }),
-        // 11 보스 먼지냥이 (대표님 손그림 2026-11-08, HP 4) — 아직 스테이지엔 없어 도감에만
+        // 왕왕냥이는 없앴다 (대표님 2026-11-08 「왕왕냥이는 없애」) — 11 보스는 먼지냥이
+        // 11 보스 먼지냥이 (대표님 손그림 2026-11-08) — 하늘 스테이지 끝에서 먼지 뭉치를 뿜는다
         Entry("dust", "먼지냥이", "하늘의 먼지 뭉치 (11 보스)", { SpriteManager.dustCat ?: SpriteManager.bossEvilCat }),
         Entry("wizard", "마법사냥이", "정글의 보스", { SpriteManager.bossWizardCat }),   // 20스테이지 보스 (2026-09-20 「모두 도감에」)
         // 51~60 빙산 (대표님 2026-10-25 「거기에 나오는 고양이들은 그냥 만들고 고양이 도감에 추가해」)

@@ -57,6 +57,8 @@ class Projectile(
     val range: Float = 0f,
     /** 털뭉치 — 털북숭냥이가 발사한다 (대표님 손그림 2026-11-08). 털 획이 삐죽삐죽한 누런 공, 굴러가듯 돈다 */
     val isFurball: Boolean = false,
+    /** 털뭉치 색 (0 = 누런 털뭉치, 먼지냥이 먼지 뭉치는 회색) */
+    val furColor: Int = 0,
     /** 얼음 덩이 — 얼음냥이·빙산냥이가 던진다 (2026-10-25). 땅에 닿으면 부서진다 */
     val isIceChunk: Boolean = false,
     /** 땅에서 솟는 얼음 가시 (빙산냥이) — 제자리에서 fuse 동안 솟았다 사라진다. 아래 끝이 땅 */
@@ -715,6 +717,7 @@ class Projectile(
 
     /** 털뭉치: 누런 공 + 안쪽 갈색·붉은 털 획 + 바깥으로 삐죽한 털 (날아가는 쪽으로 데굴데굴 돈다) */
     private fun drawFurball(canvas: Canvas, cx: Float, cy: Float) {
+        if (furColor != 0) { furFill.color = furColor; furStroke.color = Color.rgb(70, 70, 76); furRed.color = Color.rgb(110, 110, 116) }
         furSpin += if (velocityX >= 0f) 9f else -9f
         val r = radius
         canvas.save()

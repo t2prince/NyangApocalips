@@ -69,7 +69,7 @@ enum class PlaceType(
     BOSS_ICEBERG("빙산냥이", PlaceGroup.BOSS, { x, y -> IcebergCatBoss(x, y) }),           // 60
     BOSS_WIZARD("마법사냥이", PlaceGroup.BOSS, { x, y -> WizardCatBoss(x, y) }),           // 20 (삼형제)
     // 11 하늘의 왕 — 하늘 스테이지(SkyStageScreen)에만 있어 땅 개체가 없다
-    BOSS_GIANT("왕왕냥이", PlaceGroup.BOSS, inPalette = false),
+    BOSS_GIANT("먼지냥이", PlaceGroup.BOSS, inPalette = false),   // 이름은 예전 왕왕냥이 자리 그대로 (저장된 편집과 맞추려고) — 11 보스 먼지냥이 (2026-11-08)
 
     // ===== 함정·물건 =====
     SPIKE("가시 함정", PlaceGroup.HAZARD),
@@ -128,7 +128,7 @@ object StageLayoutJson {
 
 /**
  * 하늘 스테이지(11) 배치 (대표님 2026-10-31 「11 스태이지도 편집 할수있개 만들어줘」).
- * 하늘은 땅이 없어 x 와 함께 높이(Placement.y, 0~1)도 적는다. 놓을 수 있는 것: 날아냥이·레이저냥이·왕왕냥이·인간 감옥·냥이 감옥.
+ * 하늘은 땅이 없어 x 와 함께 높이(Placement.y, 0~1)도 적는다. 놓을 수 있는 것: 날아냥이·레이저냥이·먼지냥이·인간 감옥·냥이 감옥.
  * 기본 배치는 예전 SkyStageScreen 의 무작위 배치를 그대로 옮겨 왔다.
  */
 object SkyLayout {
@@ -163,7 +163,7 @@ object SkyLayout {
             val ey = 180f + (Math.random() * 520f).toFloat()
             out.add(Placement(type, ex + (Math.random() * 260f - 130f).toFloat(), y = fracOf(ey)))
         }
-        // 끝에는 하늘의 왕 '왕왕냥이' (높이는 게임에서 저절로 오르내린다)
+        // 끝에는 보스 '먼지냥이' (높이는 게임에서 저절로 오르내린다)
         out.add(Placement(PlaceType.BOSS_GIANT, course - 900f, y = 0.5f))
         // 코스 중간중간에 감옥 셋 (인간·냥이 둘 다, 셋째는 반반)
         val kinds = mutableListOf(PlaceType.PRISON_CAT, PlaceType.PRISON_HUMAN,

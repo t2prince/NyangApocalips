@@ -10,12 +10,13 @@ import com.jamcat.nayngapo.ui.TouchControls
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.sin
+import kotlin.math.cos
 
 /**
  * 하늘 스테이지 (11 하나뿐, 기획2·기획6 — 12~20은 정글이다).
  * "날개달린 냥이를 타고 날아다니며 적군을 죽인다" — 인간이 날아냥이를 타고
  * 8방향으로 날며 ATK로 냥냥탄을, SP로 로켓을 쏜다. 하늘의 냥이를 전부 무찌르면 클리어.
- * 스테이지 끝에는 하늘의 왕 '왕왕냥이'(기획4의 거대 냥이)가 기다린다.
+ * 스테이지 끝에는 보스 '먼지냥이'가 기다린다 (대표님 2026-11-08 「왕왕냥이는 없애」, 손그림 먼지냥이).
  */
 class SkyStageScreen(
     private val gameView: GameView,
@@ -23,16 +24,16 @@ class SkyStageScreen(
 ) : Screen {
 
     // ===== 하늘의 적 냥이 =====
-    private enum class SkyKind { FLYING, LASER, GIANT }
+    private enum class SkyKind { FLYING, LASER, DUST }   // DUST = 11 보스 먼지냥이 (2026-11-08, 예전 왕왕냥이 자리)
 
     private inner class SkyEnemy(val kind: SkyKind, var x: Float, var y: Float) {
         var hp = when (kind) {
             SkyKind.FLYING -> 10
             SkyKind.LASER -> 15
-            SkyKind.GIANT -> 150
+            SkyKind.DUST -> DUST_HP
         }
         val maxHp = hp
-        val contactDamage = if (kind == SkyKind.GIANT) 3 else 1
+        val contactDamage = if (kind == SkyKind.DUST) DUST_ATTACK else 1
         var isDead = false
         var facingRight = false
         var shootTimer = 1.5f + (Math.random() * 1.5f).toFloat()
@@ -40,12 +41,13 @@ class SkyStageScreen(
         private val waveSpeed = 1.6f + (Math.random() * 1.2f).toFloat()
         private var time = 0f
         var discovered = false
+        private var volley = 0
 
         val bitmap: Bitmap
             get() = when (kind) {
                 SkyKind.FLYING -> SpriteManager.flyingCat
                 SkyKind.LASER -> SpriteManager.laserCat
-                SkyKind.GIANT -> giantBitmap
+                SkyKind.DUST -> dustBitmap
             }
 
         val width: Float get() = bitmap.width.toFloat()
@@ -79,17 +81,26 @@ class SkyStageScreen(
                             tint = Color.rgb(70, 220, 120), radius = 7f))
                     }
                 }
-                SkyKind.GIANT -> {
-                    // 하늘의 왕: 천천히 다가오며 부채꼴 탄막을 뿌린다
+                SkyKind.DUST -> {
+                    // 먼지냥이: 천천히 다가오며 먼지 뭉치를 부채꼴로 뿜고, 세 번째마다 사방으로 먼지를 터뜨린다 (공격 방식 Claude 판단)
                     if (dist > 420f) x += kotlin.math.sign(dx) * 95f * deltaTime
                     y = skyMidY + sin((time * 0.8f).toDouble()).toFloat() * (flyMaxY - flyMinY) * 0.32f
                     shootTimer -= deltaTime
                     if (shootTimer <= 0f && dist < 1500f) {
-                        shootTimer = 2.1f
+                        shootTimer = 2.0f
+                        volley++
                         val dir = if (facingRight) 1f else -1f
-                        for (vy in intArrayOf(-220, -110, 0, 110, 220)) {
-                            projectiles.add(Projectile(x + dir * width * 0.4f, y, dir * 520f, vy.toFloat(),
-                                1, false, tint = Color.rgb(255, 120, 60), radius = 9f))
+                        if (volley % 3 == 0) {
+                            for (k in 0 until 8) {
+                                val a = k * Math.PI / 4.0
+                                projectiles.add(Projectile(x, y, (cos(a) * 380.0).toFloat(), (sin(a) * 380.0).toFloat(),
+                                    1, false, radius = 16f, isFurball = true, furColor = DUST_COLOR))
+                            }
+                        } else {
+                            for (vy in intArrayOf(-160, 0, 160)) {
+                                projectiles.add(Projectile(x + dir * width * 0.4f, y, dir * 480f, vy.toFloat(),
+                                    1, false, radius = 18f, isFurball = true, furColor = DUST_COLOR))
+                            }
                         }
                     }
                 }
@@ -100,7 +111,7 @@ class SkyStageScreen(
             if (!discovered && dist < gameView.screenWidth) {
                 discovered = true
                 val dexId = when (kind) {
-                    SkyKind.FLYING -> "flying"; SkyKind.LASER -> "laser"; SkyKind.GIANT -> "giant"
+                    SkyKind.FLYING -> "flying"; SkyKind.LASER -> "laser"; SkyKind.DUST -> "dust"
                 }
                 if (GameProgress.discover(dexId)) {
                     effects.add(Effect(x, y - height, 1.3f, "도감에 등록!"))
@@ -115,13 +126,13 @@ class SkyStageScreen(
                 isDead = true
                 defeated++
                 GameProgress.addKill()   // 미션 통계
-                score += if (kind == SkyKind.GIANT) 2000 else 150
+                score += if (kind == SkyKind.DUST) 2000 else 150
                 SoundManager.playCatDie()
-                effects.add(Effect(x, y, 0.7f, if (kind == SkyKind.GIANT) "왕왕냥이 격추!" else "격추!"))
+                effects.add(Effect(x, y, 0.7f, if (kind == SkyKind.DUST) "먼지냥이 격추!" else "격추!"))
 
-                // 떨어뜨린 루비 (왕왕냥이는 보스라 5개)
+                // 떨어뜨린 루비 (먼지냥이는 보스라 5개)
                 val reward =
-                    if (kind == SkyKind.GIANT) com.jamcat.nayngapo.engine.Rewards.RUBY_BOSS
+                    if (kind == SkyKind.DUST) com.jamcat.nayngapo.engine.Rewards.RUBY_BOSS
                     else com.jamcat.nayngapo.engine.Rewards.RUBY_NORMAL
                 GameProgress.addRubies(reward)
                 effects.add(Effect(x, y - 40f, 0.8f, "+$reward 루비"))
@@ -539,9 +550,11 @@ class SkyStageScreen(
     private var skyMidY = 450f
 
     // 거대 보스 비트맵 (한 번만 확대 생성)
-    private val giantBitmap: Bitmap by lazy {
-        val src = SpriteManager.bossEvilCat
-        Bitmap.createScaledBitmap(src, (src.width * 3.1f).toInt(), (src.height * 3.1f).toInt(), true)
+    /** 먼지냥이 — 보스라 크게 (높이 300, Claude 판단) */
+    private val dustBitmap: Bitmap by lazy {
+        val src = SpriteManager.dustCat ?: SpriteManager.bossEvilCat
+        val k = DUST_DRAW_H / src.height
+        Bitmap.createScaledBitmap(src, (src.width * k).toInt(), DUST_DRAW_H.toInt(), true)
     }
 
     // 구름 (씨앗 고정 배치, 두 겹 시차 스크롤)
@@ -621,7 +634,7 @@ class SkyStageScreen(
             when (p.type) {
                 com.jamcat.nayngapo.level.PlaceType.FLYING -> enemies.add(SkyEnemy(SkyKind.FLYING, p.x, y))
                 com.jamcat.nayngapo.level.PlaceType.LASER -> enemies.add(SkyEnemy(SkyKind.LASER, p.x, y))
-                com.jamcat.nayngapo.level.PlaceType.BOSS_GIANT -> enemies.add(SkyEnemy(SkyKind.GIANT, p.x, y))
+                com.jamcat.nayngapo.level.PlaceType.BOSS_GIANT -> enemies.add(SkyEnemy(SkyKind.DUST, p.x, y))
                 com.jamcat.nayngapo.level.PlaceType.PRISON_HUMAN ->
                     skyPrisons.add(SkyPrison(com.jamcat.nayngapo.entity.Prison.Kind.HUMAN, p.x, y))
                 com.jamcat.nayngapo.level.PlaceType.PRISON_CAT -> if (!noCatPrison)
@@ -932,6 +945,11 @@ class SkyStageScreen(
     }
 
     private companion object {
+        /** 먼지냥이 (대표님 손그림 2026-11-08 「HP 4, 공격 3」) — 손그림 HP 4 는 한 방이라 보스답게 10배로 (Claude 판단, 4 가 맞으면 바꾼다) */
+        const val DUST_HP = 40
+        const val DUST_ATTACK = 3
+        const val DUST_DRAW_H = 300f
+        val DUST_COLOR = Color.rgb(150, 150, 156)
         /** 벌냥이 덮치기 시간 · 닿는 거리 (Claude 판단) */
         const val BEE_LUNGE_TIME = 0.3f
         const val BEE_REACH = 170f

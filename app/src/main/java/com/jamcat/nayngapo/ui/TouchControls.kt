@@ -75,8 +75,9 @@ class TouchControls {
         strokeWidth = 8f; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
         isAntiAlias = true
     }
-    /** 버튼 바탕 — 검은색 (대표님 2026-11-08 「버튼은 검은색이어야 해」, 예전엔 반투명) */
-    private val btnFillPaint = Paint().apply { color = Color.argb(235, 0, 0, 0); isAntiAlias = true }
+    private val btnFillPaint = Paint().apply { color = Color.argb(90, 14, 16, 24); isAntiAlias = true }
+    /** 사람 그림 버튼 바탕 — 밝게, 사람은 검은색 (대표님 2026-11-08 「바탕이 검은색이면 안 되고 사람이 검은색이어야 해」) */
+    private val figureFillPaint = Paint().apply { color = Color.argb(215, 255, 255, 255); isAntiAlias = true }
     private val btnRingPaint = Paint().apply {
         style = Paint.Style.STROKE; strokeWidth = 3f; isAntiAlias = true
     }
@@ -547,7 +548,7 @@ class TouchControls {
 
     private fun drawButton(canvas: Canvas, cx: Float, cy: Float, label: String, active: Boolean, color: Int) {
         // 평소엔 어두운 원 + 색 링, 누르면 그 색이 은은하게 차오른다
-        canvas.drawCircle(cx, cy, btnRadius, btnFillPaint)
+        canvas.drawCircle(cx, cy, btnRadius, if (isFigure(label)) figureFillPaint else btnFillPaint)
         if (active) {
             btnRingPaint.style = Paint.Style.FILL
             btnRingPaint.color = Color.argb(70, Color.red(color), Color.green(color), Color.blue(color))
@@ -570,11 +571,14 @@ class TouchControls {
 
     /** 버튼 아이콘 — 대표님 손그림 2026-11-08 (사람 막대 그림): jump = 점프하는 사람, attack = 발차기·주먹,
      *  special = 필살기(회오리 기운). rocket = 로켓. 모르는 이름은 글자로. */
+    private fun isFigure(kind: String) = kind == "jump" || kind == "attack" || kind == "special"
+
     private fun drawIcon(canvas: Canvas, cx: Float, cy: Float, kind: String, active: Boolean) {
-        iconPaint.color = if (active) ACCENT else Color.argb(235, 240, 244, 252)
+        val figure = isFigure(kind)
+        // 사람 그림은 밝은 바탕에 검은 사람, 그 밖(로켓 등)은 어두운 바탕에 흰 그림
+        iconPaint.color = if (figure) Color.rgb(20, 20, 24) else if (active) ACCENT else Color.argb(235, 240, 244, 252)
         iconFillPaint.color = iconPaint.color
         // 사람 그림은 버튼에 맞게 키워서 그린다 (선 굵기는 키운 뒤 지금과 비슷하게)
-        val figure = kind == "jump" || kind == "attack" || kind == "special"
         if (figure) { canvas.save(); canvas.scale(FIGURE_SCALE, FIGURE_SCALE, cx, cy); iconPaint.strokeWidth = 7f / FIGURE_SCALE * 1.3f }
         when (kind) {
             "jump" -> {                                     // 두 팔·다리를 벌리고 뛰어오른 사람 + 아래 움직임 줄

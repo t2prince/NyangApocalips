@@ -22,7 +22,7 @@ object SpriteManager {
     lateinit var ashGround: Bitmap   // 화산(7~8스테이지) 지면 스트립: 용암 균열
 
     // cats/ 디자인 시트의 적 냥이들
-    lateinit var fluffyCat: Bitmap   // 털뭉냥이 HP50
+    lateinit var fluffyCat: Bitmap   // 털북숭냥이 HP50
     lateinit var greenCat: Bitmap    // 그린냥이 HP20
     lateinit var flyingCat: Bitmap   // 날아냥이 HP25
     lateinit var flyingCatAlly: Bitmap  // 아군 날아냥이 (꼬리가 얇다 — 타고 다니는 그 냥이)

@@ -55,6 +55,8 @@ class Projectile(
     val pierce: Boolean = false,
     /** 날아갈 수 있는 거리 (0 = 제한 없음) */
     val range: Float = 0f,
+    /** 털뭉치 — 털북숭냥이가 발사한다 (대표님 손그림 2026-11-08). 털 획이 삐죽삐죽한 누런 공, 굴러가듯 돈다 */
+    val isFurball: Boolean = false,
     /** 얼음 덩이 — 얼음냥이·빙산냥이가 던진다 (2026-10-25). 땅에 닿으면 부서진다 */
     val isIceChunk: Boolean = false,
     /** 땅에서 솟는 얼음 가시 (빙산냥이) — 제자리에서 fuse 동안 솟았다 사라진다. 아래 끝이 땅 */
@@ -236,6 +238,11 @@ class Projectile(
 
         if (isIceSpike) {
             drawIceSpike(canvas, cx)
+            return
+        }
+
+        if (isFurball) {
+            drawFurball(canvas, cx, cy)
             return
         }
 
@@ -693,5 +700,37 @@ class Projectile(
         val sparkRayPaint = Paint().apply {
             color = Color.rgb(255, 220, 90); strokeWidth = 2f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true
         }
+    }
+
+    private val furFill = Paint().apply { color = Color.rgb(222, 184, 96); isAntiAlias = true }
+    private val furStroke = Paint().apply {
+        color = Color.rgb(120, 78, 36); style = Paint.Style.STROKE; strokeWidth = 3f
+        strokeCap = Paint.Cap.ROUND; isAntiAlias = true
+    }
+    private val furRed = Paint().apply {
+        color = Color.rgb(196, 110, 70); style = Paint.Style.STROKE; strokeWidth = 3f
+        strokeCap = Paint.Cap.ROUND; isAntiAlias = true
+    }
+    private var furSpin = 0f
+
+    /** 털뭉치: 누런 공 + 안쪽 갈색·붉은 털 획 + 바깥으로 삐죽한 털 (날아가는 쪽으로 데굴데굴 돈다) */
+    private fun drawFurball(canvas: Canvas, cx: Float, cy: Float) {
+        furSpin += if (velocityX >= 0f) 9f else -9f
+        val r = radius
+        canvas.save()
+        canvas.rotate(furSpin, cx, cy)
+        canvas.drawCircle(cx, cy, r, furFill)
+        for (k in 0 until 14) {
+            val a = Math.toRadians(k * 360.0 / 14)
+            val ca = Math.cos(a).toFloat(); val sa = Math.sin(a).toFloat()
+            canvas.drawLine(cx + ca * r * 0.85f, cy + sa * r * 0.85f, cx + ca * r * 1.35f, cy + sa * r * 1.35f, furStroke)
+        }
+        for (k in 0 until 6) {
+            val a = Math.toRadians(k * 60.0 + 20)
+            val ca = Math.cos(a).toFloat(); val sa = Math.sin(a).toFloat()
+            canvas.drawLine(cx + ca * r * 0.2f, cy + sa * r * 0.2f, cx + ca * r * 0.6f - sa * r * 0.2f, cy + sa * r * 0.6f + ca * r * 0.2f,
+                if (k % 2 == 0) furStroke else furRed)
+        }
+        canvas.restore()
     }
 }

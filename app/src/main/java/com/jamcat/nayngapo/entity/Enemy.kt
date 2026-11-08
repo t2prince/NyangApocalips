@@ -82,7 +82,7 @@ abstract class Enemy(
     private val dustPaint = Paint()
     private val dustDot = Paint().apply { isAntiAlias = true }
 
-    /** 야간 전투 눈: 큰 흰 눈을 가진 냥이(똥·털뭉·모루)는 눈동자를 하얗게 */
+    /** 야간 전투 눈: 큰 흰 눈을 가진 냥이(똥·털북숭·모루)는 눈동자를 하얗게 */
     open val bigEyes: Boolean get() = false
 
     /** 몸에 닿았을 때 플레이어가 잃는 체력 (잡몹 1, 보스 3 — 기획4) */
@@ -256,7 +256,7 @@ abstract class Enemy(
         /**
          * 야간 전투의 눈이 하얀 그림 (그림마다 한 번 만들어 둔다).
          * - 보통 냥이: 눈은 흰 주둥이(가장 큰 흰 덩어리) 바로 위, 털에 둘러싸인 작은 검은 점 두 개 → 하얗게
-         * - 큰 흰 눈 냥이(bigEyes: 똥·털뭉·모루냥이): 큰 흰 눈 안의 검은 눈동자 → 하얗게
+         * - 큰 흰 눈 냥이(bigEyes: 똥·털북숭·모루냥이): 큰 흰 눈 안의 검은 눈동자 → 하얗게
          */
         fun nightEyes(src: Bitmap, bigEyes: Boolean = false): Bitmap = nightCache.getOrPut(src) {
             val w = src.width; val h = src.height
@@ -1679,8 +1679,8 @@ class FlyingCat(x: Float, y: Float) : Enemy(x, y, 25, 15) {
     override fun getProjectiles(): List<Projectile> = pendingProjectiles.toList()
 }
 
-// ============ 털뭉냥이 (HP 50, 대미지 10) ============
-/** 털이 두꺼워 단단하다. 몸을 부풀렸다가 뾰족한 털을 발사한다 */
+// ============ 털북숭냥이 (HP 50, 대미지 10) ============
+/** 털이 두꺼워 단단하다. 털뭉치를 발사한다 (대표님 2026-11-08 「털뭉치를 발사해」, 예전엔 털 세 가닥) */
 class FluffyCat(x: Float, y: Float) : Enemy(x, y, 50, 10) {
     override val bigEyes: Boolean get() = true   // 야간 전투: 큰 흰 눈의 눈동자가 하얗게
     override val width = 100f
@@ -1695,17 +1695,15 @@ class FluffyCat(x: Float, y: Float) : Enemy(x, y, 50, 10) {
         val dx = playerX - x
         velocityX = sign(dx) * 95f
 
-        // 털 발사: 높이가 다른 세 가닥을 한 번에 흩뿌린다
+        // 털뭉치 하나를 앞으로 곧게 날린다 (빠르기·크기·간격 Claude 판단)
         shootTimer -= deltaTime
         if (shootTimer <= 0f && abs(dx) < Constants.ENEMY_FIRE_RANGE) {
             shootTimer = 2.4f
             val dir = if (facingRight) 1f else -1f
-            for ((k, dy) in floatArrayOf(-0.7f, -0.45f, -0.2f).withIndex()) {
-                pendingProjectiles.add(
-                    Projectile(x + width / 2f, y + height * dy, (520f + k * 60f) * dir, 0f, 10, false,
-                        tint = Color.rgb(226, 190, 88), radius = 6f)
-                )
-            }
+            pendingProjectiles.add(
+                Projectile(x + width / 2f, y - height * 0.45f, 420f * dir, 0f, 10, false,
+                    radius = 15f, isFurball = true)
+            )
         }
 
         rollPhase += deltaTime * 7f

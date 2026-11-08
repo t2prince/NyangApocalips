@@ -45,7 +45,7 @@ object CatDex {
         Entry("mud", "머드냥이", "늪 속에 숨어 있다", { SpriteManager.mudCatEvil }),   // 기획9 (2026-09-27)
         Entry("poop", "똥냥이", "냄새가 지독하다", { SpriteManager.poopCat }),
         Entry("flying", "날아냥이", "하늘을 난다", { SpriteManager.flyingCat }),
-        Entry("fluffy", "털뭉냥이", "털이 수북하다", { SpriteManager.fluffyCat }),
+        Entry("fluffy", "털북숭냥이", "털이 수북하다", { SpriteManager.fluffyCat }),
         Entry("anvil", "모루냥이", "쇳덩이처럼 단단하다", { SpriteManager.anvilCat }),
         Entry("laser", "레이저냥이", "고글에서 광선이!", { SpriteManager.laserCat },
             frames = { SpriteManager.laserIdle }),

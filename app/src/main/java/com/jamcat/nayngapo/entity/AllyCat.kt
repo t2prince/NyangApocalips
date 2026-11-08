@@ -147,10 +147,10 @@ class AllyCat(
     private val isGunner = kind == Kind.GUN
     /**
      * 적이었다가 우리 팀이 된 냥이도 공격은 적일 때와 같다 (대표님 2026-10-10 「같은 팀 된 고양이도 공격은 같아」):
-     * 빨강 불 뿜기 · 주황 용암 던지기 · 노랑 번개 · 레이저 · 꽃가루 · 벌 침 · 똥 던지기는 멀리서, 해머·모루는 세게 내려친다(2배·3배).
-     * 나머지(도둑·털뭉·머드·꿀·덩굴)는 할퀴기. 피해량은 우리 팀 공격력 기준(배율은 Claude 판단).
+     * 빨강 불 뿜기 · 주황 용암 던지기 · 노랑 번개 · 레이저 · 꽃가루 · 벌 침 · 똥 던지기 · 털북숭 털뭉치는 멀리서, 해머·모루는 세게 내려친다(2배·3배).
+     * 나머지(도둑·머드·꿀·덩굴)는 할퀴기. 피해량은 우리 팀 공격력 기준(배율은 Claude 판단).
      */
-    private val ranged = kind in setOf(Kind.RED, Kind.ORANGE, Kind.YELLOW, Kind.LASER, Kind.FLOWER, Kind.BEE, Kind.POOP, Kind.ICE)
+    private val ranged = kind in setOf(Kind.RED, Kind.ORANGE, Kind.YELLOW, Kind.LASER, Kind.FLOWER, Kind.BEE, Kind.POOP, Kind.ICE, Kind.FLUFFY)
     /** 원거리 (그린냥이 슬라임 / 총냥이 총알 / 위의 원거리 냥이들) */
     private val isSpitter = kind == Kind.GREEN || isGunner || ranged
     private val moveSpeed = (if (isSpitter) 250f else 300f) * speedMul
@@ -404,6 +404,8 @@ class AllyCat(
             }
             Kind.POOP -> pendingProjectiles.add(Projectile(cx, mouthY - 20f, dir * 400f, -420f, d, true,   // 똥을 던진다
                 tint = Color.rgb(130, 86, 50), radius = 12f, gravity = 1000f))
+            Kind.FLUFFY -> pendingProjectiles.add(Projectile(cx, mouthY, dir * 420f, 0f, d, true,   // 털뭉치를 발사한다 (2026-11-08)
+                radius = 15f, isFurball = true))
             Kind.ICE -> {                       // 얼음 덩이를 포물선으로 — 맞은 적은 1초 동안 언다 (보스는 안 언다, Claude 판단)
                 val dist = abs(target.x - x)
                 pendingProjectiles.add(Projectile(cx + dir * 28f - 13f, mouthY - 30f, dir * (dist / 0.85f).coerceIn(220f, 700f), -900f * 0.85f / 2f, d, true,

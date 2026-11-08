@@ -47,7 +47,7 @@ enum class PlaceType(
     POOP("똥냥이", PlaceGroup.CAT, { x, y -> PoopCat(x, y) }),             // 똥냥이 HP30
     // 날아냥이 HP25 — 하늘 스테이지(11)에만 나온다 (대표님 2026-09-20), 땅 스테이지 목록에는 안 넣는다
     FLYING("날아냥이", PlaceGroup.CAT, { x, y -> FlyingCat(x, y) }, inPalette = false),
-    FLUFFY("털뭉냥이", PlaceGroup.CAT, { x, y -> FluffyCat(x, y) }),       // 털뭉냥이 HP50
+    FLUFFY("털북숭냥이", PlaceGroup.CAT, { x, y -> FluffyCat(x, y) }),       // 털북숭냥이 HP50
     ANVIL("모루냥이", PlaceGroup.CAT, { x, y -> AnvilCat(x, y) }),         // 모루냥이 HP75
     // 레이저냥이 HP15. 기본 생성에서는 레이저냥이 자리의 절반이 총냥이 (대표님 2026-09-20 「원래 레이저냥이가 있던 곳에 50:50」) —
     // 그 50:50 은 배치 목록을 만들 때 정해 두고, 여기서는 레이저냥이만 만든다

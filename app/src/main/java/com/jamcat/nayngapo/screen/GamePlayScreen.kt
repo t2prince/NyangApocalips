@@ -3760,7 +3760,7 @@ class GamePlayScreen(
      */
     private fun catKindShot(): Boolean {
         val kind = player.playerCat?.kind ?: return false
-        if (kind !in setOf(com.jamcat.nayngapo.entity.AllyCat.Kind.GUN, com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN, com.jamcat.nayngapo.entity.AllyCat.Kind.RED, com.jamcat.nayngapo.entity.AllyCat.Kind.ORANGE, com.jamcat.nayngapo.entity.AllyCat.Kind.YELLOW, com.jamcat.nayngapo.entity.AllyCat.Kind.LASER, com.jamcat.nayngapo.entity.AllyCat.Kind.FLOWER, com.jamcat.nayngapo.entity.AllyCat.Kind.POOP, com.jamcat.nayngapo.entity.AllyCat.Kind.ICE)) return false   // 벌냥이는 아무것도 쏘지 않는다 (대표님 2026-10-24)
+        if (kind !in setOf(com.jamcat.nayngapo.entity.AllyCat.Kind.GUN, com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN, com.jamcat.nayngapo.entity.AllyCat.Kind.RED, com.jamcat.nayngapo.entity.AllyCat.Kind.ORANGE, com.jamcat.nayngapo.entity.AllyCat.Kind.YELLOW, com.jamcat.nayngapo.entity.AllyCat.Kind.LASER, com.jamcat.nayngapo.entity.AllyCat.Kind.FLOWER, com.jamcat.nayngapo.entity.AllyCat.Kind.POOP, com.jamcat.nayngapo.entity.AllyCat.Kind.ICE, com.jamcat.nayngapo.entity.AllyCat.Kind.FLUFFY)) return false   // 벌냥이는 아무것도 쏘지 않는다 (대표님 2026-10-24)
         if (gunCooldown > 0f) return true
         gunCooldown = 0.4f
         val dir = if (player.facingRight) 1f else -1f
@@ -3787,6 +3787,7 @@ class GamePlayScreen(
             // 얼음냥이 주인공: 얼음 덩이를 던져 맞은 적을 1초 얼린다 (2026-10-25)
             com.jamcat.nayngapo.entity.AllyCat.Kind.ICE -> add(com.jamcat.nayngapo.entity.Projectile(cx + dir * 28f - 13f, my - 30f, dir * 520f, -380f, d, true,
                 radius = 13f, gravity = 900f, isIceChunk = true, iceFreeze = com.jamcat.nayngapo.entity.AllyCat.ICE_FREEZE_ENEMY))
+            com.jamcat.nayngapo.entity.AllyCat.Kind.FLUFFY -> add(com.jamcat.nayngapo.entity.Projectile(cx, my, dir * 520f, 0f, d, true, radius = 15f, isFurball = true))   // 털뭉치 (2026-11-08)
             com.jamcat.nayngapo.entity.AllyCat.Kind.POOP -> add(com.jamcat.nayngapo.entity.Projectile(cx, my - 20f, dir * 400f, -420f, d, true, tint = Color.rgb(130, 86, 50), radius = 12f, gravity = 1000f))
             else -> Unit
         }

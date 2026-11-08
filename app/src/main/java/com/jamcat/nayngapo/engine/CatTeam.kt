@@ -614,7 +614,7 @@ object CatTeam {
         AllyCat.Kind.FLOWER -> "꽃냥이"
         AllyCat.Kind.MUD -> "머드냥이"
         AllyCat.Kind.HONEY -> "꿀냥이"
-        AllyCat.Kind.FLUFFY -> "털뭉냥이"
+        AllyCat.Kind.FLUFFY -> "털북숭냥이"
         AllyCat.Kind.ANVIL -> "모루냥이"
         AllyCat.Kind.POOP -> "똥냥이"
         AllyCat.Kind.VINE -> "덩굴냥이"

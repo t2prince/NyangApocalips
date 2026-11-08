@@ -535,6 +535,8 @@ object CatTeam {
         nameCounts[kind] = next
         // 치즈냥이는 무늬 이름으로 부른다 (삼색이 2호 …). 노랑이는 그대로 치즈냥이
         val base = if (kind == AllyCat.Kind.NORMAL && coat != CatCoat.CHEESE) coat.label else baseNameOf(kind)
+        // 설기·은하는 이름이 있는 한 마리뿐인 냥이 — 번호 없이 (2026-11-08)
+        if (kind == AllyCat.Kind.SEOLGI || kind == AllyCat.Kind.EUNHA) return base
         return "$base ${next}호"
     }
 
@@ -630,9 +632,14 @@ object CatTeam {
         AllyCat.Kind.VINE -> "덩굴냥이"
         AllyCat.Kind.ICE -> "얼음냥이"
         AllyCat.Kind.TELEPORT -> "순간냥이"
+        AllyCat.Kind.SEOLGI -> "설기"
+        AllyCat.Kind.EUNHA -> "은하"
     }
 
     fun cat(id: Int): TeamCat? = roster.firstOrNull { it.id == id }
+
+    /** 이 종류 냥이를 한 번이라도 데려왔는가 (놀이방에 맡긴 냥이·떠난 냥이·무덤도 센다) — 설기·은하는 한 번만 구한다 */
+    fun hasEver(kind: AllyCat.Kind): Boolean = roster.any { it.kind == kind }
 
     // ===== 동물 병원 (상점가 6번 천막, 대표님 2026-10-09 「루비를 내고 수술하면 고양이가 더 빨라져」) =====
     /** 수술 종류 (대표님 2026-10-09): 중성화 수술 = 빨라진다 · HP 수술 = 피가 5 늘어난다. 값은 57루비(대표님).

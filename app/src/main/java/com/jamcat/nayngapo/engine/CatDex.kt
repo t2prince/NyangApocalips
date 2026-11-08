@@ -59,6 +59,9 @@ object CatDex {
         Entry("wizard", "마법사냥이", "정글의 보스", { SpriteManager.bossWizardCat }),   // 20스테이지 보스 (2026-09-20 「모두 도감에」)
         // 51~60 빙산 (대표님 2026-10-25 「거기에 나오는 고양이들은 그냥 만들고 고양이 도감에 추가해」)
         Entry("ice", "얼음냥이", "얼음 덩이를 던져 얼린다", { SpriteManager.iceCat }),
+        // 60 끝 감옥에 함께 갇힌 우리 편 냥이 (2026-11-08) — 구하면 도감에 오른다
+        Entry("seolgi", "설기", "백설기 떡을 던진다 (60 감옥)", { SpriteManager.seolgiCat ?: SpriteManager.allyCat }),
+        Entry("eunha", "은하", "은빛 별을 쏜다 (60 감옥)", { SpriteManager.eunhaCat ?: SpriteManager.allyCat }),
         Entry("iceberg", "빙산냥이", "얼음 팔로 때리고 얼린다 (60 보스)", { SpriteManager.icebergBoss ?: SpriteManager.iceCat }),
     )
 

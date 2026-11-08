@@ -37,6 +37,9 @@ class Prison(
         else -> listOf(AllyCat.Kind.GREEN, AllyCat.Kind.BLUE, AllyCat.Kind.NORMAL, AllyCat.Kind.GUN).random()
     }
 
+    /** 같이 갇힌 다른 냥이 — 설기 감옥엔 은하가 함께 있다 (대표님 2026-11-08 「은하라는 고양이와 함께 있어」) */
+    val companionKind: AllyCat.Kind? = if (catKind == AllyCat.Kind.SEOLGI) AllyCat.Kind.EUNHA else null
+
     enum class Kind { HUMAN, CAT }
 
     val width = 100f
@@ -45,6 +48,7 @@ class Prison(
     var rescueCount = if (kind == Kind.HUMAN) 3 else 1
 
     private val hitBoxRect = RectF()
+    private val mateRect = RectF()
     val hitBox: RectF get() = hitBoxRect.apply { set(x, y - height, x + width, y) }
 
     private val cagePaint = Paint().apply {
@@ -95,7 +99,15 @@ class Prison(
         if (kind == Kind.CAT) {
             val bmp = spriteFor(rescueKind, catCoat)
             srcRect.set(0, 0, bmp.width, bmp.height)
-            if (holdsKitten) {
+            val mate = companionKind?.let { spriteFor(it, catCoat) }
+            if (mate != null) {
+                // 둘이 나란히 (왼쪽 설기, 오른쪽 은하) — 감옥 안에 들어가게 조금 작게
+                val s1 = (width - 20f) / (bmp.width + mate.width) * 1.15f
+                dstRect.set(x + 2f, y - 10f - bmp.height * s1, x + 2f + bmp.width * s1, y - 10f)
+                canvas.drawBitmap(bmp, srcRect, dstRect, bitmapPaint)
+                mateRect.set(x + width - 2f - mate.width * s1, y - 10f - mate.height * s1, x + width - 2f, y - 10f)
+                canvas.drawBitmap(mate, null, mateRect, bitmapPaint)
+            } else if (holdsKitten) {
                 // 엄마 냥이(뒤쪽, 조금 작게) + 그 앞에 새끼(작게)
                 val ms = (width - 30f) / bmp.width * 0.85f
                 dstRect.set(x + 4f, y - 12f - bmp.height * ms, x + 4f + bmp.width * ms, y - 12f)

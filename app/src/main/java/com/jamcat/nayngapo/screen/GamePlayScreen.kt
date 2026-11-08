@@ -2253,6 +2253,13 @@ class GamePlayScreen(
                     hitEffects.add(HitEffect(prison.x, prison.y - prison.height - 50f, 1.6f, "엄마 ${mom.name}도 구출!"))
                 }
             } else com.jamcat.nayngapo.engine.CatTeam.recruit(kind, prison.catCoat)
+            // 설기는 은하와 함께 갇혀 있다 — 둘 다 팀에 들어온다 (2026-11-08)
+            if (kind == com.jamcat.nayngapo.entity.AllyCat.Kind.SEOLGI) com.jamcat.nayngapo.engine.GameProgress.discover("seolgi")
+            prison.companionKind?.let { ck ->
+                if (ck == com.jamcat.nayngapo.entity.AllyCat.Kind.EUNHA) com.jamcat.nayngapo.engine.GameProgress.discover("eunha")
+                val mate = com.jamcat.nayngapo.engine.CatTeam.recruit(ck)
+                hitEffects.add(HitEffect(prison.x, prison.y - prison.height - 50f, 1.6f, "${mate.name}도 구출!"))
+            }
             hitEffects.add(
                 HitEffect(
                     prison.x, prison.y - prison.height, 1.6f,
@@ -3763,7 +3770,7 @@ class GamePlayScreen(
      */
     private fun catKindShot(): Boolean {
         val kind = player.playerCat?.kind ?: return false
-        if (kind !in setOf(com.jamcat.nayngapo.entity.AllyCat.Kind.GUN, com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN, com.jamcat.nayngapo.entity.AllyCat.Kind.RED, com.jamcat.nayngapo.entity.AllyCat.Kind.ORANGE, com.jamcat.nayngapo.entity.AllyCat.Kind.YELLOW, com.jamcat.nayngapo.entity.AllyCat.Kind.LASER, com.jamcat.nayngapo.entity.AllyCat.Kind.FLOWER, com.jamcat.nayngapo.entity.AllyCat.Kind.POOP, com.jamcat.nayngapo.entity.AllyCat.Kind.ICE, com.jamcat.nayngapo.entity.AllyCat.Kind.FLUFFY)) return false   // 벌냥이는 아무것도 쏘지 않는다 (대표님 2026-10-24)
+        if (kind !in setOf(com.jamcat.nayngapo.entity.AllyCat.Kind.GUN, com.jamcat.nayngapo.entity.AllyCat.Kind.GREEN, com.jamcat.nayngapo.entity.AllyCat.Kind.RED, com.jamcat.nayngapo.entity.AllyCat.Kind.ORANGE, com.jamcat.nayngapo.entity.AllyCat.Kind.YELLOW, com.jamcat.nayngapo.entity.AllyCat.Kind.LASER, com.jamcat.nayngapo.entity.AllyCat.Kind.FLOWER, com.jamcat.nayngapo.entity.AllyCat.Kind.POOP, com.jamcat.nayngapo.entity.AllyCat.Kind.ICE, com.jamcat.nayngapo.entity.AllyCat.Kind.FLUFFY, com.jamcat.nayngapo.entity.AllyCat.Kind.SEOLGI, com.jamcat.nayngapo.entity.AllyCat.Kind.EUNHA)) return false   // 벌냥이는 아무것도 쏘지 않는다 (대표님 2026-10-24)
         if (gunCooldown > 0f) return true
         gunCooldown = 0.4f
         val dir = if (player.facingRight) 1f else -1f
@@ -3790,6 +3797,8 @@ class GamePlayScreen(
             // 얼음냥이 주인공: 얼음 덩이를 던져 맞은 적을 1초 얼린다 (2026-10-25)
             com.jamcat.nayngapo.entity.AllyCat.Kind.ICE -> add(com.jamcat.nayngapo.entity.Projectile(cx + dir * 28f - 13f, my - 30f, dir * 520f, -380f, d, true,
                 radius = 13f, gravity = 900f, isIceChunk = true, iceFreeze = com.jamcat.nayngapo.entity.AllyCat.ICE_FREEZE_ENEMY))
+            com.jamcat.nayngapo.entity.AllyCat.Kind.SEOLGI -> add(com.jamcat.nayngapo.entity.Projectile(cx, my - 20f, dir * 460f, -480f, d, true, tint = Color.rgb(250, 248, 238), radius = 14f, gravity = 1000f, isRiceCake = true))   // 설기 떡 (2026-11-08)
+            com.jamcat.nayngapo.entity.AllyCat.Kind.EUNHA -> add(com.jamcat.nayngapo.entity.Projectile(cx, my, dir * 820f, 0f, d, true, tint = Color.rgb(214, 222, 236), radius = 12f, isStar = true))   // 은하 별 (2026-11-08)
             com.jamcat.nayngapo.entity.AllyCat.Kind.FLUFFY -> add(com.jamcat.nayngapo.entity.Projectile(cx, my, dir * 520f, 0f, d, true, radius = 15f, isFurball = true))   // 털뭉치 (2026-11-08)
             com.jamcat.nayngapo.entity.AllyCat.Kind.POOP -> add(com.jamcat.nayngapo.entity.Projectile(cx, my - 20f, dir * 400f, -420f, d, true, tint = Color.rgb(130, 86, 50), radius = 12f, gravity = 1000f))
             else -> Unit

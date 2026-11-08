@@ -57,7 +57,9 @@ class AllyCat(
         // 우리 팀 그림이 따로 없어서 그 냥이(적) 그림을 그대로 쓰고, 싸우는 법은 치즈냥이처럼 가까이 가서 친다 (Claude 판단)
         HAMMER, THIEF, LASER, RED, ORANGE, YELLOW, BEE, FLOWER, MUD, HONEY, FLUFFY, ANVIL, POOP, VINE,
         /** 51~60 빙산 (2026-10-25): 얼음냥이 — 얼음 덩이를 던져 적을 잠깐 얼린다 · 순간냥이 — 멀리 있는 적 옆으로 순간이동해 할퀸다 (Claude 판단) */
-        ICE, TELEPORT
+        ICE, TELEPORT,
+        /** 60 스테이지 끝 감옥에 함께 갇힌 우리 편 냥이 둘 (대표님 2026-11-08) — 설기(하얀 몸·검은 얼룩)·은하(은색 몸). 적으로는 안 나온다 */
+        SEOLGI, EUNHA
     }
 
     /** 날아냥이는 땅 위에서도 살짝 떠서 다닌다 */
@@ -150,7 +152,7 @@ class AllyCat(
      * 빨강 불 뿜기 · 주황 용암 던지기 · 노랑 번개 · 레이저 · 꽃가루 · 벌 침 · 똥 던지기 · 털북숭 털뭉치는 멀리서, 해머·모루는 세게 내려친다(2배·3배).
      * 나머지(도둑·머드·꿀·덩굴)는 할퀴기. 피해량은 우리 팀 공격력 기준(배율은 Claude 판단).
      */
-    private val ranged = kind in setOf(Kind.RED, Kind.ORANGE, Kind.YELLOW, Kind.LASER, Kind.FLOWER, Kind.BEE, Kind.POOP, Kind.ICE, Kind.FLUFFY)
+    private val ranged = kind in setOf(Kind.RED, Kind.ORANGE, Kind.YELLOW, Kind.LASER, Kind.FLOWER, Kind.BEE, Kind.POOP, Kind.ICE, Kind.FLUFFY, Kind.SEOLGI, Kind.EUNHA)
     /** 원거리 (그린냥이 슬라임 / 총냥이 총알 / 위의 원거리 냥이들) */
     private val isSpitter = kind == Kind.GREEN || isGunner || ranged
     private val moveSpeed = (if (isSpitter) 250f else 300f) * speedMul
@@ -404,6 +406,11 @@ class AllyCat(
             }
             Kind.POOP -> pendingProjectiles.add(Projectile(cx, mouthY - 20f, dir * 400f, -420f, d, true,   // 똥을 던진다
                 tint = Color.rgb(130, 86, 50), radius = 12f, gravity = 1000f))
+            // 설기: 하얀 백설기 떡 덩이를 포물선으로 던진다 · 은하: 반짝이는 별을 곧게 빠르게 쏜다 (공격 방식 Claude 판단, 2026-11-08)
+            Kind.SEOLGI -> pendingProjectiles.add(Projectile(cx, mouthY - 20f, dir * 460f, -480f, d, true,
+                tint = Color.rgb(250, 248, 238), radius = 14f, gravity = 1000f, isRiceCake = true))
+            Kind.EUNHA -> pendingProjectiles.add(Projectile(cx, mouthY, dir * 820f, 0f, d, true,
+                tint = Color.rgb(214, 222, 236), radius = 12f, isStar = true))
             Kind.FLUFFY -> pendingProjectiles.add(Projectile(cx, mouthY, dir * 420f, 0f, d, true,   // 털뭉치를 발사한다 (2026-11-08)
                 radius = 15f, isFurball = true))
             Kind.ICE -> {                       // 얼음 덩이를 포물선으로 — 맞은 적은 1초 동안 언다 (보스는 안 언다, Claude 판단)
@@ -539,6 +546,8 @@ class AllyCat(
             Kind.VINE -> SpriteManager.vineCat
             Kind.ICE -> SpriteManager.iceCatAlly
             Kind.TELEPORT -> SpriteManager.teleportCatMob
+            Kind.SEOLGI -> SpriteManager.seolgiCat
+            Kind.EUNHA -> SpriteManager.eunhaCat
             else -> null
         }
 

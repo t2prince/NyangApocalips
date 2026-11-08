@@ -57,6 +57,10 @@ class Projectile(
     val range: Float = 0f,
     /** 털뭉치 — 털북숭냥이가 발사한다 (대표님 손그림 2026-11-08). 털 획이 삐죽삐죽한 누런 공, 굴러가듯 돈다 */
     val isFurball: Boolean = false,
+    /** 백설기 떡 덩이 — 설기가 던진다 (2026-11-08). 하얀 네모 떡 */
+    val isRiceCake: Boolean = false,
+    /** 별 — 은하가 쏜다 (2026-11-08). 반짝이는 다섯 꼭지 별 */
+    val isStar: Boolean = false,
     /** 털뭉치 색 (0 = 누런 털뭉치, 먼지냥이 먼지 뭉치는 회색) */
     val furColor: Int = 0,
     /** 얼음 덩이 — 얼음냥이·빙산냥이가 던진다 (2026-10-25). 땅에 닿으면 부서진다 */
@@ -245,6 +249,37 @@ class Projectile(
 
         if (isFurball) {
             drawFurball(canvas, cx, cy)
+            return
+        }
+
+        if (isRiceCake) {
+            // 하얀 떡 네모 + 검은 테 + 위에 콩 두 알 (돌며 날아간다)
+            furSpin += if (velocityX >= 0f) 8f else -8f
+            canvas.save(); canvas.rotate(furSpin, cx, cy)
+            starRect.set(cx - radius, cy - radius * 0.8f, cx + radius, cy + radius * 0.8f)
+            canvas.drawRoundRect(starRect, 5f, 5f, cakePaint)
+            canvas.drawRoundRect(starRect, 5f, 5f, starEdge)
+            canvas.drawCircle(cx - radius * 0.35f, cy - radius * 0.2f, 2.5f, beanPaint)
+            canvas.drawCircle(cx + radius * 0.3f, cy + radius * 0.15f, 2.5f, beanPaint)
+            canvas.restore()
+            return
+        }
+
+        if (isStar) {
+            // 은빛 다섯 꼭지 별 + 뒤로 짧은 반짝이 꼬리
+            furSpin += if (velocityX >= 0f) 12f else -12f
+            val back = if (velocityX >= 0f) -1f else 1f
+            canvas.drawLine(cx + back * radius * 0.8f, cy, cx + back * radius * 2.6f, cy, starTrail)
+            starPath.reset()
+            for (k in 0 until 10) {
+                val r = if (k % 2 == 0) radius else radius * 0.45f
+                val a = Math.toRadians((furSpin + k * 36).toDouble())
+                val px = cx + (r * Math.cos(a)).toFloat(); val py = cy + (r * Math.sin(a)).toFloat()
+                if (k == 0) starPath.moveTo(px, py) else starPath.lineTo(px, py)
+            }
+            starPath.close()
+            canvas.drawPath(starPath, starFill)
+            canvas.drawPath(starPath, starEdge)
             return
         }
 
@@ -736,4 +771,12 @@ class Projectile(
         }
         canvas.restore()
     }
+
+    private val starRect = RectF()
+    private val starPath = Path()
+    private val cakePaint = Paint().apply { color = Color.rgb(250, 248, 238); isAntiAlias = true }
+    private val beanPaint = Paint().apply { color = Color.rgb(120, 70, 50); isAntiAlias = true }
+    private val starFill = Paint().apply { color = Color.rgb(222, 228, 240); isAntiAlias = true }
+    private val starEdge = Paint().apply { color = Color.rgb(40, 40, 50); style = Paint.Style.STROKE; strokeWidth = 2.5f; isAntiAlias = true }
+    private val starTrail = Paint().apply { color = Color.argb(150, 220, 230, 255); strokeWidth = 5f; strokeCap = Paint.Cap.ROUND; isAntiAlias = true }
 }

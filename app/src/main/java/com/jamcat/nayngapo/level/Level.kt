@@ -203,6 +203,8 @@ class Level(val stageNumber: Int) {
         /** 31: 기본 배치에서 해적선은 보스 자리 + 1150, 해적냥이는 배 + 60 */
         private const val SHIP_FROM_BOSS_BASE = 1150f
         private const val BOSS_ON_SHIP = 60f
+        /** 60: 설기·은하 감옥은 보스 자리 + 700 (스테이지 끝 여유 END_MARGIN 안 — Claude 판단) */
+        private const val SEOLGI_FROM_BOSS = 700f
 
         /** 편집 화면에서 놓을 수 있는 x 범위 (출발점 바로 앞·스테이지 최대 길이 안 — Claude 판단) */
         const val MIN_PLACE_X = 500f
@@ -487,6 +489,11 @@ class Level(val stageNumber: Int) {
                 var px = pathStart + (groupCount - 1) * groupSpacing + 420f
                 while (hazardX.any { px > it - 220f && px < it + 500f }) px += 340f
                 out.add(Placement(PlaceType.PRISON_CAT, px, catKind = AllyCat.Kind.BOAT))
+            }
+
+            // 60: 스테이지 끝(보스 뒤)에 설기·은하가 함께 갇힌 감옥 (대표님 2026-11-08). 한 번 구했으면 다시 안 나온다
+            if (stageNumber == 60 && !com.jamcat.nayngapo.engine.CatTeam.hasEver(AllyCat.Kind.SEOLGI)) {
+                out.add(Placement(PlaceType.PRISON_CAT, bossBaseX + SEOLGI_FROM_BOSS, catKind = AllyCat.Kind.SEOLGI))
             }
 
             // ===== 31 해적: 토네이도 함정을 빈 구간에 (해적선은 build 에서 해적냥이 자리에 맞춰 놓는다) =====

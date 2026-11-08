@@ -57,6 +57,8 @@ object SpriteManager {
     /** 구덩이 함정의 삽질하는 냥이·버린 삽 (2026-11-08) */
     var pitDigger: Bitmap? = null
     var pitShovel: Bitmap? = null
+    /** 11 보스 먼지냥이 (2026-11-08, 아직 도감에만) */
+    var dustCat: Bitmap? = null
     /** 투기장의 밀짚 가짜 냥이 */
     lateinit var strawCat: Bitmap
     /** 집 안 가구 (GPT 그림 furn_*) — 이름 → 그림, 없는 그림은 빠진다 */
@@ -242,6 +244,7 @@ object SpriteManager {
         catHut = BitmapFactory.decodeResource(res, R.drawable.cat_hut)
         pitDigger = BitmapFactory.decodeResource(res, R.drawable.pit_digger)
         pitShovel = BitmapFactory.decodeResource(res, R.drawable.pit_shovel)
+        dustCat = BitmapFactory.decodeResource(res, R.drawable.cat_dust)
         strawCat = BitmapFactory.decodeResource(res, R.drawable.straw_cat)
         dummyByLevel = listOf(strawCat) + listOf("wood", "stone", "iron", "gold", "diamond").map { n ->
             val id = res.getIdentifier("dummy_$n", "drawable", context.packageName)

@@ -75,7 +75,8 @@ class TouchControls {
         strokeWidth = 8f; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
         isAntiAlias = true
     }
-    private val btnFillPaint = Paint().apply { color = Color.argb(90, 14, 16, 24); isAntiAlias = true }
+    /** 버튼 바탕 — 검은색 (대표님 2026-11-08 「버튼은 검은색이어야 해」, 예전엔 반투명) */
+    private val btnFillPaint = Paint().apply { color = Color.argb(235, 0, 0, 0); isAntiAlias = true }
     private val btnRingPaint = Paint().apply {
         style = Paint.Style.STROKE; strokeWidth = 3f; isAntiAlias = true
     }

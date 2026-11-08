@@ -536,32 +536,43 @@ class TouchControls {
     private val iconFillPaint = Paint().apply { color = Color.argb(235, 240, 244, 252); isAntiAlias = true }
     private val iconPath = android.graphics.Path()
 
-    /** 버튼 아이콘: attack = 발톱 세 줄, jump = 위 화살표, special = 별, rocket = 로켓. 모르는 이름은 글자로. */
+    /** 버튼 아이콘 — 대표님 손그림 2026-11-08 (사람 막대 그림): jump = 점프하는 사람, attack = 발차기·주먹,
+     *  special = 필살기(회오리 기운). rocket = 로켓. 모르는 이름은 글자로. */
     private fun drawIcon(canvas: Canvas, cx: Float, cy: Float, kind: String, active: Boolean) {
         iconPaint.color = if (active) ACCENT else Color.argb(235, 240, 244, 252)
         iconFillPaint.color = iconPaint.color
+        // 사람 그림은 버튼에 맞게 키워서 그린다 (선 굵기는 키운 뒤 지금과 비슷하게)
+        val figure = kind == "jump" || kind == "attack" || kind == "special"
+        if (figure) { canvas.save(); canvas.scale(FIGURE_SCALE, FIGURE_SCALE, cx, cy); iconPaint.strokeWidth = 7f / FIGURE_SCALE * 1.3f }
         when (kind) {
-            "attack" -> {                                   // 발톱 자국 세 줄
-                for (i in -1..1) {
-                    val ox = i * 16f
-                    canvas.drawLine(cx + ox - 8f, cy - 22f, cx + ox + 8f, cy + 22f, iconPaint)
-                }
+            "jump" -> {                                     // 두 팔·다리를 벌리고 뛰어오른 사람 + 아래 움직임 줄
+                canvas.drawCircle(cx, cy - 38f, 11f, iconPaint)
+                canvas.drawLine(cx, cy - 27f, cx, cy + 6f, iconPaint)
+                canvas.drawLine(cx - 26f, cy - 26f, cx, cy - 14f, iconPaint)
+                canvas.drawLine(cx + 26f, cy - 26f, cx, cy - 14f, iconPaint)
+                canvas.drawLine(cx, cy + 6f, cx - 18f, cy + 26f, iconPaint)
+                canvas.drawLine(cx, cy + 6f, cx + 20f, cy + 20f, iconPaint)
+                canvas.drawLine(cx - 6f, cy + 34f, cx - 10f, cy + 46f, iconPaint)
+                canvas.drawLine(cx + 6f, cy + 32f, cx + 2f, cy + 44f, iconPaint)
             }
-            "jump" -> {                                     // 위 화살표
-                canvas.drawLine(cx, cy + 22f, cx, cy - 22f, iconPaint)
-                canvas.drawLine(cx - 18f, cy - 4f, cx, cy - 22f, iconPaint)
-                canvas.drawLine(cx + 18f, cy - 4f, cx, cy - 22f, iconPaint)
+            "attack" -> {                                   // 주먹을 뻗고 발을 높이 차는 사람
+                canvas.drawCircle(cx - 14f, cy - 36f, 11f, iconPaint)
+                canvas.drawLine(cx - 14f, cy - 25f, cx - 14f, cy + 8f, iconPaint)
+                canvas.drawLine(cx - 14f, cy - 16f, cx + 18f, cy - 24f, iconPaint)
+                canvas.drawCircle(cx + 25f, cy - 26f, 8f, iconFillPaint)       // 주먹
+                canvas.drawLine(cx - 14f, cy - 14f, cx - 30f, cy - 2f, iconPaint)
+                canvas.drawLine(cx - 14f, cy + 8f, cx - 18f, cy + 42f, iconPaint)   // 버티는 다리
+                canvas.drawLine(cx - 14f, cy + 8f, cx + 30f, cy - 4f, iconPaint)    // 차는 다리
             }
-            "special" -> {                                  // 별
-                iconPath.reset()
-                for (k in 0 until 10) {
-                    val r = if (k % 2 == 0) 26f else 11f
-                    val a = Math.toRadians((-90 + k * 36).toDouble())
-                    val px = cx + (r * Math.cos(a)).toFloat(); val py = cy + (r * Math.sin(a)).toFloat()
-                    if (k == 0) iconPath.moveTo(px, py) else iconPath.lineTo(px, py)
-                }
-                iconPath.close()
-                canvas.drawPath(iconPath, iconFillPaint)
+            "special" -> {                                  // 기운을 모으는 사람 + 양쪽 회오리
+                canvas.drawCircle(cx, cy - 38f, 11f, iconPaint)
+                canvas.drawLine(cx, cy - 27f, cx, cy + 6f, iconPaint)
+                canvas.drawLine(cx, cy - 16f, cx - 24f, cy - 2f, iconPaint)
+                canvas.drawLine(cx, cy - 16f, cx + 24f, cy - 2f, iconPaint)
+                canvas.drawLine(cx, cy + 6f, cx - 20f, cy + 36f, iconPaint)
+                canvas.drawLine(cx, cy + 6f, cx + 20f, cy + 36f, iconPaint)
+                drawSwirl(canvas, cx - 40f, cy + 18f)
+                drawSwirl(canvas, cx + 40f, cy + 18f)
             }
             "rocket" -> {                                   // 로켓 (위로)
                 iconPath.reset()
@@ -574,6 +585,22 @@ class TouchControls {
             }
             else -> canvas.drawTr(kind, cx, cy + 14f, btnTextPaint)
         }
+        if (figure) { canvas.restore(); iconPaint.strokeWidth = 7f }
+    }
+
+    private val swirlPath = android.graphics.Path()
+
+    /** 필살기 아이콘의 작은 회오리 — 안에서 밖으로 감기는 나선 */
+    private fun drawSwirl(canvas: Canvas, cx: Float, cy: Float) {
+        swirlPath.reset()
+        for (k in 0..24) {
+            val t = k / 24f
+            val a = t * 2.5f * Math.PI
+            val r = 2f + 14f * t
+            val px = cx + (r * Math.cos(a)).toFloat(); val py = cy + (r * Math.sin(a)).toFloat()
+            if (k == 0) swirlPath.moveTo(px, py) else swirlPath.lineTo(px, py)
+        }
+        canvas.drawPath(swirlPath, iconPaint)
     }
 
     private val earPath = android.graphics.Path()
@@ -590,6 +617,9 @@ class TouchControls {
 
     companion object {
         val ACCENT = Color.rgb(255, 205, 84)
+
+        /** 점프·때리기·필살기 사람 그림 배율 */
+        const val FIGURE_SCALE = 1.6f
 
         /** 지시를 바꿨을 때 버튼이 커졌다 돌아오는 시간 */
         const val ORDER_PULSE_TIME = 0.2f

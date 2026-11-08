@@ -610,7 +610,7 @@ class SkyStageScreen(
      * 없으면 예전과 같은 무작위 기본 배치를 쓴다 (대표님 2026-10-31 「11 스태이지도 편집 할수있개 만들어줘」).
      */
     private fun spawnEnemies() {
-        val layout = (if (StageEdits.enabled) StageEdits.load(stageNumber) else null)
+        val layout = StageEdits.layoutFor(stageNumber)
             ?: com.jamcat.nayngapo.level.SkyLayout.defaultLayout(stageNumber)
         val h = gameView.screenHeight.toFloat().takeIf { it > 0f } ?: com.jamcat.nayngapo.level.SkyLayout.NOMINAL_H
         // 이 스테이지에서 이미 냥이를 구했으면 냥이 감옥은 다시 안 나온다 (2026-10-25) — 인간 감옥만

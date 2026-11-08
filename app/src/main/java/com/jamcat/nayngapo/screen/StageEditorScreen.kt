@@ -730,7 +730,7 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
         Terrain.stage = s
         iconCache.clear()   // 꿀 늪처럼 스테이지마다 모습이 다른 것
         // 편집 안 한 스테이지는 기본 배치를 한 번 만들어 보여 준다
-        val layout = StageEdits.load(s) ?: if (GameProgress.isSkyStage(s)) SkyLayout.defaultLayout(s) else Level.defaultLayout(s)
+        val layout = StageEdits.load(s) ?: StageEdits.bundled(s) ?: if (GameProgress.isSkyStage(s)) SkyLayout.defaultLayout(s) else Level.defaultLayout(s)
         items.clear()
         for (p in layout) items.add(Item(p, null))
         rebuildAll()
@@ -872,7 +872,8 @@ class StageEditorScreen(private val gameView: GameView) : Screen {
                 armed = null
                 StageEdits.clear(s)
                 openStage(s)
-                showNotice("처음 배치로 돌렸어요 (기본 배치는 할 때마다 조금씩 달라요)")
+                showNotice(if (StageEdits.bundled(s) != null) "앱에 넣은 배치로 돌렸어요"
+                           else "처음 배치로 돌렸어요 (기본 배치는 할 때마다 조금씩 달라요)")
             } else { armed = "reset"; armedT = 3f }
             "play" -> {
                 // 해 보기 = 저장하고 그 스테이지로 출발 (저장해야 Level 이 이 배치를 쓴다 — Claude 판단). 못 가는 스테이지는 까닭만 띄운다

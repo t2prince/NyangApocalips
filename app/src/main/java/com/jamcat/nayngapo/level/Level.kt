@@ -108,8 +108,8 @@ class Level(val stageNumber: Int) {
         // 지형 굴곡 설정: 스테이지가 오를수록 울퉁불퉁해진다
         Terrain.stage = stageNumber
         // 편집 화면에서 저장한 배치가 있으면 그것으로, 없으면 기본 생성으로 (대표님 2026-10-31 「스테이지들 편집할 수 있는 화면」).
-        // 편집 배치는 디버그 빌드에서만 쓴다 (대표님 2026-10-31 「디버그 모드에서만야」) — 릴리스 빌드는 늘 기본 생성
-        val edited = if (StageEdits.enabled) StageEdits.load(stageNumber) else null
+        // 폰에서 편집한 배치는 디버그 빌드에서만, 앱에 넣은 배치(assets)는 모든 빌드에서 쓴다 (2026-11-08)
+        val edited = StageEdits.layoutFor(stageNumber)
         build(edited ?: defaultLayout(stageNumber))
         totalEnemies = enemies.size
     }

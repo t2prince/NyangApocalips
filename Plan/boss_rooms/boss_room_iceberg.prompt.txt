@@ -1,0 +1,12 @@
+Tool: built-in image_gen
+Style reference: app/src/main/res/drawable-nodpi/cat_house.png
+Output: boss_room_iceberg.png (1536x864, resized using sips)
+
+Use case: illustration-story. Create one finished 2D side-scrolling action game boss-room background for iceberg region stages 51–60. Exact canvas 1536x864 pixels, 16:9 landscape.
+The attached cat_house image is STYLE REFERENCE ONLY: copy its bold thick black marker outlines, cute clean simple cartoon shapes. Do not include the house, cats, ears, paw symbols or any characters. Use strictly flat solid color fills, no shading, no gradients, no lighting effects, no texture.
+Scene: a spacious room inside an ice cavern. Side-on view, like a stage set. A perfectly level unbroken blue ice floor occupies exactly the bottom fifth (floor top at y=691 of 864). Draw a thick black horizontal floor boundary. The floor stays clear and smooth, with only a few simple flat graphic ice lines. Large icicles and pointed ice crystals frame the ceiling and the extreme left and right walls. A few large frozen ice pillars stand against the rear wall, positioned to keep the middle of the room spacious and uncluttered. Broad simple cool sky-blue rear wall and navy blue recess shapes, with pale blue and cyan ice outlines/facets. All facets must be bounded flat color areas, never smooth shading. Keep the central 60% especially empty for fighting and character readability. No foreground obstacles, no platforms, no slopes, no perspective receding floor, no floor holes.
+Palette: cold sky blue, pale icy cyan and navy with black ink outlines. A friendly cute game-cartoon aesthetic, not realistic, scary, painterly or 3D.
+No people, no animals, no cats, no boss, no faces, no text, no numbers, no lettering, no interface, no watermark. Full bleed finished single background.
+
+Correction pass:
+Edit this iceberg boss room background. Preserve the composition, thick black outlines, pillars, crystals, empty center and horizontal floor. Remove ALL gradients, mottling, grain, texture, glow and shading. Fill each enclosed shape with one absolutely uniform solid color like a flat vector cartoon. The huge central back wall must be a single uniform sky blue. The entire floor a single uniform cyan blue, retaining the few flat white graphic lines. The pale ice facets must each be uniform pale cyan, and dark navy cave recesses uniform navy. No soft tonal variation anywhere. Floor top at precisely 80% image height so bottom 20% is floor. Deliver exactly 1536x864 pixels, landscape 16:9. No text, cats, creatures or characters.

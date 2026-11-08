@@ -27,6 +27,8 @@ import kotlin.math.sin
  * **'냥이끼리 싸우기' 버튼** (대표님 2026-10-09): 데려온 내 냥이 두 마리를 골라 서로 싸우게 한다.
  * 번갈아 한 대씩 때리고(공격력만큼), 체력(레벨 체력 + HP 수술)이 먼저 0이 되는 쪽이 진다.
  * 연습 시합이라 진 냥이가 다치거나 무덤이 되지는 않고 보상도 없다, 싸우는 동안 가짜 냥이 훈련 시간은 멈춘다 (Claude 판단).
+ * **누가 먼저 때릴지 고른다** (대표님 2026-11-08 「투기장에서는 누가 먼저 플레이할 것인지 정할 수 있어」):
+ * 싸울 냥이를 정하면 '누가 먼저?' 창 — 냥이를 누르면 그 냥이부터, '🎲 아무나'는 무작위 (아무나 버튼은 Claude 판단).
  */
 class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
 
@@ -94,7 +96,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
     private val exitRect = RectF()
 
     // ===== 냥이끼리 싸우기 =====
-    private enum class Mode { TRAIN, PICK, DUEL }
+    private enum class Mode { TRAIN, PICK, FIRST, DUEL }
     private var mode = Mode.TRAIN
     private val duelBtn = RectF()
     /** 싸울 수 있는 냥이 = 데려온(출전) 냥이 (날아냥이 빼고, 상점 마을과 같게) */
@@ -129,11 +131,18 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
             armored = c.hasArmor, attackBonus = c.attackBonus, coat = c.coat).spriteNow()
     }
 
-    /** 2마리면 맞대결, 3마리면 서로 아무나 때리는 난투 (대표님 2026-10-09 「고양이 3마리가 투기장에서 싸울 수 있어」) */
-    private fun startDuel(cats: List<CatTeam.TeamCat>) {
+    /** 싸울 냥이가 정해지면 누가 먼저 때릴지 고르는 창으로 */
+    private var duelCats: List<CatTeam.TeamCat> = emptyList()
+    private val firstRects = List(3) { RectF() }
+    private fun chooseFirst(cats: List<CatTeam.TeamCat>) {
+        duelCats = cats.take(3); pops.clear(); mode = Mode.FIRST
+    }
+
+    /** 2마리면 맞대결, 3마리면 서로 아무나 때리는 난투 (대표님 2026-10-09 「고양이 3마리가 투기장에서 싸울 수 있어」). first: 먼저 때릴 냥이 (null = 무작위) */
+    private fun startDuel(cats: List<CatTeam.TeamCat>, first: Int? = null) {
         val homes = if (cats.size >= 3) listOf(0.20f, 0.50f, 0.80f) else listOf(0.30f, 0.70f)
         fighters = cats.take(3).mapIndexed { i, c -> Fighter(c, spriteOf(c), homes[i]) }
-        turn = (Math.random() * fighters.size).toInt()
+        turn = first?.coerceIn(0, fighters.size - 1) ?: (Math.random() * fighters.size).toInt()
         duelWait = 0.8f; winner = null; endTimer = 0f
         pops.clear()
         mode = Mode.DUEL
@@ -142,7 +151,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
     private fun tapDuelButton() {
         when {
             brought.size < 2 -> { noticeText = "냥이 2마리를 데려와야 싸울 수 있어요! (고양이 관리에서 출전)"; noticeTimer = 2.2f }
-            brought.size == 2 -> startDuel(brought)
+            brought.size == 2 -> chooseFirst(brought)
             else -> { picked.clear(); mode = Mode.PICK }
         }
     }
@@ -188,7 +197,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
     override fun update(deltaTime: Float) {
         timer += deltaTime
         if (noticeTimer > 0f) noticeTimer -= deltaTime
-        if (mode == Mode.PICK) return
+        if (mode == Mode.PICK || mode == Mode.FIRST) return
         // 루비 1개 = 1분: 시간이 없으면 멈춰 있다
         if (timeLeft <= 0f) return
         timeLeft = (timeLeft - deltaTime).coerceAtLeast(0f)
@@ -256,6 +265,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
 
         if (mode == Mode.DUEL) { drawDuel(canvas, w, h, floorY); drawExit(canvas, w, h); drawTime(canvas, w, h); drawNotice(canvas, w, h); return }
         if (mode == Mode.PICK) { drawPick(canvas, w, h); drawExit(canvas, w, h); return }
+        if (mode == Mode.FIRST) { drawFirst(canvas, w, h); drawExit(canvas, w, h); return }
 
         val c = cat
         if (c == null || c.gone || sprite == null) {
@@ -428,18 +438,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
             val c = brought[k]
             val r = pickRects[k]
             r.set(rect.left + 20f + k * cw + 8f, top, rect.left + 20f + (k + 1) * cw - 8f, bottom)
-            fill.color = if (c in picked) Color.rgb(255, 214, 120) else Color.rgb(250, 244, 230)
-            canvas.drawRoundRect(r, 20f, 20f, fill); canvas.drawRoundRect(r, 20f, 20f, ink)
-            val bmp = spriteOf(c)
-            val s = (r.width() * 0.75f / bmp.width).coerceAtMost(r.height() * 0.55f / bmp.height)
-            val bx = r.centerX(); val by = r.top + r.height() * 0.12f
-            rect2.set(bx - bmp.width * s / 2f, by, bx + bmp.width * s / 2f, by + bmp.height * s)
-            canvas.drawBitmap(bmp, null, rect2, null)
-            text.textSize = h * 0.038f; text.textAlign = Paint.Align.CENTER
-            canvas.drawTr(c.name, r.centerX(), r.bottom - r.height() * 0.18f, text)
-            text.textSize = h * 0.03f
-            canvas.drawTr("공격력 ${CatTeam.totalAttackOf(c)}", r.centerX(), r.bottom - r.height() * 0.07f, text)
-            text.textAlign = Paint.Align.LEFT
+            drawCatCard(canvas, r, c, c in picked, h)
         }
         // 두 마리를 골랐으면 '싸우기 시작' (세 마리째를 고르면 바로 시작)
         startBtn.setEmpty()
@@ -450,6 +449,43 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
             canvas.drawTr("두 마리로 싸우기 시작", startBtn.centerX(), startBtn.centerY() + 14f, text)
             text.textAlign = Paint.Align.LEFT
         }
+    }
+    /** 냥이 카드 한 장 (그림 · 이름 · 공격력) */
+    private fun drawCatCard(canvas: Canvas, r: RectF, c: CatTeam.TeamCat, selected: Boolean, h: Float) {
+        fill.color = if (selected) Color.rgb(255, 214, 120) else Color.rgb(250, 244, 230)
+        canvas.drawRoundRect(r, 20f, 20f, fill); canvas.drawRoundRect(r, 20f, 20f, ink)
+        val bmp = spriteOf(c)
+        val s = (r.width() * 0.75f / bmp.width).coerceAtMost(r.height() * 0.55f / bmp.height)
+        val bx = r.centerX(); val by = r.top + r.height() * 0.12f
+        rect2.set(bx - bmp.width * s / 2f, by, bx + bmp.width * s / 2f, by + bmp.height * s)
+        canvas.drawBitmap(bmp, null, rect2, null)
+        text.textSize = h * 0.038f; text.textAlign = Paint.Align.CENTER
+        canvas.drawTr(c.name, r.centerX(), r.bottom - r.height() * 0.18f, text)
+        text.textSize = h * 0.03f
+        canvas.drawTr("공격력 ${CatTeam.totalAttackOf(c)}", r.centerX(), r.bottom - r.height() * 0.07f, text)
+        text.textAlign = Paint.Align.LEFT
+    }
+
+    /** 누가 먼저 때릴까: 냥이를 누르면 그 냥이부터, '아무나'는 무작위 */
+    private fun drawFirst(canvas: Canvas, w: Float, h: Float) {
+        rect.set(w * 0.08f, h * 0.18f, w * 0.92f, h * 0.86f)
+        canvas.drawRoundRect(rect, 28f, 28f, panelPaint); canvas.drawRoundRect(rect, 28f, 28f, ink)
+        title.textSize = h * 0.05f
+        canvas.drawTr("누가 먼저 때릴까요?", w / 2f, rect.top + h * 0.08f, title)
+        val n = duelCats.size
+        val cw = ((rect.width() - 40f) / 3f)
+        val left0 = rect.centerX() - cw * n / 2f
+        val top = rect.top + h * 0.13f; val bottom = rect.bottom - h * 0.04f
+        for (k in 0 until n) {
+            val r = firstRects[k]
+            r.set(left0 + k * cw + 8f, top, left0 + (k + 1) * cw - 8f, bottom)
+            drawCatCard(canvas, r, duelCats[k], false, h)
+        }
+        startBtn.set(w / 2f - 230f, h * 0.88f, w / 2f + 230f, h * 0.88f + 90f)
+        canvas.drawRoundRect(startBtn, 45f, 45f, duelBtnPaint); canvas.drawRoundRect(startBtn, 45f, 45f, ink)
+        text.textSize = 40f; text.textAlign = Paint.Align.CENTER
+        canvas.drawTr("🎲 아무나 먼저", startBtn.centerX(), startBtn.centerY() + 14f, text)
+        text.textAlign = Paint.Align.LEFT
     }
     private val startBtn = RectF()
     private val fill = Paint().apply { isAntiAlias = true }
@@ -531,7 +567,7 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
             val px = event.x; val py = event.y
             rect.set(exitRect.left - 30f, exitRect.top - 30f, exitRect.right + 30f, exitRect.bottom + 30f)
             if (rect.contains(px, py)) { gameView.showShop(); return true }
-            if (mode != Mode.PICK && timeBtn.contains(px, py)) { tapTimeButton(); return true }
+            if (mode != Mode.PICK && mode != Mode.FIRST && timeBtn.contains(px, py)) { tapTimeButton(); return true }
             when (mode) {
                 Mode.TRAIN -> if (duelBtn.contains(px, py)) tapDuelButton() else if (lvBtn.contains(px, py)) tapLvButton()
                 Mode.PICK -> {
@@ -539,13 +575,18 @@ class ArenaScreen(private val gameView: GameView, catId: Int) : Screen {
                     if (k >= 0) {
                         val c = brought[k]
                         if (c in picked) picked.remove(c) else picked.add(c)
-                        if (picked.size == 3) startDuel(picked.toList())
+                        if (picked.size == 3) chooseFirst(picked.toList())
                     } else if (picked.size == 2 && startBtn.contains(px, py)) {
-                        startDuel(picked.toList())
+                        chooseFirst(picked.toList())
                     }
                 }
+                Mode.FIRST -> {
+                    val k = (0 until duelCats.size).indexOfFirst { firstRects[it].contains(px, py) }
+                    if (k >= 0) startDuel(duelCats, k)
+                    else if (startBtn.contains(px, py)) startDuel(duelCats)
+                }
                 Mode.DUEL -> {
-                    if (againBtn.contains(px, py)) startDuel(fighters.map { f -> f.cat })
+                    if (againBtn.contains(px, py)) chooseFirst(fighters.map { f -> f.cat })
                     else if (backBtn.contains(px, py)) { mode = Mode.TRAIN; pops.clear() }
                 }
             }

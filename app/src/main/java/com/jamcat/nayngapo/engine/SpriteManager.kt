@@ -107,7 +107,7 @@ object SpriteManager {
     var extraArmor: Map<com.jamcat.nayngapo.entity.AllyCat.Kind, Bitmap> = emptyMap()
     /** 갑옷 입은 배냥이 — 무늬별 (cat_boat_<무늬>_armor_ally) */
     var boatArmor: Map<CatCoat, Bitmap> = emptyMap()
-    lateinit var teleportCat: Bitmap    // 순간냥이 = 그린냥이 + 가운데 분홍 줄, 빨간 얇은 꼬리 끝에 은색 가시 공 (초원 보스, GPT 그림 2026-11-08)
+    lateinit var teleportCat: Bitmap    // 순간냥이 = 그린냥이 + 가운데 분홍 줄, 빨간 얇은 꼬리 끝에 빨간 가시 난 은색 공 (초원 보스, GPT 그림 2026-11-08)
     /** 잡몹 순간냥이 (51~60 빙산, 2026-10-25) — 보스보다 작게 원본 크기 */
     lateinit var teleportCatMob: Bitmap
     /** 얼음냥이 (51~60 빙산, 2026-10-25): 적 cat_ice(두꺼운 꼬리) · 내 편 cat_ice_ally(얇은 꼬리). 그림이 없으면 하늘색으로 물들인 치즈냥이 */

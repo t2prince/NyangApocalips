@@ -22,18 +22,23 @@ object Missions {
         Mission("survive20", "살아남아라", "한 번도 죽지 않고 20스테이지 클리어", 1, 200) { if (GameProgress.stage20NoDeath) 1 else 0 },
         // 대표님 2026-11-08: 이름 '냥이 사냥수', 종목 '냥이 1000마리 처치', 보상 1000루비
         Mission("kills1000", "냥이 사냥수", "냥이 1000마리 처치", 1000, 1000) { GameProgress.totalKills },
-        // 대표님 2026-11-08: 이름 '냥이 처치', 「냥이를 죽이기만 하면 된다, 계속 할 수 있다」, 보상 100루비.
-        // 받은 뒤 새로 한 마리를 더 잡아야 다시 받는다 (그 사이 여러 마리를 잡아도 한 번에 100루비 — Claude 판단)
-        Mission("kill_repeat", "냥이 처치", "냥이를 처치하면 된다 (계속 할 수 있다)", 1, 100, repeatable = true) { GameProgress.totalKills },
+        // 대표님 2026-11-08: 이름 '냥이 처치', 「한 스테이지를 깰 때마다」 100루비, 계속 할 수 있다.
+        // 받기 전에 여러 번 깼으면 깬 횟수만큼 한 번에 받는다 (Claude 판단)
+        Mission("clear_repeat", "냥이 처치", "스테이지를 깰 때마다 (계속 할 수 있다)", 1, 100, repeatable = true) { GameProgress.stageClears },
     )
 
     fun hasClaimable() = all.any { it.claimable }
 
-    /** 보상 받기 — 받았으면 루비 개수, 못 받으면 0 */
+    /** 보상 받기 — 받았으면 루비 개수, 못 받으면 0. 반복 미션은 쌓인 횟수만큼 한꺼번에 준다 */
     fun claim(m: Mission): Int {
         if (!m.claimable) return 0
-        if (m.repeatable) GameProgress.setMissionBase(m.id, m.progress()) else GameProgress.claimMission(m.id)
-        GameProgress.addRubies(m.reward)
-        return m.reward
+        var times = 1
+        if (m.repeatable) {
+            val base = GameProgress.missionBase(m.id)
+            times = (m.progress() - base) / m.goal
+            GameProgress.setMissionBase(m.id, base + times * m.goal)
+        } else GameProgress.claimMission(m.id)
+        GameProgress.addRubies(m.reward * times)
+        return m.reward * times
     }
 }

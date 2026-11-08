@@ -42,6 +42,7 @@ object GameProgress {
     private const val KEY_CLEARED = "cleared_stages"
     private const val KEY_LAST_CLEARED = "last_cleared_stage"
     private const val KEY_KILLS = "stat_kills"
+    private const val KEY_STAGE_CLEARS = "stat_stage_clears"
     private const val KEY_THIEF_KILLS = "stat_thief_kills"
     private const val KEY_HUMANS_RESCUED = "stat_humans_rescued"
     private const val KEY_STORY_SEEN = "story_seen"
@@ -317,6 +318,9 @@ object GameProgress {
 
     var totalKills = 0
         private set
+    /** 스테이지를 깬 횟수 (같은 스테이지를 다시 깨도 센다) — 반복 미션 '냥이 처치'. 2026-11-08 부터 센다 */
+    var stageClears = 0
+        private set
     var thiefKills = 0
         private set
     // ===== 설정 (설정 화면, 2026-09-20) =====
@@ -389,6 +393,7 @@ object GameProgress {
         rubies = prefs?.getInt(KEY_RUBIES, 0) ?: 0
         rubyDebt = prefs?.getInt(KEY_RUBY_DEBT, 0) ?: 0
         totalKills = prefs?.getInt(KEY_KILLS, 0) ?: 0
+        stageClears = prefs?.getInt(KEY_STAGE_CLEARS, 0) ?: 0
         thiefKills = prefs?.getInt(KEY_THIEF_KILLS, 0) ?: 0
         humansRescued = prefs?.getInt(KEY_HUMANS_RESCUED, 0) ?: 0
         storySeen = prefs?.getBoolean(KEY_STORY_SEEN, false) ?: false
@@ -565,6 +570,7 @@ object GameProgress {
     fun onStageCleared(stageNumber: Int) {
         clearedStages.add(stageNumber)
         lastClearedStage = stageNumber
+        stageClears++
         // 다음 스테이지에 데이터가 없으면 데이터가 있는 다음 스테이지를 연다 (31 → 51, 2026-10-25)
         val next = (nextPlayableAfter(stageNumber) ?: (stageNumber + 1)).coerceAtMost(TOTAL_STAGES)
         if (next > unlockedStage) unlockedStage = next
@@ -572,6 +578,7 @@ object GameProgress {
             ?.putInt(KEY_UNLOCKED, unlockedStage)
             ?.putStringSet(KEY_CLEARED, clearedStages.map { it.toString() }.toSet())
             ?.putInt(KEY_LAST_CLEARED, lastClearedStage)
+            ?.putInt(KEY_STAGE_CLEARS, stageClears)
             ?.apply()
     }
 

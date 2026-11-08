@@ -101,8 +101,9 @@ class Level(val stageNumber: Int) {
     }
 
     val stageCleared: Boolean get() = if (replay) reachedEnd else enemies.isNotEmpty() && enemies.all { it.isDead || it is MudCat || it is StrayTeamCat } &&   // 떠난 냥이는 세지 않는다
-        // 30: 끝에 갇힌 배냥이를 구해야 끝난다 (31 바다에 타고 나갈 배냥이, 2026-10-09)
-        prisons.none { it.catKind == AllyCat.Kind.BOAT && !it.isOpen }
+        // 감옥(인간·냥이)까지 다 부숴야 끝난다 (대표님 2026-11-08 「감옥까지 다 부숴야지 스테이지가 클리어돼」).
+        // 예전엔 30 의 배냥이 감옥만 그랬다 (2026-10-09)
+        prisons.all { it.isOpen }
 
     init {
         // 지형 굴곡 설정: 스테이지가 오를수록 울퉁불퉁해진다
@@ -111,8 +112,11 @@ class Level(val stageNumber: Int) {
         // 폰에서 편집한 배치는 디버그 빌드에서만, 앱에 넣은 배치(assets)는 모든 빌드에서 쓴다 (2026-11-08)
         val edited = StageEdits.layoutFor(stageNumber)
         build(edited ?: defaultLayout(stageNumber))
-        totalEnemies = enemies.size
+        totalEnemies = enemies.count { countsForClear(it) }
     }
+
+    /** 다 잡아야 끝나는 냥이인가 — 머드냥이(꿀냥이 포함)는 안 잡아도 클리어 (대표님 2026-11-08), 떠난 냥이도 안 센다 */
+    fun countsForClear(e: Enemy) = e !is MudCat && e !is StrayTeamCat
 
     /** 배치 목록(Placement)을 실제 개체로 만든다 — 기본 생성이든 편집한 배치든 같은 길 */
     private fun build(layout: List<Placement>) {
@@ -517,7 +521,7 @@ class Level(val stageNumber: Int) {
         val fixedCats: List<AllyCat.Kind> = emptyList(),   // 꼭 이 냥이가 갇힌 감옥 (표의 '총냥이x1' 등)
     )
 
-    fun onEnemyDefeated() {
-        defeatedEnemies++
+    fun onEnemyDefeated(e: Enemy? = null) {
+        if (e == null || countsForClear(e)) defeatedEnemies++   // 머드냥이는 '무찌른 냥이' 수에도 안 넣는다
     }
 }

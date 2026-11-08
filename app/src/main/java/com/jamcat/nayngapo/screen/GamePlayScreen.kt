@@ -724,7 +724,7 @@ class GamePlayScreen(
         }
         if (newcomers.isNotEmpty()) {
             level.enemies.addAll(newcomers)
-            level.totalEnemies += newcomers.size   // 불러낸 냥이도 다 잡아야 끝난다
+            level.totalEnemies += newcomers.count { level.countsForClear(it) }   // 불러낸 냥이도 다 잡아야 끝난다
         }
 
         // 아군 냥이: 적을 쫓아가 공격하고, 적이 없으면 플레이어 곁을 지킨다.
@@ -1159,11 +1159,11 @@ class GamePlayScreen(
 
         // 클리어 판정: 필드의 냥이를 전부 무찌르면 스테이지 클리어
         // 곧바로 넘어가지 않고 3초 동안 여운을 준 뒤 페이드로 결과 화면에 간다
-        // 30: 냥이를 다 잡았는데 배냥이를 아직 안 구했으면 한 번 알려 준다
-        if (stageNumber == 30 && !boatHintShown && level.enemies.all { it.isDead || it is com.jamcat.nayngapo.entity.MudCat || it is com.jamcat.nayngapo.entity.StrayTeamCat } &&
-            level.prisons.any { it.catKind == com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT && !it.isOpen }) {
+        // 냥이를 다 잡았는데 아직 안 부순 감옥이 있으면 한 번 알려 준다 (감옥까지 다 부숴야 끝난다, 2026-11-08)
+        if (!level.replay && !boatHintShown && level.enemies.all { it.isDead || !level.countsForClear(it) } && level.prisons.any { !it.isOpen }) {
             boatHintShown = true
-            showWaveText("앞에 갇힌 배냥이를 구하자!")
+            showWaveText(if (stageNumber == 30 && level.prisons.any { it.catKind == com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT && !it.isOpen })
+                "앞에 갇힌 배냥이를 구하자!" else "감옥을 다 부숴야 끝나요!")
         }
         if (level.stageCleared && clearTimer < 0f) {
             clearTimer = STAGE_CLEAR_DELAY
@@ -1493,7 +1493,7 @@ class GamePlayScreen(
             player.score += 100
             player.killCount++
             GameProgress.addKill(isThief = enemy is com.jamcat.nayngapo.entity.ThiefCat)   // 미션 통계
-            level.onEnemyDefeated()
+            level.onEnemyDefeated(enemy)
 
             // 쓰러진 냥이가 루비를 떨어뜨린다 (일반 1개, 보스 5개). 도둑냥이는 훔친 루비도 돌려준다
             val stolenBack = (enemy as? com.jamcat.nayngapo.entity.ThiefCat)?.stolen ?: 0
@@ -3697,7 +3697,7 @@ class GamePlayScreen(
         }
         val kind = com.jamcat.nayngapo.entity.AllyCat.kindForEnemy(enemy) ?: return false   // 모든 냥이가 그 모습 그대로 우리 팀 (보스 빼고, 2026-10-10)
         enemy.capture()
-        level.onEnemyDefeated()
+        level.onEnemyDefeated(enemy)
         val cat = com.jamcat.nayngapo.engine.CatTeam.recruit(kind, coat, isKitten = enemy is com.jamcat.nayngapo.entity.KittenCat)
         // 땅에서 걷는 냥이면 이 스테이지에서도 바로 같이 싸운다
         if (kind != com.jamcat.nayngapo.entity.AllyCat.Kind.FLYING && kind != com.jamcat.nayngapo.entity.AllyCat.Kind.BOAT && !isSea) {

@@ -79,7 +79,8 @@ def main():
         # 대기(춤) 스트립도 같은 색으로 — 도감·고양이 관리에서 춤추는 데 쓴다
         shift_hue(os.path.join(DST, 'anim_cat_idle.png'), os.path.join(DST, f'anim_cat_idle_{name}.png'), shift)
     # 순간냥이(적, 보스) = 그린냥이 + 가운데 두꺼운 분홍 가로줄
-    add_center_stripe(os.path.join(DST, 'cat_green.png'), os.path.join(DST, 'cat_teleport.png'))
+    # cat_teleport 는 2026-11-08 부터 GPT 그림(Plan/teleport/teleport_cat.png, 은색 가시 공 꼬리) — 덮어쓰지 않는다
+    # add_center_stripe(os.path.join(DST, 'cat_green.png'), os.path.join(DST, 'cat_teleport.png'))
 
 if __name__ == '__main__':
     main()

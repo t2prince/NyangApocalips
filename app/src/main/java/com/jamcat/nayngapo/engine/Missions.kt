@@ -17,6 +17,8 @@ object Missions {
     val all: List<Mission> = listOf(
         // 대표님 2026-09-21: 이름 '살아남아라', 목적 '한 번도 죽지 않고 20스테이지 클리어'. 보상 200루비는 Claude 판단
         Mission("survive20", "살아남아라", "한 번도 죽지 않고 20스테이지 클리어", 1, 200) { if (GameProgress.stage20NoDeath) 1 else 0 },
+        // 대표님 2026-11-08: 이름 '냥이 사냥수', 종목 '냥이 1000마리 처치', 보상 1000루비
+        Mission("kills1000", "냥이 사냥수", "냥이 1000마리 처치", 1000, 1000) { GameProgress.totalKills },
     )
 
     fun hasClaimable() = all.any { it.claimable }

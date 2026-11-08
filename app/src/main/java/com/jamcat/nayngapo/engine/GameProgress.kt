@@ -62,6 +62,7 @@ object GameProgress {
     private const val KEY_SELECTED_BOAT = "selected_boat"
     private const val KEY_PLAYER_CAT = "player_cat"
     private const val KEY_MISSIONS_CLAIMED = "missions_claimed"
+    private const val KEY_MISSION_BASE_PREFIX = "mission_base_"
     private const val KEY_STAGE20_NO_DEATH = "stat_stage20_no_death"
     private const val KEY_BGM = "setting_bgm"
     private const val KEY_SFX = "setting_sfx"
@@ -468,6 +469,13 @@ object GameProgress {
     fun claimMission(id: String) {
         claimedMissions.add(id)
         prefs?.edit()?.putStringSet(KEY_MISSIONS_CLAIMED, claimedMissions.toSet())?.apply()
+    }
+
+    /** 반복 미션의 기준점 — 마지막으로 받았을 때의 진행도 */
+    fun missionBase(id: String): Int = prefs?.getInt(KEY_MISSION_BASE_PREFIX + id, 0) ?: 0
+
+    fun setMissionBase(id: String, value: Int) {
+        prefs?.edit()?.putInt(KEY_MISSION_BASE_PREFIX + id, value)?.apply()
     }
 
     /** 한 판이 끝나면 얻은 점수를 저금통에 쌓는다 (루비 상점에서 환전) */

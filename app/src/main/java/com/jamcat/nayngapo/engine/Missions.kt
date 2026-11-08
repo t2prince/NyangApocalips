@@ -5,10 +5,13 @@ package com.jamcat.nayngapo.engine
  * 목표·보상 값은 Claude 가 정했다 (docs/GAME_RULES.md 표). 진행도는 이미 저장되는 수치에서 계산하고, 수령 여부만 따로 저장한다.
  */
 object Missions {
-    data class Mission(val id: String, val title: String, val desc: String, val goal: Int, val reward: Int, val progress: () -> Int) {
-        val current: Int get() = progress().coerceAtMost(goal)
-        val done: Boolean get() = progress() >= goal
-        val claimed: Boolean get() = id in GameProgress.claimedMissions
+    /** repeatable = 받아도 다시 할 수 있는 미션. 받을 때의 진행도를 기준점으로 저장하고, 거기서부터 다시 센다 */
+    data class Mission(val id: String, val title: String, val desc: String, val goal: Int, val reward: Int,
+                       val repeatable: Boolean = false, val progress: () -> Int) {
+        private val gained: Int get() = progress() - (if (repeatable) GameProgress.missionBase(id) else 0)
+        val current: Int get() = gained.coerceIn(0, goal)
+        val done: Boolean get() = gained >= goal
+        val claimed: Boolean get() = !repeatable && id in GameProgress.claimedMissions
         val claimable: Boolean get() = done && !claimed
     }
 
@@ -19,6 +22,9 @@ object Missions {
         Mission("survive20", "살아남아라", "한 번도 죽지 않고 20스테이지 클리어", 1, 200) { if (GameProgress.stage20NoDeath) 1 else 0 },
         // 대표님 2026-11-08: 이름 '냥이 사냥수', 종목 '냥이 1000마리 처치', 보상 1000루비
         Mission("kills1000", "냥이 사냥수", "냥이 1000마리 처치", 1000, 1000) { GameProgress.totalKills },
+        // 대표님 2026-11-08: 이름 '냥이 처치', 「냥이를 죽이기만 하면 된다, 계속 할 수 있다」, 보상 100루비.
+        // 받은 뒤 새로 한 마리를 더 잡아야 다시 받는다 (그 사이 여러 마리를 잡아도 한 번에 100루비 — Claude 판단)
+        Mission("kill_repeat", "냥이 처치", "냥이를 처치하면 된다 (계속 할 수 있다)", 1, 100, repeatable = true) { GameProgress.totalKills },
     )
 
     fun hasClaimable() = all.any { it.claimable }
@@ -26,7 +32,7 @@ object Missions {
     /** 보상 받기 — 받았으면 루비 개수, 못 받으면 0 */
     fun claim(m: Mission): Int {
         if (!m.claimable) return 0
-        GameProgress.claimMission(m.id)
+        if (m.repeatable) GameProgress.setMissionBase(m.id, m.progress()) else GameProgress.claimMission(m.id)
         GameProgress.addRubies(m.reward)
         return m.reward
     }

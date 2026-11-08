@@ -781,6 +781,9 @@ class GamePlayScreen(
         }
         level.allies.removeAll { it.isGone }
 
+        // 구덩이의 삽질하는 냥이 (2026-11-08)
+        for (pit in level.pits) pit.update(deltaTime, player.x, camera.x, camera.x + gameView.screenWidth)
+
         // 가시 함정: 가시가 솟았을 때 밟으면 피해 (점프로 뛰어넘으면 안전)
         for (trap in level.traps) {
             trap.update(deltaTime)

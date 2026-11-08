@@ -26,6 +26,8 @@ ITEMS = {
     'fluffy_cat': ('cat_fluffy', 122),
     'anvil_cat': ('cat_anvil', 133),
     'cat_hut': ('cat_hut', 420),          # 집 1층 고양이 관리 입구 '고양이 집' (2026-11-08)
+    'pit_digger': ('pit_digger', 112),    # 구덩이 함정: 삽질하다 도망가는 냥이 (2026-11-08)
+    'pit_shovel': ('pit_shovel', 34),     # 구덩이 옆에 버리고 간 삽
     'straw_cat': ('straw_cat', 360),    # 투기장 밀짚 가짜 냥이 (2026-10-09)
     # 투기장 가짜 냥이 Lv 별 재료 (2026-10-09 「Lv업을 하면 가짜 고양이 재료가 바뀌어」) — Lv1 밀짚 → 나무 → 돌 → 철 → 금 → 다이아
     'dummy_wood': ('dummy_wood', 360),

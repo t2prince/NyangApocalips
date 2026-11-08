@@ -12,6 +12,70 @@ class PitTrap(val x: Float, val y: Float, seed: Int) {
     val width = 170f + (kotlin.math.abs(seed * 37) % 56)
     private val depth = 170f + (kotlin.math.abs(seed * 53) % 70)
 
+    // ===== 삽질하는 냥이 (대표님 2026-11-08 「구덩이 함정은 고양이가 몇 초 동안 파고 있다가 삽을 버리고 도망가」) =====
+    // 화면에 보이면 왼쪽 턱에서 삽질하다가 DIG_TIME 뒤 삽을 던지고 인간 반대쪽으로 달아난다. 싸우지 않는다 (Claude 판단)
+    private enum class Digger { WAIT, DIG, RUN, GONE }
+    private var digger = Digger.WAIT
+    private var digT = 0f
+    private var diggerX = x - 70f
+    private var runDir = -1f
+    private var shovelDropped = false
+    private val clods = mutableListOf<FloatArray>()   // 튀는 흙: x, y, vx, vy, 남은 시간
+
+    /** 카메라 왼쪽·오른쪽 끝과 인간 x 를 받아 삽질 냥이를 움직인다 */
+    fun update(dt: Float, playerX: Float, camLeft: Float, camRight: Float) {
+        clods.removeAll { c -> c[4] -= dt; c[0] += c[2] * dt; c[1] += c[3] * dt; c[3] += 1400f * dt; c[4] <= 0f }
+        when (digger) {
+            Digger.WAIT -> if (x + width > camLeft && x < camRight) digger = Digger.DIG
+            Digger.DIG -> {
+                digT += dt
+                // 삽을 꽂을 때마다 흙 한 줌이 구덩이 밖으로 튄다
+                if ((digT * DIG_RATE).toInt() != ((digT - dt) * DIG_RATE).toInt())
+                    repeat(3) { clods.add(floatArrayOf(x + 30f, y + 10f, -120f - (Math.random() * 160).toFloat(), -420f - (Math.random() * 200).toFloat(), 0.7f)) }
+                if (digT >= DIG_TIME) {
+                    digger = Digger.RUN
+                    shovelDropped = true
+                    runDir = if (playerX < x + width / 2f) 1f else -1f
+                    if (runDir > 0f) diggerX = x + width + 20f   // 인간이 왼쪽이면 구덩이를 건너뛴 듯 오른쪽으로
+                }
+            }
+            Digger.RUN -> {
+                diggerX += runDir * RUN_SPEED * dt
+                digT += dt
+                if (diggerX < camLeft - 300f || diggerX > camRight + 300f) digger = Digger.GONE
+            }
+            Digger.GONE -> Unit
+        }
+    }
+
+    private val clodPaint = Paint().apply { color = Color.rgb(120, 82, 50); isAntiAlias = true }
+    private val digRect = RectF()
+
+    private fun drawDigger(canvas: Canvas) {
+        if (shovelDropped) com.jamcat.nayngapo.engine.SpriteManager.pitShovel?.let { s ->
+            digRect.set(x - 150f, y - s.height.toFloat() + 6f, x - 150f + s.width, y + 6f)
+            canvas.drawBitmap(s, null, digRect, null)
+        }
+        for (c in clods) canvas.drawCircle(c[0], c[1], 7f, clodPaint)
+        when (digger) {
+            Digger.DIG -> com.jamcat.nayngapo.engine.SpriteManager.pitDigger?.let { b ->
+                // 삽질: 몸이 위아래로 꾸벅 (삽 날이 구덩이 턱에 닿게)
+                val bob = kotlin.math.abs(kotlin.math.sin(digT * DIG_RATE * Math.PI.toFloat())) * 10f
+                digRect.set(x + 40f - b.width, y - b.height + bob, x + 40f, y + bob)
+                canvas.drawBitmap(b, null, digRect, null)
+            }
+            Digger.RUN -> {
+                val frames = com.jamcat.nayngapo.engine.SpriteManager.catWalk
+                val f = frames[((digT * 12f).toInt()) % frames.size]
+                val bmp = if (runDir > 0f) f else com.jamcat.nayngapo.engine.SpriteManager.getFlipped(f)
+                val h = 100f; val w = bmp.width * h / bmp.height
+                digRect.set(diggerX - w / 2f, y - h, diggerX + w / 2f, y)
+                canvas.drawBitmap(bmp, null, digRect, null)
+            }
+            else -> Unit
+        }
+    }
+
     /** 구덩이 안쪽으로 들어갔는지 (가장자리 턱은 아직 안전) */
     fun swallows(centerX: Float): Boolean = centerX > x + 22f && centerX < x + width - 22f
 
@@ -110,9 +174,14 @@ class PitTrap(val x: Float, val y: Float, seed: Int) {
         canvas.drawPath(warnPath, warnEdgePaint)
         canvas.drawLine(cx, y - 62f, cx, y - 46f, warnMarkPaint)
         canvas.drawPoint(cx, y - 40f, warnMarkPaint)
+
+        drawDigger(canvas)
     }
 
     private companion object {
+        const val DIG_TIME = 3f        // 삽질하는 시간 (Claude 판단)
+        const val DIG_RATE = 2.5f      // 1초에 삽질 횟수
+        const val RUN_SPEED = 520f
         const val WALL_STEPS = 10
     }
 }
